@@ -1,0 +1,26 @@
+name: webtrit_callkeep_platform_interface
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/webtrit_callkeep_platform_interface.yaml"
+      - "webtrit_callkeep_platform_interface/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/webtrit_callkeep_platform_interface.yaml"
+      - "webtrit_callkeep_platform_interface/**"
+
+jobs:
+  build:
+    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/flutter_package.yml@v1
+    with:
+      flutter_channel: stable
+      flutter_version: 3.13.2
+      working_directory: webtrit_callkeep_platform_interface
+

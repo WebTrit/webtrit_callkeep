@@ -1,0 +1,26 @@
+name: webtrit_callkeep_windows
+description: Windows implementation of the webtrit_callkeep plugin
+version: 0.1.0+1
+publish_to: none
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+flutter:
+  plugin:
+    implements: webtrit_callkeep
+    platforms:
+      windows:
+        pluginClass: WebtritCallkeepWindows
+        dartPluginClass: WebtritCallkeepWindows
+
+dependencies:
+  flutter:
+    sdk: flutter
+  webtrit_callkeep_platform_interface:
+    path: ../webtrit_callkeep_platform_interface
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  very_good_analysis: ^5.1.0

@@ -1,0 +1,43 @@
+version: 2
+enable-beta-ecosystems: true
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "pub"
+    directory: "/webtrit_callkeep"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "pub"
+    directory: "/webtrit_callkeep/example"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "pub"
+    directory: "/webtrit_callkeep_platform_interface"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "pub"
+    directory: "/webtrit_callkeep_android"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "pub"
+    directory: "/webtrit_callkeep_ios"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "pub"
+    directory: "/webtrit_callkeep_linux"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "pub"
+    directory: "/webtrit_callkeep_macos"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "pub"
+    directory: "/webtrit_callkeep_web"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "pub"
+    directory: "/webtrit_callkeep_windows"
+    schedule:
+      interval: "daily"

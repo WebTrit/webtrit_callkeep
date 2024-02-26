@@ -1,0 +1,48 @@
+name: webtrit_callkeep
+description: Flutter WebTrit CallKeep plugin
+version: 0.1.0+1
+publish_to: none
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        default_package: webtrit_callkeep_android
+      ios:
+        default_package: webtrit_callkeep_ios
+      linux:
+        default_package: webtrit_callkeep_linux
+      macos:
+        default_package: webtrit_callkeep_macos
+      web:
+        default_package: webtrit_callkeep_web
+      windows:
+        default_package: webtrit_callkeep_windows
+
+dependencies:
+  flutter:
+    sdk: flutter
+  webtrit_callkeep_android:
+    path: ../webtrit_callkeep_android
+  webtrit_callkeep_ios:
+    path: ../webtrit_callkeep_ios
+  webtrit_callkeep_linux:
+    path: ../webtrit_callkeep_linux
+  webtrit_callkeep_macos:
+    path: ../webtrit_callkeep_macos
+  webtrit_callkeep_platform_interface:
+    path: ../webtrit_callkeep_platform_interface
+  webtrit_callkeep_web:
+    path: ../webtrit_callkeep_web
+  webtrit_callkeep_windows:
+    path: ../webtrit_callkeep_windows
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  mocktail: ^1.0.0
+  plugin_platform_interface: ^2.1.6
+  very_good_analysis: ^5.1.0

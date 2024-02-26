@@ -1,0 +1,28 @@
+name: webtrit_callkeep_web
+description: Web implementation of the webtrit_callkeep plugin
+version: 0.1.0+1
+publish_to: none
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+flutter:
+  plugin:
+    implements: webtrit_callkeep
+    platforms:
+      web:
+        pluginClass: WebtritCallkeepWeb
+        fileName: webtrit_callkeep_web.dart
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
+  webtrit_callkeep_platform_interface:
+    path: ../webtrit_callkeep_platform_interface
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  very_good_analysis: ^5.1.0

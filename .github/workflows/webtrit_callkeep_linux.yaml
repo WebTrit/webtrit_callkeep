@@ -1,0 +1,26 @@
+name: webtrit_callkeep_linux
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/webtrit_callkeep_linux.yaml"
+      - "webtrit_callkeep_linux/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/webtrit_callkeep_linux.yaml"
+      - "webtrit_callkeep_linux/**"
+
+jobs:
+  build:
+    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/flutter_package.yml@v1
+    with:
+      flutter_channel: stable
+      flutter_version: 3.13.2
+      working_directory: webtrit_callkeep_linux
+
