@@ -47,6 +47,8 @@ class ActiveCallNotificationBuilder(
         return notification
     }
 
+    override fun cancel() {}
+
     override fun show() {
         val notificationManager = NotificationManagerCompat.from(context)
         notificationManager.notify(R.integer.notification_active_call_id, build())

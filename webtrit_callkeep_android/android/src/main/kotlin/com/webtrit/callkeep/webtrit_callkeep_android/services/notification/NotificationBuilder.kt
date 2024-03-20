@@ -15,7 +15,10 @@ abstract class NotificationBuilder {
     private var notificationData: Map<String, Any> = mutableMapOf()
 
     abstract fun show()
+
     abstract fun hide()
+
+    abstract fun cancel()
 
     fun getMetaData(): CallMetadata {
         return callMetaData!!

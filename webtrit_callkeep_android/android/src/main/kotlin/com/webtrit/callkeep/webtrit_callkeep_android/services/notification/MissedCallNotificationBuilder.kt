@@ -51,9 +51,17 @@ class MissedCallNotificationBuilder(
         return notification
     }
 
-    override fun show() {
+    override fun cancel() {
+        val id = getMetaData().number.hashCode()
         val notificationManager = NotificationManagerCompat.from(context)
-        notificationManager.notify(getMetaData().callId.hashCode(), build())
+        notificationManager.cancel(id)
+
+    }
+
+    override fun show() {
+        val id = getMetaData().number.hashCode()
+        val notificationManager = NotificationManagerCompat.from(context)
+        notificationManager.notify(id, build())
     }
 
     override fun hide() {
@@ -62,7 +70,6 @@ class MissedCallNotificationBuilder(
     }
 
     companion object {
-        const val MISSED_CALL_NOTIFICATION_CHANNEL_ID =
-            "MISSED_CALL_NOTIFICATION_CHANNEL_ID"
+        const val MISSED_CALL_NOTIFICATION_CHANNEL_ID = "MISSED_CALL_NOTIFICATION_CHANNEL_ID"
     }
 }

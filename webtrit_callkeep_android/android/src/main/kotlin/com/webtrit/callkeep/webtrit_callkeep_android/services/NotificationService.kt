@@ -6,6 +6,7 @@ import com.webtrit.callkeep.webtrit_callkeep_android.services.notification.Activ
 import com.webtrit.callkeep.webtrit_callkeep_android.services.notification.IncomingCallNotificationBuilder
 import com.webtrit.callkeep.webtrit_callkeep_android.services.notification.MissedCallNotificationBuilder
 
+//TODO: Reorganize this service
 class NotificationService(
     context: Context
 ) {
@@ -27,6 +28,11 @@ class NotificationService(
     fun showMissedCallNotification(callMetaData: CallMetadata) {
         missedCallNotificationBuilder.setMetaData(callMetaData)
         missedCallNotificationBuilder.show()
+    }
+
+    fun cancelMissedCall(callMetaData: CallMetadata) {
+        missedCallNotificationBuilder.setMetaData(callMetaData)
+        missedCallNotificationBuilder.cancel()
     }
 
     fun cancelActiveNotification() {

@@ -1,5 +1,6 @@
 package com.webtrit.callkeep.webtrit_callkeep_android.connection
 
+import java.lang.Exception
 import android.content.Context
 import android.net.Uri
 import android.os.Build
@@ -99,11 +100,16 @@ class PhoneConnection internal constructor(
      */
     override fun onAnswer() {
         super.onAnswer()
-        Log.d(TAG, "PhoneConnection:onAnswer")
         answer = true
+        FlutterLog.i(TAG, "onAnswer: $metadata");
 
-        notificationService.cancelIncomingNotification()
-        audioService.stopRingtone()
+        try {
+            notificationService.cancelIncomingNotification()
+            notificationService.cancelMissedCall(metadata)
+            audioService.stopRingtone()
+        } catch (e: Exception) {
+            FlutterLog.e(TAG, "onAnswer: $e");
+        }
 
         TelephonyForegroundCallkeepApi.notifyAnswer(context, metadata)
         TelephonyBackgroundCallkeepApi.notifyAnswer(context, metadata)
