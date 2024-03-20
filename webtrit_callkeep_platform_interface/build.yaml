@@ -1,0 +1,7 @@
+builders:
+  platformClassBuilder:
+    import: "tool/generator/builder.dart"
+    builder_factories: [ "platformClassBuilder" ]
+    build_extensions: { "{{}}.dart": [ "../webtrit_callkeep_android/android/src/main/kotlin/com/webtrit/callkeep/webtrit_callkeep_android/generated/{{}}.kt" ] }
+    auto_apply: root_package
+    build_to: source

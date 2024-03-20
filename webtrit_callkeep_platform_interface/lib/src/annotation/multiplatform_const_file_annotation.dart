@@ -1,0 +1,3 @@
+class MultiplatformConstFile {
+  const MultiplatformConstFile();
+}

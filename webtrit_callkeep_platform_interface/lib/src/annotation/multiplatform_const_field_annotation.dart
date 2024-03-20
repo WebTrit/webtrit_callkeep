@@ -1,0 +1,3 @@
+class MultiplatformConstField {
+  const MultiplatformConstField();
+}
