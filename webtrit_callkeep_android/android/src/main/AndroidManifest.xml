@@ -1,3 +1,27 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-  package="com.webtrit.callkeep">
+    package="com.webtrit.callkeep.webtrit_callkeep_android">
+
+    <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
+
+    <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
+
+    <application>
+        <service
+            android:name=".connection.PhoneConnectionService"
+            android:enabled="true"
+            android:exported="false"
+            android:label="PhoneConnectionService"
+            android:permission="android.permission.BIND_TELECOM_CONNECTION_SERVICE">
+            <intent-filter>
+                <action android:name="android.telecom.ConnectionService" />
+            </intent-filter>
+        </service>
+    </application>
 </manifest>

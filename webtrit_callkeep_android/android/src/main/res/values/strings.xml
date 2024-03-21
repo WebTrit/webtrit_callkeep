@@ -1,0 +1,12 @@
+<resources>
+    <string name="client_title">User name</string>
+    <string name="incoming_call_title">Incoming call</string>
+    <string name="answer_call_button_text">Answer</string>
+    <string name="hang_up_button_text">Decline</string>
+    <string name="push_notification_incoming_call_channel_title">Incoming call</string>
+    <string name="push_notification_active_call_channel_title">Active call</string>
+    <string name="push_notification_missed_call_channel_title">Missed call</string>
+    <string name="push_notification_incoming_call_channel_description">Notification of incoming calls</string>
+    <string name="push_notification_active_call_channel_description">Notification of active calls</string>
+    <string name="push_notification_missed_call_channel_description">Notification of missed calls</string>
+</resources>
