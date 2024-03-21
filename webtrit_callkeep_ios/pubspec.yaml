@@ -12,11 +12,13 @@ flutter:
     platforms:
       ios:
         pluginClass: WebtritCallkeepPlugin
-        dartPluginClass: WebtritCallkeepIOS
+        # dartPluginClass: WebtritCallkeepIOS // TODO?: Rename plugin class
+        dartPluginClass: WebtritCallkeep
 
 dependencies:
   flutter:
     sdk: flutter
+  uuid: ^4.2.2
   webtrit_callkeep_platform_interface:
     path: ../webtrit_callkeep_platform_interface
 
@@ -24,4 +26,5 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   plugin_platform_interface: ^2.0.0
+  pigeon: ^16.0.5
   very_good_analysis: ^5.1.0
