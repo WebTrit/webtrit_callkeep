@@ -1,7 +1,6 @@
+import 'package:analyzer/dart/element/element.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
-import 'package:analyzer/dart/element/element.dart';
-
 import 'package:webtrit_callkeep_platform_interface/src/annotation/annotation.dart';
 
 import '../common/common.dart';
@@ -47,9 +46,10 @@ class PlatformClassBuilder implements Builder {
       if (allFields.isEmpty) {
         return;
       }
-      log.info('Output path: ${outputDir.fullPath}');
-      log.info('Output name: ${outputDir.baseName}');
-      log.info('Output dir: ${outputDir.baseDir}');
+      log
+        ..info('Output path: ${outputDir.fullPath}')
+        ..info('Output name: ${outputDir.baseName}')
+        ..info('Output dir: ${outputDir.baseDir}');
 
       await buildStep.writeAsString(AssetId(buildStep.inputId.package, outputDir.fullPath), allFields.join('\n'));
     } catch (err, stack) {
@@ -70,6 +70,6 @@ class PlatformClassBuilder implements Builder {
   }
 
   List<FieldElement> _getAnnotatedFields(List<FieldElement> fieldList) {
-    return fieldList.where((element) => _multiplatformConstFieldChecker.hasAnnotationOf(element)).toList();
+    return fieldList.where(_multiplatformConstFieldChecker.hasAnnotationOf).toList();
   }
 }
