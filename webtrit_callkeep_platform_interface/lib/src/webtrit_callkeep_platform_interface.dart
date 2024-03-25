@@ -1,17 +1,20 @@
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
-import 'delegate/delegate.dart';
-import 'models/models.dart';
+import 'package:webtrit_callkeep_platform_interface/src/delegate/delegate.dart';
+import 'package:webtrit_callkeep_platform_interface/src/models/models.dart';
 
 class _PlaceholderImplementation extends WebtritCallkeepPlatform {}
 
+/// The interface that implementations of webtrit_callkeep must implement.
 abstract class WebtritCallkeepPlatform extends PlatformInterface {
+  /// Constructs a WebtritCallkeepPlatform.
   WebtritCallkeepPlatform() : super(token: _token);
 
   static final Object _token = Object();
 
   static WebtritCallkeepPlatform _instance = _PlaceholderImplementation();
 
+  /// Imlemented instance of [WebtritCallkeepPlatform] to use.
   static WebtritCallkeepPlatform get instance => _instance;
 
   static set instance(WebtritCallkeepPlatform instance) {
@@ -19,52 +22,52 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     _instance = instance;
   }
 
+  /// Gets the platform name.
   Future<String?> getPlatformName() {
     throw UnimplementedError('getPlatformName() has not been implemented.');
   }
 
-  void setDelegate(
-    CallkeepDelegate? delegate,
-  ) {
+  /// Manually sets the delegate.
+  void setDelegate(CallkeepDelegate? delegate) {
     throw UnimplementedError('setDelegate() has not been implemented.');
   }
 
-  void setAndroidDelegate(
-    CallkeepAndroidServiceDelegate? delegate,
-  ) {
+  /// Sets the Android delegate.
+  void setAndroidDelegate(CallkeepAndroidServiceDelegate? delegate) {
     throw UnimplementedError('setAndroidServiceDelegate() has not been implemented.');
   }
 
-  void setLogsDelegate(
-    CallkeepLogsDelegate? delegate,
-  ) {
+  /// Sets the logs delegate.
+  void setLogsDelegate(CallkeepLogsDelegate? delegate) {
     throw UnimplementedError('setLogsDelegate() has not been implemented.');
   }
 
-  void setPushRegistryDelegate(
-    PushRegistryDelegate? delegate,
-  ) {
+  /// Sets the push registry delegate.
+  void setPushRegistryDelegate(PushRegistryDelegate? delegate) {
     throw UnimplementedError('setPushRegistryDelegate() has not been implemented.');
   }
 
+  /// Requests the push token for VoIP.
   Future<String?> pushTokenForPushTypeVoIP() {
     throw UnimplementedError('pushTokenForPushTypeVoIP() has not been implemented.');
   }
 
+  /// Checks if the platform options is set up.
   Future<bool> isSetUp() {
     throw UnimplementedError('isSetUp() has not been implemented.');
   }
 
-  Future<void> setUp(
-    CallkeepOptions options,
-  ) {
+  /// Sets platform-specific options.
+  Future<void> setUp(CallkeepOptions options) {
     throw UnimplementedError('setUp() has not been implemented.');
   }
 
+  /// Tears down the platform.
   Future<void> tearDown() {
     throw UnimplementedError('tearDown() has not been implemented.');
   }
 
+  /// Report the incoming call event.
   Future<CallkeepIncomingCallError?> reportNewIncomingCall(
     String callId,
     CallkeepHandle handle,
@@ -74,18 +77,17 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('reportNewIncomingCall() has not been implemented.');
   }
 
-  Future<void> reportConnectingOutgoingCall(
-    String callId,
-  ) {
+  /// Report the incoming call connected event.
+  Future<void> reportConnectingOutgoingCall(String callId) {
     throw UnimplementedError('reportConnectingOutgoingCall() has not been implemented.');
   }
 
-  Future<void> reportConnectedOutgoingCall(
-    String callId,
-  ) {
+  /// Report the incoming call connected event.
+  Future<void> reportConnectedOutgoingCall(String callId) {
     throw UnimplementedError('reportConnectedOutgoingCall() has not been implemented.');
   }
 
+  /// Report the incoming call connected event.
   Future<void> reportUpdateCall(
     String callId,
     CallkeepHandle? handle,
@@ -95,13 +97,12 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('reportUpdateCall() has not been implemented.');
   }
 
-  Future<void> reportEndCall(
-    String callId,
-    CallkeepEndCallReason reason,
-  ) {
+  /// Report the incoming call connected event.
+  Future<void> reportEndCall(String callId, CallkeepEndCallReason reason) {
     throw UnimplementedError('reportEndCall() has not been implemented.');
   }
 
+  /// Start a call.
   Future<CallkeepCallRequestError?> startCall(
     String callId,
     CallkeepHandle handle,
@@ -111,54 +112,43 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('startCall() has not been implemented.');
   }
 
-  Future<CallkeepCallRequestError?> answerCall(
-    String callId,
-  ) {
+  /// Answer a call.
+  Future<CallkeepCallRequestError?> answerCall(String callId) {
     throw UnimplementedError('answerCall() has not been implemented.');
   }
 
-  Future<CallkeepCallRequestError?> endCall(
-    String callId,
-  ) {
+  /// Reject a call.
+  Future<CallkeepCallRequestError?> endCall(String callId) {
     throw UnimplementedError('endCall() has not been implemented.');
   }
 
-  Future<CallkeepCallRequestError?> setHeld(
-    String callId,
-    bool onHold,
-  ) {
+  /// Set the hold status of a call.
+  Future<CallkeepCallRequestError?> setHeld(String callId, bool onHold) {
     throw UnimplementedError('setHeld() has not been implemented.');
   }
 
-  Future<CallkeepCallRequestError?> setMuted(
-    String callId,
-    bool muted,
-  ) {
+  /// Set the muted status of a call.
+  Future<CallkeepCallRequestError?> setMuted(String callId, bool muted) {
     throw UnimplementedError('setMuted() has not been implemented.');
   }
 
-  Future<CallkeepCallRequestError?> sendDTMF(
-    String callId,
-    String key,
-  ) {
+  /// Send DTMF tones.
+  Future<CallkeepCallRequestError?> sendDTMF(String callId, String key) {
     throw UnimplementedError('sendDTMF() has not been implemented.');
   }
 
-  Future<CallkeepCallRequestError?> setSpeaker(
-    String callId,
-    bool enabled,
-  ) {
+  /// Set the speaker status of a call.
+  Future<CallkeepCallRequestError?> setSpeaker(String callId, bool enabled) {
     throw UnimplementedError('setSpeaker() has not been implemented.');
   }
 
   // Android
-  Future endCallAndroidService(
-    String callId,
-  ) {
+  Future<void> endCallAndroidService(String callId) {
     throw UnimplementedError('hungUpAndroidService() has not been implemented.');
   }
 
-  Future incomingCallAndroidService(
+  /// Report the incoming call event.
+  Future<void> incomingCallAndroidService(
     String callId,
     CallkeepHandle handle,
     String? displayName,
