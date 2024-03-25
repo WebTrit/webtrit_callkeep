@@ -1,44 +1,37 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
-
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
 
 class MockWebtritCallkeepPlatformInterfacePlatform with MockPlatformInterfaceMixin implements WebtritCallkeepPlatform {
   CallkeepDelegate? _callkeepDelegate;
   CallkeepAndroidServiceDelegate? _androidServiceDelegate;
 
   @override
-  Future<CallkeepCallRequestError?> answerCall(
-    String callId,
-  ) {
+  Future<CallkeepCallRequestError?> answerCall(String callId) {
     _callkeepDelegate?.performAnswerCall(callId);
-    return Future.value(null);
+    return Future.value();
   }
 
   @override
-  Future<CallkeepCallRequestError?> endCall(
-    String callId,
-  ) {
+  Future<CallkeepCallRequestError?> endCall(String callId) {
     _callkeepDelegate?.performEndCall(callId);
-    return Future.value(null);
+    return Future.value();
   }
 
   @override
-  Future endCallAndroidService(
-    String callId,
-  ) {
+  Future<dynamic> endCallAndroidService(String callId) {
     _androidServiceDelegate?.performServiceEndCall(callId);
-    return Future.value(null);
+    return Future.value();
   }
 
   @override
-  Future incomingCallAndroidService(
+  Future<dynamic> incomingCallAndroidService(
     String callId,
     CallkeepHandle handle,
     String? displayName,
     bool hasVideo,
   ) {
-    return Future.value(null);
+    return Future.value();
   }
 
   // TODO: remove, nothing to override
@@ -59,24 +52,17 @@ class MockWebtritCallkeepPlatformInterfacePlatform with MockPlatformInterfaceMix
   }
 
   @override
-  Future<void> reportConnectedOutgoingCall(
-    String callId,
-  ) {
+  Future<void> reportConnectedOutgoingCall(String callId) {
     return Future.value();
   }
 
   @override
-  Future<void> reportConnectingOutgoingCall(
-    String callId,
-  ) {
+  Future<void> reportConnectingOutgoingCall(String callId) {
     return Future.value();
   }
 
   @override
-  Future<void> reportEndCall(
-    String callId,
-    CallkeepEndCallReason reason,
-  ) {
+  Future<void> reportEndCall(String callId, CallkeepEndCallReason reason) {
     _callkeepDelegate?.performEndCall(callId);
     return Future.value();
   }
@@ -88,7 +74,7 @@ class MockWebtritCallkeepPlatformInterfacePlatform with MockPlatformInterfaceMix
     String? displayName,
     bool hasVideo,
   ) {
-    return Future.value(null);
+    return Future.value();
   }
 
   @override
@@ -102,64 +88,44 @@ class MockWebtritCallkeepPlatformInterfacePlatform with MockPlatformInterfaceMix
   }
 
   @override
-  Future<CallkeepCallRequestError?> sendDTMF(
-    String callId,
-    String key,
-  ) {
+  Future<CallkeepCallRequestError?> sendDTMF(String callId, String key) {
     _callkeepDelegate?.performSendDTMF(callId, key);
-    return Future.value(null);
+    return Future.value();
   }
 
   @override
-  void setAndroidDelegate(
-    CallkeepAndroidServiceDelegate? delegate,
-  ) {
+  void setAndroidDelegate(CallkeepAndroidServiceDelegate? delegate) {
     _androidServiceDelegate = delegate;
   }
 
   @override
-  void setDelegate(
-    CallkeepDelegate? delegate,
-  ) {
+  void setDelegate(CallkeepDelegate? delegate) {
     _callkeepDelegate = delegate;
   }
 
   @override
-  Future<CallkeepCallRequestError?> setHeld(
-    String callId,
-    bool onHold,
-  ) {
+  Future<CallkeepCallRequestError?> setHeld(String callId, bool onHold) {
     _callkeepDelegate?.performSetHeld(callId, onHold);
-    return Future.value(null);
+    return Future.value();
   }
 
   @override
-  Future<CallkeepCallRequestError?> setMuted(
-    String callId,
-    bool muted,
-  ) {
+  Future<CallkeepCallRequestError?> setMuted(String callId, bool muted) {
     _callkeepDelegate?.performSetMuted(callId, muted);
-    return Future.value(null);
+    return Future.value();
   }
 
   @override
-  void setPushRegistryDelegate(
-    PushRegistryDelegate? delegate,
-  ) {}
+  void setPushRegistryDelegate(PushRegistryDelegate? delegate) {}
 
   @override
-  Future<CallkeepCallRequestError?> setSpeaker(
-    String callId,
-    bool enabled,
-  ) {
+  Future<CallkeepCallRequestError?> setSpeaker(String callId, bool enabled) {
     _callkeepDelegate?.performSetSpeaker(callId, enabled);
-    return Future.value(null);
+    return Future.value();
   }
 
   @override
-  Future<void> setUp(
-    CallkeepOptions options,
-  ) {
+  Future<void> setUp(CallkeepOptions options) {
     return Future.value();
   }
 
@@ -179,7 +145,7 @@ class MockWebtritCallkeepPlatformInterfacePlatform with MockPlatformInterfaceMix
     bool video,
   ) {
     _callkeepDelegate?.performStartCall(callId, handle, displayNameOrContactIdentifier, video);
-    return Future.value(null);
+    return Future.value();
   }
 
   @override
