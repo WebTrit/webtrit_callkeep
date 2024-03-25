@@ -148,7 +148,7 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   }
 
   /// Report the incoming call event.
-  Future<void> incomingCallAndroidService(
+  Future<dynamic> incomingCallAndroidService(
     String callId,
     CallkeepHandle handle,
     String? displayName,

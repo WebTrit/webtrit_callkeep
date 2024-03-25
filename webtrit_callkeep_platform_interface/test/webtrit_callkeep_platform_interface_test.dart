@@ -70,13 +70,14 @@ void main() {
 
   test('Webtrit callkeep incoming call android service', () async {
     expect(
-        await WebtritCallkeepPlatform.instance.incomingCallAndroidService(
-          callId,
-          handlerMock,
-          displayName,
-          false,
-        ),
-        null);
+      await WebtritCallkeepPlatform.instance.incomingCallAndroidService(
+        callId,
+        handlerMock,
+        displayName,
+        false,
+      ),
+      null,
+    );
   });
 
   // TODO: remove, action deprecated
