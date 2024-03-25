@@ -282,7 +282,8 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
   }
 
   @override
-  void didPushIncomingCall(CallkeepHandle handle, String? displayName, bool video, String callId, CallkeepIncomingCallError? error) {
+  void didPushIncomingCall(
+      CallkeepHandle handle, String? displayName, bool video, String callId, CallkeepIncomingCallError? error) {
     emit(state.update.addAction(action: "Perform did push incoming call"));
   }
 
@@ -348,7 +349,8 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
   }
 
   @override
-  void endCallReceived(String callId, String number, bool video, DateTime createdTime, DateTime? acceptedTime, DateTime? hungUpTime) {
+  void endCallReceived(String callId, String number, DateTime createdTime, DateTime? acceptedTime, DateTime? hungUpTime,
+      {bool video = false}) {
     emit(state.update.addAction(action: "End call received"));
   }
 }

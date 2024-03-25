@@ -351,10 +351,10 @@ class _CallkeepAndroidServiceDelegateRelay implements PDelegateAndroidServiceFlu
     return _delegate.endCallReceived(
       callId,
       number,
-      video,
       DateTime.fromMillisecondsSinceEpoch(createdTime),
       acceptedTime != null ? DateTime.fromMillisecondsSinceEpoch(acceptedTime) : null,
       hungUpTime != null ? DateTime.fromMillisecondsSinceEpoch(hungUpTime) : null,
+      video: video,
     );
   }
 }

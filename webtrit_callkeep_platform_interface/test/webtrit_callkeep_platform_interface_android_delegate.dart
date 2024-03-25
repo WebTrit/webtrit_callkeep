@@ -1,16 +1,13 @@
 import 'package:webtrit_callkeep_platform_interface/src/delegate/delegate.dart';
 
 class WebtritCallkeepDelegateAndroidRelayMock implements CallkeepAndroidServiceDelegate {
-  WebtritCallkeepDelegateAndroidRelayMock({
-    this.performServiceEndCallListener,
-    this.endCallReceivedListener,
-  });
+  WebtritCallkeepDelegateAndroidRelayMock({this.performServiceEndCallListener, this.endCallReceivedListener});
 
-  final Function(
+  final void Function(
     String callId,
   )? performServiceEndCallListener;
 
-  final Function(
+  final void Function(
     String callId,
     String number,
     bool video,
@@ -30,11 +27,11 @@ class WebtritCallkeepDelegateAndroidRelayMock implements CallkeepAndroidServiceD
   void endCallReceived(
     String callId,
     String number,
-    bool video,
     DateTime createdTime,
     DateTime? acceptedTime,
-    DateTime? hungUpTime,
-  ) {
+    DateTime? hungUpTime, {
+    bool video = false,
+  }) {
     endCallReceivedListener?.call(callId, number, video, createdTime, acceptedTime, hungUpTime);
   }
 }

@@ -6,10 +6,10 @@ abstract class CallkeepAndroidServiceDelegate {
 
   void endCallReceived(
     String callId,
-    final String number,
-    final bool video,
-    final DateTime createdTime,
-    final DateTime? acceptedTime,
-    final DateTime? hungUpTime,
-  );
+    String number,
+    DateTime createdTime,
+    DateTime? acceptedTime,
+    DateTime? hungUpTime, {
+    bool video = false,
+  });
 }
