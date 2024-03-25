@@ -17,20 +17,20 @@ class WebtritCallkeepDelegateRelayMock implements CallkeepDelegate {
     this.performSpeakerListener,
   });
 
-  final Function(
+  void Function(
     String callId,
     CallkeepHandle handle,
     String? displayNameOrContactIdentifier,
     bool video,
   )? performStartCallListener;
 
-  final Function(
+  void Function(
     CallkeepHandle handle,
     String? displayNameOrContactIdentifier,
     bool video,
   )? continueStartCallIntentListener;
 
-  final Function(
+  void Function(
     CallkeepHandle handle,
     String? displayName,
     bool video,
@@ -160,7 +160,7 @@ class WebtritCallkeepDelegateRelayMock implements CallkeepDelegate {
   Future<bool> performSetSpeaker(
     String callId,
     bool enabled,
-  ) {
+  ) {s
     performSpeakerListener?.call(callId, enabled);
     return Future.value(true);
   }
