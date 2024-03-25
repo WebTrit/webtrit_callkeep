@@ -38,35 +38,23 @@ class WebtritCallkeepDelegateRelayMock implements CallkeepDelegate {
     CallkeepIncomingCallError? error,
   )? didPushIncomingCallListener;
 
-  final Function()? didActivateAudioSessionListener;
+  void Function()? didActivateAudioSessionListener;
 
-  final Function()? didDeActivateAudioSessionListener;
+  void Function()? didDeActivateAudioSessionListener;
 
-  final Function()? didResetListener;
+  void Function()? didResetListener;
 
-  final Function(String callId)? performAnswerCallListener;
+  void Function(String callId)? performAnswerCallListener;
 
-  final Function(String callId)? performEndCallListener;
+  void Function(String callId)? performEndCallListener;
 
-  final Function(
-    String callId,
-    String key,
-  )? performSendDTMFListener;
+  void Function(String callId, String key)? performSendDTMFListener;
 
-  final Function(
-    String callId,
-    bool onHold,
-  )? performHeldListener;
+  void Function(String callId, bool onHold)? performHeldListener;
 
-  final Function(
-    String callId,
-    bool muted,
-  )? performMuteListener;
+  void Function(String callId, bool muted)? performMuteListener;
 
-  final Function(
-    String callId,
-    bool enabled,
-  )? performSpeakerListener;
+  void Function(String callId, bool enabled)? performSpeakerListener;
 
   @override
   void continueStartCallIntent(
@@ -160,7 +148,7 @@ class WebtritCallkeepDelegateRelayMock implements CallkeepDelegate {
   Future<bool> performSetSpeaker(
     String callId,
     bool enabled,
-  ) {s
+  ) {
     performSpeakerListener?.call(callId, enabled);
     return Future.value(true);
   }
