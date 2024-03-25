@@ -1,15 +1,14 @@
 import 'package:dart_casing/dart_casing.dart';
 
+// TODO convert to abstract class with static methods
+
 class StringUtils {
-  static final StringUtils _singleton = StringUtils._internal();
-
-  factory StringUtils() {
-    return _singleton;
-  }
-
+  factory StringUtils() => _singleton;
   StringUtils._internal();
 
-  final _beforeNonLeadingCapitalLetter = RegExp(r'(?=(?!^)[A-Z])');
+  static final StringUtils _singleton = StringUtils._internal();
+
+  final _beforeNonLeadingCapitalLetter = RegExp('(?=(?!^)[A-Z])');
 
   List<String> _splitPascalCase(String input) {
     return input.split(_beforeNonLeadingCapitalLetter);
