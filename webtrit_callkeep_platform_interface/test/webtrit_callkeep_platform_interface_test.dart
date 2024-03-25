@@ -31,9 +31,7 @@ void main() {
   test('Webtrit callkeep answer call', () async {
     final completerUUID = Completer<String>();
     final callkeepRelayMock = WebtritCallkeepDelegateRelayMock(
-      performAnswerCallListener: (uuid) {
-        completerUUID.complete(uuid);
-      },
+      performAnswerCallListener: completerUUID.complete,
     );
     WebtritCallkeepPlatform.instance.setDelegate(callkeepRelayMock);
     await WebtritCallkeepPlatform.instance.answerCall(callId);
@@ -44,9 +42,7 @@ void main() {
   test('Webtrit callkeep end call', () async {
     final completerUUID = Completer<String>();
     final callkeepRelayMock = WebtritCallkeepDelegateRelayMock(
-      performEndCallListener: (uuid) {
-        completerUUID.complete(uuid);
-      },
+      performEndCallListener: completerUUID.complete,
     );
     WebtritCallkeepPlatform.instance.setDelegate(callkeepRelayMock);
     await WebtritCallkeepPlatform.instance.endCall(callId);
@@ -122,9 +118,7 @@ void main() {
   test('Webtrit callkeep report end call', () async {
     final completerUUID = Completer<String>();
     final callkeepRelayMock = WebtritCallkeepDelegateRelayMock(
-      performEndCallListener: (uuid) {
-        completerUUID.complete(uuid);
-      },
+      performEndCallListener: completerUUID.complete,
     );
     WebtritCallkeepPlatform.instance.setDelegate(callkeepRelayMock);
     await WebtritCallkeepPlatform.instance.reportEndCall(callId, CallkeepEndCallReason.answeredElsewhere);
