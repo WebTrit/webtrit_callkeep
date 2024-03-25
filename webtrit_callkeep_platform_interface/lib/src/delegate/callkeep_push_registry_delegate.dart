@@ -1,5 +1,5 @@
+/// Push registry delegate
 abstract class PushRegistryDelegate {
-  void didUpdatePushTokenForPushTypeVoIP(
-    String? token,
-  );
+  /// Push token update callback for push type VoIP
+  void didUpdatePushTokenForPushTypeVoIP(String? token);
 }
