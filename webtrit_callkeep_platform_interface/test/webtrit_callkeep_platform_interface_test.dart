@@ -8,10 +8,10 @@ import 'webtrit_callkeep_platform_interface_delegate.dart';
 import 'webtrit_callkeep_platform_interface_mock.dart';
 
 void main() {
-  final callId = 'WaxFX9878iWkQxhGy3e3rbAF';
-  final handlerMock = const CallkeepHandle.number('380000000000');
-  final displayName = 'Display Name';
-  final hasVideoMock = false;
+  const callId = 'WaxFX9878iWkQxhGy3e3rbAF';
+  const handlerMock = CallkeepHandle.number('380000000000');
+  const displayName = 'Display Name';
+  const hasVideoMock = false;
 
   const initialMainRout = '/main';
   const initialCallRout = '/main/call';
@@ -29,41 +29,48 @@ void main() {
   });
 
   test('Webtrit callkeep answer call', () async {
-    final completerUUID = Completer();
+    final completerUUID = Completer<String>();
     final callkeepRelayMock = WebtritCallkeepDelegateRelayMock(
       performAnswerCallListener: (uuid) {
         completerUUID.complete(uuid);
       },
     );
     WebtritCallkeepPlatform.instance.setDelegate(callkeepRelayMock);
-    WebtritCallkeepPlatform.instance.answerCall(callId);
+    await WebtritCallkeepPlatform.instance.answerCall(callId);
 
     expect(await completerUUID.future, equals(callId));
   });
 
   test('Webtrit callkeep end call', () async {
-    final completerUUID = Completer();
+    final completerUUID = Completer<String>();
     final callkeepRelayMock = WebtritCallkeepDelegateRelayMock(
       performEndCallListener: (uuid) {
         completerUUID.complete(uuid);
       },
     );
     WebtritCallkeepPlatform.instance.setDelegate(callkeepRelayMock);
-    WebtritCallkeepPlatform.instance.endCall(callId);
+    await WebtritCallkeepPlatform.instance.endCall(callId);
 
     expect(await completerUUID.future, equals(callId));
   });
 
   test('Webtrit callkeep end call android service', () async {
-    final completerUUID = Completer();
-    final callkeepRelayMock = WebtritCallkeepDelegateAndroidRelayMock(performServiceEndCallListener: (id) {
-      completerUUID.complete(id);
-    }, endCallReceivedListener:
-        (String callId, String number, bool video, DateTime createdTime, DateTime? acceptedTime, DateTime? hungUpTime) {
-      completerUUID.complete(callId);
-    });
+    final completerUUID = Completer<String>();
+    final callkeepRelayMock = WebtritCallkeepDelegateAndroidRelayMock(
+      performServiceEndCallListener: completerUUID.complete,
+      endCallReceivedListener: (
+        String callId,
+        String number,
+        bool video,
+        DateTime createdTime,
+        DateTime? acceptedTime,
+        DateTime? hungUpTime,
+      ) {
+        completerUUID.complete(callId);
+      },
+    );
     WebtritCallkeepPlatform.instance.setAndroidDelegate(callkeepRelayMock);
-    WebtritCallkeepPlatform.instance.endCallAndroidService(callId);
+    await WebtritCallkeepPlatform.instance.endCallAndroidService(callId);
 
     expect(await completerUUID.future, equals(callId));
   });
@@ -95,15 +102,15 @@ void main() {
   });
 
   test('Webtrit callkeep report connected outgoing call', () async {
-    expect(() async => await WebtritCallkeepPlatform.instance.reportConnectedOutgoingCall(callId), isA<void>());
+    expect(() async => WebtritCallkeepPlatform.instance.reportConnectedOutgoingCall(callId), isA<void>());
   });
 
   test('Webtrit callkeep report connecting outgoing call', () async {
-    expect(() async => await WebtritCallkeepPlatform.instance.reportConnectingOutgoingCall(callId), isA<void>());
+    expect(() async => WebtritCallkeepPlatform.instance.reportConnectingOutgoingCall(callId), isA<void>());
   });
 
   test('Webtrit callkeep tear down', () async {
-    expect(() async => await WebtritCallkeepPlatform.instance.tearDown(), isA<void>());
+    expect(() async => WebtritCallkeepPlatform.instance.tearDown(), isA<void>());
   });
 
   // TODO: remove, action deprecated
@@ -113,37 +120,40 @@ void main() {
   // });
 
   test('Webtrit callkeep report end call', () async {
-    final completerUUID = Completer();
+    final completerUUID = Completer<String>();
     final callkeepRelayMock = WebtritCallkeepDelegateRelayMock(
       performEndCallListener: (uuid) {
         completerUUID.complete(uuid);
       },
     );
     WebtritCallkeepPlatform.instance.setDelegate(callkeepRelayMock);
-    WebtritCallkeepPlatform.instance.reportEndCall(callId, CallkeepEndCallReason.answeredElsewhere);
+    await WebtritCallkeepPlatform.instance.reportEndCall(callId, CallkeepEndCallReason.answeredElsewhere);
 
     expect(await completerUUID.future, equals(callId));
   });
 
   test('Webtrit callkeep report new incoming call', () async {
     expect(
-        await WebtritCallkeepPlatform.instance.reportNewIncomingCall(
-          callId,
-          handlerMock,
-          displayName,
-          false,
-        ),
-        null);
+      await WebtritCallkeepPlatform.instance.reportNewIncomingCall(
+        callId,
+        handlerMock,
+        displayName,
+        false,
+      ),
+      null,
+    );
   });
 
   test('Webtrit callkeep report update call', () async {
-    expect(() async => await WebtritCallkeepPlatform.instance.reportUpdateCall(callId, handlerMock, displayName, false),
-        isA<void>());
+    expect(
+      () async => WebtritCallkeepPlatform.instance.reportUpdateCall(callId, handlerMock, displayName, false),
+      isA<void>(),
+    );
   });
 
   test('Webtrit callkeep send dtmf', () async {
-    final completerUUID = Completer();
-    final completerDTMF = Completer();
+    final completerUUID = Completer<String>();
+    final completerDTMF = Completer<String>();
     final callkeepRelayMock = WebtritCallkeepDelegateRelayMock(
       performSendDTMFListener: (uuid, dtmf) {
         completerUUID.complete(uuid);
@@ -151,15 +161,15 @@ void main() {
       },
     );
     WebtritCallkeepPlatform.instance.setDelegate(callkeepRelayMock);
-    WebtritCallkeepPlatform.instance.sendDTMF(callId, 'A');
+    await WebtritCallkeepPlatform.instance.sendDTMF(callId, 'A');
 
     expect(await completerUUID.future, equals(callId));
     expect(await completerDTMF.future, equals('A'));
   });
 
   test('Webtrit callkeep set held', () async {
-    final completerUUID = Completer();
-    final completerHeld = Completer();
+    final completerUUID = Completer<String>();
+    final completerHeld = Completer<bool>();
     final callkeepRelayMock = WebtritCallkeepDelegateRelayMock(
       performHeldListener: (uuid, held) {
         completerUUID.complete(uuid);
@@ -167,15 +177,15 @@ void main() {
       },
     );
     WebtritCallkeepPlatform.instance.setDelegate(callkeepRelayMock);
-    WebtritCallkeepPlatform.instance.setHeld(callId, true);
+    await WebtritCallkeepPlatform.instance.setHeld(callId, true);
 
     expect(await completerUUID.future, equals(callId));
     expect(await completerHeld.future, equals(true));
   });
 
   test('Webtrit callkeep set speaker', () async {
-    final completerUUID = Completer();
-    final completerSpeaker = Completer();
+    final completerUUID = Completer<String>();
+    final completerSpeaker = Completer<bool>();
     final callkeepRelayMock = WebtritCallkeepDelegateRelayMock(
       performSpeakerListener: (uuid, enabled) {
         completerUUID.complete(uuid);
@@ -183,15 +193,15 @@ void main() {
       },
     );
     WebtritCallkeepPlatform.instance.setDelegate(callkeepRelayMock);
-    WebtritCallkeepPlatform.instance.setSpeaker(callId, true);
+    await WebtritCallkeepPlatform.instance.setSpeaker(callId, true);
 
     expect(await completerUUID.future, equals(callId));
     expect(await completerSpeaker.future, equals(true));
   });
 
   test('Webtrit callkeep set muted', () async {
-    final completerUUID = Completer();
-    final completerMuted = Completer();
+    final completerUUID = Completer<String>();
+    final completerMuted = Completer<bool>();
     final callkeepRelayMock = WebtritCallkeepDelegateRelayMock(
       performMuteListener: (uuid, muted) {
         completerUUID.complete(uuid);
@@ -199,7 +209,7 @@ void main() {
       },
     );
     WebtritCallkeepPlatform.instance.setDelegate(callkeepRelayMock);
-    WebtritCallkeepPlatform.instance.setMuted(callId, true);
+    await WebtritCallkeepPlatform.instance.setMuted(callId, true);
 
     expect(await completerUUID.future, equals(callId));
     expect(await completerMuted.future, equals(true));
@@ -207,26 +217,29 @@ void main() {
 
   test('Webtrit callkeep set up', () async {
     expect(
-        () async => await WebtritCallkeepPlatform.instance.setUp(const CallkeepOptions(
-              ios: CallkeepIOSOptions(
-                localizedName: 'en',
-                maximumCallGroups: 2,
-                maximumCallsPerCallGroup: 1,
-                supportedHandleTypes: {CallkeepHandleType.number},
-              ),
-              android: CallkeepAndroidOptions(
-                incomingPath: initialCallRout,
-                rootPath: initialMainRout,
-              ),
-            )),
-        isA<void>());
+      () async => WebtritCallkeepPlatform.instance.setUp(
+        const CallkeepOptions(
+          ios: CallkeepIOSOptions(
+            localizedName: 'en',
+            maximumCallGroups: 2,
+            maximumCallsPerCallGroup: 1,
+            supportedHandleTypes: {CallkeepHandleType.number},
+          ),
+          android: CallkeepAndroidOptions(
+            incomingPath: initialCallRout,
+            rootPath: initialMainRout,
+          ),
+        ),
+      ),
+      isA<void>(),
+    );
   });
 
   test('Webtrit callkeep start call', () async {
-    final completerUUID = Completer();
-    final completerHandler = Completer();
-    final completerDisplayName = Completer();
-    final completerHasVideo = Completer();
+    final completerUUID = Completer<String>();
+    final completerHandler = Completer<CallkeepHandle>();
+    final completerDisplayName = Completer<String>();
+    final completerHasVideo = Completer<bool>();
 
     final callkeepRelayMock = WebtritCallkeepDelegateRelayMock(
       performStartCallListener: (uuid, handle, displayNameOrContactIdentifier, video) {
@@ -236,8 +249,9 @@ void main() {
         completerHasVideo.complete(video);
       },
     );
+
     WebtritCallkeepPlatform.instance.setDelegate(callkeepRelayMock);
-    WebtritCallkeepPlatform.instance.startCall(callId, handlerMock, displayName, hasVideoMock);
+    await WebtritCallkeepPlatform.instance.startCall(callId, handlerMock, displayName, hasVideoMock);
 
     expect(await completerUUID.future, equals(callId));
     expect(await completerHandler.future, equals(handlerMock));
