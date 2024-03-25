@@ -1,31 +1,24 @@
 import 'package:equatable/equatable.dart';
-
-import 'callkeep_handle.dart';
+import 'package:webtrit_callkeep_platform_interface/src/models/callkeep_handle.dart';
 
 class CallkeepOptions extends Equatable {
-  const CallkeepOptions({
-    required this.ios,
-    required this.android,
-  });
+  const CallkeepOptions({required this.ios, required this.android});
 
   final CallkeepIOSOptions ios;
   final CallkeepAndroidOptions android;
 
   @override
-  List<Object?> get props => [
-        ios,
-        android,
-      ];
+  List<Object?> get props => [ios, android];
 }
 
 class CallkeepIOSOptions extends Equatable {
   const CallkeepIOSOptions({
     required this.localizedName,
-    this.ringtoneSound,
-    this.iconTemplateImageAssetName,
     required this.maximumCallGroups,
     required this.maximumCallsPerCallGroup,
     required this.supportedHandleTypes,
+    this.ringtoneSound,
+    this.iconTemplateImageAssetName,
     this.supportsVideo = false,
     this.includesCallsInRecents = true,
     this.driveIdleTimerDisabled = true,
@@ -56,20 +49,12 @@ class CallkeepIOSOptions extends Equatable {
 }
 
 class CallkeepAndroidOptions extends Equatable {
-  const CallkeepAndroidOptions({
-    this.ringtoneSound,
-    required this.incomingPath,
-    required this.rootPath,
-  });
+  const CallkeepAndroidOptions({required this.incomingPath, required this.rootPath, this.ringtoneSound});
 
   final String? ringtoneSound;
   final String incomingPath;
   final String rootPath;
 
   @override
-  List<Object?> get props => [
-        ringtoneSound,
-        incomingPath,
-        rootPath,
-      ];
+  List<Object?> get props => [ringtoneSound, incomingPath, rootPath];
 }
