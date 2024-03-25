@@ -19,6 +19,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  analyzer: ^6.4.1
   very_good_analysis: ^5.1.0
   mockito: ^5.4.1
   path: ^1.8.3

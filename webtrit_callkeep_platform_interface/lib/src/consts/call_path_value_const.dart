@@ -1,4 +1,4 @@
-import '../annotation/annotation.dart';
+import 'package:webtrit_callkeep_platform_interface/src/annotation/annotation.dart';
 
 @MultiplatformConstFile()
 class CallPathValueConst {

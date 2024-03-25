@@ -1,7 +1,7 @@
 import 'package:analyzer/dart/element/element.dart';
 
-import '../contact/platform_class_generator.dart';
 import '../../../common/common.dart';
+import '../contact/platform_class_generator.dart';
 
 class KotlinClassGenerator implements PlatformClassGenerator {
   String? className;
