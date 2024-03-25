@@ -1,3 +1,5 @@
+// ignore_for_file: cascade_invocations, avoid_redundant_argument_values
+
 import 'package:analyzer/dart/element/element.dart';
 
 import '../../../common/common.dart';
