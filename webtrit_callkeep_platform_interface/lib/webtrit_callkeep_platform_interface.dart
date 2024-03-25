@@ -1,5 +1,3 @@
-library webtrit_callkeep_platform;
-
 export 'src/annotation/annotation.dart';
 export 'src/consts/call_const.dart';
 export 'src/delegate/delegate.dart';
