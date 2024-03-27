@@ -2,6 +2,11 @@ import 'dart:async';
 
 import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
 
+// TODO:
+// - rename to CallkeepBackgroundService
+// - convert to static abstract
+// - single platform getter
+
 class CallkeepAndroidService {
   static final _instance = CallkeepAndroidService._();
 

@@ -2,6 +2,10 @@ import 'dart:async';
 
 import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
 
+// TODO
+// - convert to static abstract
+// - single platform getter
+
 class Callkeep {
   static final _instance = Callkeep._();
 
