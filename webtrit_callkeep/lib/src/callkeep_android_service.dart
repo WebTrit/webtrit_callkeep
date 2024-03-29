@@ -7,30 +7,29 @@ import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_in
 // - convert to static abstract
 // - single platform getter
 
+/// The [CallkeepAndroidService] class is used to set the backgroud service delegate
+/// and invoke methods on the native side for the background tasks.
+/// The android service delegate is used to receive events from the native side.
 class CallkeepAndroidService {
-  static final _instance = CallkeepAndroidService._();
-
-  factory CallkeepAndroidService() {
-    return _instance;
-  }
+  /// The singleton constructor of [CallkeepAndroidService].
+  factory CallkeepAndroidService() => _instance;
 
   CallkeepAndroidService._();
+  static final _instance = CallkeepAndroidService._();
 
+  /// Sets the android service delegate.
+  /// [CallkeepAndroidServiceDelegate] needs to be implemented to receive events.
   void setAndroidServiceDelegate(CallkeepAndroidServiceDelegate? delegate) {
-    WebtritCallkeepPlatform.instance.setAndroidDelegate(
-      delegate,
-    );
+    WebtritCallkeepPlatform.instance.setAndroidDelegate(delegate);
   }
 
-  Future hungUp(
-    String callId,
-  ) {
-    return WebtritCallkeepPlatform.instance.endCallAndroidService(
-      callId,
-    );
+  /// TODO : unused, needs clarification
+  Future<void> hungUp(String callId) {
+    return WebtritCallkeepPlatform.instance.endCallAndroidService(callId);
   }
 
-  Future incomingCall(
+  /// Report an incoming call event to the native side.
+  Future<void> incomingCall(
     String callId,
     CallkeepHandle handle,
     String? displayName,
