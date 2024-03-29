@@ -1,12 +1,11 @@
 import 'dart:async';
 
 import 'package:uuid/uuid.dart';
-
+import 'package:webtrit_callkeep_ios/src/common/callkeep.pigeon.dart';
+import 'package:webtrit_callkeep_ios/src/common/converters.dart';
 import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
 
-import 'common/callkeep.pigeon.dart';
-import 'common/converters.dart';
-
+/// Ios implementation of [WebtritCallkeepPlatform].
 class WebtritCallkeep extends WebtritCallkeepPlatform {
   /// Registers this class as the default instance of [WebtritCallkeepPlatform].
   static void registerWith() {
@@ -21,9 +20,7 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
   String _toUUID(String callId) => const Uuid().v5obj(Uuid.NAMESPACE_OID, callId).uuid;
 
   @override
-  void setDelegate(
-    CallkeepDelegate? delegate,
-  ) {
+  void setDelegate(CallkeepDelegate? delegate) {
     if (delegate != null) {
       PDelegateFlutterApi.setup(_CallkeepDelegateRelay(delegate, _uuidIdMapping));
     } else {
@@ -32,9 +29,7 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
   }
 
   @override
-  void setPushRegistryDelegate(
-    PushRegistryDelegate? delegate,
-  ) {
+  void setPushRegistryDelegate(PushRegistryDelegate? delegate) {
     if (delegate != null) {
       PPushRegistryDelegateFlutterApi.setup(_PushRegistryDelegateRelay(delegate));
     } else {
@@ -53,9 +48,7 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<void> setUp(
-    CallkeepOptions options,
-  ) {
+  Future<void> setUp(CallkeepOptions options) {
     return _api.setUp(options.toPigeon());
   }
 
@@ -75,19 +68,12 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
     _uuidIdMapping[uuid] = callId;
 
     return _api
-        .reportNewIncomingCall(
-          uuid,
-          handle.toPigeon(),
-          displayName,
-          hasVideo,
-        )
+        .reportNewIncomingCall(uuid, handle.toPigeon(), displayName, hasVideo)
         .then((value) => value?.value.toCallkeep());
   }
 
   @override
-  Future<void> reportConnectingOutgoingCall(
-    String callId,
-  ) async {
+  Future<void> reportConnectingOutgoingCall(String callId) async {
     final uuid = _toUUID(callId);
     _uuidIdMapping[uuid] = callId;
 
@@ -95,9 +81,7 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<void> reportConnectedOutgoingCall(
-    String callId,
-  ) async {
+  Future<void> reportConnectedOutgoingCall(String callId) async {
     final uuid = _toUUID(callId);
     _uuidIdMapping[uuid] = callId;
 
@@ -114,19 +98,11 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
     final uuid = _toUUID(callId);
     _uuidIdMapping[uuid] = callId;
 
-    return _api.reportUpdateCall(
-      uuid,
-      handle?.toPigeon(),
-      displayName,
-      hasVideo,
-    );
+    return _api.reportUpdateCall(uuid, handle?.toPigeon(), displayName, hasVideo);
   }
 
   @override
-  Future<void> reportEndCall(
-    String callId,
-    CallkeepEndCallReason reason,
-  ) async {
+  Future<void> reportEndCall(String callId, CallkeepEndCallReason reason) async {
     final uuid = _toUUID(callId);
     _uuidIdMapping[uuid] = callId;
 
@@ -154,9 +130,7 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<CallkeepCallRequestError?> answerCall(
-    String callId,
-  ) async {
+  Future<CallkeepCallRequestError?> answerCall(String callId) async {
     final uuid = _toUUID(callId);
     _uuidIdMapping[uuid] = callId;
 
@@ -164,9 +138,7 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<CallkeepCallRequestError?> endCall(
-    String callId,
-  ) async {
+  Future<CallkeepCallRequestError?> endCall(String callId) async {
     final uuid = _toUUID(callId);
     _uuidIdMapping[uuid] = callId;
 
@@ -174,10 +146,7 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<CallkeepCallRequestError?> setHeld(
-    String callId,
-    bool onHold,
-  ) async {
+  Future<CallkeepCallRequestError?> setHeld(String callId, bool onHold) async {
     final uuid = _toUUID(callId);
     _uuidIdMapping[uuid] = callId;
 
@@ -185,10 +154,7 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<CallkeepCallRequestError?> setMuted(
-    String callId,
-    bool muted,
-  ) async {
+  Future<CallkeepCallRequestError?> setMuted(String callId, bool muted) async {
     final uuid = _toUUID(callId);
     _uuidIdMapping[uuid] = callId;
 
@@ -196,10 +162,7 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<CallkeepCallRequestError?> setSpeaker(
-    String callId,
-    bool enabled,
-  ) async {
+  Future<CallkeepCallRequestError?> setSpeaker(String callId, bool enabled) async {
     final uuid = _toUUID(callId);
     _uuidIdMapping[uuid] = callId;
 
@@ -207,10 +170,7 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<CallkeepCallRequestError?> sendDTMF(
-    String callId,
-    String key,
-  ) async {
+  Future<CallkeepCallRequestError?> sendDTMF(String callId, String key) async {
     final uuid = _toUUID(callId);
     _uuidIdMapping[uuid] = callId;
 
@@ -227,16 +187,8 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
   String _getCallId(String uuid) => _uuidIdMapping[uuid.toLowerCase()]!;
 
   @override
-  void continueStartCallIntent(
-    PHandle handle,
-    String? displayName,
-    bool video,
-  ) {
-    _delegate.continueStartCallIntent(
-      handle.toCallkeep(),
-      displayName,
-      video,
-    );
+  void continueStartCallIntent(PHandle handle, String? displayName, bool video) {
+    _delegate.continueStartCallIntent(handle.toCallkeep(), displayName, video);
   }
 
   @override
@@ -250,13 +202,7 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
   ) {
     _uuidIdMapping[uuidString] = callId;
 
-    _delegate.didPushIncomingCall(
-      handle.toCallkeep(),
-      displayName,
-      video,
-      callId,
-      error?.value.toCallkeep(),
-    );
+    _delegate.didPushIncomingCall(handle.toCallkeep(), displayName, video, callId, error?.value.toCallkeep());
   }
 
   @override
@@ -266,63 +212,32 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
     String? displayNameOrContactIdentifier,
     bool video,
   ) async {
-    return _delegate.performStartCall(
-      _getCallId(uuid),
-      handle.toCallkeep(),
-      displayNameOrContactIdentifier,
-      video,
-    );
+    return _delegate.performStartCall(_getCallId(uuid), handle.toCallkeep(), displayNameOrContactIdentifier, video);
   }
 
   @override
-  Future<bool> performAnswerCall(
-    String uuid,
-  ) async {
-    return _delegate.performAnswerCall(
-      _getCallId(uuid),
-    );
+  Future<bool> performAnswerCall(String uuid) async {
+    return _delegate.performAnswerCall(_getCallId(uuid));
   }
 
   @override
-  Future<bool> performEndCall(
-    String uuid,
-  ) async {
-    return _delegate.performEndCall(
-      _getCallId(uuid),
-    );
+  Future<bool> performEndCall(String uuid) async {
+    return _delegate.performEndCall(_getCallId(uuid));
   }
 
   @override
-  Future<bool> performSetHeld(
-    String uuid,
-    bool onHold,
-  ) async {
-    return _delegate.performSetHeld(
-      _getCallId(uuid),
-      onHold,
-    );
+  Future<bool> performSetHeld(String uuid, bool onHold) async {
+    return _delegate.performSetHeld(_getCallId(uuid), onHold);
   }
 
   @override
-  Future<bool> performSetMuted(
-    String uuid,
-    bool muted,
-  ) async {
-    return _delegate.performSetMuted(
-      _getCallId(uuid),
-      muted,
-    );
+  Future<bool> performSetMuted(String uuid, bool muted) async {
+    return _delegate.performSetMuted(_getCallId(uuid), muted);
   }
 
   @override
-  Future<bool> performSendDTMF(
-    String uuid,
-    String key,
-  ) async {
-    return _delegate.performSendDTMF(
-      _getCallId(uuid),
-      key,
-    );
+  Future<bool> performSendDTMF(String uuid, String key) async {
+    return _delegate.performSendDTMF(_getCallId(uuid), key);
   }
 
   @override
@@ -341,10 +256,7 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
   }
 
   @override
-  Future<bool> performSetSpeaker(
-    String uuid,
-    bool enabled,
-  ) async {
+  Future<bool> performSetSpeaker(String uuid, bool enabled) async {
     final id = _uuidIdMapping[uuid.toLowerCase()]!;
 
     return _delegate.performSetSpeaker(id, enabled);
@@ -357,9 +269,7 @@ class _PushRegistryDelegateRelay implements PPushRegistryDelegateFlutterApi {
   final PushRegistryDelegate _delegate;
 
   @override
-  void didUpdatePushTokenForPushTypeVoIP(
-    String? token,
-  ) {
+  void didUpdatePushTokenForPushTypeVoIP(String? token) {
     _delegate.didUpdatePushTokenForPushTypeVoIP(token);
   }
 }

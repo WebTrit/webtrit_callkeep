@@ -1,3 +1,5 @@
+// ignore_for_file: public_member_api_docs, always_use_package_imports
+
 import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
 
 import 'callkeep.pigeon.dart';
