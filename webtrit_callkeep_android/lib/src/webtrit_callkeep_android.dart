@@ -1,9 +1,9 @@
 import 'dart:async';
 
+import 'package:webtrit_callkeep_android/src/common/common.dart';
 import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
 
-import 'package:webtrit_callkeep_android/src/common/common.dart';
-
+/// The Android implementation of [WebtritCallkeepPlatform].
 class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   /// Registers this class as the default instance of [WebtritCallkeepPlatform].
   static void registerWith() {
@@ -184,14 +184,14 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future endCallAndroidService(
+  Future<dynamic> endCallAndroidService(
     String callId,
   ) {
     return _androidServiceApi.hungUp(callId);
   }
 
   @override
-  Future incomingCallAndroidService(
+  Future<dynamic> incomingCallAndroidService(
     String callId,
     CallkeepHandle handle,
     String? displayName,
