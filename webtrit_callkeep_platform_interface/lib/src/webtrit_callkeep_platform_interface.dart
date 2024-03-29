@@ -142,12 +142,22 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('setSpeaker() has not been implemented.');
   }
 
-  // Android
-  Future<void> endCallAndroidService(String callId) {
+  /// Hangs up an ongoing call and cancels the active notification if any
+  /// with the given [callId].
+  ///
+  /// Returns a [Future] that resolves after completition with unsafe result and may cause error in production.
+  // TODO: rename to hungUp as in CallkeepAndroidService
+  // TODO: specify the return type
+  Future<dynamic> endCallAndroidService(String callId) {
     throw UnimplementedError('hungUpAndroidService() has not been implemented.');
   }
 
-  /// Report the incoming call event.
+  /// Hangs up an ongoing call and cancels the active notification if any
+  /// with the given [callId].
+  ///
+  /// Returns a [Future] that resolves after completition with unsafe result and may cause error in production.
+  // TODO: rename to incomingCall as in CallkeepAndroidService
+  // TODO: specify the return type
   Future<dynamic> incomingCallAndroidService(
     String callId,
     CallkeepHandle handle,

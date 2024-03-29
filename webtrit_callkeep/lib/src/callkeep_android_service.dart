@@ -23,13 +23,19 @@ class CallkeepAndroidService {
     WebtritCallkeepPlatform.instance.setAndroidDelegate(delegate);
   }
 
-  /// TODO : unused, needs clarification
-  Future<void> hungUp(String callId) {
+  /// Hangs up an ongoing call and cancels the active notification if any
+  /// with the given [callId].
+  ///
+  /// Returns a [Future] that resolves after completition with unsafe result and may cause error in production.
+  Future<dynamic> hungUp(String callId) {
     return WebtritCallkeepPlatform.instance.endCallAndroidService(callId);
   }
 
-  /// Report an incoming call event to the native side.
-  Future<void> incomingCall(
+  /// Initiates an incoming call notification
+  /// with the given [callId], [handle], [displayName] and [hasVideo] flag.
+  ///
+  /// Returns a [Future] that resolves after completition with unsafe result and may cause error in production.
+  Future<dynamic> incomingCall(
     String callId,
     CallkeepHandle handle,
     String? displayName,
