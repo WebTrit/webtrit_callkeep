@@ -46,7 +46,7 @@ class _AppState extends State<App> {
               create: (context) {
                 return ActionsCubit(
                   Callkeep(),
-                  CallkeepAndroidService(),
+                  CallkeepBackgroundService(),
                 );
               },
               child: const ActionsScreen(),

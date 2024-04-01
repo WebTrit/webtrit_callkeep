@@ -173,25 +173,25 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  void setAndroidDelegate(
-    CallkeepAndroidServiceDelegate? delegate,
+  void setBackgroundServiceDelegate(
+    CallkeepBackgroundServiceDelegate? delegate,
   ) {
     if (delegate != null) {
-      PDelegateAndroidServiceFlutterApi.setup(_CallkeepAndroidServiceDelegateRelay(delegate));
+      PDelegateAndroidServiceFlutterApi.setup(_CallkeepBackgroundServiceDelegateRelay(delegate));
     } else {
       PDelegateAndroidServiceFlutterApi.setup(null);
     }
   }
 
   @override
-  Future<dynamic> endCallAndroidService(
+  Future<dynamic> hungUp(
     String callId,
   ) {
     return _androidServiceApi.hungUp(callId);
   }
 
   @override
-  Future<dynamic> incomingCallAndroidService(
+  Future<dynamic> incomingCall(
     String callId,
     CallkeepHandle handle,
     String? displayName,
@@ -327,10 +327,10 @@ class _LogsDelegateRelay implements PDelegateLogsFlutterApi {
   }
 }
 
-class _CallkeepAndroidServiceDelegateRelay implements PDelegateAndroidServiceFlutterApi {
-  const _CallkeepAndroidServiceDelegateRelay(this._delegate);
+class _CallkeepBackgroundServiceDelegateRelay implements PDelegateAndroidServiceFlutterApi {
+  const _CallkeepBackgroundServiceDelegateRelay(this._delegate);
 
-  final CallkeepAndroidServiceDelegate _delegate;
+  final CallkeepBackgroundServiceDelegate _delegate;
 
   @override
   Future<void> performEndCall(

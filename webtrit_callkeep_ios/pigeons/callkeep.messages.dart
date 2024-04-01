@@ -11,7 +11,6 @@ import 'package:pigeon/pigeon.dart';
     ),
   ),
 )
-
 class PIOSOptions {
   late String localizedName;
   late String? ringtoneSound;
@@ -98,22 +97,23 @@ class PCallRequestError {
   late PCallRequestErrorEnum value;
 }
 
+// TODO: Rename to background service
 @HostApi()
 abstract class PHostAndroidServiceApi {
   @async
   void hungUp(
-      String callId,
-      String uuidString,
-      );
+    String callId,
+    String uuidString,
+  );
 
   @async
   void incomingCall(
-      String callId,
-      String uuidString,
-      PHandle handle,
-      String? displayName,
-      bool hasVideo,
-      );
+    String callId,
+    String uuidString,
+    PHandle handle,
+    String? displayName,
+    bool hasVideo,
+  );
 }
 
 @HostApi()
@@ -132,11 +132,11 @@ abstract class PHostApi {
   @ObjCSelector('reportNewIncomingCall:handle:displayName:hasVideo:')
   @async
   PIncomingCallError? reportNewIncomingCall(
-      String uuidString,
-      PHandle handle,
-      String? displayName,
-      bool hasVideo,
-      );
+    String uuidString,
+    PHandle handle,
+    String? displayName,
+    bool hasVideo,
+  );
 
   @ObjCSelector('reportConnectingOutgoingCall:')
   @async
@@ -149,11 +149,11 @@ abstract class PHostApi {
   @ObjCSelector('reportUpdateCall:handle:displayName:hasVideo:')
   @async
   void reportUpdateCall(
-      String uuidString,
-      PHandle? handle,
-      String? displayName,
-      bool? hasVideo,
-      );
+    String uuidString,
+    PHandle? handle,
+    String? displayName,
+    bool? hasVideo,
+  );
 
   @ObjCSelector('reportEndCall:reason:')
   @async
@@ -162,11 +162,11 @@ abstract class PHostApi {
   @ObjCSelector('startCall:handle:displayNameOrContactIdentifier:video:')
   @async
   PCallRequestError? startCall(
-      String uuidString,
-      PHandle handle,
-      String? displayNameOrContactIdentifier,
-      bool video,
-      );
+    String uuidString,
+    PHandle handle,
+    String? displayNameOrContactIdentifier,
+    bool video,
+  );
 
   @ObjCSelector('answerCall:')
   @async
@@ -197,29 +197,29 @@ abstract class PHostApi {
 abstract class PDelegateFlutterApi {
   @ObjCSelector('continueStartCallIntentHandle:displayName:video:')
   void continueStartCallIntent(
-      PHandle handle,
-      String? displayName,
-      bool video,
-      );
+    PHandle handle,
+    String? displayName,
+    bool video,
+  );
 
   @ObjCSelector('didPushIncomingCallHandle:displayName:video:callId:uuid:error:')
   void didPushIncomingCall(
-      PHandle handle,
-      String? displayName,
-      bool video,
-      String callId,
-      String uuidString,
-      PIncomingCallError? error,
-      );
+    PHandle handle,
+    String? displayName,
+    bool video,
+    String callId,
+    String uuidString,
+    PIncomingCallError? error,
+  );
 
   @ObjCSelector('performStartCall:handle:displayNameOrContactIdentifier:video:')
   @async
   bool performStartCall(
-      String uuidString,
-      PHandle handle,
-      String? displayNameOrContactIdentifier,
-      bool video,
-      );
+    String uuidString,
+    PHandle handle,
+    String? displayNameOrContactIdentifier,
+    bool video,
+  );
 
   @ObjCSelector('performAnswerCall:')
   @async
@@ -255,6 +255,7 @@ abstract class PDelegateFlutterApi {
   void didReset();
 }
 
+// TODO: Rename to background service
 @FlutterApi()
 abstract class PDelegateAndroidServiceFlutterApi {
   @async

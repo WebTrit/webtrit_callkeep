@@ -107,6 +107,7 @@ class PCallRequestError {
   late PCallRequestErrorEnum value;
 }
 
+// TODO: Rename to background service
 @HostApi()
 abstract class PHostAndroidServiceApi {
   @async
@@ -261,6 +262,7 @@ abstract class PDelegateFlutterApi {
   void didReset();
 }
 
+// TODO: Rename to background service
 @FlutterApi()
 abstract class PDelegateAndroidServiceFlutterApi {
   @async

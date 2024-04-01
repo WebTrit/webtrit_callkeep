@@ -33,9 +33,9 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('setDelegate() has not been implemented.');
   }
 
-  /// Sets the android service delegate.
-  /// [CallkeepAndroidServiceDelegate] needs to be implemented to receive events.
-  void setAndroidDelegate(CallkeepAndroidServiceDelegate? delegate) {
+  /// Sets the background service delegate.
+  /// [CallkeepBackgroundServiceDelegate] needs to be implemented to receive events.
+  void setBackgroundServiceDelegate(CallkeepBackgroundServiceDelegate? delegate) {
     throw UnimplementedError('setAndroidServiceDelegate() has not been implemented.');
   }
 
@@ -167,9 +167,8 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   /// with the given [callId].
   ///
   /// Returns a [Future] that resolves after completition with unsafe result and may cause error in production.
-  // TODO: rename to hungUp as in CallkeepAndroidService
   // TODO: specify the return type
-  Future<dynamic> endCallAndroidService(String callId) {
+  Future<dynamic> hungUp(String callId) {
     throw UnimplementedError('hungUpAndroidService() has not been implemented.');
   }
 
@@ -177,9 +176,8 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   /// with the given [callId].
   ///
   /// Returns a [Future] that resolves after completition with unsafe result and may cause error in production.
-  // TODO: rename to incomingCall as in CallkeepAndroidService
   // TODO: specify the return type
-  Future<dynamic> incomingCallAndroidService(
+  Future<dynamic> incomingCall(
     String callId,
     CallkeepHandle handle,
     String? displayName,

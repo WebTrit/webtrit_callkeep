@@ -1,7 +1,5 @@
-// TODO: Rename to CallkeepBackgroundDelegate
-
 /// Callkeep background call delegate
-abstract class CallkeepAndroidServiceDelegate {
+abstract class CallkeepBackgroundServiceDelegate {
   /// Perform background call end
   void performServiceEndCall(String callId);
 

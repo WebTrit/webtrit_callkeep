@@ -9,22 +9,22 @@ import 'package:webtrit_callkeep_example/app/constants.dart';
 
 part 'actions_state.dart';
 
-class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, CallkeepAndroidServiceDelegate {
+class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, CallkeepBackgroundServiceDelegate {
   ActionsCubit(
     this._callkeep,
-    this._callkeepAndroidService,
+    this._callkeepBackgroundService,
   ) : super(const ActionsUpdate([])) {
     _callkeep.setDelegate(this);
 
     if (!kIsWeb) {
       if (Platform.isAndroid) {
-        _callkeepAndroidService.setAndroidServiceDelegate(this);
+        _callkeepBackgroundService.setBackgroundServiceDelegate(this);
       }
     }
   }
 
   final Callkeep _callkeep;
-  final CallkeepAndroidService _callkeepAndroidService;
+  final CallkeepBackgroundService _callkeepBackgroundService;
 
   final call1Identifier = '0';
   final call2Identifier = '1';
@@ -41,7 +41,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
     _callkeep.setDelegate(null);
     if (!kIsWeb) {
       if (Platform.isAndroid) {
-        _callkeepAndroidService.setAndroidServiceDelegate(null);
+        _callkeepBackgroundService.setBackgroundServiceDelegate(null);
       }
     }
     return super.close();
@@ -100,7 +100,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   void incomingCallAndroid() async {
     try {
-      var result = await _callkeepAndroidService.incomingCall(call1Identifier, numberMock, 'User Name', true);
+      var result = await _callkeepBackgroundService.incomingCall(call1Identifier, numberMock, 'User Name', true);
       emit(state.update.addAction(action: "[Android]: Incoming  call: $result"));
     } catch (error) {
       emit(state.update.addAction(action: "[Android]: Is setup error: $error"));
@@ -109,7 +109,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   void hungUpAndroid() async {
     try {
-      var result = await _callkeepAndroidService.hungUp(call1Identifier);
+      var result = await _callkeepBackgroundService.hungUp(call1Identifier);
       emit(state.update.addAction(action: "[Android]:Hung up: $result"));
     } catch (error) {
       emit(state.update.addAction(action: "[Android]: Hung up error: $error"));

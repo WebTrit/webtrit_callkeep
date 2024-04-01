@@ -4,7 +4,7 @@ import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_in
 
 class MockWebtritCallkeepPlatformInterfacePlatform with MockPlatformInterfaceMixin implements WebtritCallkeepPlatform {
   CallkeepDelegate? _callkeepDelegate;
-  CallkeepAndroidServiceDelegate? _androidServiceDelegate;
+  CallkeepBackgroundServiceDelegate? _androidServiceDelegate;
 
   @override
   Future<CallkeepCallRequestError?> answerCall(String callId) {
@@ -19,13 +19,13 @@ class MockWebtritCallkeepPlatformInterfacePlatform with MockPlatformInterfaceMix
   }
 
   @override
-  Future<dynamic> endCallAndroidService(String callId) {
+  Future<dynamic> hungUp(String callId) {
     _androidServiceDelegate?.performServiceEndCall(callId);
     return Future.value();
   }
 
   @override
-  Future<dynamic> incomingCallAndroidService(
+  Future<dynamic> incomingCall(
     String callId,
     CallkeepHandle handle,
     String? displayName,
@@ -94,7 +94,7 @@ class MockWebtritCallkeepPlatformInterfacePlatform with MockPlatformInterfaceMix
   }
 
   @override
-  void setAndroidDelegate(CallkeepAndroidServiceDelegate? delegate) {
+  void setBackgroundServiceDelegate(CallkeepBackgroundServiceDelegate? delegate) {
     _androidServiceDelegate = delegate;
   }
 

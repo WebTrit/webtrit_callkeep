@@ -65,15 +65,15 @@ void main() {
         completerUUID.complete(callId);
       },
     );
-    WebtritCallkeepPlatform.instance.setAndroidDelegate(callkeepRelayMock);
-    await WebtritCallkeepPlatform.instance.endCallAndroidService(callId);
+    WebtritCallkeepPlatform.instance.setBackgroundServiceDelegate(callkeepRelayMock);
+    await WebtritCallkeepPlatform.instance.hungUp(callId);
 
     expect(await completerUUID.future, equals(callId));
   });
 
   test('Webtrit callkeep incoming call android service', () async {
     expect(
-      await WebtritCallkeepPlatform.instance.incomingCallAndroidService(
+      await WebtritCallkeepPlatform.instance.incomingCall(
         callId,
         handlerMock,
         displayName,

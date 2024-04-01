@@ -1,6 +1,6 @@
 import 'package:webtrit_callkeep_platform_interface/src/delegate/delegate.dart';
 
-class WebtritCallkeepDelegateAndroidRelayMock implements CallkeepAndroidServiceDelegate {
+class WebtritCallkeepDelegateAndroidRelayMock implements CallkeepBackgroundServiceDelegate {
   WebtritCallkeepDelegateAndroidRelayMock({this.performServiceEndCallListener, this.endCallReceivedListener});
 
   final void Function(
