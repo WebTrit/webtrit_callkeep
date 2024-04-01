@@ -100,7 +100,11 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   void incomingCallAndroid() async {
     try {
-      var result = await _callkeepBackgroundService.incomingCall(call1Identifier, numberMock, 'User Name', true);
+      var result = await _callkeepBackgroundService.incomingCall(
+        call1Identifier,
+        numberMock,
+        displayName: 'User Name',
+      );
       emit(state.update.addAction(action: "[Android]: Incoming  call: $result"));
     } catch (error) {
       emit(state.update.addAction(action: "[Android]: Is setup error: $error"));
@@ -138,7 +142,12 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   void reportNewIncomingCall() async {
     try {
-      var result = await _callkeep.reportNewIncomingCall(call1Identifier, numberMock, 'User Name', true);
+      var result = await _callkeep.reportNewIncomingCall(
+        call1Identifier,
+        numberMock,
+        displayName: 'User Name',
+        hasVideo: true,
+      );
       if (result != null) {
         emit(state.update.addAction(action: "Error report new incoming call error: ${result.name}"));
       } else {
@@ -151,7 +160,12 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   void reportNewIncomingCallV2() async {
     try {
-      var result = await _callkeep.reportNewIncomingCall(call2Identifier, numberMock1, 'User Name 1', true);
+      var result = await _callkeep.reportNewIncomingCall(
+        call2Identifier,
+        numberMock1,
+        displayName: 'User Name 1',
+        hasVideo: true,
+      );
       if (result != null) {
         emit(state.update.addAction(action: "Error report new incoming call error: ${result.name}"));
       } else {
@@ -164,7 +178,12 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   void startOutgoingCall() async {
     try {
-      var result = await _callkeep.startCall(call1Identifier, numberMock, 'User Name', true);
+      var result = await _callkeep.startCall(
+        call1Identifier,
+        numberMock,
+        displayNameOrContactIdentifier: 'User Name',
+        hasVideo: true,
+      );
       if (result != null) {
         emit(state.update.addAction(action: "Error start outgoing call error: ${result.name}"));
       } else {
@@ -195,7 +214,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   void reportUpdateCall() async {
     try {
-      await _callkeep.reportUpdateCall(call1Identifier, numberMock, 'User Name', true);
+      await _callkeep.reportUpdateCall(call1Identifier, handle: numberMock, displayName: 'User Name', hasVideo: true);
 
       emit(state.update.addAction(action: "Success report update call"));
     } catch (error) {
@@ -232,7 +251,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   void setHeld() async {
     try {
-      await _callkeep.setHeld(call1Identifier, !_isHold);
+      await _callkeep.setHeld(call1Identifier, onHold: !_isHold);
       emit(state.update.addAction(action: "Held action sent"));
     } catch (error) {
       emit(state.update.addAction(action: "Error set held  error: $error"));
@@ -241,7 +260,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   void setMuted() async {
     try {
-      await _callkeep.setMuted(call1Identifier, !_isMuted);
+      await _callkeep.setMuted(call1Identifier, muted: !_isMuted);
       emit(state.update.addAction(action: "Mute action sent"));
     } catch (error) {
       emit(state.update.addAction(action: "Error set muted  error: $error"));
@@ -250,7 +269,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   void setSpeaker() async {
     try {
-      await _callkeep.setSpeaker(call1Identifier, !_speakerEnabled);
+      await _callkeep.setSpeaker(call1Identifier, enabled: !_speakerEnabled);
       emit(state.update.addAction(action: "Speaker action sent"));
     } catch (error) {
       emit(state.update.addAction(action: "Error  set speaker  error: $error"));

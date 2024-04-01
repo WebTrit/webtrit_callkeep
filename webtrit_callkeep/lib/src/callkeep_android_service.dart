@@ -36,7 +36,12 @@ class CallkeepBackgroundService {
   /// with the given [callId], [handle], [displayName] and [hasVideo] flag.
   ///
   /// Returns a [Future] that resolves after completition with unsafe result and may cause error in production.
-  Future<dynamic> incomingCall(String callId, CallkeepHandle handle, String? displayName, bool hasVideo) {
+  Future<dynamic> incomingCall(
+    String callId,
+    CallkeepHandle handle, {
+    String? displayName,
+    bool hasVideo = false,
+  }) {
     return platform.incomingCall(callId, handle, displayName, hasVideo);
   }
 }
