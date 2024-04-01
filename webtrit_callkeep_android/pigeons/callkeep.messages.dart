@@ -109,12 +109,7 @@ class PCallRequestError {
 
 // TODO: Rename to background service
 @HostApi()
-abstract class PHostAndroidServiceApi {
-  @async
-  void hungUp(
-    String callId,
-  );
-
+abstract class PHostBackgroundServiceApi {
   @async
   void incomingCall(
     String callId,
@@ -122,6 +117,14 @@ abstract class PHostAndroidServiceApi {
     String? displayName,
     bool hasVideo,
   );
+
+  @async
+  void endCall(
+    String callId,
+  );
+
+  @async
+  void endAllCalls();
 }
 
 @HostApi()
@@ -264,18 +267,18 @@ abstract class PDelegateFlutterApi {
 
 // TODO: Rename to background service
 @FlutterApi()
-abstract class PDelegateAndroidServiceFlutterApi {
+abstract class PDelegateBackgroundServiceFlutterApi {
   @async
   void performEndCall(String callId);
 
   @async
   void endCallReceived(
     String callId,
-    final String number,
-    final bool video,
-    final int createdTime,
-    final int? acceptedTime,
-    final int? hungUpTime,
+    String number,
+    bool video,
+    int createdTime,
+    int? acceptedTime,
+    int? hungUpTime,
   );
 }
 

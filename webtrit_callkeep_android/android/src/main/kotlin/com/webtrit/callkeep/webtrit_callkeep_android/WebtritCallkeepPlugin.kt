@@ -14,7 +14,7 @@ import io.flutter.embedding.engine.plugins.lifecycle.HiddenLifecycleReference
 import io.flutter.plugin.common.BinaryMessenger
 
 /** WebtritCallkeepAndroidPlugin */
-class WebtritCallkeepAndroidPlugin : FlutterPlugin, ActivityAware, LifecycleEventObserver {
+class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, LifecycleEventObserver {
     private var activityPluginBinding: ActivityPluginBinding? = null
     private var state: FlutterState? = null
     private var lifeCycle: Lifecycle? = null
@@ -87,16 +87,16 @@ private class FlutterState(val messenger: BinaryMessenger, val context: Context)
     fun initService() {
         FlutterLog.i(TAG, "initService $this")
 
-        val delegate = PDelegateAndroidServiceFlutterApi(messenger)
+        val delegate = PDelegateBackgroundServiceFlutterApi(messenger)
         pigeonServiceApi = PigeonServiceApi(context, delegate)
-        PHostAndroidServiceApi.setUp(messenger, pigeonServiceApi)
+        PHostBackgroundServiceApi.setUp(messenger, pigeonServiceApi)
     }
 
     fun destroyService(messenger: BinaryMessenger) {
         FlutterLog.i(TAG, "destroyService $this")
 
         pigeonServiceApi?.unregister()
-        PHostAndroidServiceApi.setUp(messenger, null)
+        PHostBackgroundServiceApi.setUp(messenger, null)
     }
 
     fun initActivity(activity: Activity) {

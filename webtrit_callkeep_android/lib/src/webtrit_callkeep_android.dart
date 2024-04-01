@@ -13,7 +13,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   final _pushRegistryApi = PPushRegistryHostApi();
   final _api = PHostApi();
 
-  final _androidServiceApi = PHostAndroidServiceApi();
+  final _backgroundServiceApi = PHostBackgroundServiceApi();
 
   @override
   void setDelegate(
@@ -177,22 +177,22 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     CallkeepBackgroundServiceDelegate? delegate,
   ) {
     if (delegate != null) {
-      PDelegateAndroidServiceFlutterApi.setup(_CallkeepBackgroundServiceDelegateRelay(delegate));
+      PDelegateBackgroundServiceFlutterApi.setup(_CallkeepBackgroundServiceDelegateRelay(delegate));
     } else {
-      PDelegateAndroidServiceFlutterApi.setup(null);
+      PDelegateBackgroundServiceFlutterApi.setup(null);
     }
   }
 
   @override
   Future<dynamic> endAllBackgroundCalls() {
-    return _androidServiceApi.endAllCalls();
+    return _backgroundServiceApi.endAllCalls();
   }
 
   @override
   Future<dynamic> endBackgroundCall(
     String callId,
   ) {
-    return _androidServiceApi.endCall(callId);
+    return _backgroundServiceApi.endCall(callId);
   }
 
   @override
@@ -202,7 +202,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     String? displayName,
     bool hasVideo,
   ) {
-    return _androidServiceApi.incomingCall(
+    return _backgroundServiceApi.incomingCall(
       callId,
       handle.toPigeon(),
       displayName,
@@ -332,7 +332,7 @@ class _LogsDelegateRelay implements PDelegateLogsFlutterApi {
   }
 }
 
-class _CallkeepBackgroundServiceDelegateRelay implements PDelegateAndroidServiceFlutterApi {
+class _CallkeepBackgroundServiceDelegateRelay implements PDelegateBackgroundServiceFlutterApi {
   const _CallkeepBackgroundServiceDelegateRelay(this._delegate);
 
   final CallkeepBackgroundServiceDelegate _delegate;

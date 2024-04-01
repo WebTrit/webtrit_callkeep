@@ -17,8 +17,8 @@ import com.webtrit.callkeep.webtrit_callkeep_android.common.ApplicationData
 
 class PigeonServiceApi(
     private val context: Context,
-    api: PDelegateAndroidServiceFlutterApi,
-) : PHostAndroidServiceApi, BroadcastReceiver() {
+    api: PDelegateBackgroundServiceFlutterApi,
+) : PHostBackgroundServiceApi, BroadcastReceiver() {
     private val connectionService: BackgroundCallkeepApi =
         CallkeepApiProvider.getBackgroundCallkeepApi(context, api)
 

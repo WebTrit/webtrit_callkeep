@@ -7,12 +7,12 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 
-import com.webtrit.callkeep.webtrit_callkeep_android.PDelegateAndroidServiceFlutterApi
 import com.webtrit.callkeep.webtrit_callkeep_android.connection.PhoneConnectionService
 import com.webtrit.callkeep.webtrit_callkeep_android.common.models.CallMetadata
 
 import TelephonyBackgroundCallkeepReceiver
 import com.webtrit.callkeep.webtrit_callkeep_android.FlutterLog
+import com.webtrit.callkeep.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi
 
 /**
  * This class provides an API for handling telephony-related operations in the background.
@@ -23,7 +23,7 @@ import com.webtrit.callkeep.webtrit_callkeep_android.FlutterLog
  */
 class TelephonyBackgroundCallkeepApi(
     private val context: Context,
-    private val delegate: PDelegateAndroidServiceFlutterApi,
+    private val delegate: PDelegateBackgroundServiceFlutterApi,
 ) : BackgroundCallkeepApi {
 
     private val flutterDelegate = TelephonyBackgroundCallkeepReceiver(delegate, context)

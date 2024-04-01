@@ -7,7 +7,7 @@ import android.os.Bundle
 import android.util.Log
 
 import com.webtrit.callkeep.webtrit_callkeep_android.FlutterLog
-import com.webtrit.callkeep.webtrit_callkeep_android.PDelegateAndroidServiceFlutterApi
+import com.webtrit.callkeep.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.webtrit_callkeep_android.R
 import com.webtrit.callkeep.webtrit_callkeep_android.api.background.ReportAction
 import com.webtrit.callkeep.webtrit_callkeep_android.common.ApplicationData
@@ -22,7 +22,7 @@ import com.webtrit.callkeep.webtrit_callkeep_android.common.models.CallMetadata
  * @param api The Flutter API service that handles communication with the Flutter application.
  */
 class TelephonyBackgroundCallkeepReceiver(
-    private val api: PDelegateAndroidServiceFlutterApi,
+    private val api: PDelegateBackgroundServiceFlutterApi,
     private val context: Context,
 ) : BroadcastReceiver() {
 

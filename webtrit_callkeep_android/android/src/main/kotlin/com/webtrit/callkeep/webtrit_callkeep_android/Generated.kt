@@ -310,7 +310,7 @@ data class PCallRequestError (
 }
 
 @Suppress("UNCHECKED_CAST")
-private object PHostAndroidServiceApiCodec : StandardMessageCodec() {
+private object PHostBackgroundServiceApiCodec : StandardMessageCodec() {
   override fun readValueOfType(type: Byte, buffer: ByteBuffer): Any? {
     return when (type) {
       128.toByte() -> {
@@ -333,21 +333,21 @@ private object PHostAndroidServiceApiCodec : StandardMessageCodec() {
 }
 
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
-interface PHostAndroidServiceApi {
+interface PHostBackgroundServiceApi {
   fun incomingCall(callId: String, handle: PHandle, displayName: String?, hasVideo: Boolean, callback: (Result<Unit>) -> Unit)
   fun endCall(callId: String, callback: (Result<Unit>) -> Unit)
   fun endAllCalls(callback: (Result<Unit>) -> Unit)
 
   companion object {
-    /** The codec used by PHostAndroidServiceApi. */
+    /** The codec used by PHostBackgroundServiceApi. */
     val codec: MessageCodec<Any?> by lazy {
-      PHostAndroidServiceApiCodec
+      PHostBackgroundServiceApiCodec
     }
-    /** Sets up an instance of `PHostAndroidServiceApi` to handle messages through the `binaryMessenger`. */
+    /** Sets up an instance of `PHostBackgroundServiceApi` to handle messages through the `binaryMessenger`. */
     @Suppress("UNCHECKED_CAST")
-    fun setUp(binaryMessenger: BinaryMessenger, api: PHostAndroidServiceApi?) {
+    fun setUp(binaryMessenger: BinaryMessenger, api: PHostBackgroundServiceApi?) {
       run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostAndroidServiceApi.incomingCall", codec)
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundServiceApi.incomingCall", codec)
         if (api != null) {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
@@ -369,7 +369,7 @@ interface PHostAndroidServiceApi {
         }
       }
       run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostAndroidServiceApi.endCall", codec)
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundServiceApi.endCall", codec)
         if (api != null) {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
@@ -388,7 +388,7 @@ interface PHostAndroidServiceApi {
         }
       }
       run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostAndroidServiceApi.endAllCalls", codec)
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundServiceApi.endAllCalls", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
             api.endAllCalls() { result: Result<Unit> ->
@@ -1081,16 +1081,16 @@ class PDelegateFlutterApi(private val binaryMessenger: BinaryMessenger) {
 }
 /** Generated class from Pigeon that represents Flutter messages that can be called from Kotlin. */
 @Suppress("UNCHECKED_CAST")
-class PDelegateAndroidServiceFlutterApi(private val binaryMessenger: BinaryMessenger) {
+class PDelegateBackgroundServiceFlutterApi(private val binaryMessenger: BinaryMessenger) {
   companion object {
-    /** The codec used by PDelegateAndroidServiceFlutterApi. */
+    /** The codec used by PDelegateBackgroundServiceFlutterApi. */
     val codec: MessageCodec<Any?> by lazy {
       StandardMessageCodec()
     }
   }
   fun performEndCall(callIdArg: String, callback: (Result<Unit>) -> Unit)
 {
-    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateAndroidServiceFlutterApi.performEndCall"
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi.performEndCall"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(callIdArg)) {
       if (it is List<*>) {
@@ -1106,7 +1106,7 @@ class PDelegateAndroidServiceFlutterApi(private val binaryMessenger: BinaryMesse
   }
   fun endCallReceived(callIdArg: String, numberArg: String, videoArg: Boolean, createdTimeArg: Long, acceptedTimeArg: Long?, hungUpTimeArg: Long?, callback: (Result<Unit>) -> Unit)
 {
-    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateAndroidServiceFlutterApi.endCallReceived"
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi.endCallReceived"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(callIdArg, numberArg, videoArg, createdTimeArg, acceptedTimeArg, hungUpTimeArg)) {
       if (it is List<*>) {

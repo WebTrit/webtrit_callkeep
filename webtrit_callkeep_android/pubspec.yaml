@@ -12,9 +12,8 @@ flutter:
     platforms:
       android:
         package: com.webtrit.callkeep.webtrit_callkeep_android
-        pluginClass: WebtritCallkeepAndroidPlugin
         # package: com.webtrit.callkeep // TODO?: Change package name
-        # pluginClass: WebtritCallkeepPlugin // TODO?: Change plugin class name
+        pluginClass: WebtritCallkeepPlugin 
         dartPluginClass: WebtritCallkeepAndroid
 
 dependencies:

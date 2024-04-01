@@ -4,7 +4,7 @@ import android.content.Context
 import android.util.Log
 
 import com.webtrit.callkeep.webtrit_callkeep_android.FlutterLog
-import com.webtrit.callkeep.webtrit_callkeep_android.PDelegateAndroidServiceFlutterApi
+import com.webtrit.callkeep.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.webtrit_callkeep_android.common.ApplicationData
 import com.webtrit.callkeep.webtrit_callkeep_android.common.helpers.Platform
 import com.webtrit.callkeep.webtrit_callkeep_android.common.models.CallMetadata
@@ -19,7 +19,7 @@ import com.webtrit.callkeep.webtrit_callkeep_android.services.NotificationServic
  */
 class ProxyBackgroundCallkeepApi(
     private val context: Context,
-    private val api: PDelegateAndroidServiceFlutterApi,
+    private val api: PDelegateBackgroundServiceFlutterApi,
 ) : BackgroundCallkeepApi {
     private val notificationService = NotificationService(context)
 
