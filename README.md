@@ -50,4 +50,4 @@ fluttium test flows/test_platform_name.yaml
 [very_good_ventures_link_light]: https://verygood.ventures/?utm_source=github&utm_medium=banner&utm_campaign=core#gh-light-mode-only
 [fluttium_link]: https://fluttium.dev/
 [fluttium_install]: https://fluttium.dev/docs/getting-started/installing-cli
-[webtrit_link]: https://https://webtrit.com/
+[webtrit_link]: https://webtrit.com/
