@@ -54,4 +54,10 @@ interface BackgroundCallkeepApi {
     fun endCall(
         metadata: CallMetadata
     )
+
+    /**
+     * End all ongoing calls.
+     *
+     */
+    fun endAllCalls()
 }

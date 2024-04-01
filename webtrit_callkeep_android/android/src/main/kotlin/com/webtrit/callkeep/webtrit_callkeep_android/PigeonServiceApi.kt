@@ -85,18 +85,35 @@ class PigeonServiceApi(
             createdTime = System.currentTimeMillis()
         )
 
+        //TODO: Fuzzy logic between two classes, in some methods the callback is called in that class in some we delegate to the implementation. Make it more clear.
         connectionService.incomingCall(callMetaData, callback)
     }
 
-    override fun hungUp(
+
+    override fun endCall(
         callId: String, callback: (Result<Unit>) -> Unit
     ) {
-        FlutterLog.i(TAG, "hungUp $callId")
+        FlutterLog.i(TAG, "endCall $callId")
 
         ApplicationData.getActivity()?.finish()
 
         val callMetaData = CallMetadata(callId = callId)
         connectionService.hungUp(callMetaData, callback)
+
+        //TODO: Should wait until all connections are removed, because the current implementation does not guarantee this
+        callback.invoke(Result.success(Unit))
+    }
+
+
+    override fun endAllCalls(callback: (Result<Unit>) -> Unit) {
+        FlutterLog.i(TAG, "endAllCalls")
+
+        ApplicationData.getActivity()?.finish()
+
+        connectionService.endAllCalls()
+
+        //TODO: Should wait until all connections are removed, because the current implementation does not guarantee this
+        callback.invoke(Result.success(Unit))
     }
 
     enum class ReportAction {

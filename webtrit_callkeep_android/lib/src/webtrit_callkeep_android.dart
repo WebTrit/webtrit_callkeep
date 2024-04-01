@@ -184,10 +184,15 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<dynamic> hungUp(
+  Future<dynamic> endAllBackgroundCalls() {
+    return _androidServiceApi.endAllCalls();
+  }
+
+  @override
+  Future<dynamic> endBackgroundCall(
     String callId,
   ) {
-    return _androidServiceApi.hungUp(callId);
+    return _androidServiceApi.endCall(callId);
   }
 
   @override

@@ -334,8 +334,9 @@ private object PHostAndroidServiceApiCodec : StandardMessageCodec() {
 
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface PHostAndroidServiceApi {
-  fun hungUp(callId: String, callback: (Result<Unit>) -> Unit)
   fun incomingCall(callId: String, handle: PHandle, displayName: String?, hasVideo: Boolean, callback: (Result<Unit>) -> Unit)
+  fun endCall(callId: String, callback: (Result<Unit>) -> Unit)
+  fun endAllCalls(callback: (Result<Unit>) -> Unit)
 
   companion object {
     /** The codec used by PHostAndroidServiceApi. */
@@ -346,12 +347,15 @@ interface PHostAndroidServiceApi {
     @Suppress("UNCHECKED_CAST")
     fun setUp(binaryMessenger: BinaryMessenger, api: PHostAndroidServiceApi?) {
       run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostAndroidServiceApi.hungUp", codec)
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostAndroidServiceApi.incomingCall", codec)
         if (api != null) {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
             val callIdArg = args[0] as String
-            api.hungUp(callIdArg) { result: Result<Unit> ->
+            val handleArg = args[1] as PHandle
+            val displayNameArg = args[2] as String?
+            val hasVideoArg = args[3] as Boolean
+            api.incomingCall(callIdArg, handleArg, displayNameArg, hasVideoArg) { result: Result<Unit> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(wrapError(error))
@@ -365,15 +369,29 @@ interface PHostAndroidServiceApi {
         }
       }
       run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostAndroidServiceApi.incomingCall", codec)
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostAndroidServiceApi.endCall", codec)
         if (api != null) {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
             val callIdArg = args[0] as String
-            val handleArg = args[1] as PHandle
-            val displayNameArg = args[2] as String?
-            val hasVideoArg = args[3] as Boolean
-            api.incomingCall(callIdArg, handleArg, displayNameArg, hasVideoArg) { result: Result<Unit> ->
+            api.endCall(callIdArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostAndroidServiceApi.endAllCalls", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.endAllCalls() { result: Result<Unit> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(wrapError(error))

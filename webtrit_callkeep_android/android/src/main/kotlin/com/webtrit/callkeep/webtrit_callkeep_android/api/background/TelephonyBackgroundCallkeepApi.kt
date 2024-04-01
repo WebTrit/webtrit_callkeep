@@ -12,6 +12,7 @@ import com.webtrit.callkeep.webtrit_callkeep_android.connection.PhoneConnectionS
 import com.webtrit.callkeep.webtrit_callkeep_android.common.models.CallMetadata
 
 import TelephonyBackgroundCallkeepReceiver
+import com.webtrit.callkeep.webtrit_callkeep_android.FlutterLog
 
 /**
  * This class provides an API for handling telephony-related operations in the background.
@@ -61,6 +62,13 @@ class TelephonyBackgroundCallkeepApi(
     override fun endCall(metadata: CallMetadata) {
         delegate.performEndCall(metadata.callId) {}
         PhoneConnectionService.startHungUpCall(context, metadata)
+    }
+
+    override fun endAllCalls() {
+        FlutterLog.d(TAG, "endAllCalls")
+
+        //TODO: Rename this notifyAboutDetachActivity to  endAllCalls
+        PhoneConnectionService.notifyAboutDetachActivity(context)
     }
 
     /**

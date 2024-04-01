@@ -66,7 +66,7 @@ void main() {
       },
     );
     WebtritCallkeepPlatform.instance.setBackgroundServiceDelegate(callkeepRelayMock);
-    await WebtritCallkeepPlatform.instance.hungUp(callId);
+    await WebtritCallkeepPlatform.instance.endBackgroundCall(callId);
 
     expect(await completerUUID.future, equals(callId));
   });

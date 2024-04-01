@@ -3,6 +3,7 @@ package com.webtrit.callkeep.webtrit_callkeep_android.api.background
 import android.content.Context
 import android.util.Log
 
+import com.webtrit.callkeep.webtrit_callkeep_android.FlutterLog
 import com.webtrit.callkeep.webtrit_callkeep_android.PDelegateAndroidServiceFlutterApi
 import com.webtrit.callkeep.webtrit_callkeep_android.common.ApplicationData
 import com.webtrit.callkeep.webtrit_callkeep_android.common.helpers.Platform
@@ -57,6 +58,10 @@ class ProxyBackgroundCallkeepApi(
         notificationService.cancelActiveNotification()
         // Perform end call action (custom logic)
         api.performEndCall(metadata.callId) {}
+    }
+
+    override fun endAllCalls() {
+        FlutterLog.d(TAG, "endAllCalls")
     }
 
     /**

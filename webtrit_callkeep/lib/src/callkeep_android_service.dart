@@ -24,12 +24,19 @@ class CallkeepBackgroundService {
     platform.setBackgroundServiceDelegate(delegate);
   }
 
-  /// Hangs up an ongoing call and cancels the active notification if any
+  /// Ends up an ongoing call and cancels the active notification if any
   /// with the given [callId].
   ///
   /// Returns a [Future] that resolves after completition with unsafe result and may cause error in production.
-  Future<dynamic> hungUp(String callId) {
-    return platform.hungUp(callId);
+  Future<dynamic> endBackgroundCall(String callId) {
+    return platform.endBackgroundCall(callId);
+  }
+
+  /// Ends all ongoing calls and cancels all active notifications.
+  /// Returns a [Future] that resolves after completition with unsafe result and may cause error in production.
+  /// This method is used to end all calls and cancel all active notifications.
+  Future<dynamic> endAllBackgroundCalls() {
+    return platform.endAllBackgroundCalls();
   }
 
   /// Initiates an incoming call notification

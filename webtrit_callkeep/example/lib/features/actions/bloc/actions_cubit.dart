@@ -111,9 +111,10 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
     }
   }
 
+  // TODO: rename
   void hungUpAndroid() async {
     try {
-      var result = await _callkeepBackgroundService.hungUp(call1Identifier);
+      var result = await _callkeepBackgroundService.endBackgroundCall(call1Identifier);
       emit(state.update.addAction(action: "[Android]:Hung up: $result"));
     } catch (error) {
       emit(state.update.addAction(action: "[Android]: Hung up error: $error"));

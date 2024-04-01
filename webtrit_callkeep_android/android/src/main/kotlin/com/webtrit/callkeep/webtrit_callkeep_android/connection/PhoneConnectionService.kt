@@ -419,6 +419,8 @@ class PhoneConnectionService : ConnectionService() {
         FlutterLog.i(TAG, "onDestroy")
 
         sensor.unListen(this)
+        //TODO: Change the method name to better understand the purpose
+        onDetachActivity()
         super.onDestroy()
     }
 
