@@ -5,7 +5,6 @@ import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_in
 // TODO:
 // - rename to CallkeepBackgroundService
 // - convert to static abstract
-// - single platform getter
 
 /// The [CallkeepAndroidService] class is used to set the backgroud service delegate
 /// and invoke methods on the native side for the background tasks.
@@ -17,10 +16,13 @@ class CallkeepAndroidService {
   CallkeepAndroidService._();
   static final _instance = CallkeepAndroidService._();
 
+  /// The [WebtritCallkeepPlatform] instance used to perform platform specific operations.
+  static WebtritCallkeepPlatform get platform => WebtritCallkeepPlatform.instance;
+
   /// Sets the android service delegate.
   /// [CallkeepAndroidServiceDelegate] needs to be implemented to receive events.
   void setAndroidServiceDelegate(CallkeepAndroidServiceDelegate? delegate) {
-    WebtritCallkeepPlatform.instance.setAndroidDelegate(delegate);
+    platform.setAndroidDelegate(delegate);
   }
 
   /// Hangs up an ongoing call and cancels the active notification if any
@@ -28,24 +30,14 @@ class CallkeepAndroidService {
   ///
   /// Returns a [Future] that resolves after completition with unsafe result and may cause error in production.
   Future<dynamic> hungUp(String callId) {
-    return WebtritCallkeepPlatform.instance.endCallAndroidService(callId);
+    return platform.endCallAndroidService(callId);
   }
 
   /// Initiates an incoming call notification
   /// with the given [callId], [handle], [displayName] and [hasVideo] flag.
   ///
   /// Returns a [Future] that resolves after completition with unsafe result and may cause error in production.
-  Future<dynamic> incomingCall(
-    String callId,
-    CallkeepHandle handle,
-    String? displayName,
-    bool hasVideo,
-  ) {
-    return WebtritCallkeepPlatform.instance.incomingCallAndroidService(
-      callId,
-      handle,
-      displayName,
-      hasVideo,
-    );
+  Future<dynamic> incomingCall(String callId, CallkeepHandle handle, String? displayName, bool hasVideo) {
+    return platform.incomingCallAndroidService(callId, handle, displayName, hasVideo);
   }
 }
