@@ -8,6 +8,3 @@ analyzer:
 linter:
   rules:
     lines_longer_than_80_chars: false # Conflicts with the team's preference
-    # public_member_api_docs: false
-    one_member_abstracts: false # TODO: on migration stage
-    avoid_positional_boolean_parameters: false # TODO: on migration stage

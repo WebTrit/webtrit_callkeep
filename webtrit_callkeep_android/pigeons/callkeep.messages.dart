@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_positional_boolean_parameters, one_member_abstracts
+
 import 'package:pigeon/pigeon.dart';
 
 @ConfigurePigeon(
