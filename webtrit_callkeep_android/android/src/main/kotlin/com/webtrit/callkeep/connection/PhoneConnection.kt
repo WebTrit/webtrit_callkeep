@@ -106,7 +106,6 @@ class PhoneConnection internal constructor(
         try {
             notificationService.cancelIncomingNotification()
             notificationService.cancelMissedCall(metadata)
-            audioService.stopRingtone()
         } catch (e: Exception) {
             FlutterLog.e(TAG, "onAnswer: $e");
         }
@@ -138,7 +137,6 @@ class PhoneConnection internal constructor(
 
         FlutterLog.i(TAG, "onDisconnect: ${metadata.callId}")
 
-        audioService.stopRingtone()
         PhoneConnectionService.remove(metadata.callId)
         notificationService.cancelActiveNotification()
         TelephonyForegroundCallkeepApi.notifyDeclineCall(context, metadata)
@@ -288,7 +286,6 @@ class PhoneConnection internal constructor(
      * Handle actions when the connection becomes active.
      */
     private fun onActiveConnection() {
-        audioService.stopRingtone()
         notificationService.cancelActiveNotification()
         notificationService.showActiveCallNotification(metadata)
         if (Build.VERSION.SDK_INT == Build.VERSION_CODES.O_MR1) {
@@ -305,7 +302,6 @@ class PhoneConnection internal constructor(
      * Handle actions when the call is in the dialing state.
      */
     private fun onDialing() {
-        audioService.startRingtone()
         TelephonyForegroundCallkeepApi.notifyOutgoingCall(context, metadata)
     }
 
