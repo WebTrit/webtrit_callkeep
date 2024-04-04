@@ -1,4 +1,3 @@
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:webtrit_callkeep_android/webtrit_callkeep_android.dart';
 import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
@@ -6,39 +5,33 @@ import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_in
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('WebtritCallkeepAndroid', () {
-    const kPlatformName = 'Android';
-    late WebtritCallkeepAndroid webtritCallkeep;
-    late List<MethodCall> log;
+  test('registers instance', () {
+    WebtritCallkeepAndroid.registerWith();
+    expect(WebtritCallkeepPlatform.instance, isA<WebtritCallkeepAndroid>());
+  });
 
-    setUp(() async {
-      webtritCallkeep = WebtritCallkeepAndroid();
+  setUp(() {
+    WebtritCallkeepPlatform.instance.setUp(
+      const CallkeepOptions(
+        ios: CallkeepIOSOptions(
+          localizedName: 'Test',
+          maximumCallGroups: 1,
+          maximumCallsPerCallGroup: 1,
+          supportedHandleTypes: {CallkeepHandleType.number},
+        ),
+        android: CallkeepAndroidOptions(
+          incomingPath: CallPathKeyConst.callPath,
+          rootPath: CallPathKeyConst.mainPath,
+        ),
+      ),
+    );
+  });
 
-      log = <MethodCall>[];
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(webtritCallkeep.methodChannel, (methodCall) async {
-        log.add(methodCall);
-        switch (methodCall.method) {
-          case 'getPlatformName':
-            return kPlatformName;
-          default:
-            return null;
-        }
-      });
-    });
+  tearDown(() {
+    WebtritCallkeepPlatform.instance.tearDown();
+  });
 
-    test('can be registered', () {
-      WebtritCallkeepAndroid.registerWith();
-      expect(WebtritCallkeepPlatform.instance, isA<WebtritCallkeepAndroid>());
-    });
-
-    test('getPlatformName returns correct name', () async {
-      final name = await webtritCallkeep.getPlatformName();
-      expect(
-        log,
-        <Matcher>[isMethodCall('getPlatformName', arguments: null)],
-      );
-      expect(name, equals(kPlatformName));
-    });
+  test('isSetUp', () async {
+    expect(await WebtritCallkeepPlatform.instance.isSetUp(), true);
   });
 }

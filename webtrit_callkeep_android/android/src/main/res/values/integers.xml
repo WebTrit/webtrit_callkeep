@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <integer name="notification_incoming_call_id">0</integer>
+    <integer name="notification_active_call_id">1</integer>
+</resources>

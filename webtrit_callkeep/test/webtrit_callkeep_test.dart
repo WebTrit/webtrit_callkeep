@@ -1,44 +1,32 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
-import 'package:plugin_platform_interface/plugin_platform_interface.dart';
-import 'package:webtrit_callkeep/webtrit_callkeep.dart';
-import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
 
-class MockWebtritCallkeepPlatform extends Mock
-    with MockPlatformInterfaceMixin
-    implements WebtritCallkeepPlatform {}
+import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('WebtritCallkeep', () {
-    late WebtritCallkeepPlatform webtritCallkeepPlatform;
+  setUp(() {
+    WebtritCallkeepPlatform.instance.setUp(
+      const CallkeepOptions(
+        ios: CallkeepIOSOptions(
+          localizedName: 'Test',
+          maximumCallGroups: 1,
+          maximumCallsPerCallGroup: 1,
+          supportedHandleTypes: {CallkeepHandleType.number},
+        ),
+        android: CallkeepAndroidOptions(
+          incomingPath: CallPathKeyConst.callPath,
+          rootPath: CallPathKeyConst.mainPath,
+        ),
+      ),
+    );
+  });
 
-    setUp(() {
-      webtritCallkeepPlatform = MockWebtritCallkeepPlatform();
-      WebtritCallkeepPlatform.instance = webtritCallkeepPlatform;
-    });
+  tearDown(() {
+    WebtritCallkeepPlatform.instance.tearDown();
+  });
 
-    group('getPlatformName', () {
-      test('returns correct name when platform implementation exists',
-          () async {
-        const platformName = '__test_platform__';
-        when(
-          () => webtritCallkeepPlatform.getPlatformName(),
-        ).thenAnswer((_) async => platformName);
-
-        final actualPlatformName = await getPlatformName();
-        expect(actualPlatformName, equals(platformName));
-      });
-
-      test('throws exception when platform implementation is missing',
-          () async {
-        when(
-          () => webtritCallkeepPlatform.getPlatformName(),
-        ).thenAnswer((_) async => null);
-
-        expect(getPlatformName, throwsException);
-      });
-    });
+  test('isSetUp', () async {
+    expect(await WebtritCallkeepPlatform.instance.isSetUp(), true);
   });
 }
