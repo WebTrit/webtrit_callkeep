@@ -23,4 +23,5 @@ jobs:
       flutter_channel: stable
       flutter_version: 3.13.2
       working_directory: webtrit_callkeep_web
+      format_line_length: "120"
 
