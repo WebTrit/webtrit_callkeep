@@ -44,8 +44,16 @@ class PhoneConnectionService : ConnectionService() {
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         when (intent.action) {
-            ServiceAction.OutgoingCall.action -> onOutgoingCall(CallMetadata.fromBundle(intent.extras!!))
-            ServiceAction.IncomingCall.action -> onIncomingCall(CallMetadata.fromBundle(intent.extras!!))
+            // Avoid using onStartCommand for creating outgoing calls as the service may not be functioning properly.
+            // The system is responsible for managing service creation and destruction.
+            // Use the static method `outgoingCall` of PhoneConnectionService to create outgoing calls.
+            ServiceAction.OutgoingCall.action -> {}
+
+            // Avoid using onStartCommand for creating incoming calls as the service may not be functioning properly.
+            // The system is responsible for managing service creation and destruction.
+            // Use the static method `incomingCall` of PhoneConnectionService to create incoming calls.
+            ServiceAction.IncomingCall.action -> {}
+
             ServiceAction.HungUpCall.action -> onHungUpCall(CallMetadata.fromBundle(intent.extras!!))
             ServiceAction.DeclineCall.action -> onDeclineCall(CallMetadata.fromBundle(intent.extras!!))
             ServiceAction.AnswerCall.action -> onAnswerCall(CallMetadata.fromBundle(intent.extras!!))
@@ -254,25 +262,6 @@ class PhoneConnectionService : ConnectionService() {
         }
     }
 
-    /**
-     * Handle an incoming call using the Android Telecom framework.
-     *
-     * @param metadata The [CallMetadata] for the incoming call.
-     */
-    private fun onIncomingCall(metadata: CallMetadata) {
-        FlutterLog.i(TAG, "onIncomingCall, callId: ${metadata.callId}")
-
-        val telecomManager = Telecom.getTelecomManager(applicationContext)
-        val account = Telecom.getPhoneAccountHandle(this.applicationContext)
-
-        val extras = Bundle().apply {
-            putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, account)
-            putBoolean(TelecomManager.METADATA_IN_CALL_SERVICE_RINGING, true)
-            putAll(metadata.toBundle())
-        }
-
-        telecomManager.addNewIncomingCall(account, extras)
-    }
 
     /**
      * Create an incoming connection and handle its initialization.
@@ -295,45 +284,6 @@ class PhoneConnectionService : ConnectionService() {
         return connection
     }
 
-    /**
-     * Handle an outgoing call using the Android Telecom framework.
-     *
-     * @param metadata The [CallMetadata] for the outgoing call.
-     */
-    @SuppressLint("MissingPermission")
-    private fun onOutgoingCall(metadata: CallMetadata) {
-        FlutterLog.i(TAG, "onOutgoingCall, callId: ${metadata.callId}")
-
-        val uri: Uri = Uri.fromParts(PhoneAccount.SCHEME_TEL, metadata.number, null)
-        val account = Telecom.getPhoneAccountHandle(this.applicationContext)
-
-        val extras = Bundle().apply {
-            putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, account)
-            putParcelable(TelecomManager.EXTRA_OUTGOING_CALL_EXTRAS, metadata.toBundle())
-        }
-        if (TelephonyHelper(applicationContext).isEmergencyNumber(metadata.number)) {
-            FlutterLog.i(
-                TAG, "onOutgoingCall, trying to call on emergency number: ${metadata.number}"
-            )
-            TelephonyForegroundCallkeepApi.notifyOutgoingFailure(
-                applicationContext, FailureMetadata(
-                    "Failed to establish outgoing connection: Emergency number",
-                    outgoingFailureType = OutgoingFailureType.EMERGENCY_NUMBER
-                )
-            )
-        } else {
-            // If there is already an active call not on hold, we terminate it and start a new one,
-            // otherwise, we would encounter an exception when placing the outgoing call.
-            getActiveConnection()?.let {
-                FlutterLog.i(TAG, "onOutgoingCall, hung up previous call: $it")
-                it.hungUp()
-            }
-
-
-
-            Telecom.getTelecomManager(applicationContext).placeCall(uri, extras)
-        }
-    }
 
     /**
      * Handles changes in the speaker state of a call based on the provided metadata.
@@ -513,11 +463,79 @@ class PhoneConnectionService : ConnectionService() {
             communicate(context, ServiceAction.DetachActivity, null)
         }
 
+        /**
+         * Handles new outgoing calls and starts the connection service if the service is not running.
+         * For more information on system management of creating connection services,
+         * refer to the [Android Telecom Framework Documentation](https://developer.android.com/reference/android/telecom/ConnectionService#implementing-connectionservice).
+         *
+         * @param metadata The [CallMetadata] for the incoming call.
+         */
+        @SuppressLint("MissingPermission")
+        private fun outgoingCall(context: Context, metadata: CallMetadata) {
+            FlutterLog.i(TAG, "onOutgoingCall, callId: ${metadata.callId}")
+
+            val uri: Uri = Uri.fromParts(PhoneAccount.SCHEME_TEL, metadata.number, null)
+            val account = Telecom.getPhoneAccountHandle(context)
+
+            val extras = Bundle().apply {
+                putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, account)
+                putParcelable(TelecomManager.EXTRA_OUTGOING_CALL_EXTRAS, metadata.toBundle())
+            }
+            if (TelephonyHelper(context).isEmergencyNumber(metadata.number)) {
+                FlutterLog.i(TAG, "onOutgoingCall, trying to call on emergency number: ${metadata.number}")
+                TelephonyForegroundCallkeepApi.notifyOutgoingFailure(context, FailureMetadata("Failed to establish outgoing connection: Emergency number", outgoingFailureType = OutgoingFailureType.EMERGENCY_NUMBER))
+            } else {
+                // If there is already an active call not on hold, we terminate it and start a new one,
+                // otherwise, we would encounter an exception when placing the outgoing call.
+                getActiveConnection()?.let {
+                    FlutterLog.i(TAG, "onOutgoingCall, hung up previous call: $it")
+                    it.hungUp()
+                }
+
+                Telecom.getTelecomManager(context).placeCall(uri, extras)
+            }
+        }
+
+        /**
+         * Handles new incoming calls and starts the connection service if the service is not running.
+         * For more information on system management of creating connection services,
+         * refer to the [Android Telecom Framework Documentation](https://developer.android.com/reference/android/telecom/ConnectionService#implementing-connectionservice).
+         *
+         * @param metadata The [CallMetadata] for the incoming call.
+         */
+
+        private fun incomingCall(context: Context, metadata: CallMetadata) {
+            FlutterLog.i(TAG, "onIncomingCall, callId: ${metadata.callId}")
+
+            val telecomManager = Telecom.getTelecomManager(context)
+            val account = Telecom.getPhoneAccountHandle(context)
+
+            val extras = Bundle().apply {
+                putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, account)
+                putBoolean(TelecomManager.METADATA_IN_CALL_SERVICE_RINGING, true)
+                putAll(metadata.toBundle())
+            }
+
+            telecomManager.addNewIncomingCall(account, extras)
+        }
+
         private fun communicate(context: Context, action: ServiceAction, metadata: CallMetadata?) {
-            val intent = Intent(context, PhoneConnectionService::class.java)
-            intent.action = action.action
-            metadata?.toBundle()?.let { intent.putExtras(it) }
-            context.startService(intent)
+            when (action) {
+                ServiceAction.IncomingCall -> {
+                    incomingCall(context, metadata!!)
+                }
+
+                ServiceAction.OutgoingCall -> {
+                    outgoingCall(context, metadata!!)
+                }
+
+                else -> {
+                    val intent = Intent(context, PhoneConnectionService::class.java)
+                    intent.action = action.action
+                    metadata?.toBundle()?.let { intent.putExtras(it) }
+                    context.startService(intent)
+                }
+            }
         }
     }
 }
