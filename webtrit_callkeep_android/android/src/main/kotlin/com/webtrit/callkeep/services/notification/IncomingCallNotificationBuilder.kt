@@ -25,12 +25,6 @@ class IncomingCallNotificationBuilder(
     }
 
     private fun registerNotificationChannel() {
-//        val audioAttributes =
-//            AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
-//                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()
-
-//        val ringtoneUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-
         val notificationChannel = NotificationChannel(
             INCOMING_CALL_NOTIFICATION_CHANNEL_ID,
             context.getString(R.string.push_notification_incoming_call_channel_title),
@@ -38,10 +32,8 @@ class IncomingCallNotificationBuilder(
         ).apply {
             description =
                 context.getString(R.string.push_notification_incoming_call_channel_description)
-//            enableVibration(true)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             setShowBadge(true)
-//            setSound(ringtoneUri, audioAttributes)
         }
         getNotificationManager(context).createNotificationChannel(notificationChannel)
     }
