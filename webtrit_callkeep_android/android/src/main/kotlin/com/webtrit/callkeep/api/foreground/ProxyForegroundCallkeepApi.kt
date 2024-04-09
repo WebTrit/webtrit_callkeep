@@ -13,12 +13,15 @@ import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.common.models.CallMetadata
 import com.webtrit.callkeep.common.models.toPHandle
 import com.webtrit.callkeep.services.NotificationService
+import com.webtrit.callkeep.services.AudioService
 
 class ProxyForegroundCallkeepApi(
     private val activity: Activity, private val flutterDelegateApi: PDelegateFlutterApi
 ) : ForegroundCallkeepApi {
     private var isSetup = false
     private val notificationService = NotificationService(activity)
+    private val audioService = AudioService(activity)
+
 
     override fun setUp(options: POptions, callback: (Result<Unit>) -> Unit) {
         if (!isSetup) {
@@ -46,6 +49,7 @@ class ProxyForegroundCallkeepApi(
         metadata: CallMetadata, callback: (Result<PIncomingCallError?>) -> Unit
     ) {
         notificationService.showIncomingCallNotification(metadata, hasAnswerButton = false)
+        audioService.startRingtone()
         callback.invoke(Result.success(null))
     }
 
@@ -68,6 +72,7 @@ class ProxyForegroundCallkeepApi(
         flutterDelegateApi.performEndCall(metadata.callId) {}
         flutterDelegateApi.didDeactivateAudioSession {}
         notificationService.cancelActiveNotification()
+        audioService.stopRingtone()
         if (Platform.isLockScreen(activity)) {
             activity.finish()
         }
@@ -87,6 +92,7 @@ class ProxyForegroundCallkeepApi(
         flutterDelegateApi.didDeactivateAudioSession {}
 
         notificationService.cancelActiveNotification()
+        audioService.stopRingtone()
         if (Platform.isLockScreen(activity)) {
             activity.finish()
         }

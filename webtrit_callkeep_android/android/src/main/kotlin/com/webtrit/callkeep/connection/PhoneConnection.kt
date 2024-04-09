@@ -91,6 +91,7 @@ class PhoneConnection internal constructor(
      */
     override fun onShowIncomingCallUi() {
         notificationService.showIncomingCallNotification(metadata)
+        audioService.startRingtone()
     }
 
     /**
@@ -106,6 +107,7 @@ class PhoneConnection internal constructor(
         try {
             notificationService.cancelIncomingNotification()
             notificationService.cancelMissedCall(metadata)
+            audioService.stopRingtone()
         } catch (e: Exception) {
             FlutterLog.e(TAG, "onAnswer: $e");
         }
@@ -139,6 +141,7 @@ class PhoneConnection internal constructor(
 
         PhoneConnectionService.remove(metadata.callId)
         notificationService.cancelActiveNotification()
+        audioService.stopRingtone()
         TelephonyForegroundCallkeepApi.notifyDeclineCall(context, metadata)
         destroy()
     }
@@ -287,6 +290,7 @@ class PhoneConnection internal constructor(
      */
     private fun onActiveConnection() {
         notificationService.cancelActiveNotification()
+        audioService.stopRingtone()
         notificationService.showActiveCallNotification(metadata)
         if (Build.VERSION.SDK_INT == Build.VERSION_CODES.O_MR1) {
             TelephonyForegroundCallkeepApi.notifyMuting(
