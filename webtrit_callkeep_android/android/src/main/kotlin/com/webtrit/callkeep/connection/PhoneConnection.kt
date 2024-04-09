@@ -14,6 +14,7 @@ import android.util.Log
 import com.webtrit.callkeep.FlutterLog
 import com.webtrit.callkeep.api.background.TelephonyBackgroundCallkeepApi
 import com.webtrit.callkeep.api.foreground.TelephonyForegroundCallkeepApi
+import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.common.models.CallMetadata
 import com.webtrit.callkeep.services.AudioService
 import com.webtrit.callkeep.services.NotificationService
@@ -60,6 +61,9 @@ class PhoneConnection internal constructor(
      */
     fun establish() {
         Log.d(TAG, "PhoneConnection:establish")
+        // Launch the activity if, for example, an outgoing call was started and an answer happened while the activity was hidden
+        // This ensures that the user interface is properly displayed and active
+        context.startActivity(Platform.getLaunchActivity(context))
         setActive()
     }
 
