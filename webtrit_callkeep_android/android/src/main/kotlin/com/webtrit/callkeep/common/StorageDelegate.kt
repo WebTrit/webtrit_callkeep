@@ -10,6 +10,7 @@ object StorageDelegate {
     private const val COMMON_PREFERENCES_KEY = "COMMON_PREFERENCES_KEY"
     private const val FLUTTER_INCOMING_INITIAL_ROUTE = "FLUTTER_INCOMING_INITIAL_ROUTE"
     private const val FLUTTER_ROOT_INITIAL_ROUTE = "FLUTTER_ROOT_INITIAL_ROUTE"
+    private const val RINGTONE_PATH_KEY = "RINGTONE_PATH_KEY"
 
     private var sharedPreferences: SharedPreferences? = null
 
@@ -53,6 +54,29 @@ object StorageDelegate {
     fun getRootPath(context: Context): String {
         return getSharedPreferences(context)?.getString(FLUTTER_ROOT_INITIAL_ROUTE, "/") ?: "/"
     }
+
+
+    /**
+     * Initializes the ringtone path in SharedPreferences.
+     *
+     * @param context The application context.
+     * @param path The ringtone path to store.
+     */
+    fun initRingtonePath(context: Context, path: String?) {
+        if (path == null) return
+        getSharedPreferences(context)?.edit()?.putString(RINGTONE_PATH_KEY, path)?.apply()
+    }
+
+    /**
+     * Retrieves the stored ringtone path from SharedPreferences.
+     *
+     * @param context The application context.
+     * @return The stored ringtone path or null if not found.
+     */
+    fun getRingtonePath(context: Context): String? {
+        return getSharedPreferences(context)?.getString(RINGTONE_PATH_KEY, null)
+    }
+
 
     private fun getSharedPreferences(context: Context?): SharedPreferences? {
         if (sharedPreferences == null) {

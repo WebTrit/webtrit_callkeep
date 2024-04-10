@@ -15,6 +15,7 @@ data class CallMetadata(
     val hasHold: Boolean? = null,
     val dualToneMultiFrequency: String? = null,
     val paths: CallPaths? = null,
+    val ringtonePath : String? = null,
     val createdTime: Long? = null,
     val acceptedTime: Long? = null,
 ) {
@@ -47,6 +48,7 @@ data class CallMetadata(
         // Add callIdentifier to the bundle
         bundle.putString(CallDataConst.CALL_ID, this.callId)
         paths?.let { bundle.putBundle("paths", it.toBundle()) }
+        ringtonePath?.let { bundle.putString("ringtonePath", it) }
 
         // Add other properties to the bundle if they are not null
         displayName?.let { bundle.putString(CallDataConst.DISPLAY_NAME, it) }
@@ -103,6 +105,8 @@ data class CallMetadata(
             val paths = bundle.getBundle("paths")?.let {
                 CallPaths.fromBundle(it)
             }
+            val ringtonePath = bundle.getString("ringtonePath")
+
             val hasVideo = bundle.getBoolean(CallDataConst.HAS_VIDEO, false)
             val hasSpeaker = bundle.getBoolean(CallDataConst.HAS_SPEAKER, false)
             val hasMute = bundle.getBoolean(CallDataConst.HAS_MUTE, false)
@@ -122,6 +126,7 @@ data class CallMetadata(
                 hasHold,
                 dualToneMultiFrequency,
                 paths,
+                ringtonePath,
                 createdTime,
                 acceptedTime
             )

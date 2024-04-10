@@ -33,6 +33,7 @@ class TelephonyForegroundCallkeepApi(
             Telecom.registerPhoneAccount(activity)
             StorageDelegate.initIncomingPath(activity, options.android.incomingPath)
             StorageDelegate.initRootPath(activity, options.android.rootPath)
+            StorageDelegate.initRingtonePath(activity, options.android.ringtoneSound)
             isSetup = true
         } else {
             FlutterLog.e(TAG, "Plugin already initialized")

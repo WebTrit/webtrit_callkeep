@@ -91,7 +91,7 @@ class PhoneConnection internal constructor(
      */
     override fun onShowIncomingCallUi() {
         notificationService.showIncomingCallNotification(metadata)
-        audioService.startRingtone()
+        audioService.startRingtone(metadata.ringtonePath)
     }
 
     /**

@@ -53,29 +53,33 @@ class AudioService(val context: Context) {
     /**
      * Start playing the ringtone.
      */
-    fun startRingtone() {
+    fun startRingtone(ringtoneSound: String?) {
         ringtone?.stop()
+        
+        if (ringtoneSound != null) {
+            val loader = FlutterInjector.instance().flutterLoader()
+            val key = loader.getLookupKeyForAsset(ringtoneSound)
 
-        val loader = FlutterInjector.instance().flutterLoader()
-        val key = loader.getLookupKeyForAsset("assets/ringtones/incoming-call-1.mp3")
+            // Load the ringtone from the assets to cache
+            // TODO: find a solution to play the ringtone directly from the assets
+            val fd = context.assets.open(key)
+            val cacheFile = File(context.cacheDir, "ringtone.mp3")
+            val outputStream = FileOutputStream(cacheFile)
+            val buf = ByteArray(1024)
+            var len: Int
+            while (fd.read(buf).also { len = it } > 0) {
+                outputStream.write(buf, 0, len)
+            }
+            fd.close()
+            outputStream.close()
 
-        // Load the ringtone from the assets to cache
-        // TODO: find a solution to play the ringtone directly from the assets
-        val fd = context.assets.open(key)
-        val cacheFile = File(context.cacheDir, "ringtone.mp3")
-        val outputStream = FileOutputStream(cacheFile)
-        val buf = ByteArray(1024)
-        var len: Int
-        while (fd.read(buf).also { len = it } > 0) {
-            outputStream.write(buf, 0, len)
+            ringtone = RingtoneManager.getRingtone(context, Uri.fromFile(cacheFile))
+        } else {
+            ringtone =
+                RingtoneManager.getRingtone(context, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))
         }
-        fd.close()
-        outputStream.close()
 
-        ringtone = RingtoneManager.getRingtone(context, Uri.fromFile(cacheFile))
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            ringtone?.isLooping = true
-        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) ringtone?.isLooping = true
 
         ringtone?.play()
     }
@@ -86,5 +90,5 @@ class AudioService(val context: Context) {
     fun stopRingtone() {
         ringtone?.stop()
     }
-    
+
 }
