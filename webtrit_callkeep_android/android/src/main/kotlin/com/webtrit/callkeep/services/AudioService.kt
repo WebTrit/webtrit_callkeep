@@ -5,11 +5,13 @@ import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.media.Ringtone
 import android.media.RingtoneManager
+import android.net.Uri
+import io.flutter.FlutterInjector
 
-class AudioService(context: Context) {
+
+class AudioService(val context: Context) {
     private val audioManager = requireNotNull(context.getSystemService(Context.AUDIO_SERVICE) as AudioManager)
-    private val ringtone = RingtoneManager.getRingtone(context, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))
-
+    private var ringtone: Ringtone? = null
 
     private fun isInputDeviceConnected(type: Int): Boolean {
         val devices = audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)
@@ -48,6 +50,18 @@ class AudioService(context: Context) {
      * Start playing the ringtone.
      */
     fun startRingtone() {
+        ringtone?.stop()
+
+        val loader = FlutterInjector.instance().flutterLoader()
+        val key = loader.getLookupKeyForAsset("assets/ringtones/incoming-call-1.mp3")
+        val uri = Uri.parse(key)
+
+        val ringtone = RingtoneManager.getRingtone(context, uri)
+
+        val fd = context.assets.openFd(key)
+        println("FD: ${fd.length}")
+
+
         ringtone.play()
     }
 
@@ -55,6 +69,6 @@ class AudioService(context: Context) {
      * Stop playing the ringtone.
      */
     fun stopRingtone() {
-        ringtone.stop()
+        ringtone?.stop()
     }
 }
