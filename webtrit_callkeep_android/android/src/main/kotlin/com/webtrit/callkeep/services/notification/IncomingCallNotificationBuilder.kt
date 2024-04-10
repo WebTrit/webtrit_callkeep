@@ -34,6 +34,7 @@ class IncomingCallNotificationBuilder(
                 context.getString(R.string.push_notification_incoming_call_channel_description)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             setShowBadge(true)
+            setSound(null, null)
         }
         getNotificationManager(context).createNotificationChannel(notificationChannel)
     }
