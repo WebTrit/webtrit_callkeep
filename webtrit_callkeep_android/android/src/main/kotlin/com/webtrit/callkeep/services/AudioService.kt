@@ -86,28 +86,5 @@ class AudioService(val context: Context) {
     fun stopRingtone() {
         ringtone?.stop()
     }
-
-    fun getRobotCacheFile(context: Context): File {
-        val cacheFile = File(context.cacheDir, "robot.png")
-        try {
-            val inputStream = context.assets.open("robot.png")
-            try {
-                val outputStream = FileOutputStream(cacheFile)
-                try {
-                    val buf = ByteArray(1024)
-                    var len: Int
-                    while (inputStream.read(buf).also { len = it } > 0) {
-                        outputStream.write(buf, 0, len)
-                    }
-                } finally {
-                    outputStream.close()
-                }
-            } finally {
-                inputStream.close()
-            }
-        } catch (e: IOException) {
-            throw IOException("Could not open robot png", e)
-        }
-        return cacheFile
-    }
+    
 }
