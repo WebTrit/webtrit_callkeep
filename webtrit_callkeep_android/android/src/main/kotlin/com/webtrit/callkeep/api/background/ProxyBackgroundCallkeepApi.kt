@@ -9,6 +9,7 @@ import com.webtrit.callkeep.common.ApplicationData
 import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.common.models.CallMetadata
 import com.webtrit.callkeep.services.NotificationService
+import com.webtrit.callkeep.services.AudioService
 
 /**
  * This class acts as a proxy for handling telephony-related operations in cases where the actual telephony module is not available.
@@ -22,6 +23,7 @@ class ProxyBackgroundCallkeepApi(
     private val api: PDelegateBackgroundServiceFlutterApi,
 ) : BackgroundCallkeepApi {
     private val notificationService = NotificationService(context)
+    private val audioService = AudioService(context)
 
     /**
      * Registers a broadcast receiver to listen for events.
@@ -46,6 +48,7 @@ class ProxyBackgroundCallkeepApi(
      */
     override fun incomingCall(metadata: CallMetadata, callback: (Result<Unit>) -> Unit) {
         notificationService.showIncomingCallNotification(metadata, hasAnswerButton = false)
+        audioService.startRingtone()
         callback.invoke(Result.success(Unit))
     }
 
@@ -56,6 +59,7 @@ class ProxyBackgroundCallkeepApi(
      */
     override fun endCall(metadata: CallMetadata) {
         notificationService.cancelActiveNotification()
+        audioService.stopRingtone()
         // Perform end call action (custom logic)
         api.performEndCall(metadata.callId) {}
     }
@@ -86,6 +90,7 @@ class ProxyBackgroundCallkeepApi(
      */
     override fun hungUp(metadata: CallMetadata, callback: (Result<Unit>) -> Unit) {
         notificationService.cancelActiveNotification()
+        audioService.stopRingtone()
         callback(Result.success(Unit))
     }
 
