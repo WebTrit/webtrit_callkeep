@@ -5,12 +5,14 @@ import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.media.Ringtone
 import android.media.RingtoneManager
+import android.os.Build
 
-class AudioService(context: Context) {
+import com.webtrit.callkeep.common.FlutterAssetManager
+
+class AudioService(val context: Context) {
     private val audioManager = requireNotNull(context.getSystemService(Context.AUDIO_SERVICE) as AudioManager)
-    private val ringtone = RingtoneManager.getRingtone(context, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))
-
-
+    private var ringtone: Ringtone? = null
+    
     private fun isInputDeviceConnected(type: Int): Boolean {
         val devices = audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)
         return devices.any { it.type == type }
@@ -43,18 +45,29 @@ class AudioService(context: Context) {
         return isInputDeviceConnected(AudioDeviceInfo.TYPE_BLUETOOTH_SCO)
     }
 
-
     /**
      * Start playing the ringtone.
      */
-    fun startRingtone() {
-        ringtone.play()
+    fun startRingtone(ringtoneSound: String?) {
+        ringtone?.stop()
+
+        ringtone = if (ringtoneSound != null) {
+            val path = FlutterAssetManager(context).getAsset(ringtoneSound)
+
+            RingtoneManager.getRingtone(context, path)
+        } else {
+            RingtoneManager.getRingtone(context, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) ringtone?.isLooping = true
+
+        ringtone?.play()
     }
 
     /**
      * Stop playing the ringtone.
      */
     fun stopRingtone() {
-        ringtone.stop()
+        ringtone?.stop()
     }
 }

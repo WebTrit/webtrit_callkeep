@@ -76,12 +76,15 @@ class PigeonServiceApi(
 
         val callPath = StorageDelegate.getIncomingPath(context)
         val rootPath = StorageDelegate.getRootPath(context)
+        val ringtonePath = StorageDelegate.getRingtonePath(context)
+
         val callMetaData = CallMetadata(
             callId = callId,
             handle = handle.toCallHandle(),
             displayName = displayName,
             hasVideo = hasVideo,
             paths = CallPaths(callPath, rootPath),
+            ringtonePath = ringtonePath,
             createdTime = System.currentTimeMillis()
         )
 

@@ -27,6 +27,7 @@ class ProxyForegroundCallkeepApi(
         if (!isSetup) {
             StorageDelegate.initIncomingPath(activity, options.android.incomingPath)
             StorageDelegate.initRootPath(activity, options.android.rootPath)
+            StorageDelegate.initRingtonePath(activity, options.android.ringtoneSound)
             isSetup = true
         } else {
             FlutterLog.e(LOG_TAG, "Plugin already initialized")
@@ -49,7 +50,7 @@ class ProxyForegroundCallkeepApi(
         metadata: CallMetadata, callback: (Result<PIncomingCallError?>) -> Unit
     ) {
         notificationService.showIncomingCallNotification(metadata, hasAnswerButton = false)
-        audioService.startRingtone()
+        audioService.startRingtone(metadata.ringtonePath)
         callback.invoke(Result.success(null))
     }
 

@@ -48,7 +48,7 @@ class ProxyBackgroundCallkeepApi(
      */
     override fun incomingCall(metadata: CallMetadata, callback: (Result<Unit>) -> Unit) {
         notificationService.showIncomingCallNotification(metadata, hasAnswerButton = false)
-        audioService.startRingtone()
+        audioService.startRingtone(metadata.ringtonePath)
         callback.invoke(Result.success(Unit))
     }
 

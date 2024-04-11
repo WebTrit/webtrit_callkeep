@@ -47,13 +47,15 @@ class PigeonActivityApi(
     ) {
         val callPath = StorageDelegate.getIncomingPath(activity)
         val rootPath = StorageDelegate.getRootPath(activity)
+        val ringtonePath = StorageDelegate.getRingtonePath(activity)
 
         val callMetaData = CallMetadata(
             callId = callId,
             handle = handle.toCallHandle(),
             displayName = displayName,
             hasVideo = hasVideo,
-            paths = CallPaths(callPath, rootPath)
+            paths = CallPaths(callPath, rootPath),
+            ringtonePath = ringtonePath
         )
 
         foregroundCallkeepApi.reportNewIncomingCall(callMetaData, callback)
