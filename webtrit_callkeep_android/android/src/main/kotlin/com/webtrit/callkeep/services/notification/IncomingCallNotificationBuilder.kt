@@ -34,6 +34,7 @@ class IncomingCallNotificationBuilder(
                 context.getString(R.string.push_notification_incoming_call_channel_description)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             setShowBadge(true)
+            setSound(null, null)
         }
         getNotificationManager(context).createNotificationChannel(notificationChannel)
     }
@@ -127,7 +128,7 @@ class IncomingCallNotificationBuilder(
     ) as Boolean
 
     companion object {
-        const val INCOMING_CALL_NOTIFICATION_CHANNEL_ID = "INCOMING_CALL_NOTIFICATION_CHANNEL_ID"
+        const val INCOMING_CALL_NOTIFICATION_CHANNEL_ID = "INCOMING_CALL_NOTIFICATION_SILENT_CHANNEL_ID"
         const val NOTIFICATION_DATA_HAS_ANSWER_BUTTON = "NOTIFICATION_DATA_HAS_ANSWER_BUTTON"
     }
 }
