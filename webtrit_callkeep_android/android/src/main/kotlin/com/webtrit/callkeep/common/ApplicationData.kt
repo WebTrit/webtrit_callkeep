@@ -14,6 +14,8 @@ object ApplicationData {
 
     private var activity: Activity? = null
 
+    private lateinit var flutterAssetManager: FlutterAssetManager
+
     // The package name of the application.
     private lateinit var packageName: String
 
@@ -46,6 +48,7 @@ object ApplicationData {
      */
     fun init(context: Context) {
         packageName = context.packageName
+        flutterAssetManager = FlutterAssetManager(context)
     }
 
     fun setCurrentActivityState(event: Lifecycle.Event) {
