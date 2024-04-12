@@ -26,7 +26,7 @@ class TelephonyForegroundCallkeepApi(
     private val flutterDelegate = TelephonyForegroundCallkeepReceiver(activity, flutterDelegateApi)
 
     override fun setUp(options: POptions, callback: (Result<Unit>) -> Unit) {
-        FlutterLog.i(TAG, "setUp")
+        FlutterLog.i(TAG, "setUp: ${options.android}")
 
         if (!isSetup) {
             flutterDelegate.registerReceiver(activity)
