@@ -42,7 +42,7 @@ abstract class NotificationBuilder {
         return context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     }
 
-    fun buildOpenAppIntent(context: Context, uri: Uri): PendingIntent {
+    fun buildOpenAppIntent(context: Context, uri: Uri = Uri.EMPTY): PendingIntent {
         val hostAppActivity = Platform.getLaunchActivity(context)?.apply {
             data = uri
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP

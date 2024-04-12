@@ -39,7 +39,7 @@ class ActiveCallNotificationBuilder(
             setContentText(getMetaData().name)
             setAutoCancel(false)
             setCategory(Notification.CATEGORY_SERVICE)
-            setFullScreenIntent(buildOpenAppIntent(context, getMetaData().getCallUri()), true)
+            setFullScreenIntent(buildOpenAppIntent(context), true)
 
         }
         val notification = notificationBuilder.build()
