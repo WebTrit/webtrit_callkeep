@@ -5,6 +5,8 @@ import android.app.Activity
 import android.content.Context
 import androidx.lifecycle.Lifecycle
 
+import io.flutter.embedding.engine.plugins.FlutterPlugin.FlutterAssets
+
 /**
  * Singleton object for managing application-specific data.
  */
@@ -14,7 +16,7 @@ object ApplicationData {
 
     private var activity: Activity? = null
 
-    private lateinit var flutterAssetManager: FlutterAssetManager
+    lateinit var flutterAssetManager: FlutterAssetManager
 
     // The package name of the application.
     private lateinit var packageName: String
@@ -35,7 +37,7 @@ object ApplicationData {
     }
 
     fun detachActivity() {
-        ApplicationData.activity = null
+        activity = null
     }
 
     fun getActivityState(): Lifecycle.Event? {
@@ -46,9 +48,10 @@ object ApplicationData {
      * Initializes the com.webtrit.callkeep.common.ApplicationData with the given application context.
      * @param context The application context.
      */
-    fun init(context: Context) {
-        packageName = context.packageName
-        flutterAssetManager = FlutterAssetManager(context)
+    fun init(context: Context, assets: FlutterAssets) {
+        this.packageName = context.packageName
+        flutterAssetManager = FlutterAssetManager(context, assets)
+
     }
 
     fun setCurrentActivityState(event: Lifecycle.Event) {

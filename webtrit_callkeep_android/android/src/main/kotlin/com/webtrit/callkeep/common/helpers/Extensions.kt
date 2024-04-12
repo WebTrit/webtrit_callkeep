@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.Ringtone
 import android.os.Build
 import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
@@ -26,5 +27,11 @@ fun Context.registerCustomReceiver(receiver: BroadcastReceiver, intentFilter: In
         registerReceiver(receiver, intentFilter, Context.RECEIVER_NOT_EXPORTED)
     } else {
         registerReceiver(receiver, intentFilter)
+    }
+}
+
+fun Ringtone.setLoopingCompat(looping: Boolean) {
+    if (SDK_INT >= Build.VERSION_CODES.P) {
+        isLooping = looping
     }
 }

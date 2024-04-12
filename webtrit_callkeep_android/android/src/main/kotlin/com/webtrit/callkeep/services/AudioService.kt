@@ -5,14 +5,15 @@ import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.media.Ringtone
 import android.media.RingtoneManager
-import android.os.Build
 
-import com.webtrit.callkeep.common.FlutterAssetManager
+import com.webtrit.callkeep.FlutterLog
+import com.webtrit.callkeep.common.ApplicationData
+import com.webtrit.callkeep.common.helpers.setLoopingCompat
 
 class AudioService(val context: Context) {
     private val audioManager = requireNotNull(context.getSystemService(Context.AUDIO_SERVICE) as AudioManager)
     private var ringtone: Ringtone? = null
-    
+
     private fun isInputDeviceConnected(type: Int): Boolean {
         val devices = audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)
         return devices.any { it.type == type }
@@ -50,18 +51,30 @@ class AudioService(val context: Context) {
      */
     fun startRingtone(ringtoneSound: String?) {
         ringtone?.stop()
-
-        ringtone = if (ringtoneSound != null) {
-            val path = FlutterAssetManager(context).getAsset(ringtoneSound)
-
-            RingtoneManager.getRingtone(context, path)
-        } else {
-            RingtoneManager.getRingtone(context, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) ringtone?.isLooping = true
-
+        ringtone = ringtoneSound?.let { getRingtone(it) } ?: getDefaultRingtone()
+        ringtone?.setLoopingCompat(true)
         ringtone?.play()
+    }
+
+    private fun getDefaultRingtone(): Ringtone {
+        return RingtoneManager.getRingtone(context, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))
+    }
+
+    private fun getRingtone(asset: String): Ringtone {
+        return try {
+            val path = ApplicationData.flutterAssetManager.getAsset(asset)
+
+            if (path != null) {
+                FlutterLog.i("AudioService", "Used asset: $path")
+                return RingtoneManager.getRingtone(context, path)
+            } else {
+                FlutterLog.i("AudioService", "Used system ringtone")
+                getDefaultRingtone()
+            }
+        } catch (e: Exception) {
+            FlutterLog.e("AudioService", "$e")
+            getDefaultRingtone()
+        }
     }
 
     /**
