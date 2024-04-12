@@ -26,7 +26,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, LifecycleEventObserv
         val binaryMessage = flutterPluginBinding.binaryMessenger
         val applicationContext = flutterPluginBinding.applicationContext
 
-        this.state = FlutterState(binaryMessage, applicationContext)
+        this.state = FlutterState(binaryMessage, applicationContext, flutterPluginBinding.flutterAssets)
 
         this.state?.initService()
         this.state?.attachLogs()
@@ -61,7 +61,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, LifecycleEventObserv
     }
 }
 
-private class FlutterState(val messenger: BinaryMessenger, val context: Context) {
+private class FlutterState(val messenger: BinaryMessenger, val context: Context, assets: FlutterPlugin.FlutterAssets) {
     /** Handles interactions with the API when the application is active and in the foreground */
     var pigeonActivityApi: PigeonActivityApi? = null
 
@@ -69,10 +69,10 @@ private class FlutterState(val messenger: BinaryMessenger, val context: Context)
     var pigeonServiceApi: PigeonServiceApi? = null
 
     /** Handles interactions with the logs host API */
-    var logsHostApi: PDelegateLogsFlutterApi? = null;
+    var logsHostApi: PDelegateLogsFlutterApi? = null
 
     init {
-        ApplicationData.init(context)
+        ApplicationData.init(context, assets)
     }
 
     fun attachLogs() {

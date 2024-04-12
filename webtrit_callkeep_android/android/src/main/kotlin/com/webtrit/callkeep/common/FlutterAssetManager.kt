@@ -3,7 +3,7 @@ package com.webtrit.callkeep.common
 import android.content.Context
 import android.net.Uri
 
-import io.flutter.FlutterInjector
+import io.flutter.embedding.engine.plugins.FlutterPlugin
 
 import java.io.File
 import java.io.FileOutputStream
@@ -16,19 +16,20 @@ import java.io.IOException
  *
  * Documentation: https://api.flutter.dev/javadoc/io/flutter/view/FlutterMain.html#getLookupKeyForAsset(java.lang.String)
  */
-class FlutterAssetManager(private val context: Context) {
+class FlutterAssetManager(private val context: Context, private var assets: FlutterPlugin.FlutterAssets) {
     private val cacheDir: File by lazy { context.cacheDir }
 
     fun getAsset(asset: String): Uri? {
-        val loader = FlutterInjector.instance().flutterLoader()
-        val key = loader.getLookupKeyForAsset(asset)
-        val fileName = Uri.parse(key).lastPathSegment ?: "cache";
+        val assets = assets.getAssetFilePathByName(asset)
+        val fileName = Uri.parse(assets).lastPathSegment ?: "cache"
+
+        // For note: there may be issues with cached data if, for example, another sound is saved under the same name.
         val cachedFile = File(cacheDir, fileName)
         if (cachedFile.exists()) {
             return Uri.fromFile(cachedFile)
         }
 
-        return cacheAsset(asset, fileName).let { Uri.fromFile(File(it)) }
+        return cacheAsset(assets, fileName).let { Uri.fromFile(File(it)) }
     }
 
     private fun cacheAsset(assetPath: String, fileName: String): String {
