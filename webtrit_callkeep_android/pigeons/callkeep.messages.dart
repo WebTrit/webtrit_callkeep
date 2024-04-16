@@ -158,26 +158,28 @@ abstract class PHostApi {
   @async
   void reportConnectedOutgoingCall(String callId);
 
-  @ObjCSelector('reportUpdateCall:handle:displayName:hasVideo:')
+  @ObjCSelector('reportUpdateCall:handle:displayName:hasVideo:proximityEnabled:')
   @async
   void reportUpdateCall(
     String callId,
     PHandle? handle,
     String? displayName,
     bool? hasVideo,
+    bool? proximityEnabled,
   );
 
   @ObjCSelector('reportEndCall:reason:')
   @async
   void reportEndCall(String callId, PEndCallReason reason);
 
-  @ObjCSelector('startCall:handle:displayNameOrContactIdentifier:video:')
+  @ObjCSelector('startCall:handle:displayNameOrContactIdentifier:video:proximityEnabled:')
   @async
   PCallRequestError? startCall(
     String callId,
     PHandle handle,
     String? displayNameOrContactIdentifier,
     bool video,
+    bool proximityEnabled,
   );
 
   @ObjCSelector('answerCall:')

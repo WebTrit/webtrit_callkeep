@@ -501,9 +501,9 @@ interface PHostApi {
   fun reportNewIncomingCall(callId: String, handle: PHandle, displayName: String?, hasVideo: Boolean, callback: (Result<PIncomingCallError?>) -> Unit)
   fun reportConnectingOutgoingCall(callId: String, callback: (Result<Unit>) -> Unit)
   fun reportConnectedOutgoingCall(callId: String, callback: (Result<Unit>) -> Unit)
-  fun reportUpdateCall(callId: String, handle: PHandle?, displayName: String?, hasVideo: Boolean?, callback: (Result<Unit>) -> Unit)
+  fun reportUpdateCall(callId: String, handle: PHandle?, displayName: String?, hasVideo: Boolean?, proximityEnabled: Boolean?, callback: (Result<Unit>) -> Unit)
   fun reportEndCall(callId: String, reason: PEndCallReason, callback: (Result<Unit>) -> Unit)
-  fun startCall(callId: String, handle: PHandle, displayNameOrContactIdentifier: String?, video: Boolean, callback: (Result<PCallRequestError?>) -> Unit)
+  fun startCall(callId: String, handle: PHandle, displayNameOrContactIdentifier: String?, video: Boolean, proximityEnabled: Boolean, callback: (Result<PCallRequestError?>) -> Unit)
   fun answerCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit)
   fun endCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit)
   fun setHeld(callId: String, onHold: Boolean, callback: (Result<PCallRequestError?>) -> Unit)
@@ -641,7 +641,8 @@ interface PHostApi {
             val handleArg = args[1] as PHandle?
             val displayNameArg = args[2] as String?
             val hasVideoArg = args[3] as Boolean?
-            api.reportUpdateCall(callIdArg, handleArg, displayNameArg, hasVideoArg) { result: Result<Unit> ->
+            val proximityEnabledArg = args[4] as Boolean?
+            api.reportUpdateCall(callIdArg, handleArg, displayNameArg, hasVideoArg, proximityEnabledArg) { result: Result<Unit> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(wrapError(error))
@@ -683,7 +684,8 @@ interface PHostApi {
             val handleArg = args[1] as PHandle
             val displayNameOrContactIdentifierArg = args[2] as String?
             val videoArg = args[3] as Boolean
-            api.startCall(callIdArg, handleArg, displayNameOrContactIdentifierArg, videoArg) { result: Result<PCallRequestError?> ->
+            val proximityEnabledArg = args[4] as Boolean
+            api.startCall(callIdArg, handleArg, displayNameOrContactIdentifierArg, videoArg, proximityEnabledArg) { result: Result<PCallRequestError?> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(wrapError(error))

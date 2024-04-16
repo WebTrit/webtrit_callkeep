@@ -140,7 +140,7 @@ void main() {
 
   test('Webtrit callkeep report update call', () async {
     expect(
-      () async => WebtritCallkeepPlatform.instance.reportUpdateCall(callId, handlerMock, displayName, false),
+      () async => WebtritCallkeepPlatform.instance.reportUpdateCall(callId, handlerMock, displayName, false, false),
       isA<void>(),
     );
   });
@@ -245,7 +245,7 @@ void main() {
     );
 
     WebtritCallkeepPlatform.instance.setDelegate(callkeepRelayMock);
-    await WebtritCallkeepPlatform.instance.startCall(callId, handlerMock, displayName, hasVideoMock);
+    await WebtritCallkeepPlatform.instance.startCall(callId, handlerMock, displayName, hasVideoMock, false);
 
     expect(await completerUUID.future, equals(callId));
     expect(await completerHandler.future, equals(handlerMock));

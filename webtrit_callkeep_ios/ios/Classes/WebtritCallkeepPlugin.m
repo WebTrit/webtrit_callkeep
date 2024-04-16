@@ -221,6 +221,7 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
                   handle:(nullable WTPHandle *)handle
              displayName:(nullable NSString *)displayName
                 hasVideo:(nullable NSNumber *)hasVideo
+        proximityEnabled:(nullable NSNumber *)proximityEnabled
               completion:(void (^)(FlutterError *))completion {
 #ifdef DEBUG
   NSLog(@"[Callkeep][reportUpdateCall] uuidString = %@", uuidString);
@@ -235,6 +236,14 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   if (hasVideo != nil) {
     callUpdate.hasVideo = [hasVideo boolValue];
   }
+  if (proximityEnabled != nil) {
+     if ([proximityEnabled boolValue]) {
+        [[AVAudioSession sharedInstance] setMode: AVAudioSessionModeVoiceChat error:nil];
+     } else {
+        [[AVAudioSession sharedInstance] setMode: AVAudioSessionModeVideoChat error:nil];
+     }
+  }
+    
   [_provider reportCallWithUUID:[[NSUUID alloc] initWithUUIDString:uuidString]
                         updated:callUpdate];
   [self assignIdleTimerDisabled:callUpdate.hasVideo];
@@ -258,11 +267,20 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
                         handle:(WTPHandle *)handle
 displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
                          video:(BOOL)video
+              proximityEnabled:(BOOL)proximityEnabled
                     completion:(void (^)(WTPCallRequestError *, FlutterError *))completion {
 #ifdef DEBUG
   NSLog(@"[Callkeep][startCall] uuidString = %@", uuidString);
 #endif
   NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:uuidString];
+    
+// Can be ignored, coz webrtc doing same on getusermedia before call
+// and needs to edit package to override this behavior, so we can let it go
+// if (proximityEnabled) {
+//     [[AVAudioSession sharedInstance] setMode: AVAudioSessionModeVoiceChat error:nil];
+// } else {
+//     [[AVAudioSession sharedInstance] setMode: AVAudioSessionModeVideoChat error:nil];
+// }
 
   CXStartCallAction *action = [[CXStartCallAction alloc] initWithCallUUID:uuid
                                                                    handle:[handle toCallKit]];

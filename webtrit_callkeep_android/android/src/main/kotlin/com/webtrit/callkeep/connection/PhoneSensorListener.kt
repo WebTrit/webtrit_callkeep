@@ -6,6 +6,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Build
 import android.os.PowerManager
 import android.telecom.ConnectionService
 import android.util.Log
@@ -58,20 +59,25 @@ class PhoneSensorListener : SensorEventListener {
         }
     }
 
-    fun turnOff() {
+    fun upsertProximityWakelock(turnOn: Boolean) {
         try {
-            proximityWakelock?.acquire()
-        } catch (x: Exception) {
-            Log.e(LOG_TAG, x.toString())
-        }
-    }
+            val proximityWakelock = proximityWakelock ?: return
+            val alreadyHeld = proximityWakelock.isHeld
 
-    fun turnOn() {
-        try {
-            if (proximityWakelock?.isHeld == true) proximityWakelock?.release(1)
+            if (turnOn && !alreadyHeld) {
+                proximityWakelock.acquire(60 * 60 * 1000L /*60 minutes*/)
+            }
+            if (!turnOn && alreadyHeld) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    proximityWakelock.release(1)
+                } else {
+                    proximityWakelock.release()
+                }
+            }
         } catch (x: Exception) {
             Log.e(LOG_TAG, x.toString())
         }
+
     }
 
     override fun onAccuracyChanged(p0: Sensor?, p1: Int) = Unit

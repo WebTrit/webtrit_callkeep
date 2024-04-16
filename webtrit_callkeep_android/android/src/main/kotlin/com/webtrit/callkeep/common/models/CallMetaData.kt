@@ -11,6 +11,7 @@ data class CallMetadata(
     val handle: CallHandle? = null,
     val hasVideo: Boolean? = null,
     val hasSpeaker: Boolean? = null,
+    val proximityEnabled: Boolean? = null,
     val hasMute: Boolean? = null,
     val hasHold: Boolean? = null,
     val dualToneMultiFrequency: String? = null,
@@ -24,6 +25,8 @@ data class CallMetadata(
     val isVideo get() = hasVideo ?: false
 
     val isSpeaker get() = hasSpeaker ?: false
+
+    val isProximityEnabled get() = proximityEnabled ?: false
 
     val isHold get() = hasHold ?: false
 
@@ -55,6 +58,7 @@ data class CallMetadata(
         handle?.let { bundle.putBundle(CallDataConst.NUMBER, it.toBundle()) }
         hasVideo?.let { bundle.putBoolean(CallDataConst.HAS_VIDEO, it) }
         hasSpeaker?.let { bundle.putBoolean(CallDataConst.HAS_SPEAKER, it) }
+        proximityEnabled?.let { bundle.putBoolean(CallDataConst.PROXIMITY_ENABLED, it) }
         hasMute?.let { bundle.putBoolean(CallDataConst.HAS_MUTE, it) }
         hasHold?.let { bundle.putBoolean(CallDataConst.HAS_HOLD, it) }
         dualToneMultiFrequency?.let { bundle.putString(CallDataConst.DTMF, it) }
@@ -72,6 +76,7 @@ data class CallMetadata(
             // Add the other properties you want to extract from the `Bundle`
             CallDataConst.HAS_VIDEO to isVideo,
             CallDataConst.HAS_SPEAKER to hasSpeaker,
+            CallDataConst.PROXIMITY_ENABLED to proximityEnabled,
             CallDataConst.HAS_MUTE to hasMute,
             CallDataConst.HAS_HOLD to isHold,
             CallDataConst.DTMF to dtmf
@@ -109,6 +114,7 @@ data class CallMetadata(
 
             val hasVideo = bundle.getBoolean(CallDataConst.HAS_VIDEO, false)
             val hasSpeaker = bundle.getBoolean(CallDataConst.HAS_SPEAKER, false)
+            val proximityEnabled = bundle.getBoolean(CallDataConst.PROXIMITY_ENABLED, false)
             val hasMute = bundle.getBoolean(CallDataConst.HAS_MUTE, false)
             val hasHold = bundle.getBoolean(CallDataConst.HAS_HOLD, false)
             val dualToneMultiFrequency = bundle.getString(CallDataConst.DTMF)
@@ -122,6 +128,7 @@ data class CallMetadata(
                 handle,
                 hasVideo,
                 hasSpeaker,
+                proximityEnabled,
                 hasMute,
                 hasHold,
                 dualToneMultiFrequency,

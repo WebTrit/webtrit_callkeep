@@ -83,8 +83,9 @@ class Callkeep {
     CallkeepHandle? handle,
     String? displayName,
     bool? hasVideo,
+    bool? proximityEnabled,
   }) {
-    return platform.reportUpdateCall(callId, handle, displayName, hasVideo);
+    return platform.reportUpdateCall(callId, handle, displayName, hasVideo, proximityEnabled);
   }
 
   /// Report the end of call with the given [callId].
@@ -101,8 +102,9 @@ class Callkeep {
     CallkeepHandle handle, {
     String? displayNameOrContactIdentifier,
     bool hasVideo = false,
+    bool proximityEnabled = false,
   }) {
-    return platform.startCall(callId, handle, displayNameOrContactIdentifier, hasVideo);
+    return platform.startCall(callId, handle, displayNameOrContactIdentifier, hasVideo, proximityEnabled);
   }
 
   /// Answer a call with the given [callId].

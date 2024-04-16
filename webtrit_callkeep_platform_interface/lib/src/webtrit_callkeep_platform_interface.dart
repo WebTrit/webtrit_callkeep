@@ -105,6 +105,7 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     CallkeepHandle? handle,
     String? displayName,
     bool? hasVideo,
+    bool? proximityEnabled,
   ) {
     throw UnimplementedError('reportUpdateCall() has not been implemented.');
   }
@@ -123,6 +124,7 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     CallkeepHandle handle,
     String? displayNameOrContactIdentifier,
     bool video,
+    bool proximityEnabled,
   ) {
     throw UnimplementedError('startCall() has not been implemented.');
   }
