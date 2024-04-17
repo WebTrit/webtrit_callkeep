@@ -26,13 +26,15 @@ class PigeonActivityApi(
         handle: PHandle,
         displayNameOrContactIdentifier: String?,
         video: Boolean,
+        proximityEnabled: Boolean,
         callback: (Result<PCallRequestError?>) -> Unit
     ) {
         val callMetaData = CallMetadata(
             callId = callId,
             handle = handle.toCallHandle(),
             displayName = displayNameOrContactIdentifier,
-            hasVideo = video
+            hasVideo = video,
+            proximityEnabled = proximityEnabled,
         )
 
         foregroundCallkeepApi.startCall(callMetaData, callback)
@@ -89,13 +91,15 @@ class PigeonActivityApi(
         handle: PHandle?,
         displayName: String?,
         hasVideo: Boolean?,
+        proximityEnabled: Boolean?,
         callback: (Result<Unit>) -> Unit
     ) {
         val callMetaData = CallMetadata(
             callId = callId,
             handle = handle?.toCallHandle(),
             displayName = displayName,
-            hasVideo = hasVideo
+            hasVideo = hasVideo,
+            proximityEnabled = proximityEnabled,
         )
         foregroundCallkeepApi.reportUpdateCall(callMetaData, callback)
     }

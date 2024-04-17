@@ -599,7 +599,7 @@ class PHostApi {
     }
   }
 
-  Future<void> reportUpdateCall(String callId, PHandle? handle, String? displayName, bool? hasVideo) async {
+  Future<void> reportUpdateCall(String callId, PHandle? handle, String? displayName, bool? hasVideo, bool? proximityEnabled) async {
     const String __pigeon_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.reportUpdateCall';
     final BasicMessageChannel<Object?> __pigeon_channel = BasicMessageChannel<Object?>(
       __pigeon_channelName,
@@ -607,7 +607,7 @@ class PHostApi {
       binaryMessenger: __pigeon_binaryMessenger,
     );
     final List<Object?>? __pigeon_replyList =
-        await __pigeon_channel.send(<Object?>[callId, handle, displayName, hasVideo]) as List<Object?>?;
+        await __pigeon_channel.send(<Object?>[callId, handle, displayName, hasVideo, proximityEnabled]) as List<Object?>?;
     if (__pigeon_replyList == null) {
       throw _createConnectionError(__pigeon_channelName);
     } else if (__pigeon_replyList.length > 1) {
@@ -643,7 +643,7 @@ class PHostApi {
     }
   }
 
-  Future<PCallRequestError?> startCall(String callId, PHandle handle, String? displayNameOrContactIdentifier, bool video) async {
+  Future<PCallRequestError?> startCall(String callId, PHandle handle, String? displayNameOrContactIdentifier, bool video, bool proximityEnabled) async {
     const String __pigeon_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.startCall';
     final BasicMessageChannel<Object?> __pigeon_channel = BasicMessageChannel<Object?>(
       __pigeon_channelName,
@@ -651,7 +651,7 @@ class PHostApi {
       binaryMessenger: __pigeon_binaryMessenger,
     );
     final List<Object?>? __pigeon_replyList =
-        await __pigeon_channel.send(<Object?>[callId, handle, displayNameOrContactIdentifier, video]) as List<Object?>?;
+        await __pigeon_channel.send(<Object?>[callId, handle, displayNameOrContactIdentifier, video, proximityEnabled]) as List<Object?>?;
     if (__pigeon_replyList == null) {
       throw _createConnectionError(__pigeon_channelName);
     } else if (__pigeon_replyList.length > 1) {

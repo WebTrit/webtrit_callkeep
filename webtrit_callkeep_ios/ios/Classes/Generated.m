@@ -621,14 +621,15 @@ void SetUpWTPHostApi(id<FlutterBinaryMessenger> binaryMessenger, NSObject<WTPHos
         binaryMessenger:binaryMessenger
         codec:WTPHostApiGetCodec()];
     if (api) {
-      NSCAssert([api respondsToSelector:@selector(reportUpdateCall:handle:displayName:hasVideo:completion:)], @"WTPHostApi api (%@) doesn't respond to @selector(reportUpdateCall:handle:displayName:hasVideo:completion:)", api);
+      NSCAssert([api respondsToSelector:@selector(reportUpdateCall:handle:displayName:hasVideo:proximityEnabled:completion:)], @"WTPHostApi api (%@) doesn't respond to @selector(reportUpdateCall:handle:displayName:hasVideo:proximityEnabled:completion:)", api);
       [channel setMessageHandler:^(id _Nullable message, FlutterReply callback) {
         NSArray *args = message;
         NSString *arg_uuidString = GetNullableObjectAtIndex(args, 0);
         WTPHandle *arg_handle = GetNullableObjectAtIndex(args, 1);
         NSString *arg_displayName = GetNullableObjectAtIndex(args, 2);
         NSNumber *arg_hasVideo = GetNullableObjectAtIndex(args, 3);
-        [api reportUpdateCall:arg_uuidString handle:arg_handle displayName:arg_displayName hasVideo:arg_hasVideo completion:^(FlutterError *_Nullable error) {
+        NSNumber *arg_proximityEnabled = GetNullableObjectAtIndex(args, 4);
+        [api reportUpdateCall:arg_uuidString handle:arg_handle displayName:arg_displayName hasVideo:arg_hasVideo proximityEnabled:arg_proximityEnabled completion:^(FlutterError *_Nullable error) {
           callback(wrapResult(nil, error));
         }];
       }];
@@ -663,14 +664,15 @@ void SetUpWTPHostApi(id<FlutterBinaryMessenger> binaryMessenger, NSObject<WTPHos
         binaryMessenger:binaryMessenger
         codec:WTPHostApiGetCodec()];
     if (api) {
-      NSCAssert([api respondsToSelector:@selector(startCall:handle:displayNameOrContactIdentifier:video:completion:)], @"WTPHostApi api (%@) doesn't respond to @selector(startCall:handle:displayNameOrContactIdentifier:video:completion:)", api);
+      NSCAssert([api respondsToSelector:@selector(startCall:handle:displayNameOrContactIdentifier:video:proximityEnabled:completion:)], @"WTPHostApi api (%@) doesn't respond to @selector(startCall:handle:displayNameOrContactIdentifier:video:proximityEnabled:completion:)", api);
       [channel setMessageHandler:^(id _Nullable message, FlutterReply callback) {
         NSArray *args = message;
         NSString *arg_uuidString = GetNullableObjectAtIndex(args, 0);
         WTPHandle *arg_handle = GetNullableObjectAtIndex(args, 1);
         NSString *arg_displayNameOrContactIdentifier = GetNullableObjectAtIndex(args, 2);
         BOOL arg_video = [GetNullableObjectAtIndex(args, 3) boolValue];
-        [api startCall:arg_uuidString handle:arg_handle displayNameOrContactIdentifier:arg_displayNameOrContactIdentifier video:arg_video completion:^(WTPCallRequestError *_Nullable output, FlutterError *_Nullable error) {
+        BOOL arg_proximityEnabled = [GetNullableObjectAtIndex(args, 4) boolValue];
+        [api startCall:arg_uuidString handle:arg_handle displayNameOrContactIdentifier:arg_displayNameOrContactIdentifier video:arg_video proximityEnabled:arg_proximityEnabled completion:^(WTPCallRequestError *_Nullable output, FlutterError *_Nullable error) {
           callback(wrapResult(output, error));
         }];
       }];

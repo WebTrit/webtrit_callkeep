@@ -94,11 +94,18 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
     CallkeepHandle? handle,
     String? displayName,
     bool? hasVideo,
+    bool? proximityEnabled,
   ) async {
     final uuid = _toUUID(callId);
     _uuidIdMapping[uuid] = callId;
 
-    return _api.reportUpdateCall(uuid, handle?.toPigeon(), displayName, hasVideo);
+    return _api.reportUpdateCall(
+      uuid,
+      handle?.toPigeon(),
+      displayName,
+      hasVideo,
+      proximityEnabled,
+    );
   }
 
   @override
@@ -115,6 +122,7 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
     CallkeepHandle handle,
     String? displayNameOrContactIdentifier,
     bool video,
+    bool proximityEnabled,
   ) async {
     final uuid = _toUUID(callId);
     _uuidIdMapping[uuid] = callId;
@@ -125,6 +133,7 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
           handle.toPigeon(),
           displayNameOrContactIdentifier,
           video,
+          proximityEnabled,
         )
         .then((value) => value?.value.toCallkeep());
   }

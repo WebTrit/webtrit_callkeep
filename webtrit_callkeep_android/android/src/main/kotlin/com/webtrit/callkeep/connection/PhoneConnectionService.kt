@@ -35,11 +35,15 @@ class PhoneConnectionService : ConnectionService() {
 
         sensor.setSensorHandler {
             state.setNearestState(it)
-            if (state.isAudioState()) {
-                if (state.isUserNear()) sensor.turnOff()
-                if (state.isUserOnDistance()) sensor.turnOn()
-            }
+            upsertProximityWakelock()
         }
+    }
+
+    private fun upsertProximityWakelock() {
+        val isNear = state.isUserNear()
+        val shouldListen = state.shouldListenProximity()
+        sensor.upsertProximityWakelock(shouldListen && isNear)
+
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
@@ -235,7 +239,10 @@ class PhoneConnectionService : ConnectionService() {
     private fun onUpdateCall(metadata: CallMetadata) {
         try {
             FlutterLog.i(TAG, "onUpdateCall, callId: ${metadata.callId}")
-            state.setVideoState(metadata.isVideo)
+            if (metadata.proximityEnabled != null) {
+                state.setShouldListenProximity(metadata.proximityEnabled)
+                upsertProximityWakelock()
+            }
             connections[metadata.callId]!!.run {
                 updateData(metadata)
             }
@@ -278,7 +285,7 @@ class PhoneConnectionService : ConnectionService() {
 
         val connection = PhoneConnection.createIncomingPhoneConnection(applicationContext, metaData)
 
-        state.setVideoState(metaData.isVideo)
+        state.setShouldListenProximity(metaData.proximityEnabled ?: false)
         connections[metaData.callId] = connection
 
         return connection
@@ -314,7 +321,8 @@ class PhoneConnectionService : ConnectionService() {
         val metaData = CallMetadata.fromBundle(request.extras)
         val connection = PhoneConnection.createOutgoingPhoneConnection(applicationContext, metaData)
 
-        state.setVideoState(metaData.isVideo)
+
+        state.setShouldListenProximity(metaData.proximityEnabled ?: false)
 
         connections[metaData.callId] = connection
 

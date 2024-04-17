@@ -88,6 +88,7 @@ class MockWebtritCallkeepPlatformInterfacePlatform with MockPlatformInterfaceMix
     CallkeepHandle? handle,
     String? displayName,
     bool? hasVideo,
+    bool? proximityEnabled,
   ) {
     return Future.value();
   }
@@ -148,6 +149,7 @@ class MockWebtritCallkeepPlatformInterfacePlatform with MockPlatformInterfaceMix
     CallkeepHandle handle,
     String? displayNameOrContactIdentifier,
     bool video,
+    bool proximityEnabled,
   ) {
     _callkeepDelegate?.performStartCall(callId, handle, displayNameOrContactIdentifier, video);
     return Future.value();

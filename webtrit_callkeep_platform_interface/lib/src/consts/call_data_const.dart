@@ -31,6 +31,10 @@ class CallDataConst {
   @MultiplatformConstField()
   static const String hasSpeaker = 'hasSpeaker';
 
+  /// Is proximity enabled.
+  @MultiplatformConstField()
+  static const String proximityEnabled = 'proximityEnabled';
+
   /// Is call muted.
   @MultiplatformConstField()
   static const String hasMute = 'hasMute';

@@ -102,8 +102,9 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     CallkeepHandle? handle,
     String? displayName,
     bool? hasVideo,
+    bool? proximityEnabled,
   ) {
-    return _api.reportUpdateCall(callId, handle?.toPigeon(), displayName, hasVideo);
+    return _api.reportUpdateCall(callId, handle?.toPigeon(), displayName, hasVideo, proximityEnabled);
   }
 
   @override
@@ -120,9 +121,10 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     CallkeepHandle handle,
     String? displayNameOrContactIdentifier,
     bool video,
+    bool proximityEnabled,
   ) {
     return _api
-        .startCall(callId, handle.toPigeon(), displayNameOrContactIdentifier, video)
+        .startCall(callId, handle.toPigeon(), displayNameOrContactIdentifier, video, proximityEnabled)
         .then((value) => value?.value.toCallkeep());
   }
 
