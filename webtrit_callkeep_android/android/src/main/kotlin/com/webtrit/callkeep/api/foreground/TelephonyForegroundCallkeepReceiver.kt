@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
 
+import com.webtrit.callkeep.FlutterLog
 import com.webtrit.callkeep.PCallRequestError
 import com.webtrit.callkeep.PCallRequestErrorEnum
 import com.webtrit.callkeep.PDelegateFlutterApi
@@ -40,10 +41,15 @@ class TelephonyForegroundCallkeepReceiver(
      */
     fun registerReceiver(context: Context) {
         if (!isReceiverRegistered) {
+            FlutterLog.i(TAG, "register receiver")
+
             val intentFilter = createIntentFilter()
             context.registerCustomReceiver(this, intentFilter)
             isReceiverRegistered = true
+        } else {
+            FlutterLog.i(TAG, "skipped receiver already registered")
         }
+
     }
 
     private fun createIntentFilter(): IntentFilter {
@@ -58,10 +64,15 @@ class TelephonyForegroundCallkeepReceiver(
         intentFilter.addAction(ReportAction.DidPushIncomingCall.action)
         intentFilter.addAction(FailureAction.IncomingFailure.action)
         intentFilter.addAction(FailureAction.OutgoingFailure.action)
+
+        FlutterLog.i(TAG, "Create registration of actions: ${intentFilter.actionsIterator().asSequence().toList()}")
+
         return intentFilter
     }
 
     override fun onReceive(context: Context?, intent: Intent?) {
+        FlutterLog.i(TAG, "onReceive $intent.")
+
         when (intent?.action) {
             ReportAction.DidPushIncomingCall.action -> handleDidPushIncomingCall(intent.extras)
             ReportAction.DeclineCall.action -> handleDeclineCall(intent.extras)
@@ -196,5 +207,10 @@ class TelephonyForegroundCallkeepReceiver(
      */
     fun clearOutgoingCallback() {
         this.outgoingCallback = null
+    }
+
+
+    companion object {
+        private const val TAG = "TelephonyForegroundCallkeepReceiver"
     }
 }
