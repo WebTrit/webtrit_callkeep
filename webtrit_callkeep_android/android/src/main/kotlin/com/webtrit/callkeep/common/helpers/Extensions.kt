@@ -24,7 +24,10 @@ inline fun <reified T : Parcelable> Bundle.serializable(key: String): T? = when 
 @SuppressLint("UnspecifiedRegisterReceiverFlag")
 fun Context.registerCustomReceiver(receiver: BroadcastReceiver, intentFilter: IntentFilter) {
     if (SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        registerReceiver(receiver, intentFilter, Context.RECEIVER_NOT_EXPORTED)
+        // TODO: Serdun - Address the Android 14 issue with receiving actions from the connection service with the flag RECEIVER_NOT_EXPORTED.
+        // Investigate alternative methods for communication that do not require opening the API to another app.
+        // As a temporary solution, use RECEIVER_EXPORTED.        registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED)
+        registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED)
     } else {
         registerReceiver(receiver, intentFilter)
     }
