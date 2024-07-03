@@ -8,7 +8,6 @@ import android.util.Log
 
 import com.webtrit.callkeep.FlutterLog
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
-import com.webtrit.callkeep.R
 import com.webtrit.callkeep.api.background.ReportAction
 import com.webtrit.callkeep.common.ApplicationData
 import com.webtrit.callkeep.common.helpers.Platform
@@ -73,13 +72,7 @@ class TelephonyBackgroundCallkeepReceiver(
                     data = metadata.getCallUri()
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
                 }
-
-                PendingIntent.getActivity(
-                    context,
-                    R.integer.notification_incoming_call_id,
-                    hostAppActivity,
-                    PendingIntent.FLAG_IMMUTABLE
-                ).send()
+                context.startActivity(hostAppActivity);
             }
 
             // Notify the Flutter API that a call was accepted
