@@ -514,7 +514,21 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
   NSString *handleType = handleTypeObject;
   NSString *handleValue = handleValueObject;
   NSString *displayName = [displayNameObject isKindOfClass:[NSString class]] ? displayNameObject : nil;
-  NSNumber *hasVideo = [hasVideoObject isKindOfClass:[NSNumber class]] ? hasVideoObject : @(NO);
+
+  // Check if hasVideoObject is a string and convert it to NSNumber
+  NSNumber *hasVideo;
+  if ([hasVideoObject isKindOfClass:[NSNumber class]]) {
+      hasVideo = hasVideoObject;
+  } else if ([hasVideoObject isKindOfClass:[NSString class]]) {
+      NSString *hasVideoString = (NSString *)hasVideoObject;
+      BOOL hasVideoBool = [hasVideoString boolValue];
+      hasVideo = @(hasVideoBool);
+  } else {
+      hasVideo = @(NO);
+  }
+  // Log the value of hasVideo after initialization
+  NSLog(@"hasVideo after initialization: %@", hasVideo);
+
   NSString *callId = callIdObject;
 
   // It is crucial to use UUID version 5 (namespace name-based) based on callId to get the call UUID for reportNewIncomingCallWithUUID.
