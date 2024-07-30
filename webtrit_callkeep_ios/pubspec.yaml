@@ -12,7 +12,6 @@ flutter:
     platforms:
       ios:
         pluginClass: WebtritCallkeepPlugin
-        # dartPluginClass: WebtritCallkeepIOS // TODO?: Rename plugin class
         dartPluginClass: WebtritCallkeep
 
 dependencies:
