@@ -286,11 +286,12 @@ class _UUIDToCallIdMapping {
 
   // Generates a UUID from the provided [callId] using a version 5 UUID algorithm.
   // Stores the mapping of the generated UUID (in lowercase) and the provided [callId].
-  void put({
+  String put({
     required String callId,
   }) {
     final uuid = _convertToUUID(callId: callId);
     _mapping[uuid.toLowerCase()] = callId;
+    return uuid;
   }
 
   // Retrieves the Call ID associated with the given UUID.
