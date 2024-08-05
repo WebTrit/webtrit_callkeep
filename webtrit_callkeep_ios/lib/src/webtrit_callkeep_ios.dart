@@ -199,7 +199,12 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
 
   @override
   Future<bool> performEndCall(String uuid) async {
-    return _delegate.performEndCall(_uuidToCallIdMapping.getCallId(uuid: uuid));
+    final callId = _uuidToCallIdMapping.getCallId(uuid: uuid);
+    final result = await _delegate.performEndCall(callId);
+    if (result) {
+      _uuidToCallIdMapping.delete(uuid: uuid);
+    }
+    return result;
   }
 
   @override
@@ -300,6 +305,13 @@ class _UUIDToCallIdMapping {
       throw ArgumentError('The provided callId does not match the specified UUID.');
     }
     _mapping[uuid.toLowerCase()] = callId;
+  }
+
+  // Deletes the mapping of the given UUID.
+  void delete({
+    required String uuid,
+  }) {
+    _mapping.remove(uuid.toLowerCase());
   }
 
   // Converts a Call ID to a UUID using a version 5 UUID algorithm.
