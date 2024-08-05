@@ -69,12 +69,12 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
 
     if (callkeepError != null) return callkeepError;
 
-    if (_callActionHistory.contain(uuid: uuid, action: _CallkeepAction.performAnswerCall)) {
-      return CallkeepIncomingCallError.callIdAlreadyExistsAndAnswered;
-    }
-
     if (_callActionHistory.contain(uuid: uuid, action: _CallkeepAction.performEndCall)) {
       return CallkeepIncomingCallError.callIdAlreadyTerminated;
+    }
+
+    if (_callActionHistory.contain(uuid: uuid, action: _CallkeepAction.performAnswerCall)) {
+      return CallkeepIncomingCallError.callIdAlreadyExistsAndAnswered;
     }
 
     return null;
