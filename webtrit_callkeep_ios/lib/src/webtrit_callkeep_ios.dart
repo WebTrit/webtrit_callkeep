@@ -217,7 +217,7 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
 
   @override
   Future<bool> performEndCall(String uuid) async {
-    _callActionHistory.add(uuid: uuid, action: _CallAction.performAnswer);
+    _callActionHistory.add(uuid: uuid, action: _CallAction.performEnd);
     final result = await _delegate.performEndCall(_uuidToCallIdMapping.getCallId(uuid: uuid));
     if (result) {
       _uuidToCallIdMapping.delete(uuid: uuid);
