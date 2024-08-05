@@ -70,6 +70,9 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
     try {
       if (callkeepError != null) return callkeepError;
 
+      // When an incoming call is in the background, the user may press the notifications action button faster than the app's state initializes.
+      // For this case, we store the history and during the initialization of the incoming call, we return the appropriate status for correct handling.
+
       if (_callkeepActionHistory.contain(uuid: uuid, action: _CallkeepAction.performEndCall)) {
         return CallkeepIncomingCallError.callIdAlreadyTerminated;
       }
