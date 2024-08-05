@@ -267,7 +267,7 @@ class _UUIDToCallIdMapping {
     required String callId,
   }) {
     final uuid = _mapping.entries
-        .firstWhere((entry) => entry.value == callId.toLowerCase(), orElse: () => throw StateError('Call ID not found'))
+        .firstWhere((entry) => entry.value == callId, orElse: () => throw StateError('Call ID not found'))
         .key;
     return uuid;
   }
