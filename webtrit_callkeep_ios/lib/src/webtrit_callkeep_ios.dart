@@ -16,7 +16,7 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
   final _api = PHostApi();
 
   final _UUIDToCallIdMapping _uuidToCallIdMapping = _UUIDToCallIdMapping();
-  final _CallActionHistory _callActionHistory = _CallActionHistory();
+  final _CallkeepActionHistory _callActionHistory = _CallkeepActionHistory();
 
   @override
   void setDelegate(CallkeepDelegate? delegate) {
@@ -69,11 +69,11 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
 
     if (callkeepError != null) return callkeepError;
 
-    if (_callActionHistory.contain(uuid: uuid, action: _CallAction.performAnswer)) {
+    if (_callActionHistory.contain(uuid: uuid, action: _CallkeepAction.performAnswerCall)) {
       return CallkeepIncomingCallError.callIdAlreadyExistsAndAnswered;
     }
 
-    if (_callActionHistory.contain(uuid: uuid, action: _CallAction.performEnd)) {
+    if (_callActionHistory.contain(uuid: uuid, action: _CallkeepAction.performEndCall)) {
       return CallkeepIncomingCallError.callIdAlreadyTerminated;
     }
 
@@ -174,7 +174,7 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
   final CallkeepDelegate _delegate;
 
   final _UUIDToCallIdMapping _uuidToCallIdMapping;
-  final _CallActionHistory _callActionHistory;
+  final _CallkeepActionHistory _callActionHistory;
 
   @override
   void continueStartCallIntent(PHandle handle, String? displayName, bool video) {
@@ -211,13 +211,13 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
 
   @override
   Future<bool> performAnswerCall(String uuid) async {
-    _callActionHistory.add(uuid: uuid, action: _CallAction.performAnswer);
+    _callActionHistory.add(uuid: uuid, action: _CallkeepAction.performAnswerCall);
     return _delegate.performAnswerCall(_uuidToCallIdMapping.getCallId(uuid: uuid));
   }
 
   @override
   Future<bool> performEndCall(String uuid) async {
-    _callActionHistory.add(uuid: uuid, action: _CallAction.performEnd);
+    _callActionHistory.add(uuid: uuid, action: _CallkeepAction.performEndCall);
     final result = await _delegate.performEndCall(_uuidToCallIdMapping.getCallId(uuid: uuid));
     if (result) {
       _uuidToCallIdMapping.delete(uuid: uuid);
@@ -338,15 +338,15 @@ class _UUIDToCallIdMapping {
   }
 }
 
-enum _CallAction { performAnswer, performEnd }
+enum _CallkeepAction { performAnswerCall, performEndCall }
 
-class _CallActionHistory {
-  final Map<String, List<_CallAction>> _historyActionsByCallId = {};
+class _CallkeepActionHistory {
+  final Map<String, List<_CallkeepAction>> _historyActionsByCallId = {};
 
   // Stores the action associated with the given UUID
   void add({
     required String uuid,
-    required _CallAction action,
+    required _CallkeepAction action,
   }) {
     _historyActionsByCallId.putIfAbsent(uuid.toLowerCase(), () => []).add(action);
   }
@@ -354,7 +354,7 @@ class _CallActionHistory {
   // Checks if the given UUID contains the specified action.
   bool contain({
     required String uuid,
-    required _CallAction action,
+    required _CallkeepAction action,
   }) {
     final actions = _historyActionsByCallId[uuid.toLowerCase()];
     return actions?.contains(action) ?? false;
