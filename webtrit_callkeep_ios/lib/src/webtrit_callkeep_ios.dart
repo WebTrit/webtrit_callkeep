@@ -67,17 +67,21 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
     final error = await _api.reportNewIncomingCall(uuid, handle.toPigeon(), displayName, hasVideo);
     final callkeepError = error?.value.toCallkeep();
 
-    if (callkeepError != null) return callkeepError;
+    try {
+      if (callkeepError != null) return callkeepError;
 
-    if (_callkeepActionHistory.contain(uuid: uuid, action: _CallkeepAction.performEndCall)) {
-      return CallkeepIncomingCallError.callIdAlreadyTerminated;
+      if (_callkeepActionHistory.contain(uuid: uuid, action: _CallkeepAction.performEndCall)) {
+        return CallkeepIncomingCallError.callIdAlreadyTerminated;
+      }
+
+      if (_callkeepActionHistory.contain(uuid: uuid, action: _CallkeepAction.performAnswerCall)) {
+        return CallkeepIncomingCallError.callIdAlreadyExistsAndAnswered;
+      }
+
+      return null;
+    } finally {
+      _callkeepActionHistory.delete(uuid: uuid);
     }
-
-    if (_callkeepActionHistory.contain(uuid: uuid, action: _CallkeepAction.performAnswerCall)) {
-      return CallkeepIncomingCallError.callIdAlreadyExistsAndAnswered;
-    }
-
-    return null;
   }
 
   @override
