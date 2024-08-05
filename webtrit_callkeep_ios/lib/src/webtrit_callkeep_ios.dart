@@ -139,19 +139,25 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
   @override
   Future<CallkeepCallRequestError?> setHeld(String callId, bool onHold) async {
     _uuidToCallIdMapping.put(callId: callId);
-    return _api.setHeld(_uuidToCallIdMapping.getUUID(callId: callId), onHold).then((value) => value?.value.toCallkeep());
+    return _api
+        .setHeld(_uuidToCallIdMapping.getUUID(callId: callId), onHold)
+        .then((value) => value?.value.toCallkeep());
   }
 
   @override
   Future<CallkeepCallRequestError?> setMuted(String callId, bool muted) async {
     _uuidToCallIdMapping.put(callId: callId);
-    return _api.setMuted(_uuidToCallIdMapping.getUUID(callId: callId), muted).then((value) => value?.value.toCallkeep());
+    return _api
+        .setMuted(_uuidToCallIdMapping.getUUID(callId: callId), muted)
+        .then((value) => value?.value.toCallkeep());
   }
 
   @override
   Future<CallkeepCallRequestError?> setSpeaker(String callId, bool enabled) async {
     _uuidToCallIdMapping.put(callId: callId);
-    return _api.setSpeaker(_uuidToCallIdMapping.getUUID(callId: callId), enabled).then((value) => value?.value.toCallkeep());
+    return _api
+        .setSpeaker(_uuidToCallIdMapping.getUUID(callId: callId), enabled)
+        .then((value) => value?.value.toCallkeep());
   }
 
   @override
