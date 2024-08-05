@@ -69,11 +69,11 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
 
     if (callkeepError != null) return callkeepError;
 
-    if (_callActionHistory.contain(callId: callId, action: _CallAction.performAnswer)) {
+    if (_callActionHistory.contain(uuid: uuid, action: _CallAction.performAnswer)) {
       return CallkeepIncomingCallError.callIdAlreadyExistsAndAnswered;
     }
 
-    if (_callActionHistory.contain(callId: callId, action: _CallAction.performEnd)) {
+    if (_callActionHistory.contain(uuid: uuid, action: _CallAction.performEnd)) {
       return CallkeepIncomingCallError.callIdAlreadyTerminated;
     }
 
@@ -211,13 +211,13 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
 
   @override
   Future<bool> performAnswerCall(String uuid) async {
-    _callActionHistory.add(callId: _uuidToCallIdMapping.getCallId(uuid: uuid), action: _CallAction.performAnswer);
+    _callActionHistory.add(uuid: uuid, action: _CallAction.performAnswer);
     return _delegate.performAnswerCall(_uuidToCallIdMapping.getCallId(uuid: uuid));
   }
 
   @override
   Future<bool> performEndCall(String uuid) async {
-    _callActionHistory.add(callId: _uuidToCallIdMapping.getCallId(uuid: uuid), action: _CallAction.performAnswer);
+    _callActionHistory.add(uuid: uuid, action: _CallAction.performAnswer);
     final result = await _delegate.performEndCall(_uuidToCallIdMapping.getCallId(uuid: uuid));
     if (result) {
       _uuidToCallIdMapping.delete(uuid: uuid);
@@ -343,21 +343,20 @@ enum _CallAction { performAnswer, performEnd }
 class _CallActionHistory {
   final Map<String, List<_CallAction>> _historyActionsByCallId = {};
 
-  // Stores the action associated with the given Call ID.
+  // Stores the action associated with the given UUID
   void add({
-    required String callId,
+    required String uuid,
     required _CallAction action,
   }) {
-    final lowerCaseCallId = callId.toLowerCase();
-    _historyActionsByCallId.putIfAbsent(lowerCaseCallId, () => []).add(action);
+    _historyActionsByCallId.putIfAbsent(uuid.toLowerCase(), () => []).add(action);
   }
 
-  // Checks if the given Call ID contains the specified action.
+  // Checks if the given UUID contains the specified action.
   bool contain({
-    required String callId,
+    required String uuid,
     required _CallAction action,
   }) {
-    final actions = _historyActionsByCallId[callId.toLowerCase()];
+    final actions = _historyActionsByCallId[uuid.toLowerCase()];
     return actions?.contains(action) ?? false;
   }
 }
