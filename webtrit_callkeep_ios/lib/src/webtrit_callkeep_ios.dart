@@ -16,12 +16,12 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
   final _api = PHostApi();
 
   final _UUIDToCallIdMapping _uuidToCallIdMapping = _UUIDToCallIdMapping();
-  final _CallkeepActionHistory _callActionHistory = _CallkeepActionHistory();
+  final _CallkeepActionHistory _callkeepActionHistory = _CallkeepActionHistory();
 
   @override
   void setDelegate(CallkeepDelegate? delegate) {
     if (delegate != null) {
-      PDelegateFlutterApi.setup(_CallkeepDelegateRelay(delegate, _uuidToCallIdMapping, _callActionHistory));
+      PDelegateFlutterApi.setup(_CallkeepDelegateRelay(delegate, _uuidToCallIdMapping, _callkeepActionHistory));
     } else {
       PDelegateFlutterApi.setup(null);
     }
@@ -69,11 +69,11 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
 
     if (callkeepError != null) return callkeepError;
 
-    if (_callActionHistory.contain(uuid: uuid, action: _CallkeepAction.performEndCall)) {
+    if (_callkeepActionHistory.contain(uuid: uuid, action: _CallkeepAction.performEndCall)) {
       return CallkeepIncomingCallError.callIdAlreadyTerminated;
     }
 
-    if (_callActionHistory.contain(uuid: uuid, action: _CallkeepAction.performAnswerCall)) {
+    if (_callkeepActionHistory.contain(uuid: uuid, action: _CallkeepAction.performAnswerCall)) {
       return CallkeepIncomingCallError.callIdAlreadyExistsAndAnswered;
     }
 
@@ -168,13 +168,13 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
   const _CallkeepDelegateRelay(
     this._delegate,
     this._uuidToCallIdMapping,
-    this._callActionHistory,
+    this._callkeepActionHistory,
   );
 
   final CallkeepDelegate _delegate;
 
   final _UUIDToCallIdMapping _uuidToCallIdMapping;
-  final _CallkeepActionHistory _callActionHistory;
+  final _CallkeepActionHistory _callkeepActionHistory;
 
   @override
   void continueStartCallIntent(PHandle handle, String? displayName, bool video) {
@@ -211,13 +211,13 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
 
   @override
   Future<bool> performAnswerCall(String uuid) async {
-    _callActionHistory.add(uuid: uuid, action: _CallkeepAction.performAnswerCall);
+    _callkeepActionHistory.add(uuid: uuid, action: _CallkeepAction.performAnswerCall);
     return _delegate.performAnswerCall(_uuidToCallIdMapping.getCallId(uuid: uuid));
   }
 
   @override
   Future<bool> performEndCall(String uuid) async {
-    _callActionHistory.add(uuid: uuid, action: _CallkeepAction.performEndCall);
+    _callkeepActionHistory.add(uuid: uuid, action: _CallkeepAction.performEndCall);
     final result = await _delegate.performEndCall(_uuidToCallIdMapping.getCallId(uuid: uuid));
     if (result) {
       _uuidToCallIdMapping.delete(uuid: uuid);
