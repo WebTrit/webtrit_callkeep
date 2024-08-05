@@ -172,8 +172,7 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
     String uuidString,
     PIncomingCallError? error,
   ) {
-    _uuidToCallIdMapping.add(callId: callId, uuid: uuidString, validate: true);
-
+    _uuidToCallIdMapping.add(callId: callId, uuid: uuidString);
     _delegate.didPushIncomingCall(handle.toCallkeep(), displayName, video, callId, error?.value.toCallkeep());
   }
 
@@ -291,18 +290,14 @@ class _UUIDToCallIdMapping {
   }
 
   // Stores the mapping of Call ID and UUID directly.
-  // If [validate] is true, checks if the provided [callId] can be converted to the specified [uuid] using a version 5 UUID algorithm.
   // Throws an ArgumentError if the conversion does not match the specified UUID.
   void add({
     required String callId,
     required String uuid,
-    bool validate = false,
   }) {
-    if (validate) {
-      final originalUUID = _convertToUUID(callId: callId);
-      if (originalUUID.toLowerCase() != uuid.toLowerCase()) {
-        throw ArgumentError('The provided callId does not match the specified UUID.');
-      }
+    final originalUUID = _convertToUUID(callId: callId);
+    if (originalUUID.toLowerCase() != uuid.toLowerCase()) {
+      throw ArgumentError('The provided callId does not match the specified UUID.');
     }
     _mapping[uuid.toLowerCase()] = callId;
   }
