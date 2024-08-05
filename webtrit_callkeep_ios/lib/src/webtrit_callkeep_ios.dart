@@ -16,11 +16,12 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
   final _api = PHostApi();
 
   final _UUIDToCallIdMapping _uuidToCallIdMapping = _UUIDToCallIdMapping();
+  final _CallkeepActionHistory _callkeepActionHistory = _CallkeepActionHistory();
 
   @override
   void setDelegate(CallkeepDelegate? delegate) {
     if (delegate != null) {
-      PDelegateFlutterApi.setup(_CallkeepDelegateRelay(delegate, _uuidToCallIdMapping));
+      PDelegateFlutterApi.setup(_CallkeepDelegateRelay(delegate, _uuidToCallIdMapping, _callkeepActionHistory));
     } else {
       PDelegateFlutterApi.setup(null);
     }
@@ -62,9 +63,28 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
     String? displayName,
     bool hasVideo,
   ) async {
-    return _api
-        .reportNewIncomingCall(_uuidToCallIdMapping.put(callId: callId), handle.toPigeon(), displayName, hasVideo)
-        .then((value) => value?.value.toCallkeep());
+    final uuid = _uuidToCallIdMapping.put(callId: callId);
+    final error = await _api.reportNewIncomingCall(uuid, handle.toPigeon(), displayName, hasVideo);
+    final callkeepError = error?.value.toCallkeep();
+
+    try {
+      if (callkeepError != null) return callkeepError;
+
+      // When an incoming call is in the background, the user may press the notifications action button faster than the app's state initializes.
+      // For this case, we store the history and during the initialization of the incoming call, we return the appropriate status for correct handling.
+
+      if (_callkeepActionHistory.contain(uuid: uuid, action: _CallkeepAction.performEndCall)) {
+        return CallkeepIncomingCallError.callIdAlreadyTerminated;
+      }
+
+      if (_callkeepActionHistory.contain(uuid: uuid, action: _CallkeepAction.performAnswerCall)) {
+        return CallkeepIncomingCallError.callIdAlreadyExistsAndAnswered;
+      }
+
+      return null;
+    } finally {
+      _callkeepActionHistory.delete(uuid: uuid);
+    }
   }
 
   @override
@@ -152,11 +172,16 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
 }
 
 class _CallkeepDelegateRelay implements PDelegateFlutterApi {
-  const _CallkeepDelegateRelay(this._delegate, this._uuidToCallIdMapping);
+  const _CallkeepDelegateRelay(
+    this._delegate,
+    this._uuidToCallIdMapping,
+    this._callkeepActionHistory,
+  );
 
   final CallkeepDelegate _delegate;
 
   final _UUIDToCallIdMapping _uuidToCallIdMapping;
+  final _CallkeepActionHistory _callkeepActionHistory;
 
   @override
   void continueStartCallIntent(PHandle handle, String? displayName, bool video) {
@@ -193,11 +218,13 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
 
   @override
   Future<bool> performAnswerCall(String uuid) async {
+    _callkeepActionHistory.add(uuid: uuid, action: _CallkeepAction.performAnswerCall);
     return _delegate.performAnswerCall(_uuidToCallIdMapping.getCallId(uuid: uuid));
   }
 
   @override
   Future<bool> performEndCall(String uuid) async {
+    _callkeepActionHistory.add(uuid: uuid, action: _CallkeepAction.performEndCall);
     final result = await _delegate.performEndCall(_uuidToCallIdMapping.getCallId(uuid: uuid));
     if (result) {
       _uuidToCallIdMapping.delete(uuid: uuid);
@@ -315,5 +342,35 @@ class _UUIDToCallIdMapping {
   // Converts a Call ID to a UUID using a version 5 UUID algorithm.
   String _callIdToUUID(String callId) {
     return const Uuid().v5obj(Uuid.NAMESPACE_OID, callId).uuid;
+  }
+}
+
+enum _CallkeepAction { performAnswerCall, performEndCall }
+
+class _CallkeepActionHistory {
+  final Map<String, List<_CallkeepAction>> _history = {};
+
+  // Stores the action associated with the given UUID
+  void add({
+    required String uuid,
+    required _CallkeepAction action,
+  }) {
+    _history.putIfAbsent(uuid.toLowerCase(), () => []).add(action);
+  }
+
+  // Checks if the given UUID contains the specified action.
+  bool contain({
+    required String uuid,
+    required _CallkeepAction action,
+  }) {
+    final actions = _history[uuid.toLowerCase()];
+    return actions?.contains(action) ?? false;
+  }
+
+  // Deletes the history of the given UUID.
+  void delete({
+    required String uuid,
+  }) {
+    _history.remove(uuid.toLowerCase());
   }
 }
