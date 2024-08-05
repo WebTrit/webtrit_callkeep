@@ -261,6 +261,10 @@ class _PushRegistryDelegateRelay implements PPushRegistryDelegateFlutterApi {
 }
 
 class _UUIDToCallIdMapping {
+  // TODO(SERDUN): Consider migrating to quiver package and utilize BiMap functionality for bidirectional mapping if needed.
+  // This would allow for easy lookups in both directions (key -> value and value -> key).
+  // Example:
+  // final BiMap<String, String> _mapping = BiMap();
   final Map<String, String> _mapping = {};
 
   // Retrieves the UUID associated with the given Call ID.
