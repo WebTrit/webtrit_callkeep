@@ -364,6 +364,7 @@ class _CallkeepActionHistory {
     return actions?.contains(action) ?? false;
   }
 
+  // Deletes the history of the given UUID.
   void delete({
     required String uuid,
   }) {
