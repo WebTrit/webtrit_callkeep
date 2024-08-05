@@ -15,14 +15,12 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
   final _pushRegistryApi = PPushRegistryHostApi();
   final _api = PHostApi();
 
-  final Map<String, String> _uuidIdMapping = {};
-
-  String _toUUID(String callId) => const Uuid().v5obj(Uuid.NAMESPACE_OID, callId).uuid;
+  final _UUIDToCallIdMapping _uuidToCallIdMapping = _UUIDToCallIdMapping();
 
   @override
   void setDelegate(CallkeepDelegate? delegate) {
     if (delegate != null) {
-      PDelegateFlutterApi.setup(_CallkeepDelegateRelay(delegate, _uuidIdMapping));
+      PDelegateFlutterApi.setup(_CallkeepDelegateRelay(delegate, _uuidToCallIdMapping));
     } else {
       PDelegateFlutterApi.setup(null);
     }
@@ -64,28 +62,19 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
     String? displayName,
     bool hasVideo,
   ) async {
-    final uuid = _toUUID(callId);
-    _uuidIdMapping[uuid] = callId;
-
     return _api
-        .reportNewIncomingCall(uuid, handle.toPigeon(), displayName, hasVideo)
+        .reportNewIncomingCall(_uuidToCallIdMapping.put(callId: callId), handle.toPigeon(), displayName, hasVideo)
         .then((value) => value?.value.toCallkeep());
   }
 
   @override
   Future<void> reportConnectingOutgoingCall(String callId) async {
-    final uuid = _toUUID(callId);
-    _uuidIdMapping[uuid] = callId;
-
-    return _api.reportConnectingOutgoingCall(uuid);
+    return _api.reportConnectingOutgoingCall(_uuidToCallIdMapping.put(callId: callId));
   }
 
   @override
   Future<void> reportConnectedOutgoingCall(String callId) async {
-    final uuid = _toUUID(callId);
-    _uuidIdMapping[uuid] = callId;
-
-    return _api.reportConnectedOutgoingCall(uuid);
+    return _api.reportConnectedOutgoingCall(_uuidToCallIdMapping.put(callId: callId));
   }
 
   @override
@@ -96,11 +85,8 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
     bool? hasVideo,
     bool? proximityEnabled,
   ) async {
-    final uuid = _toUUID(callId);
-    _uuidIdMapping[uuid] = callId;
-
     return _api.reportUpdateCall(
-      uuid,
+      _uuidToCallIdMapping.put(callId: callId),
       handle?.toPigeon(),
       displayName,
       hasVideo,
@@ -110,10 +96,7 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
 
   @override
   Future<void> reportEndCall(String callId, CallkeepEndCallReason reason) async {
-    final uuid = _toUUID(callId);
-    _uuidIdMapping[uuid] = callId;
-
-    return _api.reportEndCall(uuid, PEndCallReason(value: reason.toPigeon()));
+    return _api.reportEndCall(_uuidToCallIdMapping.put(callId: callId), PEndCallReason(value: reason.toPigeon()));
   }
 
   @override
@@ -124,12 +107,9 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
     bool video,
     bool proximityEnabled,
   ) async {
-    final uuid = _toUUID(callId);
-    _uuidIdMapping[uuid] = callId;
-
     return _api
         .startCall(
-          uuid,
+          _uuidToCallIdMapping.put(callId: callId),
           handle.toPigeon(),
           displayNameOrContactIdentifier,
           video,
@@ -140,60 +120,43 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
 
   @override
   Future<CallkeepCallRequestError?> answerCall(String callId) async {
-    final uuid = _toUUID(callId);
-    _uuidIdMapping[uuid] = callId;
-
-    return _api.answerCall(uuid).then((value) => value?.value.toCallkeep());
+    return _api.answerCall(_uuidToCallIdMapping.put(callId: callId)).then((value) => value?.value.toCallkeep());
   }
 
   @override
   Future<CallkeepCallRequestError?> endCall(String callId) async {
-    final uuid = _toUUID(callId);
-    _uuidIdMapping[uuid] = callId;
-
-    return _api.endCall(uuid).then((value) => value?.value.toCallkeep());
+    return _api.endCall(_uuidToCallIdMapping.put(callId: callId)).then((value) => value?.value.toCallkeep());
   }
 
   @override
   Future<CallkeepCallRequestError?> setHeld(String callId, bool onHold) async {
-    final uuid = _toUUID(callId);
-    _uuidIdMapping[uuid] = callId;
-
-    return _api.setHeld(uuid, onHold).then((value) => value?.value.toCallkeep());
+    return _api.setHeld(_uuidToCallIdMapping.put(callId: callId), onHold).then((value) => value?.value.toCallkeep());
   }
 
   @override
   Future<CallkeepCallRequestError?> setMuted(String callId, bool muted) async {
-    final uuid = _toUUID(callId);
-    _uuidIdMapping[uuid] = callId;
-
-    return _api.setMuted(uuid, muted).then((value) => value?.value.toCallkeep());
+    return _api.setMuted(_uuidToCallIdMapping.put(callId: callId), muted).then((value) => value?.value.toCallkeep());
   }
 
   @override
   Future<CallkeepCallRequestError?> setSpeaker(String callId, bool enabled) async {
-    final uuid = _toUUID(callId);
-    _uuidIdMapping[uuid] = callId;
-
-    return _api.setSpeaker(uuid, enabled).then((value) => value?.value.toCallkeep());
+    return _api
+        .setSpeaker(_uuidToCallIdMapping.put(callId: callId), enabled)
+        .then((value) => value?.value.toCallkeep());
   }
 
   @override
   Future<CallkeepCallRequestError?> sendDTMF(String callId, String key) async {
-    final uuid = _toUUID(callId);
-    _uuidIdMapping[uuid] = callId;
-
-    return _api.sendDTMF(uuid, key).then((value) => value?.value.toCallkeep());
+    return _api.sendDTMF(_uuidToCallIdMapping.put(callId: callId), key).then((value) => value?.value.toCallkeep());
   }
 }
 
 class _CallkeepDelegateRelay implements PDelegateFlutterApi {
-  const _CallkeepDelegateRelay(this._delegate, this._uuidIdMapping);
+  const _CallkeepDelegateRelay(this._delegate, this._uuidToCallIdMapping);
 
   final CallkeepDelegate _delegate;
-  final Map<String, String> _uuidIdMapping;
 
-  String _getCallId(String uuid) => _uuidIdMapping[uuid.toLowerCase()]!;
+  final _UUIDToCallIdMapping _uuidToCallIdMapping;
 
   @override
   void continueStartCallIntent(PHandle handle, String? displayName, bool video) {
@@ -209,8 +172,7 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
     String uuidString,
     PIncomingCallError? error,
   ) {
-    _uuidIdMapping[uuidString] = callId;
-
+    _uuidToCallIdMapping.add(callId: callId, uuid: uuidString);
     _delegate.didPushIncomingCall(handle.toCallkeep(), displayName, video, callId, error?.value.toCallkeep());
   }
 
@@ -221,32 +183,41 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
     String? displayNameOrContactIdentifier,
     bool video,
   ) async {
-    return _delegate.performStartCall(_getCallId(uuid), handle.toCallkeep(), displayNameOrContactIdentifier, video);
+    return _delegate.performStartCall(
+      _uuidToCallIdMapping.getCallId(uuid: uuid),
+      handle.toCallkeep(),
+      displayNameOrContactIdentifier,
+      video,
+    );
   }
 
   @override
   Future<bool> performAnswerCall(String uuid) async {
-    return _delegate.performAnswerCall(_getCallId(uuid));
+    return _delegate.performAnswerCall(_uuidToCallIdMapping.getCallId(uuid: uuid));
   }
 
   @override
   Future<bool> performEndCall(String uuid) async {
-    return _delegate.performEndCall(_getCallId(uuid));
+    final result = await _delegate.performEndCall(_uuidToCallIdMapping.getCallId(uuid: uuid));
+    if (result) {
+      _uuidToCallIdMapping.delete(uuid: uuid);
+    }
+    return result;
   }
 
   @override
   Future<bool> performSetHeld(String uuid, bool onHold) async {
-    return _delegate.performSetHeld(_getCallId(uuid), onHold);
+    return _delegate.performSetHeld(_uuidToCallIdMapping.getCallId(uuid: uuid), onHold);
   }
 
   @override
   Future<bool> performSetMuted(String uuid, bool muted) async {
-    return _delegate.performSetMuted(_getCallId(uuid), muted);
+    return _delegate.performSetMuted(_uuidToCallIdMapping.getCallId(uuid: uuid), muted);
   }
 
   @override
   Future<bool> performSendDTMF(String uuid, String key) async {
-    return _delegate.performSendDTMF(_getCallId(uuid), key);
+    return _delegate.performSendDTMF(_uuidToCallIdMapping.getCallId(uuid: uuid), key);
   }
 
   @override
@@ -266,9 +237,7 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
 
   @override
   Future<bool> performSetSpeaker(String uuid, bool enabled) async {
-    final id = _uuidIdMapping[uuid.toLowerCase()]!;
-
-    return _delegate.performSetSpeaker(id, enabled);
+    return _delegate.performSetSpeaker(_uuidToCallIdMapping.getCallId(uuid: uuid), enabled);
   }
 }
 
@@ -280,5 +249,71 @@ class _PushRegistryDelegateRelay implements PPushRegistryDelegateFlutterApi {
   @override
   void didUpdatePushTokenForPushTypeVoIP(String? token) {
     _delegate.didUpdatePushTokenForPushTypeVoIP(token);
+  }
+}
+
+class _UUIDToCallIdMapping {
+  // TODO(SERDUN): Consider migrating to quiver package and utilize BiMap functionality for bidirectional mapping if needed.
+  // This would allow for easy lookups in both directions (key -> value and value -> key).
+  // Example:
+  // final BiMap<String, String> _mapping = BiMap();
+  final Map<String, String> _mapping = {};
+
+  // Retrieves the UUID associated with the given Call ID.
+  // Throws a StateError if the Call ID is not found in the mapping.
+  String getUUID({
+    required String callId,
+  }) {
+    final uuid = _mapping.entries
+        .firstWhere((entry) => entry.value == callId, orElse: () => throw StateError('Call ID not found'))
+        .key;
+    return uuid;
+  }
+
+  // Retrieves the Call ID associated with the given UUID.
+  // Throws a StateError if the UUID is not found in the mapping.
+  String getCallId({
+    required String uuid,
+  }) {
+    final callId = _mapping[uuid.toLowerCase()];
+    if (callId == null) {
+      throw StateError('UUID not found');
+    }
+    return callId;
+  }
+
+  // Generates a UUID from the provided [callId] using a version 5 UUID algorithm.
+  // Stores the mapping of the generated UUID (in lowercase) and the provided [callId].
+  String put({
+    required String callId,
+  }) {
+    final uuid = _callIdToUUID(callId);
+    _mapping[uuid.toLowerCase()] = callId;
+    return uuid;
+  }
+
+  // Stores the mapping of Call ID and UUID directly.
+  // Throws an ArgumentError if the conversion does not match the specified UUID.
+  void add({
+    required String callId,
+    required String uuid,
+  }) {
+    final originalUUID = _callIdToUUID(callId);
+    if (originalUUID.toLowerCase() != uuid.toLowerCase()) {
+      throw ArgumentError('The provided callId does not match the specified UUID.');
+    }
+    _mapping[uuid.toLowerCase()] = callId;
+  }
+
+  // Deletes the mapping of the given UUID.
+  void delete({
+    required String uuid,
+  }) {
+    _mapping.remove(uuid.toLowerCase());
+  }
+
+  // Converts a Call ID to a UUID using a version 5 UUID algorithm.
+  String _callIdToUUID(String callId) {
+    return const Uuid().v5obj(Uuid.NAMESPACE_OID, callId).uuid;
   }
 }
