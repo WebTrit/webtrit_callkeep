@@ -16,11 +16,12 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
   final _api = PHostApi();
 
   final _UUIDToCallIdMapping _uuidToCallIdMapping = _UUIDToCallIdMapping();
+  final _CallActionHistory _callActionHistory = _CallActionHistory();
 
   @override
   void setDelegate(CallkeepDelegate? delegate) {
     if (delegate != null) {
-      PDelegateFlutterApi.setup(_CallkeepDelegateRelay(delegate, _uuidToCallIdMapping));
+      PDelegateFlutterApi.setup(_CallkeepDelegateRelay(delegate, _uuidToCallIdMapping, _callActionHistory));
     } else {
       PDelegateFlutterApi.setup(null);
     }
@@ -62,9 +63,21 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
     String? displayName,
     bool hasVideo,
   ) async {
-    return _api
-        .reportNewIncomingCall(_uuidToCallIdMapping.put(callId: callId), handle.toPigeon(), displayName, hasVideo)
-        .then((value) => value?.value.toCallkeep());
+    final uuid = _uuidToCallIdMapping.put(callId: callId);
+    final error = await _api.reportNewIncomingCall(uuid, handle.toPigeon(), displayName, hasVideo);
+    final callkeepError = error?.value.toCallkeep();
+
+    if (callkeepError != null) return callkeepError;
+
+    if (_callActionHistory.contain(callId: callId, action: _CallAction.performAnswer)) {
+      return CallkeepIncomingCallError.callIdAlreadyExistsAndAnswered;
+    }
+
+    if (_callActionHistory.contain(callId: callId, action: _CallAction.performEnd)) {
+      return CallkeepIncomingCallError.callIdAlreadyTerminated;
+    }
+
+    return null;
   }
 
   @override
@@ -152,11 +165,16 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
 }
 
 class _CallkeepDelegateRelay implements PDelegateFlutterApi {
-  const _CallkeepDelegateRelay(this._delegate, this._uuidToCallIdMapping);
+  const _CallkeepDelegateRelay(
+    this._delegate,
+    this._uuidToCallIdMapping,
+    this._callActionHistory,
+  );
 
   final CallkeepDelegate _delegate;
 
   final _UUIDToCallIdMapping _uuidToCallIdMapping;
+  final _CallActionHistory _callActionHistory;
 
   @override
   void continueStartCallIntent(PHandle handle, String? displayName, bool video) {
@@ -193,11 +211,13 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
 
   @override
   Future<bool> performAnswerCall(String uuid) async {
+    _callActionHistory.add(callId: _uuidToCallIdMapping.getCallId(uuid: uuid), action: _CallAction.performAnswer);
     return _delegate.performAnswerCall(_uuidToCallIdMapping.getCallId(uuid: uuid));
   }
 
   @override
   Future<bool> performEndCall(String uuid) async {
+    _callActionHistory.add(callId: _uuidToCallIdMapping.getCallId(uuid: uuid), action: _CallAction.performAnswer);
     final result = await _delegate.performEndCall(_uuidToCallIdMapping.getCallId(uuid: uuid));
     if (result) {
       _uuidToCallIdMapping.delete(uuid: uuid);
@@ -315,5 +335,29 @@ class _UUIDToCallIdMapping {
   // Converts a Call ID to a UUID using a version 5 UUID algorithm.
   String _callIdToUUID(String callId) {
     return const Uuid().v5obj(Uuid.NAMESPACE_OID, callId).uuid;
+  }
+}
+
+enum _CallAction { performAnswer, performEnd }
+
+class _CallActionHistory {
+  final Map<String, List<_CallAction>> _historyActionsByCallId = {};
+
+  // Stores the action associated with the given Call ID.
+  void add({
+    required String callId,
+    required _CallAction action,
+  }) {
+    final lowerCaseCallId = callId.toLowerCase();
+    _historyActionsByCallId.putIfAbsent(lowerCaseCallId, () => []).add(action);
+  }
+
+  // Checks if the given Call ID contains the specified action.
+  bool contain({
+    required String callId,
+    required _CallAction action,
+  }) {
+    final actions = _historyActionsByCallId[callId.toLowerCase()];
+    return actions?.contains(action) ?? false;
   }
 }
