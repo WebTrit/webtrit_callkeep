@@ -289,7 +289,7 @@ class _UUIDToCallIdMapping {
   String put({
     required String callId,
   }) {
-    final uuid = _callIdToUUID(callId: callId);
+    final uuid = _callIdToUUID(callId);
     _mapping[uuid.toLowerCase()] = callId;
     return uuid;
   }
@@ -300,7 +300,7 @@ class _UUIDToCallIdMapping {
     required String callId,
     required String uuid,
   }) {
-    final originalUUID = _callIdToUUID(callId: callId);
+    final originalUUID = _callIdToUUID(callId);
     if (originalUUID.toLowerCase() != uuid.toLowerCase()) {
       throw ArgumentError('The provided callId does not match the specified UUID.');
     }
@@ -315,9 +315,7 @@ class _UUIDToCallIdMapping {
   }
 
   // Converts a Call ID to a UUID using a version 5 UUID algorithm.
-  String _callIdToUUID({
-    required String callId,
-  }) {
+  String _callIdToUUID(String callId) {
     return const Uuid().v5obj(Uuid.NAMESPACE_OID, callId).uuid;
   }
 }
