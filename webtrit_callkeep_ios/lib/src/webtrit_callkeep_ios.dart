@@ -341,14 +341,14 @@ class _UUIDToCallIdMapping {
 enum _CallkeepAction { performAnswerCall, performEndCall }
 
 class _CallkeepActionHistory {
-  final Map<String, List<_CallkeepAction>> _historyActionsByCallId = {};
+  final Map<String, List<_CallkeepAction>> _history = {};
 
   // Stores the action associated with the given UUID
   void add({
     required String uuid,
     required _CallkeepAction action,
   }) {
-    _historyActionsByCallId.putIfAbsent(uuid.toLowerCase(), () => []).add(action);
+    _history.putIfAbsent(uuid.toLowerCase(), () => []).add(action);
   }
 
   // Checks if the given UUID contains the specified action.
@@ -356,7 +356,13 @@ class _CallkeepActionHistory {
     required String uuid,
     required _CallkeepAction action,
   }) {
-    final actions = _historyActionsByCallId[uuid.toLowerCase()];
+    final actions = _history[uuid.toLowerCase()];
     return actions?.contains(action) ?? false;
+  }
+
+  void delete({
+    required String uuid,
+  }) {
+    _history.remove(uuid.toLowerCase());
   }
 }
