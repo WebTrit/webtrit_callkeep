@@ -267,16 +267,6 @@ class _UUIDToCallIdMapping {
     return uuid;
   }
 
-  // Generates a UUID from the provided [callId] using a version 5 UUID algorithm.
-  // Stores the mapping of the generated UUID (in lowercase) and the provided [callId].
-  String put({
-    required String callId,
-  }) {
-    final uuid = _callIdToUUID(callId: callId);
-    _mapping[uuid.toLowerCase()] = callId;
-    return uuid;
-  }
-
   // Retrieves the Call ID associated with the given UUID.
   // Throws a StateError if the UUID is not found in the mapping.
   String getCallId({
@@ -287,6 +277,16 @@ class _UUIDToCallIdMapping {
       throw StateError('UUID not found');
     }
     return callId;
+  }
+
+  // Generates a UUID from the provided [callId] using a version 5 UUID algorithm.
+  // Stores the mapping of the generated UUID (in lowercase) and the provided [callId].
+  String put({
+    required String callId,
+  }) {
+    final uuid = _callIdToUUID(callId: callId);
+    _mapping[uuid.toLowerCase()] = callId;
+    return uuid;
   }
 
   // Stores the mapping of Call ID and UUID directly.
