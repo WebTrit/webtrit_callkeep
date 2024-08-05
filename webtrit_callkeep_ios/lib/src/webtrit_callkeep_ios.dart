@@ -62,22 +62,19 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
     String? displayName,
     bool hasVideo,
   ) async {
-    _uuidToCallIdMapping.put(callId: callId);
     return _api
-        .reportNewIncomingCall(_uuidToCallIdMapping.getUUID(callId: callId), handle.toPigeon(), displayName, hasVideo)
+        .reportNewIncomingCall(_uuidToCallIdMapping.put(callId: callId), handle.toPigeon(), displayName, hasVideo)
         .then((value) => value?.value.toCallkeep());
   }
 
   @override
   Future<void> reportConnectingOutgoingCall(String callId) async {
-    _uuidToCallIdMapping.put(callId: callId);
-    return _api.reportConnectingOutgoingCall(_uuidToCallIdMapping.getUUID(callId: callId));
+    return _api.reportConnectingOutgoingCall(_uuidToCallIdMapping.put(callId: callId));
   }
 
   @override
   Future<void> reportConnectedOutgoingCall(String callId) async {
-    _uuidToCallIdMapping.put(callId: callId);
-    return _api.reportConnectedOutgoingCall(_uuidToCallIdMapping.getUUID(callId: callId));
+    return _api.reportConnectedOutgoingCall(_uuidToCallIdMapping.put(callId: callId));
   }
 
   @override
@@ -88,9 +85,8 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
     bool? hasVideo,
     bool? proximityEnabled,
   ) async {
-    _uuidToCallIdMapping.put(callId: callId);
     return _api.reportUpdateCall(
-      _uuidToCallIdMapping.getUUID(callId: callId),
+      _uuidToCallIdMapping.put(callId: callId),
       handle?.toPigeon(),
       displayName,
       hasVideo,
@@ -100,8 +96,7 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
 
   @override
   Future<void> reportEndCall(String callId, CallkeepEndCallReason reason) async {
-    _uuidToCallIdMapping.put(callId: callId);
-    return _api.reportEndCall(_uuidToCallIdMapping.getUUID(callId: callId), PEndCallReason(value: reason.toPigeon()));
+    return _api.reportEndCall(_uuidToCallIdMapping.put(callId: callId), PEndCallReason(value: reason.toPigeon()));
   }
 
   @override
@@ -112,10 +107,9 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
     bool video,
     bool proximityEnabled,
   ) async {
-    _uuidToCallIdMapping.put(callId: callId);
     return _api
         .startCall(
-          _uuidToCallIdMapping.getUUID(callId: callId),
+          _uuidToCallIdMapping.put(callId: callId),
           handle.toPigeon(),
           displayNameOrContactIdentifier,
           video,
@@ -126,44 +120,34 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
 
   @override
   Future<CallkeepCallRequestError?> answerCall(String callId) async {
-    _uuidToCallIdMapping.put(callId: callId);
-    return _api.answerCall(_uuidToCallIdMapping.getUUID(callId: callId)).then((value) => value?.value.toCallkeep());
+    return _api.answerCall(_uuidToCallIdMapping.put(callId: callId)).then((value) => value?.value.toCallkeep());
   }
 
   @override
   Future<CallkeepCallRequestError?> endCall(String callId) async {
-    _uuidToCallIdMapping.put(callId: callId);
-    return _api.endCall(_uuidToCallIdMapping.getUUID(callId: callId)).then((value) => value?.value.toCallkeep());
+    return _api.endCall(_uuidToCallIdMapping.put(callId: callId)).then((value) => value?.value.toCallkeep());
   }
 
   @override
   Future<CallkeepCallRequestError?> setHeld(String callId, bool onHold) async {
-    _uuidToCallIdMapping.put(callId: callId);
-    return _api
-        .setHeld(_uuidToCallIdMapping.getUUID(callId: callId), onHold)
-        .then((value) => value?.value.toCallkeep());
+    return _api.setHeld(_uuidToCallIdMapping.put(callId: callId), onHold).then((value) => value?.value.toCallkeep());
   }
 
   @override
   Future<CallkeepCallRequestError?> setMuted(String callId, bool muted) async {
-    _uuidToCallIdMapping.put(callId: callId);
-    return _api
-        .setMuted(_uuidToCallIdMapping.getUUID(callId: callId), muted)
-        .then((value) => value?.value.toCallkeep());
+    return _api.setMuted(_uuidToCallIdMapping.put(callId: callId), muted).then((value) => value?.value.toCallkeep());
   }
 
   @override
   Future<CallkeepCallRequestError?> setSpeaker(String callId, bool enabled) async {
-    _uuidToCallIdMapping.put(callId: callId);
     return _api
-        .setSpeaker(_uuidToCallIdMapping.getUUID(callId: callId), enabled)
+        .setSpeaker(_uuidToCallIdMapping.put(callId: callId), enabled)
         .then((value) => value?.value.toCallkeep());
   }
 
   @override
   Future<CallkeepCallRequestError?> sendDTMF(String callId, String key) async {
-    _uuidToCallIdMapping.put(callId: callId);
-    return _api.sendDTMF(_uuidToCallIdMapping.getUUID(callId: callId), key).then((value) => value?.value.toCallkeep());
+    return _api.sendDTMF(_uuidToCallIdMapping.put(callId: callId), key).then((value) => value?.value.toCallkeep());
   }
 }
 
