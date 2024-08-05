@@ -193,14 +193,12 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
 
   @override
   Future<bool> performAnswerCall(String uuid) async {
-    final callId = _uuidToCallIdMapping.getCallId(uuid: uuid);
-    return _delegate.performAnswerCall(callId);
+    return _delegate.performAnswerCall(_uuidToCallIdMapping.getCallId(uuid: uuid));
   }
 
   @override
   Future<bool> performEndCall(String uuid) async {
-    final callId = _uuidToCallIdMapping.getCallId(uuid: uuid);
-    final result = await _delegate.performEndCall(callId);
+    final result = await _delegate.performEndCall(_uuidToCallIdMapping.getCallId(uuid: uuid));
     if (result) {
       _uuidToCallIdMapping.delete(uuid: uuid);
     }
