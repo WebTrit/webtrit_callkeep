@@ -4,3 +4,5 @@ export 'callkeep_handle.dart';
 export 'callkeep_incoming_call_error.dart';
 export 'callkeep_log_type.dart';
 export 'callkeep_options.dart';
+export 'callkeep_special_permission.dart';
+export 'callkeep_special_permission_status.dart';

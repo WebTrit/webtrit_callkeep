@@ -194,4 +194,12 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   ) {
     throw UnimplementedError('incomingCallAndroidService() has not been implemented.');
   }
+
+// Permissions section
+
+  // Check if the permission for full screen intent is available.
+  // https://source.android.com/docs/core/permissions/fsi-limits
+  Future<CallkeepSpecialPermissionStatus> getFullScreenIntentPermissionStatus() {
+    throw UnimplementedError('getFullScreenIntentPermissionStatus() has not been implemented.');
+  }
 }
