@@ -202,4 +202,9 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   Future<CallkeepSpecialPermissionStatus> getFullScreenIntentPermissionStatus() {
     throw UnimplementedError('getFullScreenIntentPermissionStatus() has not been implemented.');
   }
+
+  // Launches the settings screen for full screen intent permission.
+  void launchFullScreenIntentSettings() {
+    throw UnimplementedError('launchFullScreenIntentSettings() has not been implemented.');
+  }
 }
