@@ -1,22 +1,27 @@
 import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
 
-/// The [WebtritCallkeepPermissions] class is used to set the logs delegate.
-/// The logs delegate is used to receive logs from the native side.
+// The [WebtritCallkeepPermissions] class is used to set the logs delegate.
+// The logs delegate is used to receive logs from the native side.
 class WebtritCallkeepPermissions {
-  /// The singleton constructor of [WebtritCallkeepPermissions].
+  // The singleton constructor of [WebtritCallkeepPermissions].
   factory WebtritCallkeepPermissions() => _instance;
 
   WebtritCallkeepPermissions._();
 
   static final _instance = WebtritCallkeepPermissions._();
 
-  /// The [WebtritCallkeepPlatform] instance used to perform platform specific operations.
+  // The [WebtritCallkeepPlatform] instance used to perform platform specific operations.
   static WebtritCallkeepPlatform get platform => WebtritCallkeepPlatform.instance;
 
-  /// Checks if the full screen intent permission is available.
-  /// Returns a [Future] that resolves to a boolean indicating the availability.
+  // Checks if the full screen intent permission is available.
+  // Returns a [Future] that resolves to a boolean indicating the availability.
   Future<CallkeepSpecialPermissionStatus> getFullScreenIntentPermissionStatus() {
     return platform.getFullScreenIntentPermissionStatus();
+  }
+
+  // Launches the settings screen for full screen intent permission.
+  void launchFullScreenIntentSettings() {
+    platform.launchFullScreenIntentSettings();
   }
 }
 
