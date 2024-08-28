@@ -169,6 +169,13 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
   Future<CallkeepCallRequestError?> sendDTMF(String callId, String key) async {
     return _api.sendDTMF(_uuidToCallIdMapping.put(callId: callId), key).then((value) => value?.value.toCallkeep());
   }
+
+  // Since full-screen intent permission is not applicable on iOS,
+  // this method will always return `CallkeepSpecialPermissionStatus.granted`.
+  @override
+  Future<CallkeepSpecialPermissionStatus> getFullScreenIntentPermissionStatus() {
+    return Future.value(CallkeepSpecialPermissionStatus.granted);
+  }
 }
 
 class _CallkeepDelegateRelay implements PDelegateFlutterApi {
