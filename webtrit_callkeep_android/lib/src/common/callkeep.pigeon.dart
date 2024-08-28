@@ -436,8 +436,8 @@ class PHostPermissionsApi {
     }
   }
 
-  Future<void> launchFullScreenIntentSettings() async {
-    const String __pigeon_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.launchFullScreenIntentSettings';
+  Future<bool> openFullScreenIntentSettings() async {
+    const String __pigeon_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.openFullScreenIntentSettings';
     final BasicMessageChannel<Object?> __pigeon_channel = BasicMessageChannel<Object?>(
       __pigeon_channelName,
       pigeonChannelCodec,
@@ -453,8 +453,13 @@ class PHostPermissionsApi {
         message: __pigeon_replyList[1] as String?,
         details: __pigeon_replyList[2],
       );
+    } else if (__pigeon_replyList[0] == null) {
+      throw PlatformException(
+        code: 'null-error',
+        message: 'Host platform returned null value for non-null return value.',
+      );
     } else {
-      return;
+      return (__pigeon_replyList[0] as bool?)!;
     }
   }
 }

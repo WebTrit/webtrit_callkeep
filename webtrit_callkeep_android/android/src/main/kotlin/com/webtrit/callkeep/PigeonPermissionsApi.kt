@@ -11,7 +11,7 @@ class PigeonPermissionsApi(
         callback.invoke(Result.success(if (screenIntentPermissionAvailable) PSpecialPermissionStatusTypeEnum.GRANTED else PSpecialPermissionStatusTypeEnum.DENIED))
     }
 
-    override fun launchFullScreenIntentSettings() {
-        PermissionsHelper(context).launchFullScreenIntentSettings()
+    override fun openFullScreenIntentSettings(callback: (Result<Boolean>) -> Unit) {
+        callback.invoke(Result.success(PermissionsHelper(context).launchFullScreenIntentSettings()))
     }
 }

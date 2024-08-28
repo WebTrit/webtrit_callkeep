@@ -138,7 +138,8 @@ abstract class PHostPermissionsApi {
   @async
   PSpecialPermissionStatusTypeEnum getFullScreenIntentPermissionStatus();
 
-  void launchFullScreenIntentSettings();
+  @async
+  bool openFullScreenIntentSettings();
 }
 
 @HostApi()

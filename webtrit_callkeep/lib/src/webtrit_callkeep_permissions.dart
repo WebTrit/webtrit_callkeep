@@ -19,9 +19,9 @@ class WebtritCallkeepPermissions {
     return platform.getFullScreenIntentPermissionStatus();
   }
 
-  // Launches the settings screen for full screen intent permission.
-  void launchFullScreenIntentSettings() {
-    platform.launchFullScreenIntentSettings();
+  // Open the settings screen for full screen intent permission.
+  Future<bool> openFullScreenIntentSettings() {
+    return platform.openFullScreenIntentSettings();
   }
 }
 
