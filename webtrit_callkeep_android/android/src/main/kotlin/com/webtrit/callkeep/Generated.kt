@@ -60,6 +60,17 @@ enum class PLogTypeEnum(val raw: Int) {
   }
 }
 
+enum class PSpecialPermissionStatusTypeEnum(val raw: Int) {
+  DENIED(0),
+  GRANTED(1);
+
+  companion object {
+    fun ofRaw(raw: Int): PSpecialPermissionStatusTypeEnum? {
+      return values().firstOrNull { it.raw == raw }
+    }
+  }
+}
+
 enum class PHandleTypeEnum(val raw: Int) {
   GENERIC(0),
   NUMBER(1),
@@ -397,6 +408,39 @@ interface PHostBackgroundServiceApi {
                 reply.reply(wrapError(error))
               } else {
                 reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+    }
+  }
+}
+/** Generated interface from Pigeon that represents a handler of messages from Flutter. */
+interface PHostPermissionsApi {
+  fun getFullScreenIntentPermissionStatus(callback: (Result<PSpecialPermissionStatusTypeEnum>) -> Unit)
+
+  companion object {
+    /** The codec used by PHostPermissionsApi. */
+    val codec: MessageCodec<Any?> by lazy {
+      StandardMessageCodec()
+    }
+    /** Sets up an instance of `PHostPermissionsApi` to handle messages through the `binaryMessenger`. */
+    @Suppress("UNCHECKED_CAST")
+    fun setUp(binaryMessenger: BinaryMessenger, api: PHostPermissionsApi?) {
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.getFullScreenIntentPermissionStatus", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.getFullScreenIntentPermissionStatus() { result: Result<PSpecialPermissionStatusTypeEnum> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data!!.raw))
               }
             }
           }

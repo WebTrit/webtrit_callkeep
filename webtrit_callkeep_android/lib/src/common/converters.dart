@@ -34,6 +34,17 @@ extension PLogTypeEnumConverter on PLogTypeEnum {
   }
 }
 
+extension PSpecialPermissionStatusTypeEnumConverter on PSpecialPermissionStatusTypeEnum {
+  CallkeepSpecialPermissionStatus toCallkeep() {
+    switch (this) {
+      case PSpecialPermissionStatusTypeEnum.denied:
+        return CallkeepSpecialPermissionStatus.denied;
+      case PSpecialPermissionStatusTypeEnum.granted:
+        return CallkeepSpecialPermissionStatus.granted;
+    }
+  }
+}
+
 extension PHandleConverter on PHandle {
   CallkeepHandle toCallkeep() {
     return CallkeepHandle(
