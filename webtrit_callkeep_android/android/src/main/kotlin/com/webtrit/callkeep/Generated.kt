@@ -421,6 +421,7 @@ interface PHostBackgroundServiceApi {
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface PHostPermissionsApi {
   fun getFullScreenIntentPermissionStatus(callback: (Result<PSpecialPermissionStatusTypeEnum>) -> Unit)
+  fun launchFullScreenIntentSettings()
 
   companion object {
     /** The codec used by PHostPermissionsApi. */
@@ -443,6 +444,23 @@ interface PHostPermissionsApi {
                 reply.reply(wrapResult(data!!.raw))
               }
             }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.launchFullScreenIntentSettings", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            var wrapped: List<Any?>
+            try {
+              api.launchFullScreenIntentSettings()
+              wrapped = listOf<Any?>(null)
+            } catch (exception: Throwable) {
+              wrapped = wrapError(exception)
+            }
+            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)

@@ -137,6 +137,8 @@ abstract class PHostBackgroundServiceApi {
 abstract class PHostPermissionsApi {
   @async
   PSpecialPermissionStatusTypeEnum getFullScreenIntentPermissionStatus();
+
+  void launchFullScreenIntentSettings();
 }
 
 @HostApi()

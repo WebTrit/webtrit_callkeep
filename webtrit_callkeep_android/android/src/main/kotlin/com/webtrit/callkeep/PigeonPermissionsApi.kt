@@ -10,4 +10,8 @@ class PigeonPermissionsApi(
         val screenIntentPermissionAvailable = PermissionsHelper(context).checkFullScreenIntentPermission()
         callback.invoke(Result.success(if (screenIntentPermissionAvailable) PSpecialPermissionStatusTypeEnum.GRANTED else PSpecialPermissionStatusTypeEnum.DENIED))
     }
+
+    override fun launchFullScreenIntentSettings() {
+        PermissionsHelper(context).checkFullScreenIntentPermission()
+    }
 }

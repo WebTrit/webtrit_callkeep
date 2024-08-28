@@ -218,6 +218,11 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   Future<CallkeepSpecialPermissionStatus> getFullScreenIntentPermissionStatus() {
     return _permissionsApi.getFullScreenIntentPermissionStatus().then((value) => value.toCallkeep());
   }
+
+  @override
+  void launchFullScreenIntentSettings() {
+    _permissionsApi.launchFullScreenIntentSettings();
+  }
 }
 
 class _CallkeepDelegateRelay implements PDelegateFlutterApi {
