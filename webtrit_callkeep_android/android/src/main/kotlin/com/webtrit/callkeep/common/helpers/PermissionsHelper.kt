@@ -15,7 +15,7 @@ class PermissionsHelper(private val context: Context) {
         }
     }
 
-    private fun launchFullScreenIntentSettings() {
+    fun launchFullScreenIntentSettings() {
         val intent = Intent("android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENT").apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }

@@ -12,6 +12,6 @@ class PigeonPermissionsApi(
     }
 
     override fun launchFullScreenIntentSettings() {
-        PermissionsHelper(context).checkFullScreenIntentPermission()
+        PermissionsHelper(context).launchFullScreenIntentSettings()
     }
 }
