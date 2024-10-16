@@ -14,10 +14,10 @@ import android.util.Log
 import com.webtrit.callkeep.FlutterLog
 import com.webtrit.callkeep.api.background.TelephonyBackgroundCallkeepApi
 import com.webtrit.callkeep.api.foreground.TelephonyForegroundCallkeepApi
+import com.webtrit.callkeep.common.AudioService
 import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.common.models.CallMetadata
-import com.webtrit.callkeep.services.AudioService
-import com.webtrit.callkeep.services.NotificationService
+import com.webtrit.callkeep.common.notifications.NotificationService
 
 /**
  * Represents a phone connection for handling telephony calls.

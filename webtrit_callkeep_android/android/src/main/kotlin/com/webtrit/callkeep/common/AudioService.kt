@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.services
+package com.webtrit.callkeep.common
 
 import android.content.Context
 import android.media.AudioDeviceInfo

@@ -8,12 +8,12 @@ import com.webtrit.callkeep.PDelegateFlutterApi
 import com.webtrit.callkeep.PEndCallReason
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.POptions
+import com.webtrit.callkeep.common.AudioService
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.common.models.CallMetadata
 import com.webtrit.callkeep.common.models.toPHandle
-import com.webtrit.callkeep.services.NotificationService
-import com.webtrit.callkeep.services.AudioService
+import com.webtrit.callkeep.common.notifications.NotificationService
 
 class ProxyForegroundCallkeepApi(
     private val activity: Activity, private val flutterDelegateApi: PDelegateFlutterApi

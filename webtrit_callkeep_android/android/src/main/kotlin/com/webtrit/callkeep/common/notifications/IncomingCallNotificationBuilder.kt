@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.services.notification
+package com.webtrit.callkeep.common.notifications
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -13,8 +13,8 @@ import android.media.RingtoneManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-
 import com.webtrit.callkeep.PigeonServiceApi
+
 import com.webtrit.callkeep.R
 
 class IncomingCallNotificationBuilder(

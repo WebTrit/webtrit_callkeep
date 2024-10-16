@@ -2,7 +2,6 @@ package com.webtrit.callkeep.api.foreground
 
 import com.webtrit.callkeep.common.ApplicationData
 
-
 enum class ReportAction {
     AnswerCall, DeclineCall, OngoingCall, AudioMuting, ConnectionHolding, SentDTMF, DidPushIncomingCall, ConnectionHasSpeaker;
 

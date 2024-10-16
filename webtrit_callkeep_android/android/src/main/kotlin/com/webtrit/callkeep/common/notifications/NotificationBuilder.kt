@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.services.notification
+package com.webtrit.callkeep.common.notifications
 
 import android.app.NotificationManager
 import android.app.PendingIntent

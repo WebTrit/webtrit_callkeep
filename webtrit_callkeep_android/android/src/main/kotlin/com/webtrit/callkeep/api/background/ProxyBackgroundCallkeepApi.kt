@@ -6,10 +6,11 @@ import android.util.Log
 import com.webtrit.callkeep.FlutterLog
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.common.ApplicationData
+import com.webtrit.callkeep.common.AudioService
 import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.common.models.CallMetadata
-import com.webtrit.callkeep.services.NotificationService
-import com.webtrit.callkeep.services.AudioService
+import com.webtrit.callkeep.common.notifications.NotificationService
+
 
 /**
  * This class acts as a proxy for handling telephony-related operations in cases where the actual telephony module is not available.
