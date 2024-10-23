@@ -8,6 +8,28 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
+
+    <!-- Needed to keep a permanent foreground service and keep app alive to be able to receive
+    messages & calls for third party accounts for which push notifications aren't available,
+    and starting Android 15 dataSync is limited to 6 hours per day
+    and can't be used with RECEIVE_BOOT_COMPLETED intent either -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
+    <!-- Needed for auto start at boot if keep alive service is enabled -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <permission
+        android:name="com.webtrit.callkeep.permission.SEND_RESPAWN"
+        android:label="Permission to send respawn broadcasts"
+        android:protectionLevel="signature" />
+
     <uses-feature
         android:name="android.hardware.telephony"
         android:required="false" />
@@ -23,5 +45,27 @@
                 <action android:name="android.telecom.ConnectionService" />
             </intent-filter>
         </service>
+
+        <service
+            android:name=".services.ForegroundCallService"
+            android:exported="false"
+            android:foregroundServiceType="phoneCall" />
+
+        <receiver
+            android:name=".services.ForegroundWatchdogReceiver"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="com.webtrit.callkeep.permission.SEND_RESPAWN" />
+
+        <receiver
+            android:name=".services.ForegroundBootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

@@ -55,12 +55,12 @@ class TelephonyForegroundCallkeepApi(
         FlutterLog.i(TAG, "reportNewIncomingCall ${metadata.callId}.")
         // User press hangup or decline call
         if (PhoneConnectionService.isConnectionTerminated(metadata.callId)) {
-            callback.invoke(Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALLIDALREADYTERMINATED)))
+            callback.invoke(Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS)))
         } else if (PhoneConnectionService.isConnectionAlreadyExists(metadata.callId)) {
             if (PhoneConnectionService.isConnectionAnswered(metadata.callId)) {
-                callback.invoke(Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALLIDALREADYEXISTSANDANSWERED)))
+                callback.invoke(Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED)))
             } else {
-                callback.invoke(Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALLIDALREADYEXISTS)))
+                callback.invoke(Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS)))
             }
         } else {
             PhoneConnectionService.startIncomingCall(activity, metadata)

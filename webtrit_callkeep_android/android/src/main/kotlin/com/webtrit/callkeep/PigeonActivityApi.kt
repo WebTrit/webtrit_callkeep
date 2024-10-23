@@ -1,23 +1,34 @@
 package com.webtrit.callkeep
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
-
+import android.content.Intent
+import android.os.Build
+import android.util.Log
+import androidx.core.app.ActivityCompat.requestPermissions
 import com.webtrit.callkeep.api.CallkeepApiProvider
-import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.api.foreground.ForegroundCallkeepApi
+import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.models.CallMetadata
 import com.webtrit.callkeep.common.models.CallPaths
 import com.webtrit.callkeep.common.models.toCallHandle
 
 class PigeonActivityApi(
-    private val activity: Activity, flutterDelegateApi: PDelegateFlutterApi,
+    private val activity: Activity, flutterDelegateApi: PDelegateFlutterApi
 ) : PHostApi {
     private val foregroundCallkeepApi: ForegroundCallkeepApi =
         CallkeepApiProvider.getForegroundCallkeepApi(activity, flutterDelegateApi)
 
+
     override fun setUp(options: POptions, callback: (Result<Unit>) -> Unit) {
         foregroundCallkeepApi.setUp(options, callback)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermissions(activity, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
+        }
+
+        StorageDelegate.setActivityReady(activity, true);
     }
 
     @SuppressLint("MissingPermission")
@@ -64,6 +75,7 @@ class PigeonActivityApi(
     }
 
     override fun isSetUp(): Boolean = foregroundCallkeepApi.isSetUp()
+
 
     // Only for iOS, not used in Android
     override fun tearDown(callback: (Result<Unit>) -> Unit) {
@@ -173,5 +185,7 @@ class PigeonActivityApi(
 
     fun detachActivity() {
         foregroundCallkeepApi.detachActivity()
+        StorageDelegate.setActivityReady(activity, false);
+
     }
 }

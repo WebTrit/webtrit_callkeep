@@ -10,6 +10,8 @@ import android.os.Build
 import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
 import android.os.Parcelable
+import androidx.lifecycle.Lifecycle
+import com.webtrit.callkeep.PCallkeepLifecycleType
 
 inline fun <reified T : Parcelable> Intent.parcelable(key: String): T? = when {
     SDK_INT >= 33 -> getParcelableExtra(key, T::class.java)
@@ -36,5 +38,17 @@ fun Context.registerCustomReceiver(receiver: BroadcastReceiver, intentFilter: In
 fun Ringtone.setLoopingCompat(looping: Boolean) {
     if (SDK_INT >= Build.VERSION_CODES.P) {
         isLooping = looping
+    }
+}
+
+fun Lifecycle.Event.toPCallkeepLifecycleType(): PCallkeepLifecycleType {
+    return when (this) {
+        Lifecycle.Event.ON_CREATE -> PCallkeepLifecycleType.ON_CREATE
+        Lifecycle.Event.ON_START -> PCallkeepLifecycleType.ON_START
+        Lifecycle.Event.ON_RESUME -> PCallkeepLifecycleType.ON_RESUME
+        Lifecycle.Event.ON_PAUSE -> PCallkeepLifecycleType.ON_PAUSE
+        Lifecycle.Event.ON_STOP -> PCallkeepLifecycleType.ON_STOP
+        Lifecycle.Event.ON_DESTROY -> PCallkeepLifecycleType.ON_DESTROY
+        Lifecycle.Event.ON_ANY -> PCallkeepLifecycleType.ON_ANY
     }
 }

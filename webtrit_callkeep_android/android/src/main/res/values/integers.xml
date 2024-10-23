@@ -2,4 +2,5 @@
 <resources>
     <integer name="notification_incoming_call_id">0</integer>
     <integer name="notification_active_call_id">1</integer>
+    <integer name="notification_foreground_call_service_id">2</integer>
 </resources>

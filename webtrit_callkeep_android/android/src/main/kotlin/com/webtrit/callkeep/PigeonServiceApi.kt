@@ -17,7 +17,7 @@ import com.webtrit.callkeep.common.ApplicationData
 
 class PigeonServiceApi(
     private val context: Context,
-    api: PDelegateBackgroundServiceFlutterApi,
+    private val api: PDelegateBackgroundServiceFlutterApi,
 ) : PHostBackgroundServiceApi, BroadcastReceiver() {
     private val connectionService: BackgroundCallkeepApi =
         CallkeepApiProvider.getBackgroundCallkeepApi(context, api)
@@ -40,10 +40,11 @@ class PigeonServiceApi(
         connectionService.register()
     }
 
+
     fun unregister() {
         FlutterLog.i(TAG, "unregister receiver")
         try {
-            connectionService.unregister()
+            connectionService.unregister();
         } catch (e: Exception) {
             Log.e(TAG, e.toString())
         }
@@ -98,7 +99,7 @@ class PigeonServiceApi(
     ) {
         FlutterLog.i(TAG, "endCall $callId")
 
-        ApplicationData.getActivity()?.finish()
+//        ApplicationData.getActivity()?.finish()
 
         val callMetaData = CallMetadata(callId = callId)
         connectionService.hungUp(callMetaData, callback)
@@ -110,8 +111,6 @@ class PigeonServiceApi(
 
     override fun endAllCalls(callback: (Result<Unit>) -> Unit) {
         FlutterLog.i(TAG, "endAllCalls")
-
-        ApplicationData.getActivity()?.finish()
 
         connectionService.endAllCalls()
 

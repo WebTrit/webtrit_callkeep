@@ -3,8 +3,9 @@ package com.webtrit.callkeep.common
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import androidx.lifecycle.Lifecycle
-
 import io.flutter.embedding.engine.plugins.FlutterPlugin.FlutterAssets
 
 /**
@@ -32,6 +33,11 @@ object ApplicationData {
         return activity
     }
 
+    fun finish() {
+        activity?.moveTaskToBack(true)
+        activity?.finish()
+    }
+
     fun attachActivity(activity: Activity?) {
         ApplicationData.activity = activity
     }
@@ -42,6 +48,10 @@ object ApplicationData {
 
     fun getActivityState(): Lifecycle.Event? {
         return currentActivityState
+    }
+
+    fun isBackground(): Boolean {
+        return currentActivityState == Lifecycle.Event.ON_STOP || currentActivityState == Lifecycle.Event.ON_PAUSE || currentActivityState == Lifecycle.Event.ON_DESTROY;
     }
 
     /**
