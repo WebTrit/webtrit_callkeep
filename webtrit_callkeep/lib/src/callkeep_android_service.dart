@@ -31,11 +31,11 @@ class CallkeepBackgroundService {
   ///
   /// This method configures and sets up the Android background service using the provided
   /// parameters and handlers.
-  static void setUpServiceCallback({
+  static Future<void> setUpServiceCallback({
     required ForegroundStartServiceHandle onStart,
     required ForegroundChangeLifecycleHandle onChangedLifecycle,
   }) {
-    platform.setUpServiceCallback(
+    return platform.setUpServiceCallback(
       onStart: onStart,
       onChangedLifecycle: onChangedLifecycle,
     );
@@ -56,13 +56,13 @@ class CallkeepBackgroundService {
   ///
   /// This method configures and sets up the Android background service using the provided
   /// parameters and handlers.
-  void setUp({
+  Future<void> setUp({
     bool autoRestartOnTerminate = false,
     bool autoStartOnBoot = false,
     String androidNotificationName = 'WebTrit Inbound Calls',
     String androidNotificationDescription = 'This is required to receive incoming calls',
   }) {
-    platform.setUpAndroidBackgroundService(
+    return platform.setUpAndroidBackgroundService(
       autoRestartOnTerminate: autoRestartOnTerminate,
       autoStartOnBoot: autoStartOnBoot,
       androidNotificationName: androidNotificationName,
@@ -124,11 +124,12 @@ class CallkeepBackgroundService {
   /// with the given [callId], [handle], [displayName] and [hasVideo] flag.
   ///
   /// Returns a [Future] that resolves after completition with unsafe result and may cause error in production.
-  Future<dynamic> incomingCall(String callId,
-      CallkeepHandle handle, {
-        String? displayName,
-        bool hasVideo = false,
-      }) {
+  Future<dynamic> incomingCall(
+    String callId,
+    CallkeepHandle handle, {
+    String? displayName,
+    bool hasVideo = false,
+  }) {
     return platform.incomingCall(callId, handle, displayName, hasVideo);
   }
 }
