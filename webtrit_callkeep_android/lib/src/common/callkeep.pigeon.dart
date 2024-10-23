@@ -542,7 +542,29 @@ class PHostIsolateApi {
 
   final String pigeonVar_messageChannelSuffix;
 
-  Future<void> setUp({int? callbackDispatcher, int? onStartHandler, int? onChangedLifecycleHandler, bool autoRestartOnTerminate = false, bool autoStartOnBoot = false, String? androidNotificationName, String? androidNotificationDescription,}) async {
+  Future<void> setUpCallback({required int callbackDispatcher, required int onStartHandler, required int onChangedLifecycleHandler,}) async {
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.setUpCallback$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final List<Object?>? pigeonVar_replyList =
+        await pigeonVar_channel.send(<Object?>[callbackDispatcher, onStartHandler, onChangedLifecycleHandler]) as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else {
+      return;
+    }
+  }
+
+  Future<void> setUp({bool autoRestartOnTerminate = false, bool autoStartOnBoot = false, String? androidNotificationName, String? androidNotificationDescription,}) async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.setUp$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
@@ -550,7 +572,7 @@ class PHostIsolateApi {
       binaryMessenger: pigeonVar_binaryMessenger,
     );
     final List<Object?>? pigeonVar_replyList =
-        await pigeonVar_channel.send(<Object?>[callbackDispatcher, onStartHandler, onChangedLifecycleHandler, autoRestartOnTerminate, autoStartOnBoot, androidNotificationName, androidNotificationDescription]) as List<Object?>?;
+        await pigeonVar_channel.send(<Object?>[autoRestartOnTerminate, autoStartOnBoot, androidNotificationName, androidNotificationDescription]) as List<Object?>?;
     if (pigeonVar_replyList == null) {
       throw _createConnectionError(pigeonVar_channelName);
     } else if (pigeonVar_replyList.length > 1) {

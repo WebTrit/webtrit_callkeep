@@ -373,4 +373,9 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
       {bool video = false}) {
     emit(state.update.addAction(action: "End call received"));
   }
+
+  @override
+  void performServiceAnswerCall(String callId) {
+    // TODO: implement performServiceAnswerCall
+  }
 }

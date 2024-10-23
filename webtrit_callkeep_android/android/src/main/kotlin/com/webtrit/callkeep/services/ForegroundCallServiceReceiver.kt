@@ -17,6 +17,7 @@ import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.common.helpers.registerCustomReceiver
 import com.webtrit.callkeep.common.helpers.toPCallkeepLifecycleType
 import com.webtrit.callkeep.common.models.ForegroundCallServiceConfig
+import com.webtrit.callkeep.common.models.ForegroundCallServiceHandles
 
 class ForegroundCallServiceReceiver(
     private val api: PDelegateBackgroundRegisterFlutterApi,
@@ -50,23 +51,34 @@ class ForegroundCallServiceReceiver(
 
     override fun onReceive(context: Context, intent: Intent?) {
         val config = StorageDelegate.getForegroundCallServiceConfiguration(context)
+        val handles = StorageDelegate.getForegroundCallServiceHandles(context)
 
         when (intent?.action) {
-            ForegroundCallServiceReceiverActions.WAKE_UP.action -> onWakeUpBackgroundHandler(intent.extras, config)
+            ForegroundCallServiceReceiverActions.WAKE_UP.action -> onWakeUpBackgroundHandler(
+                intent.extras,
+                config,
+                handles
+            )
+
             ForegroundCallServiceReceiverActions.CHANGE_LIFECYCLE.action -> onChangedLifecycleHandler(
                 intent.extras,
-                config
+                config,
+                handles
             )
         }
     }
 
-    private fun onWakeUpBackgroundHandler(extras: Bundle?, config: ForegroundCallServiceConfig) {
+    private fun onWakeUpBackgroundHandler(
+        extras: Bundle?,
+        config: ForegroundCallServiceConfig,
+        handles: ForegroundCallServiceHandles
+    ) {
         val lifecycle = ApplicationData.getActivityState()
         val lockScreen = Platform.isLockScreen(context)
         val pLifecycle = lifecycle?.toPCallkeepLifecycleType() ?: PCallkeepLifecycleType.ON_ANY
 
         val activityReady = StorageDelegate.getActivityReady(context)
-        val wakeUpHandler = config.onStartHandler ?: throw Exception("onStartHandler is not set")
+        val wakeUpHandler = handles.onStartHandler
         val data = extras?.getString(PARAM_WAKE_UP_DATA) ?: Constants.EMPTY_JSON_MAP
 
         api.onWakeUpBackgroundHandler(
@@ -84,13 +96,17 @@ class ForegroundCallServiceReceiver(
     }
 
     @Suppress("DEPRECATION", "KotlinConstantConditions")
-    private fun onChangedLifecycleHandler(bundle: Bundle?, config: ForegroundCallServiceConfig) {
+    private fun onChangedLifecycleHandler(
+        bundle: Bundle?,
+        config: ForegroundCallServiceConfig,
+        handles: ForegroundCallServiceHandles
+    ) {
         val activityReady = StorageDelegate.getActivityReady(context)
         val lockScreen = Platform.isLockScreen(context)
         val event = bundle?.getSerializable(PARAM_CHANGE_LIFECYCLE_EVENT) as Lifecycle.Event?
 
         val lifecycle = (event ?: Lifecycle.Event.ON_ANY).toPCallkeepLifecycleType()
-        val onChangedLifecycleHandler = config.onChangedLifecycleHandler ?: throw Exception("onStartHandler is not set")
+        val onChangedLifecycleHandler = handles.onChangedLifecycleHandler
 
         api.onApplicationStatusChanged(
             onChangedLifecycleHandler, PCallkeepServiceStatus(

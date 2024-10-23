@@ -150,10 +150,14 @@ abstract class PHostBackgroundServiceApi {
 @HostApi()
 abstract class PHostIsolateApi {
   @async
+  void setUpCallback({
+    required int callbackDispatcher,
+    required int onStartHandler,
+    required int onChangedLifecycleHandler,
+  });
+
+  @async
   void setUp({
-    int? callbackDispatcher,
-    int? onStartHandler,
-    int? onChangedLifecycleHandler,
     bool autoRestartOnTerminate = false,
     bool autoStartOnBoot = false,
     String? androidNotificationName,

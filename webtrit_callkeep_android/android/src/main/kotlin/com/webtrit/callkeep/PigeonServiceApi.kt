@@ -23,7 +23,6 @@ class PigeonServiceApi(
         CallkeepApiProvider.getBackgroundCallkeepApi(context, api)
 
     init {
-        register()
         Telecom.registerPhoneAccount(context)
     }
 

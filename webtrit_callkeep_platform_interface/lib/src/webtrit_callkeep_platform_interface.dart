@@ -195,13 +195,23 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('incomingCallAndroidService() has not been implemented.');
   }
 
-  /// Sets up the Android background service with optional handlers and configurations.
+  /// Sets up the  service callback with optional handlers and configurations.
   ///
   /// [onStart] - A callback triggered when the service starts in the foreground. It provides
   /// the current service status and additional data..
   ///
   /// [onChangedLifecycle] - A callback triggered when there is a change in the lifecycle
   /// of the foreground service (e.g., when the service is paused, resumed, or stopped). .
+  ///
+  /// Throws an [UnimplementedError] if this method is not yet implemented.
+  Future<void> setUpServiceCallback({
+    required ForegroundStartServiceHandle onStart,
+    required ForegroundChangeLifecycleHandle onChangedLifecycle,
+  }) {
+    throw UnimplementedError('setUpServiceCallback() is not implemented');
+  }
+
+  /// Sets up the Android background service with optional handlers and configurations.
   ///
   /// [autoRestartOnTerminate] - If true, the service will automatically restart if it is
   /// unexpectedly terminated by the system or the user. Default is false.
@@ -217,8 +227,6 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   ///
   /// Throws an [UnimplementedError] if this method is not yet implemented.
   Future<void> setUpAndroidBackgroundService({
-    ForegroundStartServiceHandle? onStart,
-    ForegroundChangeLifecycleHandle? onChangedLifecycle,
     bool autoRestartOnTerminate = false,
     bool autoStartOnBoot = false,
     String? androidNotificationName,

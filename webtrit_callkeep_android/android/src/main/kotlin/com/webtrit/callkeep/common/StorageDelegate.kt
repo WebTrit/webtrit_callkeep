@@ -3,6 +3,7 @@ package com.webtrit.callkeep.common
 import android.content.Context
 import android.content.SharedPreferences
 import com.webtrit.callkeep.common.models.ForegroundCallServiceConfig
+import com.webtrit.callkeep.common.models.ForegroundCallServiceHandles
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -15,6 +16,7 @@ object StorageDelegate {
     private const val FLUTTER_ROOT_INITIAL_ROUTE = "FLUTTER_ROOT_INITIAL_ROUTE"
     private const val RINGTONE_PATH_KEY = "RINGTONE_PATH_KEY"
     private const val SERVICE_CONFIGURATION_KEY = "SERVICE_CONFIGURATION_KEY"
+    private const val SERVICE_HANDLES_KEY = "SERVICE_HANDLES_KEY"
 
     private var sharedPreferences: SharedPreferences? = null
 
@@ -94,7 +96,6 @@ object StorageDelegate {
         return getSharedPreferences(context)?.getBoolean("setActivityReady", false) ?: false
     }
 
-    // Save ServiceConfiguration to SharedPreferences using serialization
     fun setServiceConfiguration(context: Context, config: ForegroundCallServiceConfig) {
         val jsonString = Json.encodeToString(config)
         getSharedPreferences(context)?.edit()?.apply {
@@ -103,15 +104,27 @@ object StorageDelegate {
         }
     }
 
-    // Retrieve ServiceConfiguration from SharedPreferences using deserialization
     fun getForegroundCallServiceConfiguration(context: Context): ForegroundCallServiceConfig {
         val jsonString = getSharedPreferences(context)?.getString(SERVICE_CONFIGURATION_KEY, null)
         return jsonString?.let {
             Json.decodeFromString<ForegroundCallServiceConfig>(it)
         } ?: ForegroundCallServiceConfig(
-            null, null, null, null, null,
-            autoRestartOnTerminate = false,
-            autoStartOnBoot = false
+            null, null, autoRestartOnTerminate = false, autoStartOnBoot = false
         );
+    }
+
+    fun setServiceHandles(context: Context, config: ForegroundCallServiceHandles) {
+        val jsonString = Json.encodeToString(config)
+        getSharedPreferences(context)?.edit()?.apply {
+            putString(SERVICE_HANDLES_KEY, jsonString)
+            apply()
+        }
+    }
+
+    fun getForegroundCallServiceHandles(context: Context): ForegroundCallServiceHandles {
+        val jsonString = getSharedPreferences(context)?.getString(SERVICE_HANDLES_KEY, null)
+        return jsonString?.let {
+            Json.decodeFromString<ForegroundCallServiceHandles>(it)
+        } ?: throw Exception("ServiceHandles not found")
     }
 }

@@ -242,20 +242,9 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     return _isolateApi.finishActivity();
   }
 
-  /// Allows delegates to create a background message handler implementation.
-  ///
-  /// For example, on native platforms this could be to setup an isolate, whereas
-  /// on web a service worker can be registered.
-
   @override
-  Future<void> setUpAndroidBackgroundService({
-    ForegroundStartServiceHandle? onStart,
-    ForegroundChangeLifecycleHandle? onChangedLifecycle,
-    bool autoRestartOnTerminate = false,
-    bool autoStartOnBoot = false,
-    String? androidNotificationName,
-    String? androidNotificationDescription,
-  }) async {
+  Future<void> setUpServiceCallback(
+      {ForegroundStartServiceHandle? onStart, ForegroundChangeLifecycleHandle? onChangedLifecycle}) async {
     // Initialization callback handle for the isolate plugin only once;
     _isolatePluginCallbackHandle = _isolatePluginCallbackHandle ??
         PluginUtilities.getCallbackHandle(
@@ -272,10 +261,23 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
           onChangedLifecycle!,
         )?.toRawHandle();
 
+    if (_isolatePluginCallbackHandle != null && _onStartHandle != null && _onChangedLifecycleHandle != null) {
+      await _isolateApi.setUpCallback(
+        callbackDispatcher: _isolatePluginCallbackHandle!,
+        onStartHandler: _onStartHandle!,
+        onChangedLifecycleHandler: _onChangedLifecycleHandle!,
+      );
+    }
+  }
+
+  @override
+  Future<void> setUpAndroidBackgroundService({
+    bool autoRestartOnTerminate = false,
+    bool autoStartOnBoot = false,
+    String? androidNotificationName,
+    String? androidNotificationDescription,
+  }) async {
     await _isolateApi.setUp(
-      callbackDispatcher: _isolatePluginCallbackHandle,
-      onStartHandler: _onStartHandle,
-      onChangedLifecycleHandler: _onChangedLifecycleHandle,
       autoStartOnBoot: autoStartOnBoot,
       autoRestartOnTerminate: autoRestartOnTerminate,
       androidNotificationName: androidNotificationName,

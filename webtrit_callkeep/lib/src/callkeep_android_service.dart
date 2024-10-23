@@ -29,6 +29,19 @@ class CallkeepBackgroundService {
   /// [onChangedLifecycle] - Callback triggered when the lifecycle of the foreground service
   /// changes, such as when it is paused, resumed, or stopped. Optional.
   ///
+  /// This method configures and sets up the Android background service using the provided
+  /// parameters and handlers.
+  static void setUpServiceCallback({
+    required ForegroundStartServiceHandle onStart,
+    required ForegroundChangeLifecycleHandle onChangedLifecycle,
+  }) {
+    platform.setUpServiceCallback(
+      onStart: onStart,
+      onChangedLifecycle: onChangedLifecycle,
+    );
+  }
+
+  /// Configures the background service with optional lifecycle and startup handlers.
   /// [autoRestartOnTerminate] - If true, the service will automatically restart if it is
   /// unexpectedly terminated. Default is false.
   ///
@@ -44,16 +57,12 @@ class CallkeepBackgroundService {
   /// This method configures and sets up the Android background service using the provided
   /// parameters and handlers.
   void setUp({
-    ForegroundStartServiceHandle? onStart,
-    ForegroundChangeLifecycleHandle? onChangedLifecycle,
     bool autoRestartOnTerminate = false,
     bool autoStartOnBoot = false,
     String androidNotificationName = 'WebTrit Inbound Calls',
     String androidNotificationDescription = 'This is required to receive incoming calls',
   }) {
     platform.setUpAndroidBackgroundService(
-      onStart: onStart,
-      onChangedLifecycle: onChangedLifecycle,
       autoRestartOnTerminate: autoRestartOnTerminate,
       autoStartOnBoot: autoStartOnBoot,
       androidNotificationName: androidNotificationName,
@@ -115,12 +124,11 @@ class CallkeepBackgroundService {
   /// with the given [callId], [handle], [displayName] and [hasVideo] flag.
   ///
   /// Returns a [Future] that resolves after completition with unsafe result and may cause error in production.
-  Future<dynamic> incomingCall(
-    String callId,
-    CallkeepHandle handle, {
-    String? displayName,
-    bool hasVideo = false,
-  }) {
+  Future<dynamic> incomingCall(String callId,
+      CallkeepHandle handle, {
+        String? displayName,
+        bool hasVideo = false,
+      }) {
     return platform.incomingCall(callId, handle, displayName, hasVideo);
   }
 }

@@ -18,6 +18,7 @@ import com.webtrit.callkeep.common.ApplicationData
 import com.webtrit.callkeep.common.Constants
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.models.ForegroundCallServiceConfig
+import com.webtrit.callkeep.common.models.ForegroundCallServiceHandles
 import com.webtrit.callkeep.common.notifications.ForegroundCallNotificationBuilder
 import io.flutter.FlutterInjector
 import io.flutter.embedding.engine.FlutterEngine
@@ -122,13 +123,15 @@ class ForegroundCallService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action ?: ForegroundCallServiceEnums.INIT.action
+
         val config = StorageDelegate.getForegroundCallServiceConfiguration(applicationContext)
+        val handles = StorageDelegate.getForegroundCallServiceHandles(applicationContext)
 
         ensureNotification(config)
 
         when (action) {
-            ForegroundCallServiceEnums.INIT.action -> runService(config)
-            ForegroundCallServiceEnums.START.action -> wakeUp(intent, config)
+            ForegroundCallServiceEnums.INIT.action -> runService(config, handles)
+            ForegroundCallServiceEnums.START.action -> wakeUp(intent, config, handles)
             ForegroundCallServiceEnums.STOP.action -> tearDown()
         }
 
@@ -145,10 +148,10 @@ class ForegroundCallService : Service() {
     /**
      * Wakes up the service and sends a broadcast to synchronize call status.
      */
-    private fun wakeUp(intent: Intent?, config: ForegroundCallServiceConfig) {
+    private fun wakeUp(intent: Intent?, config: ForegroundCallServiceConfig, handles: ForegroundCallServiceHandles) {
         val data = intent?.getStringExtra(PARAM_START_DATA) ?: Constants.EMPTY_JSON_MAP
 
-        runService(config)
+        runService(config, handles)
         ForegroundCallServiceReceiver.wakeUp(applicationContext, data)
     }
 
@@ -165,7 +168,7 @@ class ForegroundCallService : Service() {
      * Runs the service and starts the Flutter background isolate.
      */
     @SuppressLint("WakelockTimeout")
-    private fun runService(config: ForegroundCallServiceConfig) {
+    private fun runService(config: ForegroundCallServiceConfig, handles: ForegroundCallServiceHandles) {
         if (config.autoRestartOnTerminate) {
             ForegroundWatchdogReceiver.enqueue(applicationContext)
         }
@@ -173,22 +176,18 @@ class ForegroundCallService : Service() {
         Log.v(TAG, "Running service logic")
         getLock(applicationContext)?.acquire(10 * 60 * 1000L /*10 minutes*/)
 
-        if (config.callbackDispatcher != null) {
-            if (backgroundEngine == null) {
-                Log.v(TAG, "Starting new background isolate")
-                startBackgroundIsolate(this, config.callbackDispatcher)
+        if (backgroundEngine == null) {
+            Log.v(TAG, "Starting new background isolate")
+            startBackgroundIsolate(this, handles.callbackDispatcher)
+            isEngineAttached = true
+        } else {
+            if (!isEngineAttached) {
+                Log.v(TAG, "Reattaching to existing FlutterEngine")
+                backgroundEngine?.serviceControlSurface?.attachToService(this, null, true)
                 isEngineAttached = true
             } else {
-                if (!isEngineAttached) {
-                    Log.v(TAG, "Reattaching to existing FlutterEngine")
-                    backgroundEngine?.serviceControlSurface?.attachToService(this, null, true)
-                    isEngineAttached = true
-                } else {
-                    Log.v(TAG, "FlutterEngine is already attached to service")
-                }
+                Log.v(TAG, "FlutterEngine is already attached to service")
             }
-        } else {
-            Log.e(TAG, "No callback handle found in preferences")
         }
         isRunning.set(true)
     }

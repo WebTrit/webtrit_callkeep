@@ -40,6 +40,9 @@ class WebtritCallkeepPluginState(
 
         PHostIsolateApi.setUp(messenger, pigeonIsolateApi)
 
+        val delegate = PDelegateBackgroundServiceFlutterApi(messenger)
+        pigeonServiceApi = PigeonServiceApi(context, delegate)
+
         attachLogs()
     }
 
@@ -77,17 +80,15 @@ class WebtritCallkeepPluginState(
                 registerReceiver(context)
             }
 
-        val delegate = PDelegateBackgroundServiceFlutterApi(messenger)
-        pigeonServiceApi = PigeonServiceApi(context, delegate)
-
+        pigeonServiceApi?.register()
         PHostBackgroundServiceApi.setUp(messenger, pigeonServiceApi)
     }
 
     fun destroyService() {
         FlutterLog.i(TAG, "destroyService $this")
 
-        PHostBackgroundServiceApi.setUp(messenger, null)
         pigeonServiceApi?.unregister()
+        PHostBackgroundServiceApi.setUp(messenger, null)
 
         foregroundCallServiceReceiver?.unregisterReceiver(context)
 
