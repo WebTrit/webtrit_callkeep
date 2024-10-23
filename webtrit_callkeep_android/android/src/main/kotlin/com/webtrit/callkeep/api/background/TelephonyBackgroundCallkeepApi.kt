@@ -78,6 +78,7 @@ class TelephonyBackgroundCallkeepApi(
      */
     override fun answer(metadata: CallMetadata) {
         Log.d(TAG, "TelephonyBackgroundCallkeepApi:answer")
+        delegate.performAnswerCall(metadata.callId) {}
         PhoneConnectionService.startAnswerCall(context, metadata)
     }
 

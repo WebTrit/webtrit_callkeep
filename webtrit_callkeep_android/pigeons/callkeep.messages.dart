@@ -297,6 +297,9 @@ abstract class PDelegateFlutterApi {
 @FlutterApi()
 abstract class PDelegateBackgroundServiceFlutterApi {
   @async
+  void performAnswerCall(String callId);
+
+  @async
   void performEndCall(String callId);
 
   @async
