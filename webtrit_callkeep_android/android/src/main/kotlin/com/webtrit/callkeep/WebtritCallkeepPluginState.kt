@@ -44,6 +44,9 @@ class WebtritCallkeepPluginState(
         val delegate = PDelegateBackgroundServiceFlutterApi(messenger)
         pigeonServiceApi = PigeonServiceApi(context, delegate)
 
+        foregroundCallServiceReceiver =
+            ForegroundCallServiceReceiver(PDelegateBackgroundRegisterFlutterApi(messenger), context)
+
         attachLogs()
     }
 
@@ -73,16 +76,13 @@ class WebtritCallkeepPluginState(
     }
 
     fun initBackgroundIsolateApi(context: Context) {
-        FlutterLog.i(TAG, "initService $this")
-
-        // TODO(Serdun): add query to store task is service not ready
-        foregroundCallServiceReceiver =
-            ForegroundCallServiceReceiver(PDelegateBackgroundRegisterFlutterApi(messenger), context).apply {
-                registerReceiver(context)
-            }
+        FlutterLog.i(TAG, "initBackgroundIsolateApi $this")
 
         pigeonServiceApi?.register()
         PHostBackgroundServiceApi.setUp(messenger, pigeonServiceApi)
+
+        foregroundCallServiceReceiver?.registerReceiver(context)
+
     }
 
     fun destroyService() {
