@@ -181,3 +181,69 @@ extension CallkeepAndroidOptionsConverter on CallkeepAndroidOptions {
     );
   }
 }
+
+extension CallkeepLifecycleTypeConverter on CallkeepLifecycleType {
+  PCallkeepLifecycleType toPigeon() {
+    switch (this) {
+      case CallkeepLifecycleType.onCreate:
+        return PCallkeepLifecycleType.onCreate;
+      case CallkeepLifecycleType.onStart:
+        return PCallkeepLifecycleType.onStart;
+      case CallkeepLifecycleType.onResume:
+        return PCallkeepLifecycleType.onResume;
+      case CallkeepLifecycleType.onPause:
+        return PCallkeepLifecycleType.onPause;
+      case CallkeepLifecycleType.onStop:
+        return PCallkeepLifecycleType.onStop;
+      case CallkeepLifecycleType.onDestroy:
+        return PCallkeepLifecycleType.onDestroy;
+      case CallkeepLifecycleType.onAny:
+        return PCallkeepLifecycleType.onAny;
+    }
+  }
+}
+
+extension PCallkeepLifecycleTypeConverter on PCallkeepLifecycleType {
+  CallkeepLifecycleType toCallkeep() {
+    switch (this) {
+      case PCallkeepLifecycleType.onCreate:
+        return CallkeepLifecycleType.onCreate;
+      case PCallkeepLifecycleType.onStart:
+        return CallkeepLifecycleType.onStart;
+      case PCallkeepLifecycleType.onResume:
+        return CallkeepLifecycleType.onResume;
+      case PCallkeepLifecycleType.onPause:
+        return CallkeepLifecycleType.onPause;
+      case PCallkeepLifecycleType.onStop:
+        return CallkeepLifecycleType.onStop;
+      case PCallkeepLifecycleType.onDestroy:
+        return CallkeepLifecycleType.onDestroy;
+      case PCallkeepLifecycleType.onAny:
+        return CallkeepLifecycleType.onAny;
+    }
+  }
+}
+
+extension PCallkeepServiceStatusConverter on PCallkeepServiceStatus {
+  CallkeepServiceStatus toCallkeep() {
+    return CallkeepServiceStatus(
+      lifecycle: lifecycle.toCallkeep(),
+      autoStartOnBoot: autoStartOnBoot,
+      autoRestartOnTerminate: autoRestartOnTerminate,
+      lockScreen: lockScreen,
+      activityReady: activityReady,
+    );
+  }
+}
+
+extension CallkeepServiceStatusConverter on CallkeepServiceStatus {
+  PCallkeepServiceStatus toPigeon() {
+    return PCallkeepServiceStatus(
+      lifecycle: lifecycle.toPigeon(),
+      autoStartOnBoot: autoStartOnBoot,
+      autoRestartOnTerminate: autoRestartOnTerminate,
+      lockScreen: lockScreen,
+      activityReady: activityReady,
+    );
+  }
+}

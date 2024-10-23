@@ -6,9 +6,10 @@ import 'package:pigeon/pigeon.dart';
   PigeonOptions(
     dartOut: 'lib/src/common/callkeep.pigeon.dart',
     dartTestOut: 'test/src/common/test_callkeep.pigeon.dart',
-    kotlinOut: 'android/src/main/kotlin/com/webtrit/callkeep/webtrit_callkeep_android/Generated.kt',
+    kotlinOut: 'android/src/main/kotlin/com/webtrit/callkeep/Generated.kt',
     kotlinOptions: KotlinOptions(
       package: 'com.webtrit.callkeep',
+      errorClassName: 'HostCallsDartPigeonFlutterError',
     ),
   ),
 )
@@ -109,6 +110,24 @@ class PCallRequestError {
   late PCallRequestErrorEnum value;
 }
 
+enum PCallkeepLifecycleType {
+  onCreate,
+  onStart,
+  onResume,
+  onPause,
+  onStop,
+  onDestroy,
+  onAny,
+}
+
+class PCallkeepServiceStatus {
+  late PCallkeepLifecycleType lifecycle;
+  late bool autoRestartOnTerminate;
+  late bool autoStartOnBoot;
+  late bool lockScreen;
+  late bool activityReady;
+}
+
 @HostApi()
 abstract class PHostBackgroundServiceApi {
   @async
@@ -129,19 +148,49 @@ abstract class PHostBackgroundServiceApi {
 }
 
 @HostApi()
+abstract class PHostIsolateApi {
+  @async
+  void setUp({
+    int? callbackDispatcher,
+    int? onStartHandler,
+    int? onChangedLifecycleHandler,
+    bool autoRestartOnTerminate = false,
+    bool autoStartOnBoot = false,
+    String? androidNotificationName,
+    String? androidNotificationDescription,
+  });
+
+  @async
+  void startService({
+    required String data,
+  });
+
+  @async
+  void stopService();
+
+  @async
+  void finishActivity();
+}
+
+@FlutterApi()
+abstract class PDelegateBackgroundRegisterFlutterApi {
+  @async
+  void onWakeUpBackgroundHandler(int userCallbackHandle, PCallkeepServiceStatus status, String data);
+
+  @async
+  void onApplicationStatusChanged(int applicationStatusCallbackHandle, PCallkeepServiceStatus status);
+}
+
+@HostApi()
 abstract class PHostApi {
-  @ObjCSelector('isSetUp')
   bool isSetUp();
 
-  @ObjCSelector('setUp:')
   @async
   void setUp(POptions options);
 
-  @ObjCSelector('tearDown')
   @async
   void tearDown();
 
-  @ObjCSelector('reportNewIncomingCall:handle:displayName:hasVideo:')
   @async
   PIncomingCallError? reportNewIncomingCall(
     String callId,
@@ -150,15 +199,12 @@ abstract class PHostApi {
     bool hasVideo,
   );
 
-  @ObjCSelector('reportConnectingOutgoingCall:')
   @async
   void reportConnectingOutgoingCall(String callId);
 
-  @ObjCSelector('reportConnectedOutgoingCall:')
   @async
   void reportConnectedOutgoingCall(String callId);
 
-  @ObjCSelector('reportUpdateCall:handle:displayName:hasVideo:proximityEnabled:')
   @async
   void reportUpdateCall(
     String callId,
@@ -168,11 +214,9 @@ abstract class PHostApi {
     bool? proximityEnabled,
   );
 
-  @ObjCSelector('reportEndCall:reason:')
   @async
   void reportEndCall(String callId, PEndCallReason reason);
 
-  @ObjCSelector('startCall:handle:displayNameOrContactIdentifier:video:proximityEnabled:')
   @async
   PCallRequestError? startCall(
     String callId,
@@ -182,41 +226,33 @@ abstract class PHostApi {
     bool proximityEnabled,
   );
 
-  @ObjCSelector('answerCall:')
   @async
   PCallRequestError? answerCall(String callId);
 
-  @ObjCSelector('endCall:')
   @async
   PCallRequestError? endCall(String callId);
 
-  @ObjCSelector('setHeld:onHold:')
   @async
   PCallRequestError? setHeld(String callId, bool onHold);
 
-  @ObjCSelector('setMuted:muted:')
   @async
   PCallRequestError? setMuted(String callId, bool muted);
 
-  @ObjCSelector('setSpeaker:enabled:')
   @async
   PCallRequestError? setSpeaker(String callId, bool enabled);
 
-  @ObjCSelector('sendDTMF:key:')
   @async
   PCallRequestError? sendDTMF(String callId, String key);
 }
 
 @FlutterApi()
 abstract class PDelegateFlutterApi {
-  @ObjCSelector('continueStartCallIntentHandle:displayName:video:')
   void continueStartCallIntent(
     PHandle handle,
     String? displayName,
     bool video,
   );
 
-  @ObjCSelector('didPushIncomingCallHandle:displayName:video:id:error:')
   void didPushIncomingCall(
     PHandle handle,
     String? displayName,
@@ -225,7 +261,6 @@ abstract class PDelegateFlutterApi {
     PIncomingCallError? error,
   );
 
-  @ObjCSelector('performStartCall:handle:displayNameOrContactIdentifier:video:')
   @async
   bool performStartCall(
     String callId,
@@ -234,37 +269,28 @@ abstract class PDelegateFlutterApi {
     bool video,
   );
 
-  @ObjCSelector('performAnswerCall:')
   @async
   bool performAnswerCall(String callId);
 
-  @ObjCSelector('performEndCall:')
   @async
   bool performEndCall(String callId);
 
-  @ObjCSelector('performSetHeld:onHold:')
   @async
   bool performSetHeld(String callId, bool onHold);
 
-  @ObjCSelector('performSetMuted:muted:')
   @async
   bool performSetMuted(String callId, bool muted);
 
-  @ObjCSelector('performSetSpeaker:enabled:')
   @async
   bool performSetSpeaker(String callId, bool enabled);
 
-  @ObjCSelector('performSendDTMF:key:')
   @async
   bool performSendDTMF(String callId, String key);
 
-  @ObjCSelector('didActivateAudioSession')
   void didActivateAudioSession();
 
-  @ObjCSelector('didDeactivateAudioSession')
   void didDeactivateAudioSession();
 
-  @ObjCSelector('didReset')
   void didReset();
 }
 
@@ -286,13 +312,11 @@ abstract class PDelegateBackgroundServiceFlutterApi {
 
 @HostApi()
 abstract class PPushRegistryHostApi {
-  @ObjCSelector('pushTokenForPushTypeVoIP')
   String? pushTokenForPushTypeVoIP();
 }
 
 @FlutterApi()
 abstract class PPushRegistryDelegateFlutterApi {
-  @ObjCSelector('didUpdatePushTokenForPushTypeVoIP:')
   void didUpdatePushTokenForPushTypeVoIP(String? token);
 }
 

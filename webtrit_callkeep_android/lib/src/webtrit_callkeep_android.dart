@@ -1,4 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:ui';
+
+import 'package:flutter/material.dart';
 
 import 'package:webtrit_callkeep_android/src/common/common.dart';
 import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
@@ -14,15 +18,20 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   final _api = PHostApi();
 
   final _backgroundServiceApi = PHostBackgroundServiceApi();
+  final _isolateApi = PHostIsolateApi();
+
+  int? _isolatePluginCallbackHandle;
+  int? _onChangedLifecycleHandle;
+  int? _onStartHandle;
 
   @override
   void setDelegate(
     CallkeepDelegate? delegate,
   ) {
     if (delegate != null) {
-      PDelegateFlutterApi.setup(_CallkeepDelegateRelay(delegate));
+      PDelegateFlutterApi.setUp(_CallkeepDelegateRelay(delegate));
     } else {
-      PDelegateFlutterApi.setup(null);
+      PDelegateFlutterApi.setUp(null);
     }
   }
 
@@ -31,9 +40,9 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     PushRegistryDelegate? delegate,
   ) {
     if (delegate != null) {
-      PPushRegistryDelegateFlutterApi.setup(_PushRegistryDelegateRelay(delegate));
+      PPushRegistryDelegateFlutterApi.setUp(_PushRegistryDelegateRelay(delegate));
     } else {
-      PPushRegistryDelegateFlutterApi.setup(null);
+      PPushRegistryDelegateFlutterApi.setUp(null);
     }
   }
 
@@ -42,9 +51,9 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     CallkeepLogsDelegate? delegate,
   ) {
     if (delegate != null) {
-      PDelegateLogsFlutterApi.setup(_LogsDelegateRelay(delegate));
+      PDelegateLogsFlutterApi.setUp(_LogsDelegateRelay(delegate));
     } else {
-      PDelegateLogsFlutterApi.setup(null);
+      PDelegateLogsFlutterApi.setUp(null);
     }
   }
 
@@ -179,9 +188,9 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     CallkeepBackgroundServiceDelegate? delegate,
   ) {
     if (delegate != null) {
-      PDelegateBackgroundServiceFlutterApi.setup(_CallkeepBackgroundServiceDelegateRelay(delegate));
+      PDelegateBackgroundServiceFlutterApi.setUp(_CallkeepBackgroundServiceDelegateRelay(delegate));
     } else {
-      PDelegateBackgroundServiceFlutterApi.setup(null);
+      PDelegateBackgroundServiceFlutterApi.setUp(null);
     }
   }
 
@@ -209,6 +218,68 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
       handle.toPigeon(),
       displayName,
       hasVideo,
+    );
+  }
+
+  @override
+  Future<dynamic> startService({
+    Map<String, dynamic> data = const {},
+  }) {
+    return _isolateApi.startService(
+      data: jsonEncode(data),
+    );
+  }
+
+  @override
+  Future<dynamic> stopService() {
+    return _isolateApi.stopService();
+  }
+
+  @override
+  Future<dynamic> finishActivity({
+    bool forceCloseActivity = false,
+  }) {
+    return _isolateApi.finishActivity();
+  }
+
+  /// Allows delegates to create a background message handler implementation.
+  ///
+  /// For example, on native platforms this could be to setup an isolate, whereas
+  /// on web a service worker can be registered.
+
+  @override
+  Future<void> setUpAndroidBackgroundService({
+    ForegroundStartServiceHandle? onStart,
+    ForegroundChangeLifecycleHandle? onChangedLifecycle,
+    bool autoRestartOnTerminate = false,
+    bool autoStartOnBoot = false,
+    String? androidNotificationName,
+    String? androidNotificationDescription,
+  }) async {
+    // Initialization callback handle for the isolate plugin only once;
+    _isolatePluginCallbackHandle = _isolatePluginCallbackHandle ??
+        PluginUtilities.getCallbackHandle(
+          _isolatePluginCallbackDispatcher,
+        )?.toRawHandle();
+
+    _onStartHandle = _onStartHandle ??
+        PluginUtilities.getCallbackHandle(
+          onStart!,
+        )?.toRawHandle();
+
+    _onChangedLifecycleHandle = _onChangedLifecycleHandle ??
+        PluginUtilities.getCallbackHandle(
+          onChangedLifecycle!,
+        )?.toRawHandle();
+
+    await _isolateApi.setUp(
+      callbackDispatcher: _isolatePluginCallbackHandle,
+      onStartHandler: _onStartHandle,
+      onChangedLifecycleHandler: _onChangedLifecycleHandle,
+      autoStartOnBoot: autoStartOnBoot,
+      autoRestartOnTerminate: autoRestartOnTerminate,
+      androidNotificationName: androidNotificationName,
+      androidNotificationDescription: androidNotificationDescription,
     );
   }
 }
@@ -363,5 +434,41 @@ class _CallkeepBackgroundServiceDelegateRelay implements PDelegateBackgroundServ
       hungUpTime != null ? DateTime.fromMillisecondsSinceEpoch(hungUpTime) : null,
       video: video,
     );
+  }
+}
+
+@pragma('vm:entry-point')
+void _isolatePluginCallbackDispatcher() {
+  // Initialize the Flutter framework necessary for method channels and Pigeon.
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // WebtritCallkeepAndroid().wakeUpBackgroundHandler();
+  // Set up the Pigeon API for the background service.
+  PDelegateBackgroundRegisterFlutterApi.setUp(_BackgroundServiceDelegate());
+}
+
+class _BackgroundServiceDelegate implements PDelegateBackgroundRegisterFlutterApi {
+  @override
+  Future<void> onWakeUpBackgroundHandler(
+    int userCallbackHandle,
+    PCallkeepServiceStatus status,
+    String data,
+  ) async {
+    final handle = CallbackHandle.fromRawHandle(userCallbackHandle);
+    final dataMap = jsonDecode(data) as Map<String, dynamic>;
+    final closure = PluginUtilities.getCallbackFromHandle(handle)! as ForegroundStartServiceHandle;
+
+    await closure(status.toCallkeep(), dataMap);
+  }
+
+  @override
+  Future<void> onApplicationStatusChanged(
+    int applicationStatusCallbackHandle,
+    PCallkeepServiceStatus status,
+  ) async {
+    final handle = CallbackHandle.fromRawHandle(applicationStatusCallbackHandle);
+    final closure = PluginUtilities.getCallbackFromHandle(handle)! as ForegroundChangeLifecycleHandle;
+
+    await closure(status.toCallkeep());
   }
 }
