@@ -1,10 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 import 'package:webtrit_callkeep_example/app/routes.dart';
-import 'package:webtrit_callkeep_example/widgets/widgets.dart';
+import 'package:webtrit_callkeep_example/isolates.dart';
 
-class MainScreen extends StatelessWidget {
-  const MainScreen({Key? key}) : super(key: key);
+class MainScreen extends StatefulWidget {
+  const MainScreen({
+    Key? key,
+    required this.callkeepBackgroundService,
+  }) : super(key: key);
+
+  final CallkeepBackgroundService callkeepBackgroundService;
+
+  @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
+  int _counter = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -26,13 +40,71 @@ class MainScreen extends StatelessWidget {
             Wrap(
               alignment: WrapAlignment.center,
               children: [
-                Button(
-                  title: 'Callkeep features',
-                  onClick: () {
-                    GoRouter.of(context).pushNamed(AppRoute.actions);
-                  },
+                ElevatedButton(
+                  child: Text("Callkeep features"),
+                  onPressed: () => GoRouter.of(context).pushNamed(AppRoute.actions),
                 ),
               ],
+            ),
+            Divider(),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                "Trigger from separate isolate",
+                textAlign: TextAlign.center,
+              ),
+            ),
+            Text(
+              "Emulating FCM",
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+            Divider(),
+            SizedBox(height: 16),
+            ElevatedButton(
+              child: Text("Wake up from side isolate"),
+              onPressed: sideIsolateCallbackHandle,
+            ),
+            SizedBox(height: 16),
+            Divider(),
+            Text("Foreground service API"),
+            Divider(),
+            SizedBox(height: 16),
+            ElevatedButton(
+              child: Text("Wake up background handler"),
+              onPressed: () {
+                Permission.notification.request().then((value) {
+                  if (value.isGranted) {
+                    widget.callkeepBackgroundService.setUp(autoRestartOnTerminate: true);
+                    widget.callkeepBackgroundService.startService(data: {"foo": "bar"});
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("Notification permission is required"),
+                      ),
+                    );
+                  }
+                });
+              },
+            ),
+            SizedBox(height: 8),
+            ElevatedButton(
+              child: Text("Stop call service"),
+              onPressed: () {
+                widget.callkeepBackgroundService.setUp(autoRestartOnTerminate: false);
+                widget.callkeepBackgroundService.stopService();
+              },
+            ),
+            ElevatedButton(
+              child: Text("Update notification call service"),
+              onPressed: () {
+                _counter++;
+                widget.callkeepBackgroundService.setUp(
+                  androidNotificationName: "Title: Updated $_counter",
+                  androidNotificationDescription: "Description:  Updated $_counter",
+                );
+                setState(() {});
+              },
             ),
           ],
         ),

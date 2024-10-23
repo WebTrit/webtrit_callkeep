@@ -11,7 +11,10 @@ import '../routes.dart';
 class App extends StatefulWidget {
   const App({
     Key? key,
+    required this.callkeepBackgroundService,
   }) : super(key: key);
+
+  final CallkeepBackgroundService callkeepBackgroundService;
 
   @override
   State<App> createState() => _AppState();
@@ -37,7 +40,9 @@ class _AppState extends State<App> {
           GoRoute(
             name: AppRoute.main,
             path: '/main',
-            builder: (context, state) => const MainScreen(),
+            builder: (context, state) => MainScreen(
+              callkeepBackgroundService: widget.callkeepBackgroundService,
+            ),
           ),
           GoRoute(
             name: AppRoute.actions,
@@ -46,7 +51,7 @@ class _AppState extends State<App> {
               create: (context) {
                 return ActionsCubit(
                   Callkeep(),
-                  CallkeepBackgroundService(),
+                  widget.callkeepBackgroundService,
                 );
               },
               child: const ActionsScreen(),

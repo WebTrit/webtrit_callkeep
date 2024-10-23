@@ -195,27 +195,6 @@ class ActionsScreen extends StatelessWidget {
                           textAlign: TextAlign.start,
                           onClick: () => context.read<ActionsCubit>().incomingCallAndroid(),
                         ),
-
-                        // TODO: Remove, not used
-
-                        // Button(
-                        //   title: "Wake up app",
-                        //   padding: const EdgeInsets.all(8),
-                        //   textAlign: TextAlign.start,
-                        //   onClick: () => context.read<ActionsCubit>().wakeUpAndroid(),
-                        // ),
-                        // Button(
-                        //   title: "Shut down app",
-                        //   padding: const EdgeInsets.all(8),
-                        //   textAlign: TextAlign.start,
-                        //   onClick: () => context.read<ActionsCubit>().shutDownAppAndroid(),
-                        // ),
-                        // Button(
-                        //   title: "is lock screen",
-                        //   padding: const EdgeInsets.all(8),
-                        //   textAlign: TextAlign.start,
-                        //   onClick: () => context.read<ActionsCubit>().isLookScreenAndroid(),
-                        // ),
                       ],
                     ),
                   ],
