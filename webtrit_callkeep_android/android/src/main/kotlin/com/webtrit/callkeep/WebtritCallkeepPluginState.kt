@@ -4,7 +4,8 @@ import android.app.Activity
 import android.content.Context
 import android.util.Log
 import androidx.lifecycle.Lifecycle
-import com.webtrit.callkeep.common.ApplicationData
+import com.webtrit.callkeep.common.ActivityHolder
+import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.services.ForegroundCallServiceReceiver
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -33,7 +34,7 @@ class WebtritCallkeepPluginState(
     fun initIsolateApi() {
         FlutterLog.i(TAG, "initIsolateApi $this")
 
-        ApplicationData.init(context, assets);
+        ContextHolder.init(context, assets);
 
         // Register isolate api for all plugin instances  possibility trigger call service isolate
         pigeonIsolateApi = PigeonIsolateApi(context);
@@ -63,7 +64,7 @@ class WebtritCallkeepPluginState(
         this.activity = activity;
         StorageDelegate.setActivityReady(activity, false)
 
-        ApplicationData.attachActivity(activity)
+        ActivityHolder.setActivity(activity)
 
 
         val flutterDelegateApi = PDelegateFlutterApi(messenger)
@@ -97,7 +98,7 @@ class WebtritCallkeepPluginState(
     fun detachActivity() {
         FlutterLog.i(TAG, "detachActivity $this")
         StorageDelegate.setActivityReady(context, false)
-        ApplicationData.detachActivity()
+        ActivityHolder.setActivity(null)
         pigeonActivityApi?.detachActivity()
     }
 
@@ -108,7 +109,7 @@ class WebtritCallkeepPluginState(
 
     fun onStateChanged(event: Lifecycle.Event) {
         Log.d(TAG, "onStateChanged $event")
-        ApplicationData.setCurrentActivityState(event)
+        ActivityHolder.setLifecycle(event)
         ForegroundCallServiceReceiver.changeLifecycle(context, event)
     }
 

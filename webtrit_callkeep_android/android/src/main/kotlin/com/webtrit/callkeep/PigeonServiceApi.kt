@@ -13,7 +13,7 @@ import com.webtrit.callkeep.common.models.CallMetadata
 import com.webtrit.callkeep.common.models.CallPaths
 import com.webtrit.callkeep.common.models.toCallHandle
 import com.webtrit.callkeep.common.StorageDelegate
-import com.webtrit.callkeep.common.ApplicationData
+import com.webtrit.callkeep.common.ContextHolder
 
 class PigeonServiceApi(
     private val context: Context,
@@ -121,7 +121,7 @@ class PigeonServiceApi(
         Hangup, Answer;
 
         val action: String
-            get() = ApplicationData.appUniqueKey + name
+            get() = ContextHolder.appUniqueKey + name
     }
 
     companion object {

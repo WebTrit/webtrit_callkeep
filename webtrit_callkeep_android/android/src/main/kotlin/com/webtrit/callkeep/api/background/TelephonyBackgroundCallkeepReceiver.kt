@@ -1,4 +1,3 @@
-import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -9,7 +8,8 @@ import android.util.Log
 import com.webtrit.callkeep.FlutterLog
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.api.background.ReportAction
-import com.webtrit.callkeep.common.ApplicationData
+import com.webtrit.callkeep.common.ActivityHolder
+import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.common.helpers.registerCustomReceiver
 import com.webtrit.callkeep.common.models.CallMetadata
@@ -66,7 +66,7 @@ class TelephonyBackgroundCallkeepReceiver(
     private fun handleAcceptedCall(extras: Bundle?) {
         extras?.let {
             val metadata = CallMetadata.fromBundle(it)
-            if (!ApplicationData.isActivityVisible()) {
+            if (!ActivityHolder.isActivityVisible()) {
                 FlutterLog.i(TAG, "Activity is not visible, launch activity")
                 val hostAppActivity = Platform.getLaunchActivity(context)?.apply {
                     data = metadata.getCallUri()
@@ -76,13 +76,8 @@ class TelephonyBackgroundCallkeepReceiver(
             }
 
             // Notify the Flutter API that a call was accepted
-            api.endCallReceived(
+            api.performAnswerCall(
                 metadata.callId,
-                metadata.number,
-                metadata.isVideo,
-                metadata.createdTime!!,
-                System.currentTimeMillis(),
-                null,
             ) {}
         }
     }

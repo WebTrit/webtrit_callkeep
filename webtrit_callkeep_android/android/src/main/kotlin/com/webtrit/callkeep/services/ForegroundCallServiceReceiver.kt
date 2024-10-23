@@ -10,7 +10,8 @@ import androidx.lifecycle.Lifecycle
 import com.webtrit.callkeep.PCallkeepLifecycleType
 import com.webtrit.callkeep.PCallkeepServiceStatus
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
-import com.webtrit.callkeep.common.ApplicationData
+import com.webtrit.callkeep.common.ActivityHolder
+import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Constants
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.helpers.Platform
@@ -73,7 +74,7 @@ class ForegroundCallServiceReceiver(
         config: ForegroundCallServiceConfig,
         handles: ForegroundCallServiceHandles
     ) {
-        val lifecycle = ApplicationData.getActivityState()
+        val lifecycle = ActivityHolder.getActivityState()
         val lockScreen = Platform.isLockScreen(context)
         val pLifecycle = lifecycle?.toPCallkeepLifecycleType() ?: PCallkeepLifecycleType.ON_ANY
 
@@ -149,5 +150,5 @@ enum class ForegroundCallServiceReceiverActions {
     WAKE_UP, CHANGE_LIFECYCLE;
 
     val action: String
-        get() = ApplicationData.appUniqueKey + name
+        get() = ContextHolder.appUniqueKey + name
 }

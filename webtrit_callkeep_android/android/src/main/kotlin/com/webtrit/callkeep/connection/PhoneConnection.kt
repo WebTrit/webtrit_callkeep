@@ -14,6 +14,7 @@ import android.util.Log
 import com.webtrit.callkeep.FlutterLog
 import com.webtrit.callkeep.api.background.TelephonyBackgroundCallkeepApi
 import com.webtrit.callkeep.api.foreground.TelephonyForegroundCallkeepApi
+import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.AudioService
 import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.common.models.CallMetadata
@@ -118,6 +119,8 @@ class PhoneConnection internal constructor(
 
         TelephonyForegroundCallkeepApi.notifyAnswer(context, metadata)
         TelephonyBackgroundCallkeepApi.notifyAnswer(context, metadata)
+
+        ActivityHolder.start(metadata, context)
     }
 
     /**

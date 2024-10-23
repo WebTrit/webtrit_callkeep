@@ -14,7 +14,7 @@ import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.ServiceCompat
-import com.webtrit.callkeep.common.ApplicationData
+import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Constants
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.models.ForegroundCallServiceConfig
@@ -276,6 +276,6 @@ enum class ForegroundCallServiceEnums {
     INIT, START, STOP;
 
     val action: String
-        get() = ApplicationData.appUniqueKey + name + "_foreground_call_service"
+        get() = ContextHolder.appUniqueKey + name + "_foreground_call_service"
 }
 

@@ -14,7 +14,7 @@ import com.webtrit.callkeep.common.helpers.TelephonyHelper
 import com.webtrit.callkeep.common.models.CallMetadata
 import com.webtrit.callkeep.common.models.FailureMetadata
 import com.webtrit.callkeep.common.models.OutgoingFailureType
-import com.webtrit.callkeep.common.ApplicationData
+import com.webtrit.callkeep.common.ContextHolder
 
 /**
  * `PhoneConnectionService` is a service class responsible for managing phone call connections
@@ -101,7 +101,7 @@ class PhoneConnectionService : ConnectionService() {
         try {
             FlutterLog.i(
                 TAG,
-                "onDeclineCall:: callId: ${metadata.callId} isActivityVisible: ${ApplicationData.isActivityVisible()} currentActivityState: ${ApplicationData.getActivityState()} connections: "
+                "onDeclineCall:: callId: ${metadata.callId}"
             )
             connections[metadata.callId]!!.declineCall()
             addConnectionTerminated(metadata.callId)

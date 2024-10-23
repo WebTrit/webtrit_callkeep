@@ -5,7 +5,8 @@ import android.util.Log
 
 import com.webtrit.callkeep.FlutterLog
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
-import com.webtrit.callkeep.common.ApplicationData
+import com.webtrit.callkeep.common.ActivityHolder
+import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.AudioService
 import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.common.models.CallMetadata
@@ -76,7 +77,7 @@ class ProxyBackgroundCallkeepApi(
      * @param metadata The metadata of the call to be answered.
      */
     override fun answer(metadata: CallMetadata) {
-        if (!ApplicationData.isActivityVisible()) {
+        if (!ActivityHolder.isActivityVisible()) {
             context.startActivity(Platform.getLaunchActivity(context)?.apply {
                 data = metadata.getCallUri()
             })
