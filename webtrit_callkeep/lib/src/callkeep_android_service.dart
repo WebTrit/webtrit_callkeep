@@ -13,10 +13,82 @@ class CallkeepBackgroundService {
   factory CallkeepBackgroundService() => _instance;
 
   CallkeepBackgroundService._();
+
   static final _instance = CallkeepBackgroundService._();
 
   /// The [WebtritCallkeepPlatform] instance used to perform platform specific operations.
   static WebtritCallkeepPlatform get platform => WebtritCallkeepPlatform.instance;
+
+  static String incomingCallType = 'call-incoming-type';
+
+  /// Configures the background service with optional lifecycle and startup handlers.
+  ///
+  /// [onStart] - Callback triggered when the service starts in the foreground. It provides
+  /// the current service status and additional data. Optional.
+  ///
+  /// [onChangedLifecycle] - Callback triggered when the lifecycle of the foreground service
+  /// changes, such as when it is paused, resumed, or stopped. Optional.
+  ///
+  /// [autoRestartOnTerminate] - If true, the service will automatically restart if it is
+  /// unexpectedly terminated. Default is false.
+  ///
+  /// [autoStartOnBoot] - If true, the service will automatically start after the device
+  /// reboots. Default is false.
+  ///
+  /// [androidNotificationName] - The name of the Android notification channel used when
+  /// running the service in the background. Defaults to 'WebTrit Inbound Calls'.
+  ///
+  /// [androidNotificationDescription] - The description of the Android notification channel
+  /// used when running the service. Defaults to 'This is required to receive incoming calls'.
+  ///
+  /// This method configures and sets up the Android background service using the provided
+  /// parameters and handlers.
+  void setUp({
+    ForegroundStartServiceHandle? onStart,
+    ForegroundChangeLifecycleHandle? onChangedLifecycle,
+    bool autoRestartOnTerminate = false,
+    bool autoStartOnBoot = false,
+    String androidNotificationName = 'WebTrit Inbound Calls',
+    String androidNotificationDescription = 'This is required to receive incoming calls',
+  }) {
+    platform.setUpAndroidBackgroundService(
+      onStart: onStart,
+      onChangedLifecycle: onChangedLifecycle,
+      autoRestartOnTerminate: autoRestartOnTerminate,
+      autoStartOnBoot: autoStartOnBoot,
+      androidNotificationName: androidNotificationName,
+      androidNotificationDescription: androidNotificationDescription,
+    );
+  }
+
+  /// Starts the background service with the given [data].
+  ///
+  /// [data] - A map containing any additional parameters or configurations required
+  /// by the service at the time of starting. Defaults to an empty map.
+  ///
+  /// This method invokes the platform-specific implementation to start the service
+  /// with the provided data.
+  Future<void> startService({
+    Map<String, dynamic> data = const {},
+  }) async {
+    return platform.startService(data: data);
+  }
+
+  /// Stops the running background service.
+  ///
+  /// This method triggers the platform-specific implementation to stop the background
+  /// service that is currently running.
+  Future<void> stopService() async {
+    platform.stopService();
+  }
+
+  /// Finishes the current activity.
+  ///
+  /// This method triggers the platform-specific implementation to finish or close the
+  /// current activity associated with the background service.
+  Future<void> finishActivity() async {
+    return platform.finishActivity();
+  }
 
   /// Sets the android service delegate.
   /// [CallkeepBackgroundServiceDelegate] needs to be implemented to receive events.
