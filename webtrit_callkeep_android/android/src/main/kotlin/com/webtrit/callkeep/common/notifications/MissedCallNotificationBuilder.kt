@@ -8,6 +8,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 
 import com.webtrit.callkeep.R
+import io.flutter.Log
 
 class MissedCallNotificationBuilder(
     private val context: Context
@@ -54,8 +55,17 @@ class MissedCallNotificationBuilder(
     }
 
     override fun show() {
-        val id = getMetaData().number.hashCode()
-        notificationManager.notify(id, build())
+        if (notificationManager.areNotificationsEnabled()) {
+            val id = getMetaData().number.hashCode()
+
+            try {
+                notificationManager.notify(id, build())
+            } catch (e: SecurityException) {
+                Log.e(TAG, "Notifications exception", e)
+            }
+        } else {
+            Log.d(TAG, "Notifications are disabled")
+        }
     }
 
     override fun hide() {
@@ -63,6 +73,7 @@ class MissedCallNotificationBuilder(
     }
 
     companion object {
+        const val TAG = "MISSED_CALL_NOTIFICATION"
         const val MISSED_CALL_NOTIFICATION_CHANNEL_ID = "MISSED_CALL_NOTIFICATION_CHANNEL_ID"
     }
 }

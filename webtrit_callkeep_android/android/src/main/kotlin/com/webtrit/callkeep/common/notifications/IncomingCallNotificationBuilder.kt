@@ -13,6 +13,7 @@ import androidx.core.app.NotificationCompat
 import com.webtrit.callkeep.PigeonServiceApi
 
 import com.webtrit.callkeep.R
+import io.flutter.Log
 
 class IncomingCallNotificationBuilder(
     private val context: Context
@@ -27,8 +28,7 @@ class IncomingCallNotificationBuilder(
             context.getString(R.string.push_notification_incoming_call_channel_title),
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description =
-                context.getString(R.string.push_notification_incoming_call_channel_description)
+            description = context.getString(R.string.push_notification_incoming_call_channel_description)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             setShowBadge(true)
             setSound(null, null)
@@ -54,10 +54,7 @@ class IncomingCallNotificationBuilder(
             putExtras(getMetaData().toBundle())
         }
         return PendingIntent.getBroadcast(
-            context,
-            0,
-            hangUpIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            context, 0, hangUpIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
     }
 
@@ -94,9 +91,7 @@ class IncomingCallNotificationBuilder(
         notificationBuilder.apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && hasAnswerButton) {
                 style = Notification.CallStyle.forIncomingCall(
-                    Person.Builder().setName(getMetaData().name).setImportant(true).build(),
-                    declineIntent,
-                    answerIntent
+                    Person.Builder().setName(getMetaData().name).setImportant(true).build(), declineIntent, answerIntent
                 )
             } else {
                 addAction(declineAction)
@@ -112,7 +107,15 @@ class IncomingCallNotificationBuilder(
     override fun cancel() {}
 
     override fun show() {
-        notificationManager.notify(R.integer.notification_incoming_call_id, build())
+        if (notificationManager.areNotificationsEnabled()) {
+            try {
+                notificationManager.notify(R.integer.notification_incoming_call_id, build())
+            } catch (e: SecurityException) {
+                Log.e(TAG, "Notifications exception", e)
+            }
+        } else {
+            Log.d(TAG, "Notifications are disabled")
+        }
     }
 
     override fun hide() {
@@ -124,6 +127,7 @@ class IncomingCallNotificationBuilder(
     ) as Boolean
 
     companion object {
+        const val TAG = "INCOMING_CALL_NOTIFICATION"
         const val INCOMING_CALL_NOTIFICATION_CHANNEL_ID = "INCOMING_CALL_NOTIFICATION_SILENT_CHANNEL_ID"
         const val NOTIFICATION_DATA_HAS_ANSWER_BUTTON = "NOTIFICATION_DATA_HAS_ANSWER_BUTTON"
     }

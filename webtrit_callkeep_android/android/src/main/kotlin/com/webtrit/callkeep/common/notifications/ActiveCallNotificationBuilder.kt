@@ -7,6 +7,7 @@ import android.content.Context
 import androidx.core.app.NotificationCompat
 
 import com.webtrit.callkeep.R
+import io.flutter.Log
 
 class ActiveCallNotificationBuilder(
     private val context: Context,
@@ -47,7 +48,15 @@ class ActiveCallNotificationBuilder(
     override fun cancel() {}
 
     override fun show() {
-        notificationManager.notify(R.integer.notification_active_call_id, build())
+        if (notificationManager.areNotificationsEnabled()) {
+            try {
+                notificationManager.notify(R.integer.notification_active_call_id, build())
+            } catch (e: SecurityException) {
+                Log.e(IncomingCallNotificationBuilder.Companion.TAG, "Notifications exception", e)
+            }
+        } else {
+            Log.d(IncomingCallNotificationBuilder.Companion.TAG, "Notifications are disabled")
+        }
     }
 
     override fun hide() {
@@ -55,6 +64,7 @@ class ActiveCallNotificationBuilder(
     }
 
     companion object {
+        const val TAG = "ACTIVE_CALL_NOTIFICATION"
         const val NOTIFICATION_ACTIVE_CALL_CHANNEL_ID = "NOTIFICATION_ACTIVE_CALL_CHANNEL_ID"
     }
 }
