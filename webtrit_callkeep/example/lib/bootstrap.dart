@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:hydrated_bloc/hydrated_bloc.dart';
-import 'package:isolate_tester_plugin/isolate_tester_plugin.dart';
 import 'package:logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -29,8 +28,6 @@ Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
     autoStartOnBoot: true,
     autoRestartOnTerminate: true,
   );
-
-  IsolateTesterPlugin.onIsolateCallback(isolate.sideIsolateCallbackHandle);
 
   WebtritCallkeepLogs().setLogsDelegate(CallkeepLogs());
 

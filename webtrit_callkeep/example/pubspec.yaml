@@ -10,8 +10,6 @@ dependencies:
   flutter:
     sdk: flutter
   permission_handler: ^11.3.1
-  isolate_tester_plugin:
-    path: ../../../../serdun/isolate_tester_plugin/isolate_tester_plugin/isolate_tester_plugin
 
   webtrit_callkeep:
     path: ../

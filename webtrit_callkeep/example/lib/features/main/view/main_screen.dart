@@ -47,26 +47,6 @@ class _MainScreenState extends State<MainScreen> {
               ],
             ),
             Divider(),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                "Trigger from separate isolate",
-                textAlign: TextAlign.center,
-              ),
-            ),
-            Text(
-              "Emulating FCM",
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
-            Divider(),
-            SizedBox(height: 16),
-            ElevatedButton(
-              child: Text("Wake up from side isolate"),
-              onPressed: sideIsolateCallbackHandle,
-            ),
-            SizedBox(height: 16),
-            Divider(),
             Text("Foreground service API"),
             Divider(),
             SizedBox(height: 16),

@@ -1,5 +1,6 @@
 import 'dart:isolate';
 
+import 'package:flutter/foundation.dart';
 import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 
 @pragma('vm:entry-point')
@@ -27,5 +28,9 @@ Future<void> onChangedLifecycle(CallkeepServiceStatus status) async {
 }
 
 void logIsolateI(String message) {
-  print('[$message] Isolate ID: ${Isolate.current.hashCode}');
+  if (kIsWeb) {
+    print("logIsolateI web not supported");
+  } else {
+    print('[$message] Isolate ID: ${Isolate.current.hashCode}');
+  }
 }
