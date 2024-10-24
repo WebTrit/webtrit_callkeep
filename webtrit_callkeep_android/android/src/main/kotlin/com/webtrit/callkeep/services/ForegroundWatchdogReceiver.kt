@@ -1,14 +1,15 @@
 package com.webtrit.callkeep.services
 
-import android.app.AlarmManager
-import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.os.Build
-import android.util.Log
-import androidx.core.app.AlarmManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.Worker
+import androidx.work.WorkerParameters
+import io.flutter.Log
+import java.util.concurrent.TimeUnit
 
 class ForegroundWatchdogReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -22,50 +23,33 @@ class ForegroundWatchdogReceiver : BroadcastReceiver() {
     }
 
     companion object {
-        private const val QUEUE_REQUEST_CODE = 100
         private const val ACTION_RESPAWN = "id.flutter.background_service.RESPAWN"
 
-        fun enqueue(context: Context, millis: Int = 5000) {
-            val intent = Intent(context, ForegroundWatchdogReceiver::class.java)
-            intent.setAction(ACTION_RESPAWN)
-            val manager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        fun enqueue(context: Context, delayInMillis: Long = 5000) {
+            val workRequest = OneTimeWorkRequestBuilder<ForegroundCallWorker>()
+                .setInitialDelay(delayInMillis, TimeUnit.MILLISECONDS)
+                .build()
 
-            var flags = PendingIntent.FLAG_UPDATE_CURRENT
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                flags = flags or PendingIntent.FLAG_MUTABLE
-            }
-
-            val pIntent = PendingIntent.getBroadcast(context, QUEUE_REQUEST_CODE, intent, flags)
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                AlarmManagerCompat.setAndAllowWhileIdle(
-                    manager,
-                    AlarmManager.RTC_WAKEUP,
-                    System.currentTimeMillis() + millis,
-                    pIntent
-                )
-            } else {
-                AlarmManagerCompat.setExact(
-                    manager,
-                    AlarmManager.RTC_WAKEUP,
-                    System.currentTimeMillis() + millis,
-                    pIntent
-                )
-            }
+            WorkManager.getInstance(context).enqueue(workRequest)
         }
 
         fun remove(context: Context) {
-            val intent = Intent(context, ForegroundWatchdogReceiver::class.java)
-            intent.setAction(ACTION_RESPAWN)
+            WorkManager.getInstance(context).cancelAllWorkByTag(ACTION_RESPAWN)
+        }
+    }
+}
 
-            var flags = PendingIntent.FLAG_CANCEL_CURRENT
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                flags = flags or PendingIntent.FLAG_MUTABLE
-            }
-
-            val pi = PendingIntent.getBroadcast(context, QUEUE_REQUEST_CODE, intent, flags)
-            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            alarmManager.cancel(pi)
+class ForegroundCallWorker(context: Context, workerParams: WorkerParameters) : Worker(context, workerParams) {
+    override fun doWork(): Result {
+        return try {
+            ContextCompat.startForegroundService(
+                applicationContext,
+                Intent(applicationContext, ForegroundCallService::class.java)
+            )
+            Result.success()
+        } catch (e: Exception) {
+            Log.e("ForegroundCallWorker", "Failed to start service", e)
+            Result.retry()
         }
     }
 }
