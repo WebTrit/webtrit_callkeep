@@ -8,7 +8,7 @@ import com.webtrit.callkeep.R
 
 class ForegroundCallNotificationBuilder(
     private val context: Context
-) : NotificationBuilder() {
+) : NotificationBuilder(context) {
     init {
         registerNotificationChannel()
     }

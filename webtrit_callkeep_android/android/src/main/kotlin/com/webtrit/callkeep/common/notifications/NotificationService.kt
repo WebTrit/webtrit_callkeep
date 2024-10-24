@@ -3,7 +3,6 @@ package com.webtrit.callkeep.common.notifications
 import  android.content.Context
 import com.webtrit.callkeep.common.models.CallMetadata
 
-
 //TODO: Reorganize this service
 class NotificationService(
     context: Context

@@ -1,18 +1,23 @@
 package com.webtrit.callkeep.common.notifications
 
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-
+import androidx.core.app.NotificationManagerCompat
 import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.common.models.CallMetadata
 
-abstract class NotificationBuilder {
+abstract class NotificationBuilder(
+    private val context: Context
+) {
     private var callMetaData: CallMetadata? = null
     private var notificationData: Map<String, Any> = mutableMapOf()
+
+    protected val notificationManager: NotificationManagerCompat
+        get() = NotificationManagerCompat.from(context)
+
 
     abstract fun show()
 
@@ -36,12 +41,6 @@ abstract class NotificationBuilder {
         this.notificationData = notificationData
     }
 
-    fun getNotificationManager(
-        context: Context
-    ): NotificationManager {
-        return context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-    }
-
     fun buildOpenAppIntent(context: Context, uri: Uri = Uri.EMPTY): PendingIntent {
         val hostAppActivity = Platform.getLaunchActivity(context)?.apply {
             data = uri
@@ -49,10 +48,7 @@ abstract class NotificationBuilder {
         }
 
         return PendingIntent.getActivity(
-            context,
-            R.integer.notification_incoming_call_id,
-            hostAppActivity,
-            PendingIntent.FLAG_IMMUTABLE
+            context, R.integer.notification_incoming_call_id, hostAppActivity, PendingIntent.FLAG_IMMUTABLE
         )
     }
 }

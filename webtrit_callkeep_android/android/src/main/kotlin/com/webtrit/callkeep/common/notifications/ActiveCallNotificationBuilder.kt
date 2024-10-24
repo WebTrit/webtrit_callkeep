@@ -6,13 +6,11 @@ import android.app.NotificationManager
 import android.content.Context
 import androidx.core.app.NotificationCompat
 
-import androidx.core.app.NotificationManagerCompat
-
 import com.webtrit.callkeep.R
 
 class ActiveCallNotificationBuilder(
     private val context: Context,
-) : NotificationBuilder() {
+) : NotificationBuilder(context) {
     init {
         registerNotificationChannel()
     }
@@ -23,10 +21,9 @@ class ActiveCallNotificationBuilder(
             context.getString(R.string.push_notification_active_call_channel_title),
             NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
-            description =
-                context.getString(R.string.push_notification_active_call_channel_description)
+            description = context.getString(R.string.push_notification_active_call_channel_description)
         }
-        getNotificationManager(context).createNotificationChannel(notificationChannel)
+        notificationManager.createNotificationChannel(notificationChannel)
     }
 
     private fun build(): Notification {
@@ -50,12 +47,11 @@ class ActiveCallNotificationBuilder(
     override fun cancel() {}
 
     override fun show() {
-        val notificationManager = NotificationManagerCompat.from(context)
         notificationManager.notify(R.integer.notification_active_call_id, build())
     }
 
     override fun hide() {
-        NotificationManagerCompat.from(context).cancel(R.integer.notification_active_call_id)
+        notificationManager.cancel(R.integer.notification_active_call_id)
     }
 
     companion object {

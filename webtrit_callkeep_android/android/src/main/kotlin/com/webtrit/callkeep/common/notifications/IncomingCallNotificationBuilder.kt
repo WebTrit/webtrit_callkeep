@@ -10,14 +10,13 @@ import android.content.Intent
 import android.graphics.drawable.Icon
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import com.webtrit.callkeep.PigeonServiceApi
 
 import com.webtrit.callkeep.R
 
 class IncomingCallNotificationBuilder(
     private val context: Context
-) : NotificationBuilder() {
+) : NotificationBuilder(context) {
     init {
         registerNotificationChannel()
     }
@@ -34,7 +33,7 @@ class IncomingCallNotificationBuilder(
             setShowBadge(true)
             setSound(null, null)
         }
-        getNotificationManager(context).createNotificationChannel(notificationChannel)
+        notificationManager.createNotificationChannel(notificationChannel)
     }
 
     private fun getAnsweredCallIntent(): PendingIntent {
@@ -113,12 +112,11 @@ class IncomingCallNotificationBuilder(
     override fun cancel() {}
 
     override fun show() {
-        val notificationManager = NotificationManagerCompat.from(context)
         notificationManager.notify(R.integer.notification_incoming_call_id, build())
     }
 
     override fun hide() {
-        NotificationManagerCompat.from(context).cancel(R.integer.notification_incoming_call_id)
+        notificationManager.cancel(R.integer.notification_incoming_call_id)
     }
 
     private fun hasAnswerButton(): Boolean = getNotificationData().getOrDefault(
