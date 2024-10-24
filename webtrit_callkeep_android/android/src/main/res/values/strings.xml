@@ -9,4 +9,6 @@
     <string name="push_notification_incoming_call_channel_description">Notification of incoming calls</string>
     <string name="push_notification_active_call_channel_description">Notification of active calls</string>
     <string name="push_notification_missed_call_channel_description">Notification of missed calls</string>
+    <string name="push_notification_foreground_call_service_title">Ongoing call</string>
+    <string name="push_notification_foreground_call_service_description">This service keeps the call active in the background</string>
 </resources>

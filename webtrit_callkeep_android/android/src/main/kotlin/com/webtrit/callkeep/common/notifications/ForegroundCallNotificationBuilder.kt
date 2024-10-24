@@ -4,7 +4,6 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
-import androidx.core.app.NotificationManagerCompat
 import com.webtrit.callkeep.R
 
 class ForegroundCallNotificationBuilder(
@@ -14,16 +13,15 @@ class ForegroundCallNotificationBuilder(
         registerNotificationChannel()
     }
 
-
     private fun registerNotificationChannel() {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         val notificationChannel = NotificationChannel(
             FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID,
-            context.getString(R.string.push_notification_missed_call_channel_title),
-            NotificationManager.IMPORTANCE_LOW
+            context.getString(R.string.push_notification_foreground_call_service_title),
+            NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = context.getString(R.string.push_notification_missed_call_channel_description)
+            description = context.getString(R.string.push_notification_foreground_call_service_description)
         }
         notificationManager.createNotificationChannel(notificationChannel)
     }
@@ -48,17 +46,11 @@ class ForegroundCallNotificationBuilder(
         return notification
     }
 
-    override fun cancel() {
-        val notificationManager = NotificationManagerCompat.from(context)
-        notificationManager.cancel(FOREGROUND_CALL_NOTIFICATION_ID)
-
-    }
+    override fun cancel() {}
 
     override fun show() {}
 
-    override fun hide() {
-        NotificationManagerCompat.from(context).deleteNotificationChannel(FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID)
-    }
+    override fun hide() {}
 
     companion object {
         const val FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID = "FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID"
