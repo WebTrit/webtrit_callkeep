@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 
 import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
 
@@ -35,6 +38,14 @@ class CallkeepBackgroundService {
     required ForegroundStartServiceHandle onStart,
     required ForegroundChangeLifecycleHandle onChangedLifecycle,
   }) {
+    if (kIsWeb) {
+      return Future.value();
+    }
+
+    if (!Platform.isAndroid) {
+      return Future.value();
+    }
+
     return platform.setUpServiceCallback(
       onStart: onStart,
       onChangedLifecycle: onChangedLifecycle,
@@ -62,6 +73,14 @@ class CallkeepBackgroundService {
     String androidNotificationName = 'WebTrit Inbound Calls',
     String androidNotificationDescription = 'This is required to receive incoming calls',
   }) {
+    if (kIsWeb) {
+      return Future.value();
+    }
+
+    if (!Platform.isAndroid) {
+      return Future.value();
+    }
+
     return platform.setUpAndroidBackgroundService(
       autoRestartOnTerminate: autoRestartOnTerminate,
       autoStartOnBoot: autoStartOnBoot,
@@ -80,6 +99,13 @@ class CallkeepBackgroundService {
   Future<void> startService({
     Map<String, dynamic> data = const {},
   }) async {
+    if (kIsWeb) {
+      return Future.value();
+    }
+
+    if (!Platform.isAndroid) {
+      return Future.value();
+    }
     return platform.startService(data: data);
   }
 
@@ -88,6 +114,13 @@ class CallkeepBackgroundService {
   /// This method triggers the platform-specific implementation to stop the background
   /// service that is currently running.
   Future<void> stopService() async {
+    if (kIsWeb) {
+      return Future.value();
+    }
+
+    if (!Platform.isAndroid) {
+      return Future.value();
+    }
     platform.stopService();
   }
 
@@ -96,12 +129,28 @@ class CallkeepBackgroundService {
   /// This method triggers the platform-specific implementation to finish or close the
   /// current activity associated with the background service.
   Future<void> finishActivity() async {
+    if (kIsWeb) {
+      return Future.value();
+    }
+
+    if (!Platform.isAndroid) {
+      return Future.value();
+    }
+
     return platform.finishActivity();
   }
 
   /// Sets the android service delegate.
   /// [CallkeepBackgroundServiceDelegate] needs to be implemented to receive events.
   void setBackgroundServiceDelegate(CallkeepBackgroundServiceDelegate? delegate) {
+    if (kIsWeb) {
+      return;
+    }
+
+    if (!Platform.isAndroid) {
+      return;
+    }
+
     platform.setBackgroundServiceDelegate(delegate);
   }
 
@@ -110,6 +159,14 @@ class CallkeepBackgroundService {
   ///
   /// Returns a [Future] that resolves after completition with unsafe result and may cause error in production.
   Future<dynamic> endBackgroundCall(String callId) {
+    if (kIsWeb) {
+      return Future.value();
+    }
+
+    if (!Platform.isAndroid) {
+      return Future.value();
+    }
+
     return platform.endBackgroundCall(callId);
   }
 
@@ -117,6 +174,14 @@ class CallkeepBackgroundService {
   /// Returns a [Future] that resolves after completition with unsafe result and may cause error in production.
   /// This method is used to end all calls and cancel all active notifications.
   Future<dynamic> endAllBackgroundCalls() {
+    if (kIsWeb) {
+      return Future.value();
+    }
+
+    if (!Platform.isAndroid) {
+      return Future.value();
+    }
+
     return platform.endAllBackgroundCalls();
   }
 
@@ -130,6 +195,14 @@ class CallkeepBackgroundService {
     String? displayName,
     bool hasVideo = false,
   }) {
+    if (kIsWeb) {
+      return Future.value();
+    }
+
+    if (!Platform.isAndroid) {
+      return Future.value();
+    }
+
     return platform.incomingCall(callId, handle, displayName, hasVideo);
   }
 }

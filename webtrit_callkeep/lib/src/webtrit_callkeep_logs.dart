@@ -1,3 +1,7 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
+
 import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
 
 // TODO
@@ -10,11 +14,20 @@ class WebtritCallkeepLogs {
   factory WebtritCallkeepLogs() => _instance;
 
   WebtritCallkeepLogs._();
+
   static final _instance = WebtritCallkeepLogs._();
 
   /// Sets the logs delegate.
   /// [CallkeepLogsDelegate] needs to be implemented to receive logs.
   void setLogsDelegate(CallkeepLogsDelegate? delegate) {
+    if (kIsWeb) {
+      return;
+    }
+
+    if (!Platform.isAndroid) {
+      return;
+    }
+
     WebtritCallkeepPlatform.instance.setLogsDelegate(delegate);
   }
 }
