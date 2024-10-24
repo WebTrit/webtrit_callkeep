@@ -7,8 +7,7 @@ class AndroidPendingCallHandler {
 
   /// Adds a new pending call.
   void add(PendingCall call) {
-    final hasSameId = _calls.any((existingCall) => existingCall.id == call.id);
-    if (!hasSameId) {
+    if (!_calls.any((existingCall) => existingCall.id == call.id)) {
       _calls.add(call);
       if (_streamController.hasListener) {
         _streamController.add(call);
@@ -18,20 +17,26 @@ class AndroidPendingCallHandler {
 
   /// Removes a pending call.
   void flush() {
-    for (final element in _calls) {
-      _streamController.add(element);
+    if (_streamController.hasListener) {
+      _calls.forEach(_streamController.add);
     }
+    clean();
   }
 
   /// Subscribes to pending calls.
-  StreamSubscription<PendingCall> subscribe(void Function(PendingCall) call) {
-    final subscription = _streamController.stream.map((pendingCall) {
-      _calls.remove(pendingCall);
-      return pendingCall;
-    }).listen(call);
+  void clean() {
+    _calls.clear();
+  }
 
+  StreamSubscription<PendingCall> subscribe(void Function(PendingCall) call) {
+    final subscription = _streamController.stream.listen(call);
     flush();
     return subscription;
+  }
+
+  void dispose() {
+    clean();
+    _streamController.close();
   }
 }
 
