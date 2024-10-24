@@ -19,7 +19,7 @@ class ForegroundCallNotificationBuilder(
         val notificationChannel = NotificationChannel(
             FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID,
             context.getString(R.string.push_notification_foreground_call_service_title),
-            NotificationManager.IMPORTANCE_HIGH
+            NotificationManager.IMPORTANCE_LOW
         ).apply {
             description = context.getString(R.string.push_notification_foreground_call_service_description)
         }
