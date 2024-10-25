@@ -110,9 +110,10 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   @override
   Future<void> reportEndCall(
     String callId,
+    String displayName,
     CallkeepEndCallReason reason,
   ) {
-    return _api.reportEndCall(callId, PEndCallReason(value: reason.toPigeon()));
+    return _api.reportEndCall(callId, displayName, PEndCallReason(value: reason.toPigeon()));
   }
 
   @override

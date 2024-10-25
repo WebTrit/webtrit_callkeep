@@ -188,7 +188,7 @@ NSObject<FlutterMessageCodec> *WTPHostApiGetCodec(void);
 - (void)reportConnectingOutgoingCall:(NSString *)uuidString completion:(void (^)(FlutterError *_Nullable))completion;
 - (void)reportConnectedOutgoingCall:(NSString *)uuidString completion:(void (^)(FlutterError *_Nullable))completion;
 - (void)reportUpdateCall:(NSString *)uuidString handle:(nullable WTPHandle *)handle displayName:(nullable NSString *)displayName hasVideo:(nullable NSNumber *)hasVideo proximityEnabled:(nullable NSNumber *)proximityEnabled completion:(void (^)(FlutterError *_Nullable))completion;
-- (void)reportEndCall:(NSString *)uuidString reason:(WTPEndCallReason *)reason completion:(void (^)(FlutterError *_Nullable))completion;
+- (void)reportEndCall:(NSString *)uuidString displayName:(NSString *)displayName reason:(WTPEndCallReason *)reason completion:(void (^)(FlutterError *_Nullable))completion;
 - (void)startCall:(NSString *)uuidString handle:(WTPHandle *)handle displayNameOrContactIdentifier:(nullable NSString *)displayNameOrContactIdentifier video:(BOOL)video proximityEnabled:(BOOL)proximityEnabled completion:(void (^)(WTPCallRequestError *_Nullable, FlutterError *_Nullable))completion;
 - (void)answerCall:(NSString *)uuidString completion:(void (^)(WTPCallRequestError *_Nullable, FlutterError *_Nullable))completion;
 - (void)endCall:(NSString *)uuidString completion:(void (^)(WTPCallRequestError *_Nullable, FlutterError *_Nullable))completion;

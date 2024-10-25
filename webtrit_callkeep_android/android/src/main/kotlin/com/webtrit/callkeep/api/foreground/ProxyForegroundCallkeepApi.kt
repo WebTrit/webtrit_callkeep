@@ -6,6 +6,7 @@ import com.webtrit.callkeep.FlutterLog
 import com.webtrit.callkeep.PCallRequestError
 import com.webtrit.callkeep.PDelegateFlutterApi
 import com.webtrit.callkeep.PEndCallReason
+import com.webtrit.callkeep.PEndCallReasonEnum
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.POptions
 import com.webtrit.callkeep.common.StorageDelegate
@@ -76,6 +77,9 @@ class ProxyForegroundCallkeepApi(
         audioService.stopRingtone()
         if (Platform.isLockScreen(activity)) {
             activity.finish()
+        }
+        if(reason.value == PEndCallReasonEnum.UNANSWERED) {
+            notificationService.showMissedCallNotification(metadata)
         }
         callback.invoke(Result.success(Unit))
     }

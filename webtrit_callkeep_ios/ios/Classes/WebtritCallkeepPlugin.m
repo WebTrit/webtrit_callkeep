@@ -4,6 +4,7 @@
 #import <PushKit/PushKit.h>
 #import <CallKit/CallKit.h>
 #import <Intents/Intents.h>
+#import <UserNotifications/UserNotifications.h>
 
 #import "Generated.h"
 #import "Converters.h"
@@ -252,15 +253,37 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
 }
 
 - (void)reportEndCall:(NSString *)uuidString
+                displayName:(NSString *)displayName
                reason:(WTPEndCallReason *)reason
            completion:(void (^)(FlutterError *))completion {
 #ifdef DEBUG
   NSLog(@"[Callkeep][reportEndCall] uuidString = %@", uuidString);
 #endif
+    
   [_provider reportCallWithUUID:[[NSUUID alloc] initWithUUIDString:uuidString]
                     endedAtDate:nil
                          reason:[reason toCallKit]];
   [self assignIdleTimerDisabled:NO];
+    
+    if ([reason toCallKit] == CXCallEndedReasonUnanswered) {
+        UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+
+        UNMutableNotificationContent *content = [[UNMutableNotificationContent alloc] init];
+        content.title = @"Missed Call";
+        content.body = displayName;
+        content.sound = [UNNotificationSound defaultSound];
+        
+        NSString *identifier = [NSString stringWithFormat:@"missed call-%@", displayName];
+
+        UNNotificationRequest *request = [UNNotificationRequest requestWithIdentifier:identifier content:content trigger:nil];
+
+        [center addNotificationRequest:request withCompletionHandler:^(NSError * _Nullable error) {
+          if (error != nil) {
+            NSLog(@"[Callkeep][reportEndCall] Error adding notification: %@", error);
+          }
+        }];
+    }
+
   completion(nil);
 }
 

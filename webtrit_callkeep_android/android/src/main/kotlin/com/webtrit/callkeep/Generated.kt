@@ -502,7 +502,7 @@ interface PHostApi {
   fun reportConnectingOutgoingCall(callId: String, callback: (Result<Unit>) -> Unit)
   fun reportConnectedOutgoingCall(callId: String, callback: (Result<Unit>) -> Unit)
   fun reportUpdateCall(callId: String, handle: PHandle?, displayName: String?, hasVideo: Boolean?, proximityEnabled: Boolean?, callback: (Result<Unit>) -> Unit)
-  fun reportEndCall(callId: String, reason: PEndCallReason, callback: (Result<Unit>) -> Unit)
+  fun reportEndCall(callId: String, displayName: String, reason: PEndCallReason, callback: (Result<Unit>) -> Unit)
   fun startCall(callId: String, handle: PHandle, displayNameOrContactIdentifier: String?, video: Boolean, proximityEnabled: Boolean, callback: (Result<PCallRequestError?>) -> Unit)
   fun answerCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit)
   fun endCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit)
@@ -661,8 +661,9 @@ interface PHostApi {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
             val callIdArg = args[0] as String
-            val reasonArg = args[1] as PEndCallReason
-            api.reportEndCall(callIdArg, reasonArg) { result: Result<Unit> ->
+            val displayNameArg = args[1] as String
+            val reasonArg = args[2] as PEndCallReason
+            api.reportEndCall(callIdArg, displayNameArg, reasonArg) { result: Result<Unit> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(wrapError(error))
@@ -868,7 +869,7 @@ class PDelegateFlutterApi(private val binaryMessenger: BinaryMessenger) {
     }
   }
   fun continueStartCallIntent(handleArg: PHandle, displayNameArg: String?, videoArg: Boolean, callback: (Result<Unit>) -> Unit)
-{
+  {
     val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.continueStartCallIntent"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(handleArg, displayNameArg, videoArg)) {
@@ -880,11 +881,11 @@ class PDelegateFlutterApi(private val binaryMessenger: BinaryMessenger) {
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      } 
+      }
     }
   }
   fun didPushIncomingCall(handleArg: PHandle, displayNameArg: String?, videoArg: Boolean, callIdArg: String, errorArg: PIncomingCallError?, callback: (Result<Unit>) -> Unit)
-{
+  {
     val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.didPushIncomingCall"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(handleArg, displayNameArg, videoArg, callIdArg, errorArg)) {
@@ -896,11 +897,11 @@ class PDelegateFlutterApi(private val binaryMessenger: BinaryMessenger) {
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      } 
+      }
     }
   }
   fun performStartCall(callIdArg: String, handleArg: PHandle, displayNameOrContactIdentifierArg: String?, videoArg: Boolean, callback: (Result<Boolean>) -> Unit)
-{
+  {
     val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performStartCall"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(callIdArg, handleArg, displayNameOrContactIdentifierArg, videoArg)) {
@@ -915,11 +916,11 @@ class PDelegateFlutterApi(private val binaryMessenger: BinaryMessenger) {
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      } 
+      }
     }
   }
   fun performAnswerCall(callIdArg: String, callback: (Result<Boolean>) -> Unit)
-{
+  {
     val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performAnswerCall"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(callIdArg)) {
@@ -934,11 +935,11 @@ class PDelegateFlutterApi(private val binaryMessenger: BinaryMessenger) {
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      } 
+      }
     }
   }
   fun performEndCall(callIdArg: String, callback: (Result<Boolean>) -> Unit)
-{
+  {
     val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performEndCall"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(callIdArg)) {
@@ -953,11 +954,11 @@ class PDelegateFlutterApi(private val binaryMessenger: BinaryMessenger) {
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      } 
+      }
     }
   }
   fun performSetHeld(callIdArg: String, onHoldArg: Boolean, callback: (Result<Boolean>) -> Unit)
-{
+  {
     val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performSetHeld"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(callIdArg, onHoldArg)) {
@@ -972,11 +973,11 @@ class PDelegateFlutterApi(private val binaryMessenger: BinaryMessenger) {
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      } 
+      }
     }
   }
   fun performSetMuted(callIdArg: String, mutedArg: Boolean, callback: (Result<Boolean>) -> Unit)
-{
+  {
     val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performSetMuted"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(callIdArg, mutedArg)) {
@@ -991,11 +992,11 @@ class PDelegateFlutterApi(private val binaryMessenger: BinaryMessenger) {
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      } 
+      }
     }
   }
   fun performSetSpeaker(callIdArg: String, enabledArg: Boolean, callback: (Result<Boolean>) -> Unit)
-{
+  {
     val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performSetSpeaker"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(callIdArg, enabledArg)) {
@@ -1010,11 +1011,11 @@ class PDelegateFlutterApi(private val binaryMessenger: BinaryMessenger) {
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      } 
+      }
     }
   }
   fun performSendDTMF(callIdArg: String, keyArg: String, callback: (Result<Boolean>) -> Unit)
-{
+  {
     val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performSendDTMF"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(callIdArg, keyArg)) {
@@ -1029,11 +1030,11 @@ class PDelegateFlutterApi(private val binaryMessenger: BinaryMessenger) {
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      } 
+      }
     }
   }
   fun didActivateAudioSession(callback: (Result<Unit>) -> Unit)
-{
+  {
     val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.didActivateAudioSession"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(null) {
@@ -1045,11 +1046,11 @@ class PDelegateFlutterApi(private val binaryMessenger: BinaryMessenger) {
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      } 
+      }
     }
   }
   fun didDeactivateAudioSession(callback: (Result<Unit>) -> Unit)
-{
+  {
     val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.didDeactivateAudioSession"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(null) {
@@ -1061,11 +1062,11 @@ class PDelegateFlutterApi(private val binaryMessenger: BinaryMessenger) {
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      } 
+      }
     }
   }
   fun didReset(callback: (Result<Unit>) -> Unit)
-{
+  {
     val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.didReset"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(null) {
@@ -1077,7 +1078,7 @@ class PDelegateFlutterApi(private val binaryMessenger: BinaryMessenger) {
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      } 
+      }
     }
   }
 }
@@ -1091,7 +1092,7 @@ class PDelegateBackgroundServiceFlutterApi(private val binaryMessenger: BinaryMe
     }
   }
   fun performEndCall(callIdArg: String, callback: (Result<Unit>) -> Unit)
-{
+  {
     val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi.performEndCall"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(callIdArg)) {
@@ -1103,11 +1104,11 @@ class PDelegateBackgroundServiceFlutterApi(private val binaryMessenger: BinaryMe
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      } 
+      }
     }
   }
   fun endCallReceived(callIdArg: String, numberArg: String, videoArg: Boolean, createdTimeArg: Long, acceptedTimeArg: Long?, hungUpTimeArg: Long?, callback: (Result<Unit>) -> Unit)
-{
+  {
     val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi.endCallReceived"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(callIdArg, numberArg, videoArg, createdTimeArg, acceptedTimeArg, hungUpTimeArg)) {
@@ -1119,7 +1120,7 @@ class PDelegateBackgroundServiceFlutterApi(private val binaryMessenger: BinaryMe
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      } 
+      }
     }
   }
 }
@@ -1164,7 +1165,7 @@ class PPushRegistryDelegateFlutterApi(private val binaryMessenger: BinaryMesseng
     }
   }
   fun didUpdatePushTokenForPushTypeVoIP(tokenArg: String?, callback: (Result<Unit>) -> Unit)
-{
+  {
     val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PPushRegistryDelegateFlutterApi.didUpdatePushTokenForPushTypeVoIP"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(tokenArg)) {
@@ -1176,7 +1177,7 @@ class PPushRegistryDelegateFlutterApi(private val binaryMessenger: BinaryMesseng
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      } 
+      }
     }
   }
 }
@@ -1190,7 +1191,7 @@ class PDelegateLogsFlutterApi(private val binaryMessenger: BinaryMessenger) {
     }
   }
   fun onLog(typeArg: PLogTypeEnum, tagArg: String, messageArg: String, callback: (Result<Unit>) -> Unit)
-{
+  {
     val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateLogsFlutterApi.onLog"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(typeArg.raw, tagArg, messageArg)) {
@@ -1202,7 +1203,7 @@ class PDelegateLogsFlutterApi(private val binaryMessenger: BinaryMessenger) {
         }
       } else {
         callback(Result.failure(createConnectionError(channelName)))
-      } 
+      }
     }
   }
 }

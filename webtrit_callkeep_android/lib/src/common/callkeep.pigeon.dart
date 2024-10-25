@@ -621,7 +621,7 @@ class PHostApi {
     }
   }
 
-  Future<void> reportEndCall(String callId, PEndCallReason reason) async {
+  Future<void> reportEndCall(String callId, String displayName, PEndCallReason reason) async {
     const String __pigeon_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.reportEndCall';
     final BasicMessageChannel<Object?> __pigeon_channel = BasicMessageChannel<Object?>(
       __pigeon_channelName,
@@ -629,7 +629,7 @@ class PHostApi {
       binaryMessenger: __pigeon_binaryMessenger,
     );
     final List<Object?>? __pigeon_replyList =
-        await __pigeon_channel.send(<Object?>[callId, reason]) as List<Object?>?;
+        await __pigeon_channel.send(<Object?>[callId, displayName, reason]) as List<Object?>?;
     if (__pigeon_replyList == null) {
       throw _createConnectionError(__pigeon_channelName);
     } else if (__pigeon_replyList.length > 1) {
