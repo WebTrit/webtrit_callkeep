@@ -2,6 +2,7 @@ package com.webtrit.callkeep.common
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.webtrit.callkeep.common.helpers.JsonHelper
 import com.webtrit.callkeep.common.models.ForegroundCallServiceConfig
 import com.webtrit.callkeep.common.models.ForegroundCallServiceHandles
 import kotlinx.serialization.encodeToString
@@ -107,7 +108,7 @@ object StorageDelegate {
     fun getForegroundCallServiceConfiguration(context: Context): ForegroundCallServiceConfig {
         val jsonString = getSharedPreferences(context)?.getString(SERVICE_CONFIGURATION_KEY, null)
         return jsonString?.let {
-            Json.decodeFromString<ForegroundCallServiceConfig>(it)
+            JsonHelper.json.decodeFromString<ForegroundCallServiceConfig>(it)
         } ?: ForegroundCallServiceConfig(
             null, null, autoRestartOnTerminate = false, autoStartOnBoot = false
         );
@@ -124,7 +125,7 @@ object StorageDelegate {
     fun getForegroundCallServiceHandles(context: Context): ForegroundCallServiceHandles {
         val jsonString = getSharedPreferences(context)?.getString(SERVICE_HANDLES_KEY, null)
         return jsonString?.let {
-            Json.decodeFromString<ForegroundCallServiceHandles>(it)
+            JsonHelper.json.decodeFromString<ForegroundCallServiceHandles>(it)
         } ?: throw Exception("ServiceHandles not found")
     }
 }
