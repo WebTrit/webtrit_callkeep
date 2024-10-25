@@ -26,9 +26,8 @@ class ForegroundWatchdogReceiver : BroadcastReceiver() {
         private const val ACTION_RESPAWN = "id.flutter.background_service.RESPAWN"
 
         fun enqueue(context: Context, delayInMillis: Long = 5000) {
-            val workRequest = OneTimeWorkRequestBuilder<ForegroundCallWorker>()
-                .setInitialDelay(delayInMillis, TimeUnit.MILLISECONDS)
-                .build()
+            val workRequest = OneTimeWorkRequestBuilder<ForegroundCallWorker>().addTag(ACTION_RESPAWN)
+                .setInitialDelay(delayInMillis, TimeUnit.MILLISECONDS).build()
 
             WorkManager.getInstance(context).enqueue(workRequest)
         }
