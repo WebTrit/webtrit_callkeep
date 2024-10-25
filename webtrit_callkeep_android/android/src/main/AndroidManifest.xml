@@ -52,12 +52,6 @@
             android:foregroundServiceType="phoneCall" />
 
         <receiver
-            android:name=".services.ForegroundWatchdogReceiver"
-            android:enabled="true"
-            android:exported="true"
-            android:permission="com.webtrit.callkeep.permission.SEND_RESPAWN" />
-
-        <receiver
             android:name=".services.ForegroundBootReceiver"
             android:enabled="true"
             android:exported="true">

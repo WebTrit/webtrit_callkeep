@@ -101,7 +101,7 @@ class ForegroundCallService : Service() {
         val config = StorageDelegate.getForegroundCallServiceConfiguration(applicationContext)
 
         if (config.autoRestartOnTerminate) {
-            ForegroundWatchdogReceiver.enqueue(this)
+            ForegroundCallWorker.enqueue(this)
         }
 
         getLock(applicationContext)?.let { lock ->
@@ -141,7 +141,7 @@ class ForegroundCallService : Service() {
     override fun onTaskRemoved(rootIntent: Intent?) {
         Log.d(TAG, "onTaskRemoved")
         if (isRunning.get()) {
-            ForegroundWatchdogReceiver.enqueue(applicationContext, 1000)
+            ForegroundCallWorker.enqueue(applicationContext, 1000)
         }
     }
 
@@ -159,7 +159,7 @@ class ForegroundCallService : Service() {
      * Tears down the service gracefully.
      */
     private fun tearDown() {
-        ForegroundWatchdogReceiver.remove(this)
+        ForegroundCallWorker.remove(this)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -170,7 +170,7 @@ class ForegroundCallService : Service() {
     @SuppressLint("WakelockTimeout")
     private fun runService(config: ForegroundCallServiceConfig, handles: ForegroundCallServiceHandles) {
         if (config.autoRestartOnTerminate) {
-            ForegroundWatchdogReceiver.enqueue(applicationContext)
+            ForegroundCallWorker.enqueue(applicationContext)
         }
 
         Log.v(TAG, "Running service logic")
@@ -263,7 +263,7 @@ class ForegroundCallService : Service() {
          */
         @Synchronized
         fun getLock(context: Context): PowerManager.WakeLock? {
-            val mgr = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+            val mgr = context.getSystemService(POWER_SERVICE) as PowerManager
             val lockName = "com.webtrit.callkeep:ForegroundCallService.Lock"
             return mgr.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, lockName).apply {
                 setReferenceCounted(false)
