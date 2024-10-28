@@ -27,7 +27,7 @@ class ForegroundCallWorker(context: Context, workerParams: WorkerParameters) : W
         private const val ACTION_RESTART_FOREGROUND_SERVICE =
             "id.flutter.webtrit.foreground_call_service.ACTION_RESTART_FOREGROUND_SERVICE"
 
-        fun enqueue(context: Context, delayInMillis: Long = 5000) {
+        fun enqueue(context: Context, delayInMillis: Long = 15000) {
             val workRequest =
                 OneTimeWorkRequestBuilder<ForegroundCallWorker>().addTag(ACTION_RESTART_FOREGROUND_SERVICE)
                     .setInitialDelay(delayInMillis, TimeUnit.MILLISECONDS).build()
