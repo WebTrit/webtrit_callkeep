@@ -412,6 +412,10 @@ class PhoneConnectionService : ConnectionService() {
             return terminatedConnections.contains(id)
         }
 
+        fun isExistsActiveConnection(): Boolean {
+            return connections.values.any { it.state == Connection.STATE_ACTIVE }
+        }
+
         fun getActiveConnection(): PhoneConnection? {
             for (connection in connections.values) {
                 if (connection.state == Connection.STATE_ACTIVE) return connection

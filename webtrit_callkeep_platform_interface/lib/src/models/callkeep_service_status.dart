@@ -9,6 +9,7 @@ class CallkeepServiceStatus extends Equatable {
     required this.autoStartOnBoot,
     required this.activityReady,
     required this.lockScreen,
+    required this.activeCalls,
   });
 
   final CallkeepLifecycleType lifecycle;
@@ -16,6 +17,7 @@ class CallkeepServiceStatus extends Equatable {
   final bool autoStartOnBoot;
   final bool lockScreen;
   final bool activityReady;
+  final bool activeCalls;
 
   @override
   List<Object?> get props => [
@@ -24,5 +26,6 @@ class CallkeepServiceStatus extends Equatable {
         autoStartOnBoot,
         lockScreen,
         activityReady,
+        activeCalls,
       ];
 }

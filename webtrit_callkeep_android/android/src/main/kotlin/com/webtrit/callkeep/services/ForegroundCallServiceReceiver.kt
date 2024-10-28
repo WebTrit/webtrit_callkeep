@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
+import android.telecom.ConnectionService
 import android.util.Log
 import androidx.lifecycle.Lifecycle
 import com.webtrit.callkeep.PCallkeepLifecycleType
@@ -19,6 +20,7 @@ import com.webtrit.callkeep.common.helpers.registerCustomReceiver
 import com.webtrit.callkeep.common.helpers.toPCallkeepLifecycleType
 import com.webtrit.callkeep.common.models.ForegroundCallServiceConfig
 import com.webtrit.callkeep.common.models.ForegroundCallServiceHandles
+import com.webtrit.callkeep.connection.PhoneConnectionService
 
 class ForegroundCallServiceReceiver(
     private val api: PDelegateBackgroundRegisterFlutterApi,
@@ -84,7 +86,12 @@ class ForegroundCallServiceReceiver(
 
         api.onWakeUpBackgroundHandler(
             wakeUpHandler, PCallkeepServiceStatus(
-                pLifecycle, config.autoRestartOnTerminate, config.autoStartOnBoot, lockScreen, activityReady
+                pLifecycle,
+                config.autoRestartOnTerminate,
+                config.autoStartOnBoot,
+                lockScreen,
+                activityReady,
+                PhoneConnectionService.isExistsActiveConnection()
             ), data
         ) { response ->
             response.onSuccess {
@@ -111,7 +118,8 @@ class ForegroundCallServiceReceiver(
 
         api.onApplicationStatusChanged(
             onChangedLifecycleHandler, PCallkeepServiceStatus(
-                lifecycle, config.autoRestartOnTerminate, config.autoStartOnBoot, lockScreen, activityReady
+                lifecycle, config.autoRestartOnTerminate, config.autoStartOnBoot, lockScreen, activityReady,
+                PhoneConnectionService.isExistsActiveConnection()
             )
         ) { response ->
             response.onSuccess {

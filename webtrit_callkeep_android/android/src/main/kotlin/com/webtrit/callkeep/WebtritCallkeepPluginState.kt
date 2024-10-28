@@ -79,7 +79,6 @@ class WebtritCallkeepPluginState(
         PHostBackgroundServiceApi.setUp(messenger, pigeonServiceApi)
 
         foregroundCallServiceReceiver?.registerReceiver(context)
-
     }
 
     fun destroyService() {
@@ -89,7 +88,6 @@ class WebtritCallkeepPluginState(
         PHostBackgroundServiceApi.setUp(messenger, null)
 
         foregroundCallServiceReceiver?.unregisterReceiver(context)
-
     }
 
     fun detachActivity() {
@@ -101,7 +99,6 @@ class WebtritCallkeepPluginState(
 
     fun onDetach() {
         FlutterLog.i(TAG, "onDetach $this")
-
     }
 
     fun onStateChanged(event: Lifecycle.Event) {

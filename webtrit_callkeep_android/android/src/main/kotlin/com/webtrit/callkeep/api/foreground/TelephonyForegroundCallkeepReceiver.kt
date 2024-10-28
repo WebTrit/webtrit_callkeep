@@ -11,6 +11,7 @@ import com.webtrit.callkeep.FlutterLog
 import com.webtrit.callkeep.PCallRequestError
 import com.webtrit.callkeep.PCallRequestErrorEnum
 import com.webtrit.callkeep.PDelegateFlutterApi
+import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.PigeonCallback
 import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.common.helpers.registerCustomReceiver
@@ -18,6 +19,7 @@ import com.webtrit.callkeep.common.models.CallMetadata
 import com.webtrit.callkeep.common.models.FailureMetadata
 import com.webtrit.callkeep.common.models.OutgoingFailureType
 import com.webtrit.callkeep.common.models.toPHandle
+import com.webtrit.callkeep.services.ForegroundCallServiceReceiver
 
 /**
  * This class serves as a BroadcastReceiver for handling telephony-related events in the foreground of the application.
@@ -104,6 +106,10 @@ class TelephonyForegroundCallkeepReceiver(
             val callMetaData = CallMetadata.fromBundle(it)
             flutterDelegateApi.performEndCall(callMetaData.callId) {}
             flutterDelegateApi.didDeactivateAudioSession {}
+
+            // TODO(Serdun): Temporary workaround to call changeLifecycle to check active call status and start signaling if it's not already active.
+            // Consider creating an observer for the connection list directly, or revising the logic to handle this case more effectively.
+            ForegroundCallServiceReceiver.changeLifecycle(activity, ActivityHolder.getActivityState())
 
             if (Platform.isLockScreen(activity)) {
                 activity.finish()

@@ -126,6 +126,7 @@ class PCallkeepServiceStatus {
   late bool autoStartOnBoot;
   late bool lockScreen;
   late bool activityReady;
+  late bool activeCalls;
 }
 
 @HostApi()

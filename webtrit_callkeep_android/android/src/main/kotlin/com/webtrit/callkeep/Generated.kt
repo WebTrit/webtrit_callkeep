@@ -325,7 +325,8 @@ data class PCallkeepServiceStatus (
   val autoRestartOnTerminate: Boolean,
   val autoStartOnBoot: Boolean,
   val lockScreen: Boolean,
-  val activityReady: Boolean
+  val activityReady: Boolean,
+  val activeCalls: Boolean
 )
  {
   companion object {
@@ -335,7 +336,8 @@ data class PCallkeepServiceStatus (
       val autoStartOnBoot = pigeonVar_list[2] as Boolean
       val lockScreen = pigeonVar_list[3] as Boolean
       val activityReady = pigeonVar_list[4] as Boolean
-      return PCallkeepServiceStatus(lifecycle, autoRestartOnTerminate, autoStartOnBoot, lockScreen, activityReady)
+      val activeCalls = pigeonVar_list[5] as Boolean
+      return PCallkeepServiceStatus(lifecycle, autoRestartOnTerminate, autoStartOnBoot, lockScreen, activityReady, activeCalls)
     }
   }
   fun toList(): List<Any?> {
@@ -345,6 +347,7 @@ data class PCallkeepServiceStatus (
       autoStartOnBoot,
       lockScreen,
       activityReady,
+      activeCalls,
     )
   }
 }

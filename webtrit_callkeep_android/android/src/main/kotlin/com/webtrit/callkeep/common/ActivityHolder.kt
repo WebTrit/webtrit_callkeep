@@ -21,8 +21,8 @@ object ActivityHolder {
         ActivityHolder.activity = activity
     }
 
-    fun getActivityState(): Lifecycle.Event? {
-        return lifecycle
+    fun getActivityState(): Lifecycle.Event {
+        return lifecycle ?: Lifecycle.Event.ON_ANY
     }
 
     fun setLifecycle(event: Lifecycle.Event) {

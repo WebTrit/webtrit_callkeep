@@ -232,6 +232,7 @@ extension PCallkeepServiceStatusConverter on PCallkeepServiceStatus {
       autoRestartOnTerminate: autoRestartOnTerminate,
       lockScreen: lockScreen,
       activityReady: activityReady,
+      activeCalls: activeCalls,
     );
   }
 }
@@ -244,6 +245,7 @@ extension CallkeepServiceStatusConverter on CallkeepServiceStatus {
       autoRestartOnTerminate: autoRestartOnTerminate,
       lockScreen: lockScreen,
       activityReady: activityReady,
+      activeCalls: activeCalls,
     );
   }
 }

@@ -311,6 +311,7 @@ class PCallkeepServiceStatus {
     required this.autoStartOnBoot,
     required this.lockScreen,
     required this.activityReady,
+    required this.activeCalls,
   });
 
   PCallkeepLifecycleType lifecycle;
@@ -323,6 +324,8 @@ class PCallkeepServiceStatus {
 
   bool activityReady;
 
+  bool activeCalls;
+
   Object encode() {
     return <Object?>[
       lifecycle,
@@ -330,6 +333,7 @@ class PCallkeepServiceStatus {
       autoStartOnBoot,
       lockScreen,
       activityReady,
+      activeCalls,
     ];
   }
 
@@ -341,6 +345,7 @@ class PCallkeepServiceStatus {
       autoStartOnBoot: result[2]! as bool,
       lockScreen: result[3]! as bool,
       activityReady: result[4]! as bool,
+      activeCalls: result[5]! as bool,
     );
   }
 }
