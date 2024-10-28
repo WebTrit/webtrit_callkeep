@@ -13,11 +13,11 @@ import com.webtrit.callkeep.common.models.CallMetadata
 import com.webtrit.callkeep.common.models.CallPaths
 import com.webtrit.callkeep.common.models.toCallHandle
 import com.webtrit.callkeep.common.StorageDelegate
-import com.webtrit.callkeep.common.ContextHolder
+import com.webtrit.callkeep.common.models.NotificationAction
 
 class PigeonServiceApi(
     private val context: Context,
-    private val api: PDelegateBackgroundServiceFlutterApi,
+    api: PDelegateBackgroundServiceFlutterApi,
 ) : PHostBackgroundServiceApi, BroadcastReceiver() {
     private val connectionService: BackgroundCallkeepApi =
         CallkeepApiProvider.getBackgroundCallkeepApi(context, api)
@@ -31,8 +31,8 @@ class PigeonServiceApi(
 
         // Register actions from notification
         val notificationsReceiverFilter = IntentFilter()
-        notificationsReceiverFilter.addAction(ReportAction.Hangup.action)
-        notificationsReceiverFilter.addAction(ReportAction.Answer.action)
+        notificationsReceiverFilter.addAction(NotificationAction.Hangup.action)
+        notificationsReceiverFilter.addAction(NotificationAction.Answer.action)
         context.registerCustomReceiver(this, notificationsReceiverFilter)
 
         // Register background service
@@ -60,8 +60,8 @@ class PigeonServiceApi(
         val callMetaData = CallMetadata.fromBundle(intent.extras!!)
 
         when (intent.action) {
-            ReportAction.Hangup.action -> connectionService.endCall(callMetaData)
-            ReportAction.Answer.action -> connectionService.answer(callMetaData)
+            NotificationAction.Hangup.action -> connectionService.endCall(callMetaData)
+            NotificationAction.Answer.action -> connectionService.answer(callMetaData)
         }
     }
 
@@ -115,13 +115,6 @@ class PigeonServiceApi(
 
         //TODO: Should wait until all connections are removed, because the current implementation does not guarantee this
         callback.invoke(Result.success(Unit))
-    }
-
-    enum class ReportAction {
-        Hangup, Answer;
-
-        val action: String
-            get() = ContextHolder.appUniqueKey + name
     }
 
     companion object {

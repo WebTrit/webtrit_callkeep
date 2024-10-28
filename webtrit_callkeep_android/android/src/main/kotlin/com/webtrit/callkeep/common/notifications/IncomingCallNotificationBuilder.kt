@@ -13,6 +13,7 @@ import androidx.core.app.NotificationCompat
 import com.webtrit.callkeep.PigeonServiceApi
 
 import com.webtrit.callkeep.R
+import com.webtrit.callkeep.common.models.NotificationAction
 import io.flutter.Log
 
 class IncomingCallNotificationBuilder(
@@ -37,7 +38,7 @@ class IncomingCallNotificationBuilder(
     }
 
     private fun getAnsweredCallIntent(): PendingIntent {
-        val answerIntent = Intent(PigeonServiceApi.ReportAction.Answer.action).apply {
+        val answerIntent = Intent(NotificationAction.Answer.action).apply {
             putExtras(getMetaData().toBundle())
         }
 
@@ -50,7 +51,7 @@ class IncomingCallNotificationBuilder(
     }
 
     private fun getHungUpCallIntent(): PendingIntent {
-        val hangUpIntent = Intent(PigeonServiceApi.ReportAction.Hangup.action).apply {
+        val hangUpIntent = Intent(NotificationAction.Hangup.action).apply {
             putExtras(getMetaData().toBundle())
         }
         return PendingIntent.getBroadcast(

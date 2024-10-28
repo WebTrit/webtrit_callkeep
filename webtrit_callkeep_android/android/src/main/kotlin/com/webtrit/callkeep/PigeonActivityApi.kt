@@ -3,20 +3,24 @@ package com.webtrit.callkeep
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
-import android.util.Log
 import androidx.core.app.ActivityCompat.requestPermissions
 import com.webtrit.callkeep.api.CallkeepApiProvider
 import com.webtrit.callkeep.api.foreground.ForegroundCallkeepApi
 import com.webtrit.callkeep.common.StorageDelegate
+import com.webtrit.callkeep.common.helpers.registerCustomReceiver
 import com.webtrit.callkeep.common.models.CallMetadata
 import com.webtrit.callkeep.common.models.CallPaths
+import com.webtrit.callkeep.common.models.NotificationAction
 import com.webtrit.callkeep.common.models.toCallHandle
 
 class PigeonActivityApi(
     private val activity: Activity, flutterDelegateApi: PDelegateFlutterApi
-) : PHostApi {
+) : PHostApi, BroadcastReceiver() {
     private val foregroundCallkeepApi: ForegroundCallkeepApi =
         CallkeepApiProvider.getForegroundCallkeepApi(activity, flutterDelegateApi)
 
@@ -28,6 +32,12 @@ class PigeonActivityApi(
             requestPermissions(activity, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
         }
 
+        // Register actions from notification
+        val notificationsReceiverFilter = IntentFilter()
+        notificationsReceiverFilter.addAction(NotificationAction.Hangup.action)
+        notificationsReceiverFilter.addAction(NotificationAction.Answer.action)
+        activity.registerCustomReceiver(this, notificationsReceiverFilter)
+        
         StorageDelegate.setActivityReady(activity, true);
     }
 
@@ -185,7 +195,23 @@ class PigeonActivityApi(
 
     fun detachActivity() {
         foregroundCallkeepApi.detachActivity()
-        StorageDelegate.setActivityReady(activity, false);
+        activity.unregisterReceiver(this)
 
+        StorageDelegate.setActivityReady(activity, false);
+    }
+
+    // Receiver for notification actions when app is visible
+    override fun onReceive(context: Context, intent: Intent) {
+        val callMetaData = CallMetadata.fromBundle(intent.extras!!)
+
+        when (intent.action) {
+            NotificationAction.Hangup.action -> {
+                foregroundCallkeepApi.endCall(callMetaData) {}
+            }
+
+            NotificationAction.Answer.action -> {
+                foregroundCallkeepApi.answerCall(callMetaData) {}
+            }
+        }
     }
 }
