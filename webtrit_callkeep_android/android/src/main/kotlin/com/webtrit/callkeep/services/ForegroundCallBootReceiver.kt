@@ -7,7 +7,7 @@ import androidx.core.content.ContextCompat
 import android.util.Log
 import com.webtrit.callkeep.common.StorageDelegate
 
-class ForegroundBootReceiver : BroadcastReceiver() {
+class ForegroundCallBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action
         if (action == Intent.ACTION_MY_PACKAGE_REPLACED || action == Intent.ACTION_BOOT_COMPLETED || action == ACTION_QUICKBOOT_POWERON) {

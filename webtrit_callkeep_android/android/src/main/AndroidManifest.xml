@@ -47,7 +47,7 @@
             android:foregroundServiceType="phoneCall" />
 
         <receiver
-            android:name=".services.ForegroundBootReceiver"
+            android:name=".services.ForegroundCallBootReceiver"
             android:enabled="true"
             android:exported="true">
             <intent-filter>
