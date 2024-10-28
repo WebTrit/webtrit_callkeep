@@ -2,19 +2,19 @@ package com.webtrit.callkeep.common
 
 import android.annotation.SuppressLint
 import android.content.Context
-import io.flutter.embedding.engine.plugins.FlutterPlugin.FlutterAssets
+import io.flutter.Log
 
 /**
  * Singleton object for managing application-specific data.
  */
 @SuppressLint("StaticFieldLeak")
 object ContextHolder {
-    lateinit var flutterAssetManager: FlutterAssetManager
+    private var applicationContext: Context? = null
 
     // The package name of the application.
-    private lateinit var packageName: String
-
-    private const val TAG = "ApplicationData"
+    private val packageName: String
+        get() = applicationContext?.packageName
+            ?: throw IllegalStateException("ContextHolder is not initialized. Call init() first.")
 
     /**
      * A unique key generated for the broadcast receivers.
@@ -24,11 +24,22 @@ object ContextHolder {
     }
 
     /**
-     * Initializes the com.webtrit.callkeep.common.ApplicationData with the given application context.
+     * Provides the application context safely.
+     */
+    val context: Context
+        get() = applicationContext
+            ?: throw IllegalStateException("ContextHolder is not initialized. Call init() first.")
+
+    /**
+     * Initializes ContextHolder with the given application context.
      * @param context The application context.
      */
-    fun init(context: Context, assets: FlutterAssets) {
-        this.packageName = context.packageName
-        flutterAssetManager = FlutterAssetManager(context, assets)
+    @Synchronized
+    fun init(context: Context) {
+        if (applicationContext == null) {
+            applicationContext = context.applicationContext
+        } else {
+            Log.i("ContextHolder", "ContextHolder is already initialized.")
+        }
     }
 }

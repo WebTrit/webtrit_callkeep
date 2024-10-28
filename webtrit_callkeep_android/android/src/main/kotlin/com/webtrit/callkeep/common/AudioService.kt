@@ -61,7 +61,7 @@ class AudioService(val context: Context) {
 
     private fun getRingtone(asset: String): Ringtone {
         return try {
-            val path = ContextHolder.flutterAssetManager.getAsset(asset)
+            val path = AssetHolder.flutterAssetManager.getAsset(asset)
 
             if (path != null) {
                 FlutterLog.i("AudioService", "Used asset: $path")

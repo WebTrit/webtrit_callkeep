@@ -21,7 +21,7 @@ object AssetHolder {
         if (_flutterAssetManager == null) {
             _flutterAssetManager = FlutterAssetManager(context, assets)
         } else {
-            Log.w("AssetHolder", "AssetManagerHolder is already initialized.")
+            Log.i("AssetHolder", "AssetManagerHolder is already initialized.")
         }
     }
 }

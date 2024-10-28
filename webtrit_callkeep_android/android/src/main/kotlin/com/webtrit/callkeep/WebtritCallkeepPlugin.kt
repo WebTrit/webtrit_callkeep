@@ -5,6 +5,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import com.webtrit.callkeep.common.AssetHolder
+import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.services.ForegroundCallService
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -29,6 +30,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         val assets = flutterPluginBinding.flutterAssets
         val context = flutterPluginBinding.applicationContext
 
+        ContextHolder.init(context);
         AssetHolder.init(context, assets)
 
         state = WebtritCallkeepPluginState(context, messenger, assets).apply {

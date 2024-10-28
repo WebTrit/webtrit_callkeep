@@ -36,6 +36,9 @@ class ForegroundCallService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+
+        ContextHolder.init(applicationContext)
+
         notificationBuilder = ForegroundCallNotificationBuilder(applicationContext)
 
         val config = StorageDelegate.getForegroundCallServiceConfiguration(applicationContext)
