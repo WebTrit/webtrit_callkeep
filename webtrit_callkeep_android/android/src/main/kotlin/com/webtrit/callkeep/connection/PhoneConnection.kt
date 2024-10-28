@@ -247,7 +247,7 @@ class PhoneConnection internal constructor(
      * @param metadata The updated call metadata.
      */
     fun updateData(metadata: CallMetadata) {
-        this.metadata = metadata
+        this.metadata = this.metadata.mergeWith(metadata)
         this.extras = metadata.toBundle()
         setAddress(Uri.parse(metadata.number), TelecomManager.PRESENTATION_ALLOWED)
         setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)

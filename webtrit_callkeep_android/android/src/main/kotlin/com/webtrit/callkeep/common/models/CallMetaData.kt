@@ -5,6 +5,7 @@ import android.os.Bundle
 
 import com.webtrit.callkeep_android.generated.lib.src.consts.CallDataConst
 
+// TODO(Serdun): Clean up this class
 data class CallMetadata(
     val callId: String,
     val displayName: String? = null,
@@ -16,7 +17,7 @@ data class CallMetadata(
     val hasHold: Boolean? = null,
     val dualToneMultiFrequency: String? = null,
     val paths: CallPaths? = null,
-    val ringtonePath : String? = null,
+    val ringtonePath: String? = null,
     val createdTime: Long? = null,
     val acceptedTime: Long? = null,
 ) {
@@ -88,6 +89,24 @@ data class CallMetadata(
         }
 
         return queryList.joinToString(separator = "&")
+    }
+
+    fun mergeWith(other: CallMetadata?): CallMetadata {
+        return CallMetadata(
+            callId = other?.callId ?: this.callId,
+            displayName = other?.displayName ?: this.displayName,
+            handle = other?.handle ?: this.handle,
+            hasVideo = other?.hasVideo ?: this.hasVideo,
+            hasSpeaker = other?.hasSpeaker ?: this.hasSpeaker,
+            proximityEnabled = other?.proximityEnabled ?: this.proximityEnabled,
+            hasMute = other?.hasMute ?: this.hasMute,
+            hasHold = other?.hasHold ?: this.hasHold,
+            dualToneMultiFrequency = other?.dualToneMultiFrequency ?: this.dualToneMultiFrequency,
+            paths = other?.paths ?: this.paths,
+            ringtonePath = other?.ringtonePath ?: this.ringtonePath,
+            createdTime = other?.createdTime ?: this.createdTime,
+            acceptedTime = other?.acceptedTime ?: this.acceptedTime
+        )
     }
 
     override fun toString(): String {
