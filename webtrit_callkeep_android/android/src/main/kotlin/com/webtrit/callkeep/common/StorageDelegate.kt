@@ -110,7 +110,7 @@ object StorageDelegate {
         return jsonString?.let {
             JsonHelper.json.decodeFromString<ForegroundCallServiceConfig>(it)
         } ?: ForegroundCallServiceConfig(
-            null, null, autoRestartOnTerminate = false, autoStartOnBoot = false
+            null, null, null, autoRestartOnTerminate = false, autoStartOnBoot = false
         );
     }
 

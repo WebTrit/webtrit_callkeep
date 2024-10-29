@@ -5,6 +5,7 @@ import 'callkeep_incoming_type.dart';
 
 class CallkeepServiceStatus extends Equatable {
   const CallkeepServiceStatus({
+    required this.type,
     required this.lifecycle,
     required this.autoRestartOnTerminate,
     required this.autoStartOnBoot,

@@ -275,9 +275,9 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     String? androidNotificationDescription,
   }) async {
     await _isolateApi.setUp(
+      type: type.toPigeon(),
       autoStartOnBoot: autoStartOnBoot,
       autoRestartOnTerminate: autoRestartOnTerminate,
-      type: type.toPigeon(),
       androidNotificationName: androidNotificationName,
       androidNotificationDescription: androidNotificationDescription,
     );

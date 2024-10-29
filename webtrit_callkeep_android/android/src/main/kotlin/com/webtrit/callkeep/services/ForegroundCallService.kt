@@ -154,10 +154,8 @@ class ForegroundCallService : Service() {
      * Wakes up the service and sends a broadcast to synchronize call status.
      */
     private fun wakeUp(intent: Intent?, config: ForegroundCallServiceConfig, handles: ForegroundCallServiceHandles) {
-        val data = intent?.getStringExtra(PARAM_START_DATA) ?: Constants.EMPTY_JSON_MAP
-
         runService(config, handles)
-        ForegroundCallServiceReceiver.wakeUp(applicationContext, data)
+        ForegroundCallServiceReceiver.wakeUp(applicationContext)
     }
 
     /**
@@ -200,7 +198,7 @@ class ForegroundCallService : Service() {
         if (config.type == BackgroundIncomingCallType.SOCKET) {
             ForegroundCallServiceReceiver.wakeUp(applicationContext)
         }
-        
+
         isRunning.set(true)
     }
 

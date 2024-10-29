@@ -249,6 +249,7 @@ extension PCallkeepLifecycleTypeConverter on PCallkeepLifecycleType {
 extension PCallkeepServiceStatusConverter on PCallkeepServiceStatus {
   CallkeepServiceStatus toCallkeep() {
     return CallkeepServiceStatus(
+      type: type.toCallkeep(),
       lifecycle: lifecycle.toCallkeep(),
       autoStartOnBoot: autoStartOnBoot,
       autoRestartOnTerminate: autoRestartOnTerminate,
