@@ -115,8 +115,12 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<void> reportEndCall(String callId, CallkeepEndCallReason reason) async {
-    return _api.reportEndCall(_uuidToCallIdMapping.put(callId: callId), PEndCallReason(value: reason.toPigeon()));
+  Future<void> reportEndCall(String callId, String displayName, CallkeepEndCallReason reason) async {
+    return _api.reportEndCall(
+      _uuidToCallIdMapping.put(callId: callId),
+      displayName,
+      PEndCallReason(value: reason.toPigeon()),
+    );
   }
 
   @override

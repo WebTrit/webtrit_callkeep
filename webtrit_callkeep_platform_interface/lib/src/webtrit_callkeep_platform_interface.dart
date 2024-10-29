@@ -98,7 +98,7 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   }
 
   /// Report an update to the call metadata.
-  /// The [displayName] and [hasVideo] flag can be updated.
+  /// The [displayName] of the call is required for reporting miseed call metadata.
   /// Returns [Future] that completes when the operation is done.
   Future<void> reportUpdateCall(
     String callId,
@@ -111,9 +111,10 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   }
 
   /// Report the end of call with the given [callId].
+  /// The [displayName] is required for missed call metadata.
   /// The [reason] for ending the call is required.
   /// Returns [Future] that completes when the operation is done.
-  Future<void> reportEndCall(String callId, CallkeepEndCallReason reason) {
+  Future<void> reportEndCall(String callId, String displayName, CallkeepEndCallReason reason) {
     throw UnimplementedError('reportEndCall() has not been implemented.');
   }
 

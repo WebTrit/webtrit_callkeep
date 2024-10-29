@@ -644,12 +644,13 @@ void SetUpWTPHostApi(id<FlutterBinaryMessenger> binaryMessenger, NSObject<WTPHos
         binaryMessenger:binaryMessenger
         codec:WTPHostApiGetCodec()];
     if (api) {
-      NSCAssert([api respondsToSelector:@selector(reportEndCall:reason:completion:)], @"WTPHostApi api (%@) doesn't respond to @selector(reportEndCall:reason:completion:)", api);
+      NSCAssert([api respondsToSelector:@selector(reportEndCall:displayName:reason:completion:)], @"WTPHostApi api (%@) doesn't respond to @selector(reportEndCall:displayName:reason:completion:)", api);
       [channel setMessageHandler:^(id _Nullable message, FlutterReply callback) {
         NSArray *args = message;
         NSString *arg_uuidString = GetNullableObjectAtIndex(args, 0);
-        WTPEndCallReason *arg_reason = GetNullableObjectAtIndex(args, 1);
-        [api reportEndCall:arg_uuidString reason:arg_reason completion:^(FlutterError *_Nullable error) {
+        NSString *arg_displayName = GetNullableObjectAtIndex(args, 1);
+        WTPEndCallReason *arg_reason = GetNullableObjectAtIndex(args, 2);
+        [api reportEndCall:arg_uuidString displayName:arg_displayName reason:arg_reason completion:^(FlutterError *_Nullable error) {
           callback(wrapResult(nil, error));
         }];
       }];

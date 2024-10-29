@@ -105,10 +105,11 @@ class PigeonActivityApi(
     }
 
     override fun reportEndCall(
-        callId: String, reason: PEndCallReason, callback: (Result<Unit>) -> Unit
+        callId: String, displayName:String, reason: PEndCallReason, callback: (Result<Unit>) -> Unit
     ) {
         val callMetaData = CallMetadata(
-            callId = callId
+            callId = callId,
+            displayName = displayName
         )
         foregroundCallkeepApi.reportEndCall(callMetaData, reason, callback)
     }

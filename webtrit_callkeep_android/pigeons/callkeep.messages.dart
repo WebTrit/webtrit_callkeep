@@ -168,9 +168,9 @@ abstract class PHostApi {
     bool? proximityEnabled,
   );
 
-  @ObjCSelector('reportEndCall:reason:')
+  @ObjCSelector('reportEndCall:displayName:reason:')
   @async
-  void reportEndCall(String callId, PEndCallReason reason);
+  void reportEndCall(String callId, String displayName, PEndCallReason reason);
 
   @ObjCSelector('startCall:handle:displayNameOrContactIdentifier:video:proximityEnabled:')
   @async

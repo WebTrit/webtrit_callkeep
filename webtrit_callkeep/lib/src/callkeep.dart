@@ -89,10 +89,11 @@ class Callkeep {
   }
 
   /// Report the end of call with the given [callId].
+  /// The [displayName] of the call is required for reporting miseed call metadata.
   /// The [reason] for ending the call is required.
   /// Returns [Future] that completes when the operation is done.
-  Future<void> reportEndCall(String callId, CallkeepEndCallReason reason) {
-    return platform.reportEndCall(callId, reason);
+  Future<void> reportEndCall(String callId, String displayName, CallkeepEndCallReason reason) {
+    return platform.reportEndCall(callId, displayName, reason);
   }
 
   /// Start a call with the given [callId], [handle], [displayNameOrContactIdentifier] and [hasVideo] flag.
