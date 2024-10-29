@@ -203,6 +203,28 @@ extension CallkeepLifecycleTypeConverter on CallkeepLifecycleType {
   }
 }
 
+extension CallkeepIncomingTypeConverter on CallkeepIncomingType {
+  PCallkeepIncomingType toPigeon() {
+    switch (this) {
+      case CallkeepIncomingType.pushNotification:
+        return PCallkeepIncomingType.pushNotification;
+      case CallkeepIncomingType.socket:
+        return PCallkeepIncomingType.socket;
+    }
+  }
+}
+
+extension PCallkeepIncomingTypeConverter on PCallkeepIncomingType {
+  CallkeepIncomingType toCallkeep() {
+    switch (this) {
+      case PCallkeepIncomingType.pushNotification:
+        return CallkeepIncomingType.pushNotification;
+      case PCallkeepIncomingType.socket:
+        return CallkeepIncomingType.socket;
+    }
+  }
+}
+
 extension PCallkeepLifecycleTypeConverter on PCallkeepLifecycleType {
   CallkeepLifecycleType toCallkeep() {
     switch (this) {

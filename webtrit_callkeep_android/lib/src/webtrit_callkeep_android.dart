@@ -222,12 +222,8 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<dynamic> startService({
-    Map<String, dynamic> data = const {},
-  }) {
-    return _isolateApi.startService(
-      data: jsonEncode(data),
-    );
+  Future<dynamic> startService() {
+    return _isolateApi.startService();
   }
 
   @override
@@ -272,6 +268,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
 
   @override
   Future<void> setUpAndroidBackgroundService({
+    required CallkeepIncomingType type,
     bool autoRestartOnTerminate = false,
     bool autoStartOnBoot = false,
     String? androidNotificationName,
@@ -280,6 +277,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     await _isolateApi.setUp(
       autoStartOnBoot: autoStartOnBoot,
       autoRestartOnTerminate: autoRestartOnTerminate,
+      type: type.toPigeon(),
       androidNotificationName: androidNotificationName,
       androidNotificationDescription: androidNotificationDescription,
     );

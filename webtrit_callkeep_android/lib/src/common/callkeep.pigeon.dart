@@ -87,6 +87,11 @@ enum PCallkeepLifecycleType {
   onAny,
 }
 
+enum PCallkeepIncomingType {
+  pushNotification,
+  socket,
+}
+
 class PIOSOptions {
   PIOSOptions({
     required this.localizedName,
@@ -379,29 +384,32 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is PCallkeepLifecycleType) {
       buffer.putUint8(135);
       writeValue(buffer, value.index);
-    }    else if (value is PIOSOptions) {
+    }    else if (value is PCallkeepIncomingType) {
       buffer.putUint8(136);
-      writeValue(buffer, value.encode());
-    }    else if (value is PAndroidOptions) {
+      writeValue(buffer, value.index);
+    }    else if (value is PIOSOptions) {
       buffer.putUint8(137);
       writeValue(buffer, value.encode());
-    }    else if (value is POptions) {
+    }    else if (value is PAndroidOptions) {
       buffer.putUint8(138);
       writeValue(buffer, value.encode());
-    }    else if (value is PHandle) {
+    }    else if (value is POptions) {
       buffer.putUint8(139);
       writeValue(buffer, value.encode());
-    }    else if (value is PEndCallReason) {
+    }    else if (value is PHandle) {
       buffer.putUint8(140);
       writeValue(buffer, value.encode());
-    }    else if (value is PIncomingCallError) {
+    }    else if (value is PEndCallReason) {
       buffer.putUint8(141);
       writeValue(buffer, value.encode());
-    }    else if (value is PCallRequestError) {
+    }    else if (value is PIncomingCallError) {
       buffer.putUint8(142);
       writeValue(buffer, value.encode());
-    }    else if (value is PCallkeepServiceStatus) {
+    }    else if (value is PCallRequestError) {
       buffer.putUint8(143);
+      writeValue(buffer, value.encode());
+    }    else if (value is PCallkeepServiceStatus) {
+      buffer.putUint8(144);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -433,20 +441,23 @@ class _PigeonCodec extends StandardMessageCodec {
         final int? value = readValue(buffer) as int?;
         return value == null ? null : PCallkeepLifecycleType.values[value];
       case 136: 
-        return PIOSOptions.decode(readValue(buffer)!);
+        final int? value = readValue(buffer) as int?;
+        return value == null ? null : PCallkeepIncomingType.values[value];
       case 137: 
-        return PAndroidOptions.decode(readValue(buffer)!);
+        return PIOSOptions.decode(readValue(buffer)!);
       case 138: 
-        return POptions.decode(readValue(buffer)!);
+        return PAndroidOptions.decode(readValue(buffer)!);
       case 139: 
-        return PHandle.decode(readValue(buffer)!);
+        return POptions.decode(readValue(buffer)!);
       case 140: 
-        return PEndCallReason.decode(readValue(buffer)!);
+        return PHandle.decode(readValue(buffer)!);
       case 141: 
-        return PIncomingCallError.decode(readValue(buffer)!);
+        return PEndCallReason.decode(readValue(buffer)!);
       case 142: 
-        return PCallRequestError.decode(readValue(buffer)!);
+        return PIncomingCallError.decode(readValue(buffer)!);
       case 143: 
+        return PCallRequestError.decode(readValue(buffer)!);
+      case 144: 
         return PCallkeepServiceStatus.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -569,7 +580,7 @@ class PHostIsolateApi {
     }
   }
 
-  Future<void> setUp({bool autoRestartOnTerminate = false, bool autoStartOnBoot = false, String? androidNotificationName, String? androidNotificationDescription,}) async {
+  Future<void> setUp({required PCallkeepIncomingType type, bool autoRestartOnTerminate = false, bool autoStartOnBoot = false, String? androidNotificationName, String? androidNotificationDescription,}) async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.setUp$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
@@ -577,7 +588,7 @@ class PHostIsolateApi {
       binaryMessenger: pigeonVar_binaryMessenger,
     );
     final List<Object?>? pigeonVar_replyList =
-        await pigeonVar_channel.send(<Object?>[autoRestartOnTerminate, autoStartOnBoot, androidNotificationName, androidNotificationDescription]) as List<Object?>?;
+        await pigeonVar_channel.send(<Object?>[type, autoRestartOnTerminate, autoStartOnBoot, androidNotificationName, androidNotificationDescription]) as List<Object?>?;
     if (pigeonVar_replyList == null) {
       throw _createConnectionError(pigeonVar_channelName);
     } else if (pigeonVar_replyList.length > 1) {
@@ -591,7 +602,7 @@ class PHostIsolateApi {
     }
   }
 
-  Future<void> startService({required String data}) async {
+  Future<void> startService() async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.startService$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
@@ -599,7 +610,7 @@ class PHostIsolateApi {
       binaryMessenger: pigeonVar_binaryMessenger,
     );
     final List<Object?>? pigeonVar_replyList =
-        await pigeonVar_channel.send(<Object?>[data]) as List<Object?>?;
+        await pigeonVar_channel.send(null) as List<Object?>?;
     if (pigeonVar_replyList == null) {
       throw _createConnectionError(pigeonVar_channelName);
     } else if (pigeonVar_replyList.length > 1) {

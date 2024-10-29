@@ -227,6 +227,7 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   ///
   /// Throws an [UnimplementedError] if this method is not yet implemented.
   Future<void> setUpAndroidBackgroundService({
+    required CallkeepIncomingType type,
     bool autoRestartOnTerminate = false,
     bool autoStartOnBoot = false,
     String? androidNotificationName,
@@ -236,14 +237,8 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   }
 
   /// Starts the background service with the provided [data].
-  ///
-  /// [data] - A map containing any additional parameters or configurations required by
-  /// the service at the time of starting. Defaults to an empty map.
-  ///
   /// Throws an [UnimplementedError] if this method is not yet implemented.
-  void startService({
-    Map<String, dynamic> data = const {},
-  }) {
+  void startService() {
     throw UnimplementedError('startService() is not implemented');
   }
 

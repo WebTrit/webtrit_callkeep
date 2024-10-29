@@ -3,8 +3,10 @@ package com.webtrit.callkeep
 import android.content.Context
 import android.util.Log
 import com.webtrit.callkeep.common.ActivityHolder
+import com.webtrit.callkeep.common.Constants
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.models.ForegroundCallServiceHandles
+import com.webtrit.callkeep.common.models.toBackgroundIncomingCallType
 
 import com.webtrit.callkeep.services.ForegroundCallService
 
@@ -33,6 +35,7 @@ class PigeonIsolateApi(
     }
 
     override fun setUp(
+        type: PCallkeepIncomingType,
         autoRestartOnTerminate: Boolean,
         autoStartOnBoot: Boolean,
         androidNotificationName: String?,
@@ -41,6 +44,7 @@ class PigeonIsolateApi(
     ) {
         try {
             val config = StorageDelegate.getForegroundCallServiceConfiguration(context).copy(
+                type = type.toBackgroundIncomingCallType(),
                 autoStartOnBoot = autoStartOnBoot,
                 autoRestartOnTerminate = autoRestartOnTerminate,
                 androidNotificationName = androidNotificationName,
@@ -55,10 +59,10 @@ class PigeonIsolateApi(
     }
 
 
-    override fun startService(data: String, callback: (Result<Unit>) -> Unit) {
+    override fun startService(callback: (Result<Unit>) -> Unit) {
         Log.i(TAG, "startService")
         try {
-            ForegroundCallService.start(context, data)
+            ForegroundCallService.start(context, Constants.EMPTY_JSON_MAP)
 
             callback(Result.success(Unit))
         } catch (e: Exception) {
