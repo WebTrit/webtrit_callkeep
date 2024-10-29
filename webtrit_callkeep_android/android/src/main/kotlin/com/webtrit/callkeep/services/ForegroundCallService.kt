@@ -136,7 +136,7 @@ class ForegroundCallService : Service() {
 
         when (action) {
             ForegroundCallServiceEnums.INIT.action -> runService(config, handles)
-            ForegroundCallServiceEnums.START.action -> wakeUp(intent, config, handles)
+            ForegroundCallServiceEnums.START.action -> wakeUp(config, handles)
             ForegroundCallServiceEnums.STOP.action -> tearDown()
         }
 
@@ -153,7 +153,7 @@ class ForegroundCallService : Service() {
     /**
      * Wakes up the service and sends a broadcast to synchronize call status.
      */
-    private fun wakeUp(intent: Intent?, config: ForegroundCallServiceConfig, handles: ForegroundCallServiceHandles) {
+    private fun wakeUp(config: ForegroundCallServiceConfig, handles: ForegroundCallServiceHandles) {
         runService(config, handles)
         ForegroundCallServiceReceiver.wakeUp(applicationContext)
     }
@@ -255,10 +255,8 @@ class ForegroundCallService : Service() {
         /**
          * Wakes up the service with an option to auto-restart.
          */
-        fun start(context: Context, data: String) {
-            communicate(context, ForegroundCallServiceEnums.START, Bundle().apply {
-                putString(PARAM_START_DATA, data)
-            })
+        fun start(context: Context) {
+            communicate(context, ForegroundCallServiceEnums.START, null);
         }
 
         /**

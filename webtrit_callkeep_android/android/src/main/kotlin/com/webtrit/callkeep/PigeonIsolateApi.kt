@@ -62,7 +62,7 @@ class PigeonIsolateApi(
     override fun startService(callback: (Result<Unit>) -> Unit) {
         Log.i(TAG, "startService")
         try {
-            ForegroundCallService.start(context, Constants.EMPTY_JSON_MAP)
+            ForegroundCallService.start(context)
 
             callback(Result.success(Unit))
         } catch (e: Exception) {
