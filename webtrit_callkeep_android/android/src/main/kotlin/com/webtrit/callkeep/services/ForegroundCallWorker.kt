@@ -3,6 +3,7 @@ package com.webtrit.callkeep.services
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.ContextCompat
+import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.Worker
@@ -32,7 +33,9 @@ class ForegroundCallWorker(context: Context, workerParams: WorkerParameters) : W
                 OneTimeWorkRequestBuilder<ForegroundCallWorker>().addTag(ACTION_RESTART_FOREGROUND_SERVICE)
                     .setInitialDelay(delayInMillis, TimeUnit.MILLISECONDS).build()
 
-            WorkManager.getInstance(context).enqueue(workRequest)
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                ACTION_RESTART_FOREGROUND_SERVICE, ExistingWorkPolicy.REPLACE, workRequest
+            )
         }
 
         fun remove(context: Context) {
