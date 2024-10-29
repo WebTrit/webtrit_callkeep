@@ -17,9 +17,11 @@ import androidx.core.app.ServiceCompat
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Constants
 import com.webtrit.callkeep.common.StorageDelegate
+import com.webtrit.callkeep.common.models.BackgroundIncomingCallType
 import com.webtrit.callkeep.common.models.ForegroundCallServiceConfig
 import com.webtrit.callkeep.common.models.ForegroundCallServiceHandles
 import com.webtrit.callkeep.common.notifications.ForegroundCallNotificationBuilder
+import com.webtrit.callkeep.services.ForegroundCallService.Companion.PARAM_START_DATA
 import io.flutter.FlutterInjector
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.dart.DartExecutor.DartCallback
@@ -192,6 +194,13 @@ class ForegroundCallService : Service() {
                 Log.v(TAG, "FlutterEngine is already attached to service")
             }
         }
+
+        // Send the onStart event to the Flutter background isolate. Periodically checks socket status, reconnects if needed, or initiates connection on boot.
+        // If the config type is SOCKET, triggers ForegroundCallServiceReceiver to wake up the application context.
+        if (config.type == BackgroundIncomingCallType.SOCKET) {
+            ForegroundCallServiceReceiver.wakeUp(applicationContext)
+        }
+        
         isRunning.set(true)
     }
 
