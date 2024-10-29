@@ -184,7 +184,7 @@ abstract class PHostIsolateApi {
 @FlutterApi()
 abstract class PDelegateBackgroundRegisterFlutterApi {
   @async
-  void onWakeUpBackgroundHandler(int userCallbackHandle, PCallkeepServiceStatus status, String data);
+  void onWakeUpBackgroundHandler(int userCallbackHandle, PCallkeepServiceStatus status);
 
   @async
   void onApplicationStatusChanged(int applicationStatusCallbackHandle, PCallkeepServiceStatus status);

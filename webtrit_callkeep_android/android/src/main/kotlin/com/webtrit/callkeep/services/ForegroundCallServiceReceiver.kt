@@ -92,7 +92,7 @@ class ForegroundCallServiceReceiver(
                 lockScreen,
                 activityReady,
                 PhoneConnectionService.isExistsActiveConnection()
-            ), data
+            )
         ) { response ->
             response.onSuccess {
                 Log.d(TAG, "onWakeUpBackgroundHandler: $it")
@@ -137,10 +137,8 @@ class ForegroundCallServiceReceiver(
         private const val PARAM_WAKE_UP_DATA = "PARAM_WAKE_UP_DATA"
         private const val PARAM_CHANGE_LIFECYCLE_EVENT = "PARAM_CHANGE_LIFECYCLE_EVENT"
 
-        fun wakeUp(context: Context, data: String) {
-            val callIntent = Intent(ForegroundCallServiceReceiverActions.WAKE_UP.action).apply {
-                putExtra(PARAM_WAKE_UP_DATA, data)
-            }
+        fun wakeUp(context: Context) {
+            val callIntent = Intent(ForegroundCallServiceReceiverActions.WAKE_UP.action)
             context.sendBroadcast(callIntent)
         }
 

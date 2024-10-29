@@ -672,7 +672,7 @@ class PHostIsolateApi {
 abstract class PDelegateBackgroundRegisterFlutterApi {
   static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();
 
-  Future<void> onWakeUpBackgroundHandler(int userCallbackHandle, PCallkeepServiceStatus status, String data);
+  Future<void> onWakeUpBackgroundHandler(int userCallbackHandle, PCallkeepServiceStatus status);
 
   Future<void> onApplicationStatusChanged(int applicationStatusCallbackHandle, PCallkeepServiceStatus status);
 
@@ -695,11 +695,8 @@ abstract class PDelegateBackgroundRegisterFlutterApi {
           final PCallkeepServiceStatus? arg_status = (args[1] as PCallkeepServiceStatus?);
           assert(arg_status != null,
               'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onWakeUpBackgroundHandler was null, expected non-null PCallkeepServiceStatus.');
-          final String? arg_data = (args[2] as String?);
-          assert(arg_data != null,
-              'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onWakeUpBackgroundHandler was null, expected non-null String.');
           try {
-            await api.onWakeUpBackgroundHandler(arg_userCallbackHandle!, arg_status!, arg_data!);
+            await api.onWakeUpBackgroundHandler(arg_userCallbackHandle!, arg_status!);
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);

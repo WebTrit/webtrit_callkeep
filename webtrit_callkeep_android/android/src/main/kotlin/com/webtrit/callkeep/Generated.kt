@@ -719,12 +719,12 @@ class PDelegateBackgroundRegisterFlutterApi(private val binaryMessenger: BinaryM
       GeneratedPigeonCodec()
     }
   }
-  fun onWakeUpBackgroundHandler(userCallbackHandleArg: Long, statusArg: PCallkeepServiceStatus, dataArg: String, callback: (Result<Unit>) -> Unit)
+  fun onWakeUpBackgroundHandler(userCallbackHandleArg: Long, statusArg: PCallkeepServiceStatus, callback: (Result<Unit>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
     val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onWakeUpBackgroundHandler$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-    channel.send(listOf(userCallbackHandleArg, statusArg, dataArg)) {
+    channel.send(listOf(userCallbackHandleArg, statusArg)) {
       if (it is List<*>) {
         if (it.size > 1) {
           callback(Result.failure(HostCallsDartPigeonFlutterError(it[0] as String, it[1] as String, it[2] as String?)))
