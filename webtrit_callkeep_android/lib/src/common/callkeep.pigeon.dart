@@ -311,6 +311,7 @@ class PCallRequestError {
 
 class PCallkeepServiceStatus {
   PCallkeepServiceStatus({
+    required this.type,
     required this.lifecycle,
     required this.autoRestartOnTerminate,
     required this.autoStartOnBoot,
@@ -318,6 +319,8 @@ class PCallkeepServiceStatus {
     required this.activityReady,
     required this.activeCalls,
   });
+
+  PCallkeepIncomingType type;
 
   PCallkeepLifecycleType lifecycle;
 
@@ -333,6 +336,7 @@ class PCallkeepServiceStatus {
 
   Object encode() {
     return <Object?>[
+      type,
       lifecycle,
       autoRestartOnTerminate,
       autoStartOnBoot,
@@ -345,12 +349,13 @@ class PCallkeepServiceStatus {
   static PCallkeepServiceStatus decode(Object result) {
     result as List<Object?>;
     return PCallkeepServiceStatus(
-      lifecycle: result[0]! as PCallkeepLifecycleType,
-      autoRestartOnTerminate: result[1]! as bool,
-      autoStartOnBoot: result[2]! as bool,
-      lockScreen: result[3]! as bool,
-      activityReady: result[4]! as bool,
-      activeCalls: result[5]! as bool,
+      type: result[0]! as PCallkeepIncomingType,
+      lifecycle: result[1]! as PCallkeepLifecycleType,
+      autoRestartOnTerminate: result[2]! as bool,
+      autoStartOnBoot: result[3]! as bool,
+      lockScreen: result[4]! as bool,
+      activityReady: result[5]! as bool,
+      activeCalls: result[6]! as bool,
     );
   }
 }

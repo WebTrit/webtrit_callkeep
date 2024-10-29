@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import 'callkeep_lifecycle_type.dart';
+import 'callkeep_incoming_type.dart';
 
 class CallkeepServiceStatus extends Equatable {
   const CallkeepServiceStatus({
@@ -12,6 +13,7 @@ class CallkeepServiceStatus extends Equatable {
     required this.activeCalls,
   });
 
+  final CallkeepIncomingType type;
   final CallkeepLifecycleType lifecycle;
   final bool autoRestartOnTerminate;
   final bool autoStartOnBoot;
@@ -21,6 +23,7 @@ class CallkeepServiceStatus extends Equatable {
 
   @override
   List<Object?> get props => [
+        type,
         lifecycle,
         autoRestartOnTerminate,
         autoStartOnBoot,

@@ -262,6 +262,7 @@ extension PCallkeepServiceStatusConverter on PCallkeepServiceStatus {
 extension CallkeepServiceStatusConverter on CallkeepServiceStatus {
   PCallkeepServiceStatus toPigeon() {
     return PCallkeepServiceStatus(
+      type: type.toPigeon(),
       lifecycle: lifecycle.toPigeon(),
       autoStartOnBoot: autoStartOnBoot,
       autoRestartOnTerminate: autoRestartOnTerminate,

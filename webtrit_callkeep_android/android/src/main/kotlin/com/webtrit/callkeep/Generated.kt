@@ -332,6 +332,7 @@ data class PCallRequestError (
 
 /** Generated class from Pigeon that represents data sent in messages. */
 data class PCallkeepServiceStatus (
+  val type: PCallkeepIncomingType,
   val lifecycle: PCallkeepLifecycleType,
   val autoRestartOnTerminate: Boolean,
   val autoStartOnBoot: Boolean,
@@ -342,17 +343,19 @@ data class PCallkeepServiceStatus (
  {
   companion object {
     fun fromList(pigeonVar_list: List<Any?>): PCallkeepServiceStatus {
-      val lifecycle = pigeonVar_list[0] as PCallkeepLifecycleType
-      val autoRestartOnTerminate = pigeonVar_list[1] as Boolean
-      val autoStartOnBoot = pigeonVar_list[2] as Boolean
-      val lockScreen = pigeonVar_list[3] as Boolean
-      val activityReady = pigeonVar_list[4] as Boolean
-      val activeCalls = pigeonVar_list[5] as Boolean
-      return PCallkeepServiceStatus(lifecycle, autoRestartOnTerminate, autoStartOnBoot, lockScreen, activityReady, activeCalls)
+      val type = pigeonVar_list[0] as PCallkeepIncomingType
+      val lifecycle = pigeonVar_list[1] as PCallkeepLifecycleType
+      val autoRestartOnTerminate = pigeonVar_list[2] as Boolean
+      val autoStartOnBoot = pigeonVar_list[3] as Boolean
+      val lockScreen = pigeonVar_list[4] as Boolean
+      val activityReady = pigeonVar_list[5] as Boolean
+      val activeCalls = pigeonVar_list[6] as Boolean
+      return PCallkeepServiceStatus(type, lifecycle, autoRestartOnTerminate, autoStartOnBoot, lockScreen, activityReady, activeCalls)
     }
   }
   fun toList(): List<Any?> {
     return listOf(
+      type,
       lifecycle,
       autoRestartOnTerminate,
       autoStartOnBoot,
