@@ -5,14 +5,48 @@ import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_in
 // TODO
 // - convert to static abstract
 
+/// Represents the status stages of the Callkeep setup process.
+enum CallkeepStatus {
+  /// The initial state when Callkeep is not yet set up.
+  uninitialized,
+
+  /// The state indicating Callkeep is in the process of configuring.
+  configuring,
+
+  /// The active state when Callkeep is fully set up and ready.
+  active,
+
+  /// The state when Callkeep is in the process of shutting down.
+  terminating,
+}
+
 /// The [Callkeep] main class for managing platform specific callkeep operations.
 /// e.g reporting incoming calls, handling outgoing calls, setting up platform VOIP integration etc.
 /// The delegate is used to receive events from the native side.
 class Callkeep {
   /// The singleton constructor of [Callkeep].
   factory Callkeep() => _instance;
+
   Callkeep._();
+
   static final _instance = Callkeep._();
+
+  final StreamController<CallkeepStatus> _statusController = StreamController<CallkeepStatus>.broadcast();
+  CallkeepStatus _currentStatus = CallkeepStatus.uninitialized;
+
+  /// Getter for the current status
+  CallkeepStatus get currentStatus => _currentStatus;
+
+  /// Stream to subscribe to status updates
+  Stream<CallkeepStatus> get statusStream => _statusController.stream;
+
+  /// Method to update the status, ensuring status updates go through the stream
+  void _updateStatus(CallkeepStatus newStatus) {
+    if (_currentStatus != newStatus) {
+      _currentStatus = newStatus;
+      _statusController.add(newStatus);
+    }
+  }
 
   /// The [WebtritCallkeepPlatform] instance used to perform platform specific operations.
   static WebtritCallkeepPlatform get platform => WebtritCallkeepPlatform.instance;
@@ -44,12 +78,14 @@ class Callkeep {
   /// Perform setup with the given [options].
   /// Returns [Future] that completes when the setup is done.
   Future<void> setUp(CallkeepOptions options) {
-    return platform.setUp(options);
+    _updateStatus(CallkeepStatus.configuring);
+    return platform.setUp(options).then((_) => _updateStatus(CallkeepStatus.active));
   }
 
   /// Report the teardown state
   Future<void> tearDown() {
-    return platform.tearDown();
+    _updateStatus(CallkeepStatus.terminating);
+    return platform.tearDown().then((_) => _updateStatus(CallkeepStatus.uninitialized));
   }
 
   /// Report a new incoming call with the given [callId], [handle], [displayName] and [hasVideo] flag.
