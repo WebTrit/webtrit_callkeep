@@ -198,7 +198,7 @@ class PhoneConnectionService : ConnectionService() {
     private fun onChangeMute(metadata: CallMetadata) {
         try {
             FlutterLog.i(TAG, "onChangeMute, callId: ${metadata.callId}")
-            connections[metadata.callId]!!.changeMuteState(metadata.isMute)
+            connections[metadata.callId]!!.changeMuteState(metadata.hasMute)
         } catch (e: Exception) {
             FlutterLog.e(
                 TAG, "onChangeMute ${metadata.callId} exception: $e"
@@ -218,7 +218,7 @@ class PhoneConnectionService : ConnectionService() {
         try {
             FlutterLog.i(TAG, "onChangeHold, callId: ${metadata.callId}")
             connections[metadata.callId]!!.run {
-                if (metadata.isHold) onHold() else onUnhold()
+                if (metadata.hasHold) onHold() else onUnhold()
             }
         } catch (e: Exception) {
             FlutterLog.e(
@@ -260,7 +260,7 @@ class PhoneConnectionService : ConnectionService() {
     private fun onSendDTMF(metadata: CallMetadata) {
         try {
             FlutterLog.i(TAG, "onSendDTMF, callId: ${metadata.callId}")
-            connections[metadata.callId]!!.onPlayDtmfTone(metadata.dtmf ?: return)
+            connections[metadata.callId]!!.onPlayDtmfTone(metadata.dualToneMultiFrequency ?: return)
         } catch (e: Exception) {
             FlutterLog.e(
                 TAG, "onUpdateCall ${metadata.callId} exception: $e"
@@ -284,7 +284,7 @@ class PhoneConnectionService : ConnectionService() {
 
         val connection = PhoneConnection.createIncomingPhoneConnection(applicationContext, metaData)
 
-        state.setShouldListenProximity(metaData.proximityEnabled ?: false)
+        state.setShouldListenProximity(metaData.proximityEnabled)
         connections[metaData.callId] = connection
 
         return connection
@@ -299,7 +299,7 @@ class PhoneConnectionService : ConnectionService() {
     private fun onChangeSpeaker(metadata: CallMetadata) {
         try {
             FlutterLog.i(TAG, "onChangeSpeaker, callId: ${metadata.callId}")
-            connections[metadata.callId]!!.changeSpeakerState(metadata.isSpeaker)
+            connections[metadata.callId]!!.changeSpeakerState(metadata.hasSpeaker)
         } catch (e: Exception) {
             FlutterLog.e(
                 TAG, "onChangeSpeaker ${metadata.callId} exception: $e"
@@ -321,7 +321,7 @@ class PhoneConnectionService : ConnectionService() {
         val connection = PhoneConnection.createOutgoingPhoneConnection(applicationContext, metaData)
 
 
-        state.setShouldListenProximity(metaData.proximityEnabled ?: false)
+        state.setShouldListenProximity(metaData.proximityEnabled)
 
         connections[metaData.callId] = connection
 

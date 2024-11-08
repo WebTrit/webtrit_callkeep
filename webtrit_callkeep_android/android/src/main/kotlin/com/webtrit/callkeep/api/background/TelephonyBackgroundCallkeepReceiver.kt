@@ -78,7 +78,7 @@ class TelephonyBackgroundCallkeepReceiver(
             api.endCallReceived(
                 metadata.callId,
                 metadata.number,
-                metadata.isVideo,
+                metadata.hasVideo,
                 metadata.createdTime!!,
                 System.currentTimeMillis(),
                 null,
@@ -93,7 +93,7 @@ class TelephonyBackgroundCallkeepReceiver(
             api.endCallReceived(
                 metadata.callId,
                 metadata.number,
-                metadata.isVideo,
+                metadata.hasVideo,
                 metadata.createdTime!!,
                 null,
                 System.currentTimeMillis()
