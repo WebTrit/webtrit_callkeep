@@ -13,14 +13,14 @@ import com.webtrit.callkeep.common.models.CallMetadata
 import com.webtrit.callkeep.common.models.CallPaths
 import com.webtrit.callkeep.common.models.toCallHandle
 import com.webtrit.callkeep.common.StorageDelegate
-import com.webtrit.callkeep.common.ApplicationData
+import com.webtrit.callkeep.common.ContextHolder
+import com.webtrit.callkeep.common.ActivityHolder
 
 class PigeonServiceApi(
     private val context: Context,
     api: PDelegateBackgroundServiceFlutterApi,
 ) : PHostBackgroundServiceApi, BroadcastReceiver() {
-    private val connectionService: BackgroundCallkeepApi =
-        CallkeepApiProvider.getBackgroundCallkeepApi(context, api)
+    private val connectionService: BackgroundCallkeepApi = CallkeepApiProvider.getBackgroundCallkeepApi(context, api)
 
     init {
         register()
@@ -66,11 +66,7 @@ class PigeonServiceApi(
     }
 
     override fun incomingCall(
-        callId: String,
-        handle: PHandle,
-        displayName: String?,
-        hasVideo: Boolean,
-        callback: (Result<Unit>) -> Unit
+        callId: String, handle: PHandle, displayName: String?, hasVideo: Boolean, callback: (Result<Unit>) -> Unit
     ) {
         FlutterLog.i(TAG, "incomingCall $callId")
 
@@ -98,7 +94,7 @@ class PigeonServiceApi(
     ) {
         FlutterLog.i(TAG, "endCall $callId")
 
-        ApplicationData.getActivity()?.finish()
+        ActivityHolder.getActivity()?.finish()
 
         val callMetaData = CallMetadata(callId = callId)
         connectionService.hungUp(callMetaData, callback)
@@ -111,7 +107,7 @@ class PigeonServiceApi(
     override fun endAllCalls(callback: (Result<Unit>) -> Unit) {
         FlutterLog.i(TAG, "endAllCalls")
 
-        ApplicationData.getActivity()?.finish()
+        ActivityHolder.getActivity()?.finish()
 
         connectionService.endAllCalls()
 
@@ -123,10 +119,10 @@ class PigeonServiceApi(
         Hangup, Answer;
 
         val action: String
-            get() = ApplicationData.appUniqueKey + name
+            get() = ContextHolder.appUniqueKey + name
     }
 
     companion object {
-        const val TAG = "PigeonServiceApi";
+        const val TAG = "PigeonServiceApi"
     }
 }

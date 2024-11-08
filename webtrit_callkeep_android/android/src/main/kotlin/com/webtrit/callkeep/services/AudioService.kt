@@ -7,7 +7,7 @@ import android.media.Ringtone
 import android.media.RingtoneManager
 
 import com.webtrit.callkeep.FlutterLog
-import com.webtrit.callkeep.common.ApplicationData
+import com.webtrit.callkeep.common.AssetHolder
 import com.webtrit.callkeep.common.helpers.setLoopingCompat
 
 class AudioService(val context: Context) {
@@ -62,7 +62,7 @@ class AudioService(val context: Context) {
 
     private fun getRingtone(asset: String): Ringtone {
         return try {
-            val path = ApplicationData.flutterAssetManager.getAsset(asset)
+            val path = AssetHolder.flutterAssetManager.getAsset(asset)
 
             if (path != null) {
                 FlutterLog.i("AudioService", "Used asset: $path")

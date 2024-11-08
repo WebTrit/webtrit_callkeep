@@ -1,11 +1,13 @@
 package com.webtrit.callkeep
 
-import com.webtrit.callkeep.common.ApplicationData
 import android.app.Activity
 import android.content.Context
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
+import com.webtrit.callkeep.common.ActivityHolder
+import com.webtrit.callkeep.common.AssetHolder
+import com.webtrit.callkeep.common.ContextHolder
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -57,7 +59,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, LifecycleEventObserv
     }
 
     override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
-        ApplicationData.setCurrentActivityState(event)
+        ActivityHolder.setLifecycle(event)
     }
 }
 
@@ -72,7 +74,8 @@ private class FlutterState(val messenger: BinaryMessenger, val context: Context,
     var logsHostApi: PDelegateLogsFlutterApi? = null
 
     init {
-        ApplicationData.init(context, assets)
+        ContextHolder.init(context)
+        AssetHolder.init(context, assets)
     }
 
     fun attachLogs() {
@@ -102,7 +105,7 @@ private class FlutterState(val messenger: BinaryMessenger, val context: Context,
     fun initActivity(activity: Activity) {
         FlutterLog.i(TAG, "initActivity $this")
 
-        ApplicationData.attachActivity(activity)
+        ActivityHolder.setActivity(activity)
 
         val flutterDelegateApi = PDelegateFlutterApi(messenger)
         pigeonActivityApi = PigeonActivityApi(activity, flutterDelegateApi)
@@ -114,7 +117,7 @@ private class FlutterState(val messenger: BinaryMessenger, val context: Context,
     fun detachActivity() {
         FlutterLog.i(TAG, "detachActivity $this")
 
-        ApplicationData.detachActivity()
+        ActivityHolder.setActivity(null)
         pigeonActivityApi?.detachActivity()
     }
 

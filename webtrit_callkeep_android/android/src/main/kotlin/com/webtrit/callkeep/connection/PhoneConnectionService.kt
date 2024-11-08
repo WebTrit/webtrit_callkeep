@@ -6,7 +6,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.telecom.*
-
 import com.webtrit.callkeep.FlutterLog
 import com.webtrit.callkeep.api.foreground.TelephonyForegroundCallkeepApi
 import com.webtrit.callkeep.common.helpers.Telecom
@@ -14,7 +13,7 @@ import com.webtrit.callkeep.common.helpers.TelephonyHelper
 import com.webtrit.callkeep.common.models.CallMetadata
 import com.webtrit.callkeep.common.models.FailureMetadata
 import com.webtrit.callkeep.common.models.OutgoingFailureType
-import com.webtrit.callkeep.common.ApplicationData
+import com.webtrit.callkeep.common.ActivityHolder
 
 /**
  * `PhoneConnectionService` is a service class responsible for managing phone call connections
@@ -101,7 +100,7 @@ class PhoneConnectionService : ConnectionService() {
         try {
             FlutterLog.i(
                 TAG,
-                "onDeclineCall:: callId: ${metadata.callId} isActivityVisible: ${ApplicationData.isActivityVisible()} currentActivityState: ${ApplicationData.getActivityState()} connections: "
+                "onDeclineCall:: callId: ${metadata.callId} isActivityVisible: ${ActivityHolder.isActivityVisible()} currentActivityState: ${ActivityHolder.getActivityState()} connections: "
             )
             connections[metadata.callId]!!.declineCall()
             addConnectionTerminated(metadata.callId)
@@ -491,7 +490,12 @@ class PhoneConnectionService : ConnectionService() {
             }
             if (TelephonyHelper(context).isEmergencyNumber(metadata.number)) {
                 FlutterLog.i(TAG, "onOutgoingCall, trying to call on emergency number: ${metadata.number}")
-                TelephonyForegroundCallkeepApi.notifyOutgoingFailure(context, FailureMetadata("Failed to establish outgoing connection: Emergency number", outgoingFailureType = OutgoingFailureType.EMERGENCY_NUMBER))
+                TelephonyForegroundCallkeepApi.notifyOutgoingFailure(
+                    context, FailureMetadata(
+                        "Failed to establish outgoing connection: Emergency number",
+                        outgoingFailureType = OutgoingFailureType.EMERGENCY_NUMBER
+                    )
+                )
             } else {
                 // If there is already an active call not on hold, we terminate it and start a new one,
                 // otherwise, we would encounter an exception when placing the outgoing call.
