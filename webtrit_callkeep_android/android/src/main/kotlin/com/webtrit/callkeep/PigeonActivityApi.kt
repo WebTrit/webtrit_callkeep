@@ -2,7 +2,6 @@ package com.webtrit.callkeep
 
 import android.annotation.SuppressLint
 import android.app.Activity
-
 import com.webtrit.callkeep.api.CallkeepApiProvider
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.api.foreground.ForegroundCallkeepApi
@@ -129,7 +128,7 @@ class PigeonActivityApi(
         val callMetaData = CallMetadata(
             callId = callId
         )
-        foregroundCallkeepApi.endCall(callMetaData, callback);
+        foregroundCallkeepApi.endCall(callMetaData, callback)
     }
 
     override fun sendDTMF(
@@ -169,7 +168,7 @@ class PigeonActivityApi(
             callId = callId,
             hasSpeaker = enabled,
         )
-        foregroundCallkeepApi.setSpeaker(callMetaData, callback);
+        foregroundCallkeepApi.setSpeaker(callMetaData, callback)
     }
 
     fun detachActivity() {

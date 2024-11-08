@@ -64,7 +64,7 @@ class PhoneConnectionService : ConnectionService() {
             ServiceAction.Muting.action -> onChangeMute(CallMetadata.fromBundle(intent.extras!!))
             ServiceAction.Holding.action -> onChangeHold(CallMetadata.fromBundle(intent.extras!!))
             ServiceAction.UpdateCall.action -> onUpdateCall(CallMetadata.fromBundle(intent.extras!!))
-            ServiceAction.SendDtmf.action -> onSendDTMF(CallMetadata.fromBundle(intent.extras!!))
+            ServiceAction.SendDTMF.action -> onSendDTMF(CallMetadata.fromBundle(intent.extras!!))
             ServiceAction.Speaker.action -> onChangeSpeaker(CallMetadata.fromBundle(intent.extras!!))
             ServiceAction.DetachActivity.action -> onDetachActivity()
         }
@@ -238,10 +238,9 @@ class PhoneConnectionService : ConnectionService() {
     private fun onUpdateCall(metadata: CallMetadata) {
         try {
             FlutterLog.i(TAG, "onUpdateCall, callId: ${metadata.callId}")
-            if (metadata.proximityEnabled != null) {
-                state.setShouldListenProximity(metadata.proximityEnabled)
-                upsertProximityWakelock()
-            }
+            state.setShouldListenProximity(metadata.proximityEnabled)
+            if (metadata.proximityEnabled) upsertProximityWakelock()
+
             connections[metadata.callId]!!.run {
                 updateData(metadata)
             }
@@ -253,7 +252,7 @@ class PhoneConnectionService : ConnectionService() {
     }
 
     /**
-     * Send a DTMF tone during a call, if a connection with the given [metadata.dtmf] exists.
+     * Send a DTMF tone during a call, if a connection with the given [metadata.DTMF] exists.
      *
      * @param metadata The [CallMetadata] containing the DTMF tone and call identifier.
      */
@@ -391,10 +390,6 @@ class PhoneConnectionService : ConnectionService() {
             connections.remove(id)
         }
 
-        fun getOutgoingConnections(): List<PhoneConnection> {
-            return connections.values.filter { it.state == Connection.STATE_DIALING }
-        }
-
         fun getConnections(): List<PhoneConnection> {
             return connections.values.toList()
         }
@@ -404,7 +399,7 @@ class PhoneConnectionService : ConnectionService() {
         }
 
         fun isConnectionAnswered(id: String): Boolean {
-            return connections[id]?.isAnswered() ?: false
+            return connections[id]?.isAnswered() == true
         }
 
         fun isConnectionTerminated(id: String): Boolean {
@@ -451,7 +446,7 @@ class PhoneConnectionService : ConnectionService() {
         }
 
         fun startSendDtmfCall(context: Context, metadata: CallMetadata) {
-            communicate(context, ServiceAction.SendDtmf, metadata)
+            communicate(context, ServiceAction.SendDTMF, metadata)
         }
 
         fun startMutingCall(context: Context, metadata: CallMetadata) {

@@ -2,11 +2,9 @@ package com.webtrit.callkeep.common.helpers
 
 import android.content.ComponentName
 import android.content.Context
-import android.content.pm.PackageManager
 import android.telecom.PhoneAccount
 import android.telecom.PhoneAccountHandle
 import android.telecom.TelecomManager
-import android.telephony.TelephonyManager
 
 import com.webtrit.callkeep.connection.PhoneConnectionService
 

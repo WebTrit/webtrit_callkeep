@@ -6,7 +6,6 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.os.Build
 import android.os.PowerManager
 import android.telecom.ConnectionService
 import android.util.Log
@@ -68,11 +67,7 @@ class PhoneSensorListener : SensorEventListener {
                 proximityWakelock.acquire(60 * 60 * 1000L /*60 minutes*/)
             }
             if (!turnOn && alreadyHeld) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    proximityWakelock.release(1)
-                } else {
-                    proximityWakelock.release()
-                }
+                proximityWakelock.release(1)
             }
         } catch (x: Exception) {
             Log.e(LOG_TAG, x.toString())

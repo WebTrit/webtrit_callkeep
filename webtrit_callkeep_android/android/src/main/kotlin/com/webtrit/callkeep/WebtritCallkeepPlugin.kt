@@ -8,7 +8,6 @@ import androidx.lifecycle.LifecycleOwner
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.AssetHolder
 import com.webtrit.callkeep.common.ContextHolder
-
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
