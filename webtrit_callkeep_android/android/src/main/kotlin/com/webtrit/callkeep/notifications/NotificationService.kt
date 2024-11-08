@@ -1,10 +1,7 @@
-package com.webtrit.callkeep.services
+package com.webtrit.callkeep.notifications
 
 import  android.content.Context
 import com.webtrit.callkeep.common.models.CallMetadata
-import com.webtrit.callkeep.services.notification.ActiveCallNotificationBuilder
-import com.webtrit.callkeep.services.notification.IncomingCallNotificationBuilder
-import com.webtrit.callkeep.services.notification.MissedCallNotificationBuilder
 
 //TODO: Reorganize this service
 class NotificationService(

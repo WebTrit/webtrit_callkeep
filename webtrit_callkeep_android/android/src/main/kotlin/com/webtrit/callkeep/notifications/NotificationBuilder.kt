@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.services.notification
+package com.webtrit.callkeep.notifications
 
 import android.app.PendingIntent
 import android.content.Context
@@ -17,7 +17,6 @@ abstract class NotificationBuilder(
 
     protected val notificationManager: NotificationManagerCompat
         get() = NotificationManagerCompat.from(context)
-
 
     abstract fun show()
 
