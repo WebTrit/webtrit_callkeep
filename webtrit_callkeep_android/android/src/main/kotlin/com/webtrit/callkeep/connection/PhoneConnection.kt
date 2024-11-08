@@ -182,7 +182,7 @@ class PhoneConnection internal constructor(
     override fun onPlayDtmfTone(c: Char) {
         super.onPlayDtmfTone(c)
         TelephonyForegroundCallkeepApi.notifyAboutDTMF(
-            context, metadata.copy(dualToneMultiFrequency = c.toString())
+            context, metadata.copy(dualToneMultiFrequency = c)
         )
     }
 
@@ -244,11 +244,11 @@ class PhoneConnection internal constructor(
      * @param metadata The updated call metadata.
      */
     fun updateData(metadata: CallMetadata) {
-        this.metadata = metadata
+        this.metadata = this.metadata.mergeWith(metadata)
         this.extras = metadata.toBundle()
         setAddress(Uri.parse(metadata.number), TelecomManager.PRESENTATION_ALLOWED)
         setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
-        changeVideoState(metadata.isVideo)
+        changeVideoState(metadata.hasVideo)
     }
 
     /**

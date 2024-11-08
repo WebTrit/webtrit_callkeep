@@ -42,7 +42,7 @@ class ProxyForegroundCallkeepApi(
             metadata.callId,
             metadata.handle!!.toPHandle(),
             metadata.name,
-            metadata.isVideo,
+            metadata.hasVideo,
         ) {}
 
     }
@@ -78,7 +78,7 @@ class ProxyForegroundCallkeepApi(
         if (Platform.isLockScreen(activity)) {
             activity.finish()
         }
-        if(reason.value == PEndCallReasonEnum.UNANSWERED) {
+        if (reason.value == PEndCallReasonEnum.UNANSWERED) {
             notificationService.showMissedCallNotification(metadata)
         }
         callback.invoke(Result.success(Unit))
@@ -106,19 +106,19 @@ class ProxyForegroundCallkeepApi(
 
     override fun sendDTMF(metadata: CallMetadata, callback: (Result<PCallRequestError?>) -> Unit) {
         flutterDelegateApi.performSendDTMF(
-            metadata.callId, metadata.dualToneMultiFrequency!!
+            metadata.callId, metadata.dualToneMultiFrequency.toString()
         ) {}
         callback.invoke(Result.success(null))
     }
 
     override fun setMuted(metadata: CallMetadata, callback: (Result<PCallRequestError?>) -> Unit) {
-        flutterDelegateApi.performSetMuted(metadata.callId, metadata.isMute) {}
+        flutterDelegateApi.performSetMuted(metadata.callId, metadata.hasMute) {}
         callback.invoke(Result.success(null))
     }
 
     override fun setHeld(metadata: CallMetadata, callback: (Result<PCallRequestError?>) -> Unit) {
         flutterDelegateApi.performSetHeld(
-            metadata.callId, metadata.isHold
+            metadata.callId, metadata.hasHold
         ) {}
         callback.invoke(Result.success(null))
     }
@@ -127,7 +127,7 @@ class ProxyForegroundCallkeepApi(
         metadata: CallMetadata, callback: (Result<PCallRequestError?>) -> Unit
     ) {
         flutterDelegateApi.performSetSpeaker(
-            metadata.callId, metadata.isSpeaker
+            metadata.callId, metadata.hasSpeaker
         ) {}
         callback.invoke(Result.success(null))
     }

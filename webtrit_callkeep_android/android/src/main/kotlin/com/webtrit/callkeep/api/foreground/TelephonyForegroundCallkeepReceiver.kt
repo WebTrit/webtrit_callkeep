@@ -92,7 +92,7 @@ class TelephonyForegroundCallkeepReceiver(
             flutterDelegateApi.didPushIncomingCall(
                 callMetaData.handle!!.toPHandle(),
                 callMetaData.name,
-                videoArg = callMetaData.isVideo,
+                videoArg = callMetaData.hasVideo,
                 errorArg = null,
                 callIdArg = callMetaData.callId
             ) {}
@@ -128,7 +128,7 @@ class TelephonyForegroundCallkeepReceiver(
                 callMetaData.callId,
                 callMetaData.handle!!.toPHandle(),
                 callMetaData.name,
-                callMetaData.isVideo,
+                callMetaData.hasVideo,
             ) {}
         }
     }
@@ -137,7 +137,7 @@ class TelephonyForegroundCallkeepReceiver(
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
             flutterDelegateApi.performSetSpeaker(
-                callMetaData.callId, callMetaData.isSpeaker
+                callMetaData.callId, callMetaData.hasSpeaker
             ) {}
         }
     }
@@ -146,7 +146,7 @@ class TelephonyForegroundCallkeepReceiver(
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
             flutterDelegateApi.performSetMuted(
-                callMetaData.callId, callMetaData.isMute
+                callMetaData.callId, callMetaData.hasMute
             ) {}
         }
     }
@@ -155,7 +155,7 @@ class TelephonyForegroundCallkeepReceiver(
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
             flutterDelegateApi.performSetHeld(
-                callMetaData.callId, callMetaData.isHold
+                callMetaData.callId, callMetaData.hasHold
             ) {}
         }
     }
@@ -164,7 +164,7 @@ class TelephonyForegroundCallkeepReceiver(
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
             flutterDelegateApi.performSendDTMF(
-                callMetaData.callId, callMetaData.dualToneMultiFrequency!!
+                callMetaData.callId, callMetaData.dualToneMultiFrequency.toString()
             ) {}
         }
     }

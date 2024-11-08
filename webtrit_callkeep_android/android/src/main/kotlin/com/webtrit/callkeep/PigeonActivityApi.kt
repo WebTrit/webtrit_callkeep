@@ -98,14 +98,14 @@ class PigeonActivityApi(
             callId = callId,
             handle = handle?.toCallHandle(),
             displayName = displayName,
-            hasVideo = hasVideo,
-            proximityEnabled = proximityEnabled,
+            hasVideo = hasVideo == true,
+            proximityEnabled = proximityEnabled == true,
         )
         foregroundCallkeepApi.reportUpdateCall(callMetaData, callback)
     }
 
     override fun reportEndCall(
-        callId: String, displayName:String, reason: PEndCallReason, callback: (Result<Unit>) -> Unit
+        callId: String, displayName: String, reason: PEndCallReason, callback: (Result<Unit>) -> Unit
     ) {
         val callMetaData = CallMetadata(
             callId = callId,
@@ -137,7 +137,7 @@ class PigeonActivityApi(
     ) {
         val callMetaData = CallMetadata(
             callId = callId,
-            dualToneMultiFrequency = key,
+            dualToneMultiFrequency = key.getOrNull(0),
         )
         foregroundCallkeepApi.sendDTMF(callMetaData, callback)
     }
