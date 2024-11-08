@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 import 'package:webtrit_callkeep_example/app/routes.dart';
-import 'package:webtrit_callkeep_example/widgets/widgets.dart';
 
-class MainScreen extends StatelessWidget {
-  const MainScreen({Key? key}) : super(key: key);
+class MainScreen extends StatefulWidget {
+  const MainScreen({
+    Key? key,
+    required this.callkeepBackgroundService,
+  }) : super(key: key);
 
+  final CallkeepBackgroundService callkeepBackgroundService;
+
+  @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -26,11 +36,9 @@ class MainScreen extends StatelessWidget {
             Wrap(
               alignment: WrapAlignment.center,
               children: [
-                Button(
-                  title: 'Callkeep features',
-                  onClick: () {
-                    GoRouter.of(context).pushNamed(AppRoute.actions);
-                  },
+                ElevatedButton(
+                  child: Text("Callkeep features"),
+                  onPressed: () => GoRouter.of(context).pushNamed(AppRoute.actions),
                 ),
               ],
             ),
