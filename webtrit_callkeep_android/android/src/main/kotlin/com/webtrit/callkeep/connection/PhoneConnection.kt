@@ -106,14 +106,14 @@ class PhoneConnection internal constructor(
     override fun onAnswer() {
         super.onAnswer()
         answer = true
-        FlutterLog.i(TAG, "onAnswer: $metadata");
+        FlutterLog.i(TAG, "onAnswer: $metadata")
 
         try {
             notificationService.cancelIncomingNotification()
             notificationService.cancelMissedCall(metadata)
             audioService.stopRingtone()
         } catch (e: Exception) {
-            FlutterLog.e(TAG, "onAnswer: $e");
+            FlutterLog.e(TAG, "onAnswer: $e")
         }
 
         TelephonyForegroundCallkeepApi.notifyAnswer(context, metadata)
