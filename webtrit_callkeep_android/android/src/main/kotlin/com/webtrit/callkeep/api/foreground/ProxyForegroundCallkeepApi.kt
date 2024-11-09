@@ -37,7 +37,7 @@ class ProxyForegroundCallkeepApi(
     }
 
     override fun startCall(metadata: CallMetadata, callback: (Result<PCallRequestError?>) -> Unit) {
-        callback.invoke(Result.Companion.success(null))
+        callback.invoke(Result.success(null))
         flutterDelegateApi.performStartCall(
             metadata.callId,
             metadata.handle!!.toPHandle(),
