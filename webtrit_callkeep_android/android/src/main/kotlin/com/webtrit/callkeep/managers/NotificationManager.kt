@@ -1,10 +1,13 @@
-package com.webtrit.callkeep.notifications
+package com.webtrit.callkeep.managers
 
 import  android.content.Context
 import com.webtrit.callkeep.common.models.CallMetadata
+import com.webtrit.callkeep.notifications.ActiveCallNotificationBuilder
+import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
+import com.webtrit.callkeep.notifications.MissedCallNotificationBuilder
 
 //TODO: Reorganize this service
-class NotificationService(
+class NotificationManager(
     context: Context
 ) {
     private val incomingCallNotificationBuilder = IncomingCallNotificationBuilder(context)

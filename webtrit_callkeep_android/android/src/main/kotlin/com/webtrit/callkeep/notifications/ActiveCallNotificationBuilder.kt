@@ -51,10 +51,10 @@ class ActiveCallNotificationBuilder(
             try {
                 notificationManager.notify(R.integer.notification_active_call_id, build())
             } catch (e: SecurityException) {
-                Log.e(IncomingCallNotificationBuilder.Companion.TAG, "Notifications exception", e)
+                Log.e(IncomingCallNotificationBuilder.TAG, "Notifications exception", e)
             }
         } else {
-            Log.d(IncomingCallNotificationBuilder.Companion.TAG, "Notifications are disabled")
+            Log.d(IncomingCallNotificationBuilder.TAG, "Notifications are disabled")
         }
     }
 

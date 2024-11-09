@@ -122,7 +122,7 @@ class TelephonyForegroundCallkeepReceiver(
     private fun handleOngoingCall(extras: Bundle?) {
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
-            outgoingCallback?.invoke(Result.Companion.success(null))
+            outgoingCallback?.invoke(Result.success(null))
             outgoingCallback = null
             flutterDelegateApi.performStartCall(
                 callMetaData.callId,
@@ -175,13 +175,13 @@ class TelephonyForegroundCallkeepReceiver(
 
             outgoingCallback = when (failureMetaData.outgoingFailureType) {
                 OutgoingFailureType.UNENTITLED -> {
-                    outgoingCallback?.invoke(Result.Companion.failure(failureMetaData.getThrowable()))
+                    outgoingCallback?.invoke(Result.failure(failureMetaData.getThrowable()))
                     null
                 }
 
                 OutgoingFailureType.EMERGENCY_NUMBER -> {
                     outgoingCallback?.invoke(
-                        Result.Companion.success(
+                        Result.success(
                             PCallRequestError(
                                 PCallRequestErrorEnum.EMERGENCYNUMBER
                             )

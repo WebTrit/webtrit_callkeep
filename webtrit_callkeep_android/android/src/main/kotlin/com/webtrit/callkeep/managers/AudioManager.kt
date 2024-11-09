@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.services
+package com.webtrit.callkeep.managers
 
 import android.content.Context
 import android.media.AudioDeviceInfo
@@ -10,7 +10,7 @@ import com.webtrit.callkeep.FlutterLog
 import com.webtrit.callkeep.common.AssetHolder
 import com.webtrit.callkeep.common.helpers.setLoopingCompat
 
-class AudioService(val context: Context) {
+class AudioManager(val context: Context) {
     private val audioManager = requireNotNull(context.getSystemService(Context.AUDIO_SERVICE) as AudioManager)
     private var ringtone: Ringtone? = null
 
