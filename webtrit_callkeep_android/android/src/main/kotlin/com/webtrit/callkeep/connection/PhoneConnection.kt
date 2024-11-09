@@ -16,8 +16,8 @@ import com.webtrit.callkeep.api.background.TelephonyBackgroundCallkeepApi
 import com.webtrit.callkeep.api.foreground.TelephonyForegroundCallkeepApi
 import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.common.models.CallMetadata
-import com.webtrit.callkeep.services.AudioService
-import com.webtrit.callkeep.notifications.NotificationService
+import com.webtrit.callkeep.managers.AudioManager
+import com.webtrit.callkeep.managers.NotificationManager
 
 /**
  * Represents a phone connection for handling telephony calls.
@@ -33,8 +33,8 @@ class PhoneConnection internal constructor(
     private var isHasSpeaker = false
     private var answer = false
 
-    private val notificationService = NotificationService(context)
-    private val audioService = AudioService(context)
+    private val notificationManager = NotificationManager(context)
+    private val audioManager = AudioManager(context)
 
     init {
         audioModeIsVoip = true
@@ -73,7 +73,7 @@ class PhoneConnection internal constructor(
      * @param isMute True to mute the call, false to unmute it.
      */
     fun changeMuteState(isMute: Boolean) {
-        audioService.setMicrophoneMute(isMute)
+        this@PhoneConnection.audioManager.setMicrophoneMute(isMute)
         /**
          * There are known issues in Android 8.1 related to onCallAudioStateChanged, specifically,
          * it does not get triggered when we change the microphone mute state using audioManager.isMicrophoneMute.
@@ -94,8 +94,8 @@ class PhoneConnection internal constructor(
      * Called when the incoming call UI should be displayed.
      */
     override fun onShowIncomingCallUi() {
-        notificationService.showIncomingCallNotification(metadata)
-        audioService.startRingtone(metadata.ringtonePath)
+        notificationManager.showIncomingCallNotification(metadata)
+        this@PhoneConnection.audioManager.startRingtone(metadata.ringtonePath)
     }
 
     /**
@@ -109,9 +109,9 @@ class PhoneConnection internal constructor(
         FlutterLog.i(TAG, "onAnswer: $metadata")
 
         try {
-            notificationService.cancelIncomingNotification()
-            notificationService.cancelMissedCall(metadata)
-            audioService.stopRingtone()
+            notificationManager.cancelIncomingNotification()
+            notificationManager.cancelMissedCall(metadata)
+            this@PhoneConnection.audioManager.stopRingtone()
         } catch (e: Exception) {
             FlutterLog.e(TAG, "onAnswer: $e")
         }
@@ -144,8 +144,8 @@ class PhoneConnection internal constructor(
         FlutterLog.i(TAG, "onDisconnect: ${metadata.callId}")
 
         PhoneConnectionService.remove(metadata.callId)
-        notificationService.cancelActiveNotification()
-        audioService.stopRingtone()
+        notificationManager.cancelActiveNotification()
+        this@PhoneConnection.audioManager.stopRingtone()
         TelephonyForegroundCallkeepApi.notifyDeclineCall(context, metadata)
         destroy()
     }
@@ -261,9 +261,9 @@ class PhoneConnection internal constructor(
 
         if (isActive) {
             routeState = CallAudioState.ROUTE_SPEAKER
-        } else if (audioService.isBluetoothConnected()) {
+        } else if (this@PhoneConnection.audioManager.isBluetoothConnected()) {
             routeState = CallAudioState.ROUTE_BLUETOOTH
-        } else if (audioService.isWiredHeadsetConnected()) {
+        } else if (this@PhoneConnection.audioManager.isWiredHeadsetConnected()) {
             routeState = CallAudioState.ROUTE_WIRED_HEADSET
         }
         setAudioRoute(routeState)
@@ -274,7 +274,7 @@ class PhoneConnection internal constructor(
      */
     fun declineCall() {
         if (state == STATE_RINGING) {
-            notificationService.showMissedCallNotification(metadata)
+            notificationManager.showMissedCallNotification(metadata)
             TelephonyBackgroundCallkeepApi.notifyMissedIncomingCall(context, metadata)
         }
         setDisconnected(DisconnectCause(DisconnectCause.REMOTE))
@@ -293,9 +293,9 @@ class PhoneConnection internal constructor(
      * Handle actions when the connection becomes active.
      */
     private fun onActiveConnection() {
-        notificationService.cancelActiveNotification()
-        audioService.stopRingtone()
-        notificationService.showActiveCallNotification(metadata)
+        notificationManager.cancelActiveNotification()
+        this@PhoneConnection.audioManager.stopRingtone()
+        notificationManager.showActiveCallNotification(metadata)
         if (Build.VERSION.SDK_INT == Build.VERSION_CODES.O_MR1) {
             TelephonyForegroundCallkeepApi.notifyMuting(
                 context, metadata.copy(hasMute = this.isMute)

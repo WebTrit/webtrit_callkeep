@@ -13,15 +13,15 @@ import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.common.models.CallMetadata
 import com.webtrit.callkeep.common.models.toPHandle
-import com.webtrit.callkeep.services.NotificationService
-import com.webtrit.callkeep.services.AudioService
+import com.webtrit.callkeep.managers.NotificationManager
+import com.webtrit.callkeep.managers.AudioManager
 
 class ProxyForegroundCallkeepApi(
     private val activity: Activity, private val flutterDelegateApi: PDelegateFlutterApi
 ) : ForegroundCallkeepApi {
     private var isSetup = false
-    private val notificationService = NotificationService(activity)
-    private val audioService = AudioService(activity)
+    private val notificationManager = NotificationManager(activity)
+    private val audioManager = AudioManager(activity)
 
 
     override fun setUp(options: POptions, callback: (Result<Unit>) -> Unit) {
@@ -44,14 +44,13 @@ class ProxyForegroundCallkeepApi(
             metadata.name,
             metadata.hasVideo,
         ) {}
-
     }
 
     override fun reportNewIncomingCall(
         metadata: CallMetadata, callback: (Result<PIncomingCallError?>) -> Unit
     ) {
-        notificationService.showIncomingCallNotification(metadata, hasAnswerButton = false)
-        audioService.startRingtone(metadata.ringtonePath)
+        notificationManager.showIncomingCallNotification(metadata, hasAnswerButton = false)
+        this@ProxyForegroundCallkeepApi.audioManager.startRingtone(metadata.ringtonePath)
         callback.invoke(Result.success(null))
     }
 
@@ -73,13 +72,13 @@ class ProxyForegroundCallkeepApi(
     ) {
         flutterDelegateApi.performEndCall(metadata.callId) {}
         flutterDelegateApi.didDeactivateAudioSession {}
-        notificationService.cancelActiveNotification()
-        audioService.stopRingtone()
+        notificationManager.cancelActiveNotification()
+        this@ProxyForegroundCallkeepApi.audioManager.stopRingtone()
         if (Platform.isLockScreen(activity)) {
             activity.finish()
         }
         if (reason.value == PEndCallReasonEnum.UNANSWERED) {
-            notificationService.showMissedCallNotification(metadata)
+            notificationManager.showMissedCallNotification(metadata)
         }
         callback.invoke(Result.success(Unit))
     }
@@ -96,8 +95,8 @@ class ProxyForegroundCallkeepApi(
         flutterDelegateApi.performEndCall(metadata.callId) {}
         flutterDelegateApi.didDeactivateAudioSession {}
 
-        notificationService.cancelActiveNotification()
-        audioService.stopRingtone()
+        notificationManager.cancelActiveNotification()
+        this@ProxyForegroundCallkeepApi.audioManager.stopRingtone()
         if (Platform.isLockScreen(activity)) {
             activity.finish()
         }

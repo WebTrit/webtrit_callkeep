@@ -8,8 +8,8 @@ import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.common.models.CallMetadata
-import com.webtrit.callkeep.notifications.NotificationService
-import com.webtrit.callkeep.services.AudioService
+import com.webtrit.callkeep.managers.NotificationManager
+import com.webtrit.callkeep.managers.AudioManager
 
 /**
  * This class acts as a proxy for handling telephony-related operations in cases where the actual telephony module is not available.
@@ -22,8 +22,8 @@ class ProxyBackgroundCallkeepApi(
     private val context: Context,
     private val api: PDelegateBackgroundServiceFlutterApi,
 ) : BackgroundCallkeepApi {
-    private val notificationService = NotificationService(context)
-    private val audioService = AudioService(context)
+    private val notificationManager = NotificationManager(context)
+    private val audioManager = AudioManager(context)
 
     /**
      * Registers a broadcast receiver to listen for events.
@@ -47,8 +47,8 @@ class ProxyBackgroundCallkeepApi(
      * @param callback A callback function to be invoked after displaying the notification.
      */
     override fun incomingCall(metadata: CallMetadata, callback: (Result<Unit>) -> Unit) {
-        notificationService.showIncomingCallNotification(metadata, hasAnswerButton = false)
-        audioService.startRingtone(metadata.ringtonePath)
+        notificationManager.showIncomingCallNotification(metadata, hasAnswerButton = false)
+        this@ProxyBackgroundCallkeepApi.audioManager.startRingtone(metadata.ringtonePath)
         callback.invoke(Result.success(Unit))
     }
 
@@ -58,8 +58,8 @@ class ProxyBackgroundCallkeepApi(
      * @param metadata The metadata of the call to be ended.
      */
     override fun endCall(metadata: CallMetadata) {
-        notificationService.cancelActiveNotification()
-        audioService.stopRingtone()
+        notificationManager.cancelActiveNotification()
+        this@ProxyBackgroundCallkeepApi.audioManager.stopRingtone()
         // Perform end call action (custom logic)
         api.performEndCall(metadata.callId) {}
     }
@@ -89,8 +89,8 @@ class ProxyBackgroundCallkeepApi(
      * @param callback A callback function to be invoked after hanging up the call.
      */
     override fun hungUp(metadata: CallMetadata, callback: (Result<Unit>) -> Unit) {
-        notificationService.cancelActiveNotification()
-        audioService.stopRingtone()
+        notificationManager.cancelActiveNotification()
+        this@ProxyBackgroundCallkeepApi.audioManager.stopRingtone()
         callback(Result.success(Unit))
     }
 
