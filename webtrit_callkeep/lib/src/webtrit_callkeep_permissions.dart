@@ -44,6 +44,19 @@ class WebtritCallkeepPermissions {
 
     return platform.openFullScreenIntentSettings();
   }
+
+  /// Gets the battery optimization status.
+  Future<CallkeepAndroidBatteryMode> getBatteryMode() {
+    if (kIsWeb) {
+      return Future.value(CallkeepAndroidBatteryMode.unknown);
+    }
+
+    if (!Platform.isAndroid) {
+      return Future.value(CallkeepAndroidBatteryMode.unknown);
+    }
+
+    return platform.getBatteryMode();
+  }
 }
 
 /// Extension on [CallkeepSpecialPermissions] to get the status of special permissions.

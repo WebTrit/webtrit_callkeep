@@ -224,6 +224,11 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   Future<bool> openFullScreenIntentSettings() {
     return _permissionsApi.openFullScreenIntentSettings();
   }
+
+  @override
+  Future<CallkeepAndroidBatteryMode> getBatteryMode() {
+    return _permissionsApi.getBatteryMode().then((value) => value.toCallkeep());
+  }
 }
 
 class _CallkeepDelegateRelay implements PDelegateFlutterApi {

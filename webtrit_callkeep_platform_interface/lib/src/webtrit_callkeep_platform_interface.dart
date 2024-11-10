@@ -208,4 +208,9 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   Future<bool> openFullScreenIntentSettings() {
     throw UnimplementedError('launchFullScreenIntentSettings() has not been implemented.');
   }
+
+  /// Check if the permission for battery optimization is available.
+  Future<CallkeepAndroidBatteryMode> getBatteryMode() {
+    throw UnimplementedError('getBatteryMode() has not been implemented.');
+  }
 }

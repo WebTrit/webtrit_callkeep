@@ -56,6 +56,15 @@ class _MainScreenState extends State<MainScreen> {
               child: Text("Open Full Screen Intent Settings"),
               onPressed: () => WebtritCallkeepPermissions().openFullScreenIntentSettings(),
             ),
+            ElevatedButton(
+              child: Text("Battery optimization status"),
+              onPressed: () async {
+                var status = await WebtritCallkeepPermissions().getBatteryMode();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Permission status: $status')),
+                );
+              },
+            ),
           ],
         ),
       ),

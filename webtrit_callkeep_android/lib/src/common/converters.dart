@@ -192,3 +192,18 @@ extension PSpecialPermissionStatusTypeEnumConverter on PSpecialPermissionStatusT
     }
   }
 }
+
+extension PCallkeepAndroidBatteryModeConverter on PCallkeepAndroidBatteryMode {
+  CallkeepAndroidBatteryMode toCallkeep() {
+    switch (this) {
+      case PCallkeepAndroidBatteryMode.unrestricted:
+        return CallkeepAndroidBatteryMode.unrestricted;
+      case PCallkeepAndroidBatteryMode.optimized:
+        return CallkeepAndroidBatteryMode.optimized;
+      case PCallkeepAndroidBatteryMode.restricted:
+        return CallkeepAndroidBatteryMode.restricted;
+      case PCallkeepAndroidBatteryMode.unknown:
+        return CallkeepAndroidBatteryMode.unknown;
+    }
+  }
+}
