@@ -33,6 +33,11 @@ enum PLogTypeEnum {
   warn,
 }
 
+enum PSpecialPermissionStatusTypeEnum {
+  denied,
+  granted,
+}
+
 enum PHandleTypeEnum {
   generic,
   number,
@@ -390,6 +395,71 @@ class PHostBackgroundServiceApi {
       );
     } else {
       return;
+    }
+  }
+}
+
+class PHostPermissionsApi {
+  /// Constructor for [PHostPermissionsApi].  The [binaryMessenger] named argument is
+  /// available for dependency injection.  If it is left null, the default
+  /// BinaryMessenger will be used which routes to the host platform.
+  PHostPermissionsApi({BinaryMessenger? binaryMessenger})
+      : __pigeon_binaryMessenger = binaryMessenger;
+  final BinaryMessenger? __pigeon_binaryMessenger;
+
+  static const MessageCodec<Object?> pigeonChannelCodec = StandardMessageCodec();
+
+  Future<PSpecialPermissionStatusTypeEnum> getFullScreenIntentPermissionStatus() async {
+    const String __pigeon_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.getFullScreenIntentPermissionStatus';
+    final BasicMessageChannel<Object?> __pigeon_channel = BasicMessageChannel<Object?>(
+      __pigeon_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: __pigeon_binaryMessenger,
+    );
+    final List<Object?>? __pigeon_replyList =
+        await __pigeon_channel.send(null) as List<Object?>?;
+    if (__pigeon_replyList == null) {
+      throw _createConnectionError(__pigeon_channelName);
+    } else if (__pigeon_replyList.length > 1) {
+      throw PlatformException(
+        code: __pigeon_replyList[0]! as String,
+        message: __pigeon_replyList[1] as String?,
+        details: __pigeon_replyList[2],
+      );
+    } else if (__pigeon_replyList[0] == null) {
+      throw PlatformException(
+        code: 'null-error',
+        message: 'Host platform returned null value for non-null return value.',
+      );
+    } else {
+      return PSpecialPermissionStatusTypeEnum.values[__pigeon_replyList[0]! as int];
+    }
+  }
+
+  Future<bool> openFullScreenIntentSettings() async {
+    const String __pigeon_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.openFullScreenIntentSettings';
+    final BasicMessageChannel<Object?> __pigeon_channel = BasicMessageChannel<Object?>(
+      __pigeon_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: __pigeon_binaryMessenger,
+    );
+    final List<Object?>? __pigeon_replyList =
+        await __pigeon_channel.send(null) as List<Object?>?;
+    if (__pigeon_replyList == null) {
+      throw _createConnectionError(__pigeon_channelName);
+    } else if (__pigeon_replyList.length > 1) {
+      throw PlatformException(
+        code: __pigeon_replyList[0]! as String,
+        message: __pigeon_replyList[1] as String?,
+        details: __pigeon_replyList[2],
+      );
+    } else if (__pigeon_replyList[0] == null) {
+      throw PlatformException(
+        code: 'null-error',
+        message: 'Host platform returned null value for non-null return value.',
+      );
+    } else {
+      return (__pigeon_replyList[0] as bool?)!;
     }
   }
 }

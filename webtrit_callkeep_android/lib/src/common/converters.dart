@@ -181,3 +181,14 @@ extension CallkeepAndroidOptionsConverter on CallkeepAndroidOptions {
     );
   }
 }
+
+extension PSpecialPermissionStatusTypeEnumConverter on PSpecialPermissionStatusTypeEnum {
+  CallkeepSpecialPermissionStatus toCallkeep() {
+    switch (this) {
+      case PSpecialPermissionStatusTypeEnum.denied:
+        return CallkeepSpecialPermissionStatus.denied;
+      case PSpecialPermissionStatusTypeEnum.granted:
+        return CallkeepSpecialPermissionStatus.granted;
+    }
+  }
+}
