@@ -14,7 +14,7 @@
 
     <application>
         <service
-            android:name=".connection.PhoneConnectionService"
+            android:name=".services.telecom.connection.PhoneConnectionService"
             android:enabled="true"
             android:exported="false"
             android:label="PhoneConnectionService"

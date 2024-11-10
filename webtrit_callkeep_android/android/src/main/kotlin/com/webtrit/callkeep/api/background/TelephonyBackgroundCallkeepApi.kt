@@ -7,7 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 
-import com.webtrit.callkeep.connection.PhoneConnectionService
+import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 import com.webtrit.callkeep.common.models.CallMetadata
 
 import TelephonyBackgroundCallkeepReceiver

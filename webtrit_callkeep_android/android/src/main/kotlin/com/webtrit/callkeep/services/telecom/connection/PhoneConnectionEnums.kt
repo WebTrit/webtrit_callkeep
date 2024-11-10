@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.connection
+package com.webtrit.callkeep.services.telecom.connection
 
 import com.webtrit.callkeep.common.ContextHolder
 

@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.connection
+package com.webtrit.callkeep.services.telecom.connection
 
 enum class ProximityStateEnum {
     NEAR, DISTANCE
