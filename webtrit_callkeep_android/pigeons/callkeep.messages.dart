@@ -6,7 +6,7 @@ import 'package:pigeon/pigeon.dart';
   PigeonOptions(
     dartOut: 'lib/src/common/callkeep.pigeon.dart',
     dartTestOut: 'test/src/common/test_callkeep.pigeon.dart',
-    kotlinOut: 'android/src/main/kotlin/com/webtrit/callkeep/webtrit_callkeep_android/Generated.kt',
+    kotlinOut: 'android/src/main/kotlin/com/webtrit/callkeep/Generated.kt',
     kotlinOptions: KotlinOptions(
       package: 'com.webtrit.callkeep',
     ),
@@ -43,6 +43,11 @@ enum PLogTypeEnum {
   info,
   verbose,
   warn,
+}
+
+enum PSpecialPermissionStatusTypeEnum {
+  denied,
+  granted,
 }
 
 enum PHandleTypeEnum {
@@ -126,6 +131,15 @@ abstract class PHostBackgroundServiceApi {
 
   @async
   void endAllCalls();
+}
+
+@HostApi()
+abstract class PHostPermissionsApi {
+  @async
+  PSpecialPermissionStatusTypeEnum getFullScreenIntentPermissionStatus();
+
+  @async
+  bool openFullScreenIntentSettings();
 }
 
 @HostApi()

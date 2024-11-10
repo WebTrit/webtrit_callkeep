@@ -72,6 +72,9 @@ private class FlutterState(val messenger: BinaryMessenger, val context: Context,
     /** Handles interactions with the logs host API */
     var logsHostApi: PDelegateLogsFlutterApi? = null
 
+    /** Handles interactions with the permissions host API */
+    var permissionsApi: PigeonPermissionsApi? = null
+
     init {
         ContextHolder.init(context)
         AssetHolder.init(context, assets)
@@ -110,6 +113,9 @@ private class FlutterState(val messenger: BinaryMessenger, val context: Context,
         pigeonActivityApi = PigeonActivityApi(activity, flutterDelegateApi)
         PHostApi.setUp(messenger, pigeonActivityApi)
 
+        permissionsApi = PigeonPermissionsApi(context)
+        PHostPermissionsApi.setUp(messenger, permissionsApi)
+
         destroyService(messenger)
     }
 
@@ -118,6 +124,9 @@ private class FlutterState(val messenger: BinaryMessenger, val context: Context,
 
         ActivityHolder.setActivity(null)
         pigeonActivityApi?.detachActivity()
+
+        permissionsApi = null;
+
     }
 
     companion object {

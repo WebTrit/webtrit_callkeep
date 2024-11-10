@@ -33,14 +33,28 @@ class _MainScreenState extends State<MainScreen> {
             const SizedBox(
               height: 32,
             ),
-            Wrap(
-              alignment: WrapAlignment.center,
-              children: [
-                ElevatedButton(
-                  child: Text("Callkeep features"),
-                  onPressed: () => GoRouter.of(context).pushNamed(AppRoute.actions),
-                ),
-              ],
+            ElevatedButton(
+              child: Text("Callkeep features"),
+              onPressed: () => GoRouter.of(context).pushNamed(AppRoute.actions),
+            ),
+            Divider(),
+            Text(
+              "Permissions ",
+              style: Theme.of(context).textTheme.titleSmall,
+              textAlign: TextAlign.center,
+            ),
+            ElevatedButton(
+              child: Text("Full screen intent permission status"),
+              onPressed: () async {
+                var status = await WebtritCallkeepPermissions().getFullScreenIntentPermissionStatus();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Permission status: $status')),
+                );
+              },
+            ),
+            ElevatedButton(
+              child: Text("Open Full Screen Intent Settings"),
+              onPressed: () => WebtritCallkeepPermissions().openFullScreenIntentSettings(),
             ),
           ],
         ),

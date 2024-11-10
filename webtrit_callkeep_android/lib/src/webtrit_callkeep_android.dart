@@ -15,6 +15,8 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
 
   final _backgroundServiceApi = PHostBackgroundServiceApi();
 
+  final _permissionsApi = PHostPermissionsApi();
+
   @override
   void setDelegate(
     CallkeepDelegate? delegate,
@@ -211,6 +213,16 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
       displayName,
       hasVideo,
     );
+  }
+
+  @override
+  Future<CallkeepSpecialPermissionStatus> getFullScreenIntentPermissionStatus() {
+    return _permissionsApi.getFullScreenIntentPermissionStatus().then((value) => value.toCallkeep());
+  }
+
+  @override
+  Future<bool> openFullScreenIntentSettings() {
+    return _permissionsApi.openFullScreenIntentSettings();
   }
 }
 
