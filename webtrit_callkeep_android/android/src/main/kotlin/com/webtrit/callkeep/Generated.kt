@@ -71,6 +71,19 @@ enum class PSpecialPermissionStatusTypeEnum(val raw: Int) {
   }
 }
 
+enum class PCallkeepAndroidBatteryMode(val raw: Int) {
+  UNRESTRICTED(0),
+  OPTIMIZED(1),
+  RESTRICTED(2),
+  UNKNOWN(3);
+
+  companion object {
+    fun ofRaw(raw: Int): PCallkeepAndroidBatteryMode? {
+      return values().firstOrNull { it.raw == raw }
+    }
+  }
+}
+
 enum class PHandleTypeEnum(val raw: Int) {
   GENERIC(0),
   NUMBER(1),
@@ -422,6 +435,7 @@ interface PHostBackgroundServiceApi {
 interface PHostPermissionsApi {
   fun getFullScreenIntentPermissionStatus(callback: (Result<PSpecialPermissionStatusTypeEnum>) -> Unit)
   fun openFullScreenIntentSettings(callback: (Result<Boolean>) -> Unit)
+  fun getBatteryMode(callback: (Result<PCallkeepAndroidBatteryMode>) -> Unit)
 
   companion object {
     /** The codec used by PHostPermissionsApi. */
@@ -460,6 +474,24 @@ interface PHostPermissionsApi {
               } else {
                 val data = result.getOrNull()
                 reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.getBatteryMode", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.getBatteryMode() { result: Result<PCallkeepAndroidBatteryMode> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data!!.raw))
               }
             }
           }

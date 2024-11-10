@@ -50,6 +50,13 @@ enum PSpecialPermissionStatusTypeEnum {
   granted,
 }
 
+enum PCallkeepAndroidBatteryMode {
+  unrestricted,
+  optimized,
+  restricted,
+  unknown,
+}
+
 enum PHandleTypeEnum {
   generic,
   number,
@@ -140,6 +147,9 @@ abstract class PHostPermissionsApi {
 
   @async
   bool openFullScreenIntentSettings();
+
+  @async
+  PCallkeepAndroidBatteryMode getBatteryMode();
 }
 
 @HostApi()
