@@ -6,7 +6,7 @@ import android.telecom.PhoneAccount
 import android.telecom.PhoneAccountHandle
 import android.telecom.TelecomManager
 
-import com.webtrit.callkeep.connection.PhoneConnectionService
+import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 
 object Telecom {
     fun getTelecomManager(context: Context): TelecomManager {

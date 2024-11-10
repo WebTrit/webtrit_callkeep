@@ -12,7 +12,7 @@ import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.PIncomingCallErrorEnum
 import com.webtrit.callkeep.POptions
 import com.webtrit.callkeep.common.Broadcast
-import com.webtrit.callkeep.connection.PhoneConnectionService
+import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.helpers.Telecom
 import com.webtrit.callkeep.common.models.CallMetadata
