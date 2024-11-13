@@ -12,7 +12,7 @@ flutter:
     platforms:
       android:
         package: com.webtrit.callkeep
-        pluginClass: WebtritCallkeepPlugin 
+        pluginClass: WebtritCallkeepPlugin
         dartPluginClass: WebtritCallkeepAndroid
 
 dependencies:
@@ -24,6 +24,6 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  plugin_platform_interface: ^2.0.0
-  pigeon: ^16.0.5
-  very_good_analysis: ^5.1.0
+  plugin_platform_interface: ^2.1.8
+  pigeon: ^22.6.1
+  very_good_analysis: ^6.0.0

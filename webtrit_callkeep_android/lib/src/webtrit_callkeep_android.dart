@@ -22,9 +22,9 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     CallkeepDelegate? delegate,
   ) {
     if (delegate != null) {
-      PDelegateFlutterApi.setup(_CallkeepDelegateRelay(delegate));
+      PDelegateFlutterApi.setUp(_CallkeepDelegateRelay(delegate));
     } else {
-      PDelegateFlutterApi.setup(null);
+      PDelegateFlutterApi.setUp(null);
     }
   }
 
@@ -33,9 +33,9 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     PushRegistryDelegate? delegate,
   ) {
     if (delegate != null) {
-      PPushRegistryDelegateFlutterApi.setup(_PushRegistryDelegateRelay(delegate));
+      PPushRegistryDelegateFlutterApi.setUp(_PushRegistryDelegateRelay(delegate));
     } else {
-      PPushRegistryDelegateFlutterApi.setup(null);
+      PPushRegistryDelegateFlutterApi.setUp(null);
     }
   }
 
@@ -44,9 +44,9 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     CallkeepLogsDelegate? delegate,
   ) {
     if (delegate != null) {
-      PDelegateLogsFlutterApi.setup(_LogsDelegateRelay(delegate));
+      PDelegateLogsFlutterApi.setUp(_LogsDelegateRelay(delegate));
     } else {
-      PDelegateLogsFlutterApi.setup(null);
+      PDelegateLogsFlutterApi.setUp(null);
     }
   }
 
@@ -182,9 +182,9 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     CallkeepBackgroundServiceDelegate? delegate,
   ) {
     if (delegate != null) {
-      PDelegateBackgroundServiceFlutterApi.setup(_CallkeepBackgroundServiceDelegateRelay(delegate));
+      PDelegateBackgroundServiceFlutterApi.setUp(_CallkeepBackgroundServiceDelegateRelay(delegate));
     } else {
-      PDelegateBackgroundServiceFlutterApi.setup(null);
+      PDelegateBackgroundServiceFlutterApi.setUp(null);
     }
   }
 
