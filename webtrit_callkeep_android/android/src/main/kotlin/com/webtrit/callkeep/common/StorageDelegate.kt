@@ -2,6 +2,11 @@ package com.webtrit.callkeep.common
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.webtrit.callkeep.common.helpers.JsonHelper
+import com.webtrit.callkeep.models.ForegroundCallServiceConfig
+import com.webtrit.callkeep.models.ForegroundCallServiceHandles
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 /**
  * A delegate for managing SharedPreferences related to incoming and root routes.
@@ -11,6 +16,8 @@ object StorageDelegate {
     private const val FLUTTER_INCOMING_INITIAL_ROUTE = "FLUTTER_INCOMING_INITIAL_ROUTE"
     private const val FLUTTER_ROOT_INITIAL_ROUTE = "FLUTTER_ROOT_INITIAL_ROUTE"
     private const val RINGTONE_PATH_KEY = "RINGTONE_PATH_KEY"
+    private const val SERVICE_CONFIGURATION_KEY = "SERVICE_CONFIGURATION_KEY"
+    private const val SERVICE_HANDLES_KEY = "SERVICE_HANDLES_KEY"
 
     private var sharedPreferences: SharedPreferences? = null
 
@@ -21,8 +28,7 @@ object StorageDelegate {
      * @param route The incoming path route to store.
      */
     fun initIncomingPath(context: Context, route: String) {
-        getSharedPreferences(context)?.edit()?.putString(FLUTTER_INCOMING_INITIAL_ROUTE, route)
-            ?.apply()
+        getSharedPreferences(context)?.edit()?.putString(FLUTTER_INCOMING_INITIAL_ROUTE, route)?.apply()
     }
 
     /**
@@ -55,7 +61,6 @@ object StorageDelegate {
         return getSharedPreferences(context)?.getString(FLUTTER_ROOT_INITIAL_ROUTE, "/") ?: "/"
     }
 
-
     /**
      * Initializes the ringtone path in SharedPreferences.
      *
@@ -77,12 +82,50 @@ object StorageDelegate {
         return getSharedPreferences(context)?.getString(RINGTONE_PATH_KEY, null)
     }
 
-
     private fun getSharedPreferences(context: Context?): SharedPreferences? {
         if (sharedPreferences == null) {
-            sharedPreferences =
-                context?.getSharedPreferences(COMMON_PREFERENCES_KEY, Context.MODE_PRIVATE)
+            sharedPreferences = context?.getSharedPreferences(COMMON_PREFERENCES_KEY, Context.MODE_PRIVATE)
         }
         return sharedPreferences
+    }
+
+    fun setActivityReady(context: Context, ready: Boolean) {
+        getSharedPreferences(context)?.edit()?.putBoolean("setActivityReady", ready)?.apply()
+    }
+
+    fun getActivityReady(context: Context): Boolean {
+        return getSharedPreferences(context)?.getBoolean("setActivityReady", false) ?: false
+    }
+
+    fun setServiceConfiguration(context: Context, config: ForegroundCallServiceConfig) {
+        val jsonString = Json.encodeToString(config)
+        getSharedPreferences(context)?.edit()?.apply {
+            putString(SERVICE_CONFIGURATION_KEY, jsonString)
+            apply()
+        }
+    }
+
+    fun getForegroundCallServiceConfiguration(context: Context): ForegroundCallServiceConfig {
+        val jsonString = getSharedPreferences(context)?.getString(SERVICE_CONFIGURATION_KEY, null)
+        return jsonString?.let {
+            JsonHelper.json.decodeFromString<ForegroundCallServiceConfig>(it)
+        } ?: ForegroundCallServiceConfig(
+            null, null, null, autoRestartOnTerminate = false, autoStartOnBoot = false
+        );
+    }
+
+    fun setServiceHandles(context: Context, config: ForegroundCallServiceHandles) {
+        val jsonString = Json.encodeToString(config)
+        getSharedPreferences(context)?.edit()?.apply {
+            putString(SERVICE_HANDLES_KEY, jsonString)
+            apply()
+        }
+    }
+
+    fun getForegroundCallServiceHandles(context: Context): ForegroundCallServiceHandles {
+        val jsonString = getSharedPreferences(context)?.getString(SERVICE_HANDLES_KEY, null)
+        return jsonString?.let {
+            JsonHelper.json.decodeFromString<ForegroundCallServiceHandles>(it)
+        } ?: throw Exception("ServiceHandles not found")
     }
 }
