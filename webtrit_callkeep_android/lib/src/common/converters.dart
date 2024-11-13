@@ -207,3 +207,95 @@ extension PCallkeepAndroidBatteryModeConverter on PCallkeepAndroidBatteryMode {
     }
   }
 }
+
+extension CallkeepLifecycleTypeConverter on CallkeepLifecycleType {
+  PCallkeepLifecycleType toPigeon() {
+    switch (this) {
+      case CallkeepLifecycleType.onCreate:
+        return PCallkeepLifecycleType.onCreate;
+      case CallkeepLifecycleType.onStart:
+        return PCallkeepLifecycleType.onStart;
+      case CallkeepLifecycleType.onResume:
+        return PCallkeepLifecycleType.onResume;
+      case CallkeepLifecycleType.onPause:
+        return PCallkeepLifecycleType.onPause;
+      case CallkeepLifecycleType.onStop:
+        return PCallkeepLifecycleType.onStop;
+      case CallkeepLifecycleType.onDestroy:
+        return PCallkeepLifecycleType.onDestroy;
+      case CallkeepLifecycleType.onAny:
+        return PCallkeepLifecycleType.onAny;
+    }
+  }
+}
+
+extension CallkeepIncomingTypeConverter on CallkeepIncomingType {
+  PCallkeepIncomingType toPigeon() {
+    switch (this) {
+      case CallkeepIncomingType.pushNotification:
+        return PCallkeepIncomingType.pushNotification;
+      case CallkeepIncomingType.socket:
+        return PCallkeepIncomingType.socket;
+    }
+  }
+}
+
+extension PCallkeepIncomingTypeConverter on PCallkeepIncomingType {
+  CallkeepIncomingType toCallkeep() {
+    switch (this) {
+      case PCallkeepIncomingType.pushNotification:
+        return CallkeepIncomingType.pushNotification;
+      case PCallkeepIncomingType.socket:
+        return CallkeepIncomingType.socket;
+    }
+  }
+}
+
+extension PCallkeepLifecycleTypeConverter on PCallkeepLifecycleType {
+  CallkeepLifecycleType toCallkeep() {
+    switch (this) {
+      case PCallkeepLifecycleType.onCreate:
+        return CallkeepLifecycleType.onCreate;
+      case PCallkeepLifecycleType.onStart:
+        return CallkeepLifecycleType.onStart;
+      case PCallkeepLifecycleType.onResume:
+        return CallkeepLifecycleType.onResume;
+      case PCallkeepLifecycleType.onPause:
+        return CallkeepLifecycleType.onPause;
+      case PCallkeepLifecycleType.onStop:
+        return CallkeepLifecycleType.onStop;
+      case PCallkeepLifecycleType.onDestroy:
+        return CallkeepLifecycleType.onDestroy;
+      case PCallkeepLifecycleType.onAny:
+        return CallkeepLifecycleType.onAny;
+    }
+  }
+}
+
+extension PCallkeepServiceStatusConverter on PCallkeepServiceStatus {
+  CallkeepServiceStatus toCallkeep() {
+    return CallkeepServiceStatus(
+      type: type.toCallkeep(),
+      lifecycle: lifecycle.toCallkeep(),
+      autoStartOnBoot: autoStartOnBoot,
+      autoRestartOnTerminate: autoRestartOnTerminate,
+      lockScreen: lockScreen,
+      activityReady: activityReady,
+      activeCalls: activeCalls,
+    );
+  }
+}
+
+extension CallkeepServiceStatusConverter on CallkeepServiceStatus {
+  PCallkeepServiceStatus toPigeon() {
+    return PCallkeepServiceStatus(
+      type: type.toPigeon(),
+      lifecycle: lifecycle.toPigeon(),
+      autoStartOnBoot: autoStartOnBoot,
+      autoRestartOnTerminate: autoRestartOnTerminate,
+      lockScreen: lockScreen,
+      activityReady: activityReady,
+      activeCalls: activeCalls,
+    );
+  }
+}

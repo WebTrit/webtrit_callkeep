@@ -1,4 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:ui';
+
+import 'package:flutter/material.dart';
 
 import 'package:webtrit_callkeep_android/src/common/common.dart';
 import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
@@ -14,6 +18,11 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   final _api = PHostApi();
 
   final _backgroundServiceApi = PHostBackgroundServiceApi();
+  final _isolateApi = PHostIsolateApi();
+
+  int? _isolatePluginCallbackHandle;
+  int? _onChangedLifecycleHandle;
+  int? _onStartHandle;
 
   final _permissionsApi = PHostPermissionsApi();
 
@@ -229,6 +238,68 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   Future<CallkeepAndroidBatteryMode> getBatteryMode() {
     return _permissionsApi.getBatteryMode().then((value) => value.toCallkeep());
   }
+
+  @override
+  Future<dynamic> startService() {
+    return _isolateApi.startService();
+  }
+
+  @override
+  Future<dynamic> stopService() {
+    return _isolateApi.stopService();
+  }
+
+  @override
+  Future<dynamic> finishActivity({
+    bool forceCloseActivity = false,
+  }) {
+    return _isolateApi.finishActivity();
+  }
+
+  @override
+  Future<void> setUpServiceCallback(
+      {ForegroundStartServiceHandle? onStart, ForegroundChangeLifecycleHandle? onChangedLifecycle}) async {
+    // Initialization callback handle for the isolate plugin only once;
+    _isolatePluginCallbackHandle = _isolatePluginCallbackHandle ??
+        PluginUtilities.getCallbackHandle(
+          _isolatePluginCallbackDispatcher,
+        )?.toRawHandle();
+
+    _onStartHandle = _onStartHandle ??
+        PluginUtilities.getCallbackHandle(
+          onStart!,
+        )?.toRawHandle();
+
+    _onChangedLifecycleHandle = _onChangedLifecycleHandle ??
+        PluginUtilities.getCallbackHandle(
+          onChangedLifecycle!,
+        )?.toRawHandle();
+
+    if (_isolatePluginCallbackHandle != null && _onStartHandle != null && _onChangedLifecycleHandle != null) {
+      await _isolateApi.setUpCallback(
+        callbackDispatcher: _isolatePluginCallbackHandle!,
+        onStartHandler: _onStartHandle!,
+        onChangedLifecycleHandler: _onChangedLifecycleHandle!,
+      );
+    }
+  }
+
+  @override
+  Future<void> setUpAndroidBackgroundService({
+    required CallkeepIncomingType type,
+    bool autoRestartOnTerminate = false,
+    bool autoStartOnBoot = false,
+    String? androidNotificationName,
+    String? androidNotificationDescription,
+  }) async {
+    await _isolateApi.setUp(
+      type: type.toPigeon(),
+      autoStartOnBoot: autoStartOnBoot,
+      autoRestartOnTerminate: autoRestartOnTerminate,
+      androidNotificationName: androidNotificationName,
+      androidNotificationDescription: androidNotificationDescription,
+    );
+  }
 }
 
 class _CallkeepDelegateRelay implements PDelegateFlutterApi {
@@ -381,5 +452,39 @@ class _CallkeepBackgroundServiceDelegateRelay implements PDelegateBackgroundServ
       hungUpTime != null ? DateTime.fromMillisecondsSinceEpoch(hungUpTime) : null,
       video: video,
     );
+  }
+}
+
+@pragma('vm:entry-point')
+void _isolatePluginCallbackDispatcher() {
+  // Initialize the Flutter framework necessary for method channels and Pigeon.
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // WebtritCallkeepAndroid().wakeUpBackgroundHandler();
+  // Set up the Pigeon API for the background service.
+  PDelegateBackgroundRegisterFlutterApi.setUp(_BackgroundServiceDelegate());
+}
+
+class _BackgroundServiceDelegate implements PDelegateBackgroundRegisterFlutterApi {
+  @override
+  Future<void> onWakeUpBackgroundHandler(
+    int userCallbackHandle,
+    PCallkeepServiceStatus status,
+  ) async {
+    final handle = CallbackHandle.fromRawHandle(userCallbackHandle);
+    final closure = PluginUtilities.getCallbackFromHandle(handle)! as ForegroundStartServiceHandle;
+
+    await closure(status.toCallkeep());
+  }
+
+  @override
+  Future<void> onApplicationStatusChanged(
+    int applicationStatusCallbackHandle,
+    PCallkeepServiceStatus status,
+  ) async {
+    final handle = CallbackHandle.fromRawHandle(applicationStatusCallbackHandle);
+    final closure = PluginUtilities.getCallbackFromHandle(handle)! as ForegroundChangeLifecycleHandle;
+
+    await closure(status.toCallkeep());
   }
 }
