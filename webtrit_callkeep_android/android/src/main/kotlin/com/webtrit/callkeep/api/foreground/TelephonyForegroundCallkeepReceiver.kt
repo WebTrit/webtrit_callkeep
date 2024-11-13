@@ -183,7 +183,7 @@ class TelephonyForegroundCallkeepReceiver(
                     outgoingCallback?.invoke(
                         Result.success(
                             PCallRequestError(
-                                PCallRequestErrorEnum.EMERGENCYNUMBER
+                                PCallRequestErrorEnum.EMERGENCY_NUMBER
                             )
                         )
                     )
