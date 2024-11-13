@@ -386,6 +386,10 @@ class PhoneConnectionService : ConnectionService() {
         private var connections: MutableMap<String, PhoneConnection> = mutableMapOf()
         private var terminatedConnections: MutableList<String> = mutableListOf()
 
+        fun isExistsActiveConnection(): Boolean {
+            return connections.values.any { it.state == Connection.STATE_ACTIVE }
+        }
+
         fun remove(id: String) {
             connections.remove(id)
         }
