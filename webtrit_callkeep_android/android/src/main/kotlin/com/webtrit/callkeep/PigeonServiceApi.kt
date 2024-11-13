@@ -13,17 +13,16 @@ import com.webtrit.callkeep.common.models.CallMetadata
 import com.webtrit.callkeep.common.models.CallPaths
 import com.webtrit.callkeep.common.models.toCallHandle
 import com.webtrit.callkeep.common.StorageDelegate
-import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.models.NotificationAction
 
 class PigeonServiceApi(
     private val context: Context,
     api: PDelegateBackgroundServiceFlutterApi,
 ) : PHostBackgroundServiceApi, BroadcastReceiver() {
-    private val connectionService: BackgroundCallkeepApi = CallkeepApiProvider.getBackgroundCallkeepApi(context, api)
+    private val connectionService: BackgroundCallkeepApi =
+        CallkeepApiProvider.getBackgroundCallkeepApi(context, api)
 
     init {
-        register()
         Telecom.registerPhoneAccount(context)
     }
 
@@ -43,7 +42,7 @@ class PigeonServiceApi(
     fun unregister() {
         FlutterLog.i(TAG, "unregister receiver")
         try {
-            connectionService.unregister()
+            connectionService.unregister();
         } catch (e: Exception) {
             Log.e(TAG, e.toString())
         }
@@ -55,7 +54,6 @@ class PigeonServiceApi(
         }
     }
 
-
     override fun onReceive(context: Context, intent: Intent) {
         val callMetaData = CallMetadata.fromBundle(intent.extras!!)
 
@@ -66,7 +64,11 @@ class PigeonServiceApi(
     }
 
     override fun incomingCall(
-        callId: String, handle: PHandle, displayName: String?, hasVideo: Boolean, callback: (Result<Unit>) -> Unit
+        callId: String,
+        handle: PHandle,
+        displayName: String?,
+        hasVideo: Boolean,
+        callback: (Result<Unit>) -> Unit
     ) {
         FlutterLog.i(TAG, "incomingCall $callId")
 
@@ -94,8 +96,6 @@ class PigeonServiceApi(
     ) {
         FlutterLog.i(TAG, "endCall $callId")
 
-        ActivityHolder.getActivity()?.finish()
-
         val callMetaData = CallMetadata(callId = callId)
         connectionService.hungUp(callMetaData, callback)
 
@@ -107,8 +107,6 @@ class PigeonServiceApi(
     override fun endAllCalls(callback: (Result<Unit>) -> Unit) {
         FlutterLog.i(TAG, "endAllCalls")
 
-        ActivityHolder.getActivity()?.finish()
-
         connectionService.endAllCalls()
 
         //TODO: Should wait until all connections are removed, because the current implementation does not guarantee this
@@ -116,6 +114,6 @@ class PigeonServiceApi(
     }
 
     companion object {
-        const val TAG = "PigeonServiceApi"
+        const val TAG = "PigeonServiceApi";
     }
 }
