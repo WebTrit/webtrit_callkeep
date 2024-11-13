@@ -5,6 +5,8 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.Lifecycle
 import com.webtrit.callkeep.common.ActivityHolder
+import com.webtrit.callkeep.common.StorageDelegate
+import com.webtrit.callkeep.services.callkeep.foreground.ForegroundCallServiceReceiver
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.BinaryMessenger
 
@@ -23,6 +25,12 @@ class WebtritCallkeepPluginState(
     /** Handles interactions with the logs host API */
     var logsHostApi: PDelegateLogsFlutterApi? = null
 
+    /** Handles interactions with the permissions host API */
+    var permissionsApi: PigeonPermissionsApi? = null
+
+    /** Handles interactions with the isolate API */
+    var foregroundCallServiceReceiver: ForegroundCallServiceReceiver? = null;
+
     var activity: Activity? = null
 
     fun initIsolateApi() {
@@ -35,6 +43,9 @@ class WebtritCallkeepPluginState(
 
         val delegate = PDelegateBackgroundServiceFlutterApi(messenger)
         pigeonServiceApi = PigeonServiceApi(context, delegate)
+
+        foregroundCallServiceReceiver =
+            ForegroundCallServiceReceiver(PDelegateBackgroundRegisterFlutterApi(messenger), context)
 
         attachLogs()
     }
@@ -52,8 +63,12 @@ class WebtritCallkeepPluginState(
         FlutterLog.i(TAG, "initActivity $this")
         Log.d(TAG, "onStateChanged attached activity")
         this.activity = activity;
+        StorageDelegate.setActivityReady(activity, false)
 
         ActivityHolder.setActivity(activity)
+
+        permissionsApi = PigeonPermissionsApi(context)
+        PHostPermissionsApi.setUp(messenger, permissionsApi)
 
         val flutterDelegateApi = PDelegateFlutterApi(messenger)
         pigeonActivityApi = PigeonActivityApi(activity, flutterDelegateApi)
@@ -65,6 +80,8 @@ class WebtritCallkeepPluginState(
 
         pigeonServiceApi?.register()
         PHostBackgroundServiceApi.setUp(messenger, pigeonServiceApi)
+
+        foregroundCallServiceReceiver?.registerReceiver(context)
     }
 
     fun destroyService() {
@@ -72,12 +89,17 @@ class WebtritCallkeepPluginState(
 
         pigeonServiceApi?.unregister()
         PHostBackgroundServiceApi.setUp(messenger, null)
+
+        foregroundCallServiceReceiver?.unregisterReceiver(context)
     }
 
     fun detachActivity() {
         FlutterLog.i(TAG, "detachActivity $this")
+        StorageDelegate.setActivityReady(context, false)
         ActivityHolder.setActivity(null)
         pigeonActivityApi?.detachActivity()
+
+        permissionsApi = null;
     }
 
     fun onDetach() {
@@ -87,6 +109,7 @@ class WebtritCallkeepPluginState(
     fun onStateChanged(event: Lifecycle.Event) {
         Log.d(TAG, "onStateChanged $event")
         ActivityHolder.setLifecycle(event)
+        ForegroundCallServiceReceiver.changeLifecycle(context, event)
     }
 
     companion object {

@@ -6,6 +6,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import com.webtrit.callkeep.common.AssetHolder
 import com.webtrit.callkeep.common.ContextHolder
+import com.webtrit.callkeep.services.callkeep.foreground.ForegroundCallService
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -18,6 +19,7 @@ import io.flutter.embedding.engine.plugins.service.ServicePluginBinding
 class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, LifecycleEventObserver {
     private var activityPluginBinding: ActivityPluginBinding? = null
     private var lifeCycle: Lifecycle? = null
+    var service: ForegroundCallService? = null
 
     private lateinit var state: WebtritCallkeepPluginState
 
@@ -56,6 +58,10 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     }
 
     override fun onAttachedToService(binding: ServicePluginBinding) {
+        if (binding.service !is ForegroundCallService) return
+
+        this.service = binding.service as ForegroundCallService
+
         this.state.initBackgroundIsolateApi(binding.service.applicationContext)
     }
 
