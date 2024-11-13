@@ -1,135 +1,82 @@
 package com.webtrit.callkeep
 
-import android.app.Activity
-import android.content.Context
+import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
-import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.AssetHolder
 import com.webtrit.callkeep.common.ContextHolder
+
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.embedding.engine.plugins.lifecycle.HiddenLifecycleReference
-import io.flutter.plugin.common.BinaryMessenger
+import io.flutter.embedding.engine.plugins.service.ServiceAware
+import io.flutter.embedding.engine.plugins.service.ServicePluginBinding
 
 /** WebtritCallkeepAndroidPlugin */
-class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, LifecycleEventObserver {
+class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, LifecycleEventObserver {
     private var activityPluginBinding: ActivityPluginBinding? = null
-    private var state: FlutterState? = null
     private var lifeCycle: Lifecycle? = null
 
-    // This function will be called twice, once for Activity and once for Service (FCM).
-    // ActivityAware can be used to check if it's an activity, but ServiceAware doesn't function properly for Service (FCM).
-    // Therefore, a workaround is implemented to unsubscribe from the broadcast receiver initialized in initService.
+    private lateinit var state: WebtritCallkeepPluginState
+
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-        val binaryMessage = flutterPluginBinding.binaryMessenger
-        val applicationContext = flutterPluginBinding.applicationContext
+        // Store binnyMessenger for later use if instance of the flutter engine belongs to main isolate OR call service isolate
+        val messenger = flutterPluginBinding.binaryMessenger
+        val assets = flutterPluginBinding.flutterAssets
+        val context = flutterPluginBinding.applicationContext
 
-        this.state = FlutterState(binaryMessage, applicationContext, flutterPluginBinding.flutterAssets)
+        ContextHolder.init(context);
+        AssetHolder.init(context, assets)
 
-        this.state?.initService()
-        this.state?.attachLogs()
+        state = WebtritCallkeepPluginState(context, messenger, assets).apply {
+            initIsolateApi()
+        }
+    }
+
+    override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        this.state.deAttachLogs()
+        this.state.onDetach()
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
-        this.state?.initActivity(binding.activity)
-
+        Log.d(TAG, "onAttachedToActivity")
         this.activityPluginBinding = binding
 
         lifeCycle = (binding.lifecycle as HiddenLifecycleReference).lifecycle
         lifeCycle!!.addObserver(this)
-    }
 
-    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
+        this.state.initMainIsolateApi(binding.activity)
     }
-
-    override fun onDetachedFromActivityForConfigChanges() {}
 
     override fun onDetachedFromActivity() {
-        state?.detachActivity()
+        state.detachActivity()
         this.lifeCycle?.removeObserver(this)
     }
 
-    override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-        this.state?.destroyService(binding.binaryMessenger)
-        this.state?.deAttachLogs()
+    override fun onAttachedToService(binding: ServicePluginBinding) {
+        this.state.initBackgroundIsolateApi(binding.service.applicationContext)
+    }
+
+    override fun onDetachedFromService() {
+        this.state.destroyService()
+    }
+
+    override fun onDetachedFromActivityForConfigChanges() {
+        this.lifeCycle?.removeObserver(this)
+    }
+
+    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
+        lifeCycle = (binding.lifecycle as HiddenLifecycleReference).lifecycle
+        lifeCycle!!.addObserver(this)
     }
 
     override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
-        ActivityHolder.setLifecycle(event)
-    }
-}
-
-private class FlutterState(val messenger: BinaryMessenger, val context: Context, assets: FlutterPlugin.FlutterAssets) {
-    /** Handles interactions with the API when the application is active and in the foreground */
-    var pigeonActivityApi: PigeonActivityApi? = null
-
-    /** Handles interactions with the API when the application is active and in the foreground */
-    var pigeonServiceApi: PigeonServiceApi? = null
-
-    /** Handles interactions with the logs host API */
-    var logsHostApi: PDelegateLogsFlutterApi? = null
-
-    /** Handles interactions with the permissions host API */
-    var permissionsApi: PigeonPermissionsApi? = null
-
-    init {
-        ContextHolder.init(context)
-        AssetHolder.init(context, assets)
-    }
-
-    fun attachLogs() {
-        logsHostApi = PDelegateLogsFlutterApi(messenger)
-        FlutterLog.add(logsHostApi!!)
-    }
-
-    fun deAttachLogs() {
-        logsHostApi?.let { FlutterLog.remove(it) }
-    }
-
-    fun initService() {
-        FlutterLog.i(TAG, "initService $this")
-
-        val delegate = PDelegateBackgroundServiceFlutterApi(messenger)
-        pigeonServiceApi = PigeonServiceApi(context, delegate)
-        PHostBackgroundServiceApi.setUp(messenger, pigeonServiceApi)
-    }
-
-    fun destroyService(messenger: BinaryMessenger) {
-        FlutterLog.i(TAG, "destroyService $this")
-
-        pigeonServiceApi?.unregister()
-        PHostBackgroundServiceApi.setUp(messenger, null)
-    }
-
-    fun initActivity(activity: Activity) {
-        FlutterLog.i(TAG, "initActivity $this")
-
-        ActivityHolder.setActivity(activity)
-
-        val flutterDelegateApi = PDelegateFlutterApi(messenger)
-        pigeonActivityApi = PigeonActivityApi(activity, flutterDelegateApi)
-        PHostApi.setUp(messenger, pigeonActivityApi)
-
-        permissionsApi = PigeonPermissionsApi(context)
-        PHostPermissionsApi.setUp(messenger, permissionsApi)
-
-        destroyService(messenger)
-    }
-
-    fun detachActivity() {
-        FlutterLog.i(TAG, "detachActivity $this")
-
-        ActivityHolder.setActivity(null)
-        pigeonActivityApi?.detachActivity()
-
-        permissionsApi = null;
-
+        state.onStateChanged(event)
     }
 
     companion object {
-        private const val TAG = "WebtritCallkeepAndroidPlugin"
+        const val TAG = "WebtritCallkeepPlugin"
     }
 }
