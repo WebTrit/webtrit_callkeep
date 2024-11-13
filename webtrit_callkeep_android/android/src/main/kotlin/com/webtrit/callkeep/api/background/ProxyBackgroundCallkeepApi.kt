@@ -7,7 +7,7 @@ import com.webtrit.callkeep.FlutterLog
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.helpers.Platform
-import com.webtrit.callkeep.common.models.CallMetadata
+import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.managers.NotificationManager
 import com.webtrit.callkeep.managers.AudioManager
 

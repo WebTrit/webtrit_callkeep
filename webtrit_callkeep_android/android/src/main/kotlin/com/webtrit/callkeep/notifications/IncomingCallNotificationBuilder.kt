@@ -12,7 +12,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 
 import com.webtrit.callkeep.R
-import com.webtrit.callkeep.common.models.NotificationAction
+import com.webtrit.callkeep.models.NotificationAction
 import io.flutter.Log
 
 class IncomingCallNotificationBuilder(

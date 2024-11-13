@@ -1,7 +1,7 @@
 package com.webtrit.callkeep.managers
 
 import  android.content.Context
-import com.webtrit.callkeep.common.models.CallMetadata
+import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.notifications.ActiveCallNotificationBuilder
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
 import com.webtrit.callkeep.notifications.MissedCallNotificationBuilder

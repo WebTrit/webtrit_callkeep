@@ -11,7 +11,7 @@ import com.webtrit.callkeep.api.background.ReportAction
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.common.helpers.registerCustomReceiver
-import com.webtrit.callkeep.common.models.CallMetadata
+import com.webtrit.callkeep.models.CallMetadata
 
 /**
  * This class represents a BroadcastReceiver for handling telephony call-related events in the background.

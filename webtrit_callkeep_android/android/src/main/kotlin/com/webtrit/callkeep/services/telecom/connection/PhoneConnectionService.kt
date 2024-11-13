@@ -10,9 +10,9 @@ import com.webtrit.callkeep.FlutterLog
 import com.webtrit.callkeep.api.foreground.TelephonyForegroundCallkeepApi
 import com.webtrit.callkeep.common.helpers.Telecom
 import com.webtrit.callkeep.common.helpers.TelephonyHelper
-import com.webtrit.callkeep.common.models.CallMetadata
-import com.webtrit.callkeep.common.models.FailureMetadata
-import com.webtrit.callkeep.common.models.OutgoingFailureType
+import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.models.FailureMetadata
+import com.webtrit.callkeep.models.OutgoingFailureType
 import com.webtrit.callkeep.common.ActivityHolder
 
 /**

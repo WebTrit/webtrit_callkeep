@@ -14,10 +14,10 @@ import com.webtrit.callkeep.PDelegateFlutterApi
 import com.webtrit.callkeep.common.PigeonCallback
 import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.common.helpers.registerCustomReceiver
-import com.webtrit.callkeep.common.models.CallMetadata
-import com.webtrit.callkeep.common.models.FailureMetadata
-import com.webtrit.callkeep.common.models.OutgoingFailureType
-import com.webtrit.callkeep.common.models.toPHandle
+import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.models.FailureMetadata
+import com.webtrit.callkeep.models.OutgoingFailureType
+import com.webtrit.callkeep.models.toPHandle
 
 /**
  * This class serves as a BroadcastReceiver for handling telephony-related events in the foreground of the application.

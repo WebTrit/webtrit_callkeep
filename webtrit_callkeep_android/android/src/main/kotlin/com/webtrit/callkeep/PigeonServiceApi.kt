@@ -9,11 +9,11 @@ import com.webtrit.callkeep.api.CallkeepApiProvider
 import com.webtrit.callkeep.api.background.BackgroundCallkeepApi
 import com.webtrit.callkeep.common.helpers.Telecom
 import com.webtrit.callkeep.common.helpers.registerCustomReceiver
-import com.webtrit.callkeep.common.models.CallMetadata
-import com.webtrit.callkeep.common.models.CallPaths
-import com.webtrit.callkeep.common.models.toCallHandle
+import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.models.CallPaths
+import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.common.StorageDelegate
-import com.webtrit.callkeep.common.models.NotificationAction
+import com.webtrit.callkeep.models.NotificationAction
 
 class PigeonServiceApi(
     private val context: Context,

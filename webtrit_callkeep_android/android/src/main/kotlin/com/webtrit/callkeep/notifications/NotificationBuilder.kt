@@ -7,7 +7,7 @@ import android.net.Uri
 import androidx.core.app.NotificationManagerCompat
 import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.helpers.Platform
-import com.webtrit.callkeep.common.models.CallMetadata
+import com.webtrit.callkeep.models.CallMetadata
 
 abstract class NotificationBuilder(
     private val context: Context

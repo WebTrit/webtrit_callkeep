@@ -15,8 +15,8 @@ import com.webtrit.callkeep.common.Broadcast
 import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.helpers.Telecom
-import com.webtrit.callkeep.common.models.CallMetadata
-import com.webtrit.callkeep.common.models.FailureMetadata
+import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.models.FailureMetadata
 
 class TelephonyForegroundCallkeepApi(
     private val activity: Activity, flutterDelegateApi: PDelegateFlutterApi

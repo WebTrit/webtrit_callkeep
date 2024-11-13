@@ -1,6 +1,6 @@
 package com.webtrit.callkeep.api.background
 
-import com.webtrit.callkeep.common.models.CallMetadata
+import com.webtrit.callkeep.models.CallMetadata
 
 /**
  * Interface for managing background calls within the Webtrit CallKeep Android module.
