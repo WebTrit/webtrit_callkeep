@@ -453,6 +453,11 @@ class _CallkeepBackgroundServiceDelegateRelay implements PDelegateBackgroundServ
       video: video,
     );
   }
+
+  @override
+  Future<void> performAnswerCall(String callId) async {
+    return _delegate.performServiceAnswerCall(callId);
+  }
 }
 
 @pragma('vm:entry-point')

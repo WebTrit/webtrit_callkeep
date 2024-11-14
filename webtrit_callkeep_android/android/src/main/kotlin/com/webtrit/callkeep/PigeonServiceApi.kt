@@ -90,7 +90,6 @@ class PigeonServiceApi(
         connectionService.incomingCall(callMetaData, callback)
     }
 
-
     override fun endCall(
         callId: String, callback: (Result<Unit>) -> Unit
     ) {
@@ -102,7 +101,6 @@ class PigeonServiceApi(
         //TODO: Should wait until all connections are removed, because the current implementation does not guarantee this
         callback.invoke(Result.success(Unit))
     }
-
 
     override fun endAllCalls(callback: (Result<Unit>) -> Unit) {
         FlutterLog.i(TAG, "endAllCalls")
