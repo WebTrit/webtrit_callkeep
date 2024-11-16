@@ -12,13 +12,9 @@ data class CallHandle(
     }
 
     companion object {
-        fun fromBundle(bundle: Bundle): CallHandle {
-            val number = bundle.getString("number")
-            if (number != null) {
-                return CallHandle(number)
-            } else {
-                throw IllegalArgumentException("Missing required number property in CallHandle Bundle")
-            }
+        fun fromBundle(bundle: Bundle?): CallHandle {
+            val number = bundle?.getString("number") ?: "undefined"
+            return CallHandle(number)
         }
     }
 }
