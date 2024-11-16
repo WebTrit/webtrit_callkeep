@@ -120,6 +120,11 @@ interface ForegroundCallkeepApi {
     fun setSpeaker(metadata: CallMetadata, callback: (Result<PCallRequestError?>) -> Unit)
 
     /**
+     * Teardown Callkeep resources.
+     */
+    fun tearDown(callback: (Result<Unit>) -> Unit)
+
+    /**
      * Detach the activity from CallKeep.
      */
     fun detachActivity()

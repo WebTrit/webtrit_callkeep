@@ -64,9 +64,8 @@ class PigeonActivityApi(
 
     override fun isSetUp(): Boolean = foregroundCallkeepApi.isSetUp()
 
-    // Only for iOS, not used in Android
     override fun tearDown(callback: (Result<Unit>) -> Unit) {
-        callback.invoke(Result.success(Unit))
+        foregroundCallkeepApi.tearDown(callback)
     }
 
     // Only for iOS, not used in Android

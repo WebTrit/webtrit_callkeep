@@ -131,6 +131,10 @@ class ProxyForegroundCallkeepApi(
         callback.invoke(Result.success(null))
     }
 
+    override fun tearDown(callback: (Result<Unit>) -> Unit) {
+        callback.invoke(Result.success(Unit))
+    }
+
     override fun detachActivity() {}
 
     companion object {

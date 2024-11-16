@@ -146,6 +146,11 @@ class TelephonyForegroundCallkeepApi(
         callback.invoke(Result.success(null))
     }
 
+    override fun tearDown(callback: (Result<Unit>) -> Unit) {
+        PhoneConnectionService.cleanConnectionTerminated()
+        callback.invoke(Result.success(Unit))
+    }
+
     override fun detachActivity() {
         FlutterLog.i(TAG, "detachActivity")
 
