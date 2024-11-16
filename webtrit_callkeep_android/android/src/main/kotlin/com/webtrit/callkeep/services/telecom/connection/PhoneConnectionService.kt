@@ -421,6 +421,10 @@ class PhoneConnectionService : ConnectionService() {
             terminatedConnections.add(id)
         }
 
+         fun cleanConnectionTerminated() {
+            terminatedConnections.clear()
+        }
+
         fun startIncomingCall(context: Context, metadata: CallMetadata) {
             communicate(context, ServiceAction.IncomingCall, metadata)
         }
