@@ -28,7 +28,7 @@ class ForegroundCallNotificationBuilder(
 
     fun build(title: String, content: String): Notification {
         val notificationBuilder = Notification.Builder(context, FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID).apply {
-            setSmallIcon(R.drawable.primary_onboardin_logo)
+            setSmallIcon(R.drawable.call_foreground_icon)
             setContentTitle(title)
             setContentText(content)
             setAutoCancel(false)
