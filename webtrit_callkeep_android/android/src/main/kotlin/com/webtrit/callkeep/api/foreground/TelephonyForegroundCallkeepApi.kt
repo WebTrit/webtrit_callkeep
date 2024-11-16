@@ -17,19 +17,26 @@ import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.helpers.Telecom
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.FailureMetadata
+import com.webtrit.callkeep.receivers.IncomingCallNotificationReceiver
 
 class TelephonyForegroundCallkeepApi(
     private val activity: Activity, flutterDelegateApi: PDelegateFlutterApi
 ) : ForegroundCallkeepApi {
-    private var isSetup = false
-
     private val flutterDelegate = TelephonyForegroundCallkeepReceiver(activity, flutterDelegateApi)
+    private val incomingCallReceiver = IncomingCallNotificationReceiver(
+        activity,
+        endCall = { callMetaData -> endCall(callMetaData) {} },
+        answerCall = { callMetaData -> answerCall(callMetaData) {} },
+    )
+
+    private var isSetup = false
 
     override fun setUp(options: POptions, callback: (Result<Unit>) -> Unit) {
         FlutterLog.i(TAG, "setUp: ${options.android}")
 
         if (!isSetup) {
             flutterDelegate.registerReceiver(activity)
+            incomingCallReceiver.registerReceiver()
             Telecom.registerPhoneAccount(activity)
             StorageDelegate.initIncomingPath(activity, options.android.incomingPath)
             StorageDelegate.initRootPath(activity, options.android.rootPath)
@@ -148,11 +155,13 @@ class TelephonyForegroundCallkeepApi(
 
     override fun tearDown(callback: (Result<Unit>) -> Unit) {
         PhoneConnectionService.cleanConnectionTerminated()
+        incomingCallReceiver.unregisterReceiver()
         callback.invoke(Result.success(Unit))
     }
 
     override fun detachActivity() {
         FlutterLog.i(TAG, "detachActivity")
+        incomingCallReceiver.unregisterReceiver()
 
         try {
             flutterDelegate.clearOutgoingCallback()

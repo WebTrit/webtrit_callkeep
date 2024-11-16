@@ -1,76 +1,53 @@
 package com.webtrit.callkeep
 
-import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import android.util.Log
 import com.webtrit.callkeep.api.CallkeepApiProvider
 import com.webtrit.callkeep.api.background.BackgroundCallkeepApi
+import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.helpers.Telecom
-import com.webtrit.callkeep.common.helpers.registerCustomReceiver
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.CallPaths
+import com.webtrit.callkeep.receivers.IncomingCallNotificationReceiver
 import com.webtrit.callkeep.models.toCallHandle
-import com.webtrit.callkeep.common.StorageDelegate
-import com.webtrit.callkeep.models.NotificationAction
 
 class PigeonServiceApi(
     private val context: Context,
     api: PDelegateBackgroundServiceFlutterApi,
-) : PHostBackgroundServiceApi, BroadcastReceiver() {
-    private val connectionService: BackgroundCallkeepApi =
-        CallkeepApiProvider.getBackgroundCallkeepApi(context, api)
+) : PHostBackgroundServiceApi {
+    private val connectionService: BackgroundCallkeepApi = CallkeepApiProvider.getBackgroundCallkeepApi(context, api)
+    private val incomingCallReceiver = IncomingCallNotificationReceiver(
+        context,
+        endCall = { callMetaData -> connectionService.hungUp(callMetaData) {} },
+        answerCall = { callMetaData -> connectionService.answer(callMetaData) },
+    )
 
     init {
         Telecom.registerPhoneAccount(context)
     }
 
     fun register() {
-        FlutterLog.i(TAG, "register receiver ")
+        FlutterLog.i(TAG, "Registering PigeonServiceApi")
 
-        // Register actions from notification
-        val notificationsReceiverFilter = IntentFilter()
-        notificationsReceiverFilter.addAction(NotificationAction.Hangup.action)
-        notificationsReceiverFilter.addAction(NotificationAction.Answer.action)
-        context.registerCustomReceiver(this, notificationsReceiverFilter)
-
-        // Register background service
+        incomingCallReceiver.registerReceiver()
         connectionService.register()
     }
 
     fun unregister() {
-        FlutterLog.i(TAG, "unregister receiver")
+        FlutterLog.i(TAG, "Unregistering PigeonServiceApi")
         try {
-            connectionService.unregister();
+            connectionService.unregister()
         } catch (e: Exception) {
-            Log.e(TAG, e.toString())
+            Log.e(TAG, "Error unregistering connection service: ${e.message}")
         }
 
-        try {
-            context.unregisterReceiver(this)
-        } catch (e: Exception) {
-            Log.e(TAG, e.toString())
-        }
-    }
-
-    override fun onReceive(context: Context, intent: Intent) {
-        val callMetaData = CallMetadata.fromBundle(intent.extras!!)
-
-        when (intent.action) {
-            NotificationAction.Hangup.action -> connectionService.endCall(callMetaData)
-            NotificationAction.Answer.action -> connectionService.answer(callMetaData)
-        }
+        incomingCallReceiver.unregisterReceiver()
     }
 
     override fun incomingCall(
-        callId: String,
-        handle: PHandle,
-        displayName: String?,
-        hasVideo: Boolean,
-        callback: (Result<Unit>) -> Unit
+        callId: String, handle: PHandle, displayName: String?, hasVideo: Boolean, callback: (Result<Unit>) -> Unit
     ) {
-        FlutterLog.i(TAG, "incomingCall $callId")
+        FlutterLog.i(TAG, "Incoming call: $callId")
 
         val callPath = StorageDelegate.getIncomingPath(context)
         val rootPath = StorageDelegate.getRootPath(context)
@@ -86,32 +63,25 @@ class PigeonServiceApi(
             createdTime = System.currentTimeMillis()
         )
 
-        //TODO: Fuzzy logic between two classes, in some methods the callback is called in that class in some we delegate to the implementation. Make it more clear.
         connectionService.incomingCall(callMetaData, callback)
     }
 
-    override fun endCall(
-        callId: String, callback: (Result<Unit>) -> Unit
-    ) {
-        FlutterLog.i(TAG, "endCall $callId")
+    override fun endCall(callId: String, callback: (Result<Unit>) -> Unit) {
+        FlutterLog.i(TAG, "End call: $callId")
 
         val callMetaData = CallMetadata(callId = callId)
         connectionService.hungUp(callMetaData, callback)
-
-        //TODO: Should wait until all connections are removed, because the current implementation does not guarantee this
-        callback.invoke(Result.success(Unit))
+        callback.invoke(Result.success(Unit)) // TODO: Ensure proper cleanup of connections
     }
 
     override fun endAllCalls(callback: (Result<Unit>) -> Unit) {
-        FlutterLog.i(TAG, "endAllCalls")
+        FlutterLog.i(TAG, "End all calls")
 
         connectionService.endAllCalls()
-
-        //TODO: Should wait until all connections are removed, because the current implementation does not guarantee this
-        callback.invoke(Result.success(Unit))
+        callback.invoke(Result.success(Unit)) // TODO: Ensure proper cleanup of connections
     }
 
     companion object {
-        const val TAG = "PigeonServiceApi";
+        const val TAG = "PigeonServiceApi"
     }
 }
