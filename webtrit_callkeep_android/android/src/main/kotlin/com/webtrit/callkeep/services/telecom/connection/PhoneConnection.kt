@@ -28,7 +28,7 @@ import com.webtrit.callkeep.managers.NotificationManager
  */
 class PhoneConnection internal constructor(
     private val context: Context,
-    private var metadata: CallMetadata,
+    var metadata: CallMetadata,
 ) : Connection() {
     private var isMute = false
     private var isHasSpeaker = false
