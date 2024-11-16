@@ -390,6 +390,10 @@ class PhoneConnectionService : ConnectionService() {
             return connections.values.any { it.state == Connection.STATE_ACTIVE }
         }
 
+        fun getActiveOrPendingConnection(): PhoneConnection? {
+            return connections.values.find { it.state == Connection.STATE_NEW || it.state == Connection.STATE_RINGING || it.state == Connection.STATE_ACTIVE }
+        }
+
         fun remove(id: String) {
             connections.remove(id)
         }
@@ -421,7 +425,7 @@ class PhoneConnectionService : ConnectionService() {
             terminatedConnections.add(id)
         }
 
-         fun cleanConnectionTerminated() {
+        fun cleanConnectionTerminated() {
             terminatedConnections.clear()
         }
 

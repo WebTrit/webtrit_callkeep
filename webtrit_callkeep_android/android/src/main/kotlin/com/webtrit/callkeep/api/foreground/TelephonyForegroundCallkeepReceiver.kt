@@ -86,15 +86,15 @@ class TelephonyForegroundCallkeepReceiver(
         }
     }
 
-    private fun handleDidPushIncomingCall(extras: Bundle?) {
+    fun handleDidPushIncomingCall(extras: Bundle?) {
         extras?.let {
-            val callMetaData = CallMetadata.fromBundle(it)
+            val metadata = CallMetadata.fromBundle(it)
             flutterDelegateApi.didPushIncomingCall(
-                callMetaData.handle!!.toPHandle(),
-                callMetaData.name,
-                videoArg = callMetaData.hasVideo,
-                errorArg = null,
-                callIdArg = callMetaData.callId
+                handleArg = metadata.handle!!.toPHandle(),
+                displayNameArg = metadata.displayName,
+                videoArg = metadata.hasVideo,
+                callIdArg = metadata.callId,
+                errorArg = null
             ) {}
         }
     }

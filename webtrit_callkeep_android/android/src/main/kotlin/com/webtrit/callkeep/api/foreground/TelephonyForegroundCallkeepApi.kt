@@ -41,6 +41,13 @@ class TelephonyForegroundCallkeepApi(
             StorageDelegate.initIncomingPath(activity, options.android.incomingPath)
             StorageDelegate.initRootPath(activity, options.android.rootPath)
             StorageDelegate.initRingtonePath(activity, options.android.ringtoneSound)
+
+            // If an incoming call was answered in the background, retrieve the current new or ringing connection.
+            // Extract its metadata and sync the call state with the Flutter side by emitting it as a bundle.
+            PhoneConnectionService.getActiveOrPendingConnection()?.metadata?.let {
+                flutterDelegate.handleDidPushIncomingCall(it.toBundle())
+            }
+
             isSetup = true
         } else {
             FlutterLog.e(TAG, "Plugin already initialized")
@@ -114,8 +121,7 @@ class TelephonyForegroundCallkeepApi(
             callback.invoke(Result.success(null))
         } else {
             FlutterLog.e(
-                TAG,
-                "Error response as there is no connection with such ${metadata.callId} in the list."
+                TAG, "Error response as there is no connection with such ${metadata.callId} in the list."
             )
             callback.invoke(Result.success(PCallRequestError(PCallRequestErrorEnum.INTERNAL)))
         }
