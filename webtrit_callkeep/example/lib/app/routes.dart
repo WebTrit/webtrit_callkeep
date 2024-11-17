@@ -7,7 +7,7 @@ class AppRoute {
   static const contacts = 'contacts';
   static const incoming = 'incoming';
   static const outgoing = 'outgoing';
-  static const talking = 'talking';
+  static const tests = 'tests';
 
 }
 
