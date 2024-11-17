@@ -47,15 +47,6 @@ interface BackgroundCallkeepApi {
     )
 
     /**
-     * End an ongoing call.
-     *
-     * @param metadata The call metadata.
-     */
-    fun endCall(
-        metadata: CallMetadata
-    )
-
-    /**
      * End all ongoing calls.
      *
      */

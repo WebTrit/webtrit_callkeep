@@ -280,6 +280,7 @@ class PhoneConnection internal constructor(
             notificationManager.showMissedCallNotification(metadata)
             TelephonyBackgroundCallkeepApi.notifyMissedIncomingCall(context, metadata)
         }
+        Log.d(TAG, "PhoneConnection:declineCall")
         setDisconnected(DisconnectCause(DisconnectCause.REMOTE))
         onDisconnect()
     }
@@ -288,6 +289,7 @@ class PhoneConnection internal constructor(
      * Hang up the call.
      */
     fun hungUp() {
+        TelephonyBackgroundCallkeepApi.notifyHungUp(context, metadata)
         setDisconnected(DisconnectCause(DisconnectCause.LOCAL))
         onDisconnect()
     }

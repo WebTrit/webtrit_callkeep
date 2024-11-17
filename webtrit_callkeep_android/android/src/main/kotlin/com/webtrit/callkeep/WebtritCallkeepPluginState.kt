@@ -41,9 +41,6 @@ class WebtritCallkeepPluginState(
 
         PHostIsolateApi.setUp(messenger, pigeonIsolateApi)
 
-        val delegate = PDelegateBackgroundServiceFlutterApi(messenger)
-        pigeonServiceApi = PigeonServiceApi(context, delegate)
-
         foregroundCallServiceReceiver =
             ForegroundCallServiceReceiver(PDelegateBackgroundRegisterFlutterApi(messenger), context)
 
@@ -78,6 +75,8 @@ class WebtritCallkeepPluginState(
     fun initBackgroundIsolateApi(context: Context) {
         FlutterLog.i(TAG, "initBackgroundIsolateApi $this")
 
+        val delegate = PDelegateBackgroundServiceFlutterApi(messenger)
+        pigeonServiceApi = PigeonServiceApi(context, delegate)
         pigeonServiceApi?.register()
         PHostBackgroundServiceApi.setUp(messenger, pigeonServiceApi)
 

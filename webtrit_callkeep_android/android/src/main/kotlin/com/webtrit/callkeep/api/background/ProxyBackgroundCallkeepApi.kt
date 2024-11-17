@@ -52,18 +52,6 @@ class ProxyBackgroundCallkeepApi(
         callback.invoke(Result.success(Unit))
     }
 
-    /**
-     * Ends an ongoing call and cancels the active notification.
-     *
-     * @param metadata The metadata of the call to be ended.
-     */
-    override fun endCall(metadata: CallMetadata) {
-        notificationManager.cancelActiveNotification()
-        this@ProxyBackgroundCallkeepApi.audioManager.stopRingtone()
-        // Perform end call action (custom logic)
-        api.performEndCall(metadata.callId) {}
-    }
-
     override fun endAllCalls() {
         FlutterLog.d(TAG, "endAllCalls")
     }
