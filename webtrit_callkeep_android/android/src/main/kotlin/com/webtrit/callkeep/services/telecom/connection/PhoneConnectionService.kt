@@ -14,6 +14,7 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.models.OutgoingFailureType
 import com.webtrit.callkeep.common.ActivityHolder
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * `PhoneConnectionService` is a service class responsible for managing phone call connections
@@ -268,25 +269,6 @@ class PhoneConnectionService : ConnectionService() {
     }
 
     /**
-     * Create an incoming connection and handle its initialization.
-     *
-     * @param connectionManagerPhoneAccount The phone account handle for the connection manager.
-     * @param request The connection request containing extras.
-     * @return The created Connection instance.
-     */
-    override fun onCreateIncomingConnection(
-        connectionManagerPhoneAccount: PhoneAccountHandle,
-        request: ConnectionRequest,
-    ): Connection {
-        val metaData = CallMetadata.fromBundle(request.extras)
-        val connection = PhoneConnection.createIncomingPhoneConnection(applicationContext, metaData)
-
-        state.setShouldListenProximity(metaData.proximityEnabled)
-        connections[metaData.callId] = connection
-        return connection
-    }
-
-    /**
      * Handles changes in the speaker state of a call based on the provided metadata.
      *
      * @param metadata The metadata containing information about the call.
@@ -313,11 +295,20 @@ class PhoneConnectionService : ConnectionService() {
         connectionManagerPhoneAccount: PhoneAccountHandle, request: ConnectionRequest
     ): Connection {
         val metaData = CallMetadata.fromBundle(request.extras)
-        val connection = PhoneConnection.createOutgoingPhoneConnection(applicationContext, metaData)
 
-        state.setShouldListenProximity(metaData.proximityEnabled)
-        connections[metaData.callId] = connection
-        return connection
+        synchronized(connectionResourceLock) {
+            // Check if a connection with the same call ID already exists.
+            // If so, reject the new connection request to prevent conflicts.
+            if (isConnectionAlreadyExists(metaData.callId)) {
+                // Return a failed connection indicating the line is busy.
+                return Connection.createFailedConnection(DisconnectCause(DisconnectCause.BUSY))
+            }
+
+            val connection = PhoneConnection.createOutgoingPhoneConnection(applicationContext, metaData)
+            state.setShouldListenProximity(metaData.proximityEnabled)
+            addConnection(metaData.callId, connection)
+            return connection
+        }
     }
 
     /**
@@ -340,6 +331,41 @@ class PhoneConnectionService : ConnectionService() {
             FailureMetadata("onCreateOutgoingConnectionFailed: $connectionManagerPhoneAccount  $request")
         )
         super.onCreateOutgoingConnectionFailed(connectionManagerPhoneAccount, request)
+    }
+
+    /**
+     * Create an incoming connection and handle its initialization.
+     *
+     * @param connectionManagerPhoneAccount The phone account handle for the connection manager.
+     * @param request The connection request containing extras.
+     * @return The created Connection instance.
+     */
+    override fun onCreateIncomingConnection(
+        connectionManagerPhoneAccount: PhoneAccountHandle,
+        request: ConnectionRequest,
+    ): Connection {
+        val metadata = CallMetadata.fromBundle(request.extras)
+
+        synchronized(connectionResourceLock) {
+            // Check if a connection with the same ID already exists.
+            // This can occur if receivers from both the activity and the service
+            // trigger the incoming call flow simultaneously.
+            if (isConnectionAlreadyExists(metadata.callId)) {
+                // Return a failed connection indicating an error.
+                return Connection.createFailedConnection(DisconnectCause(DisconnectCause.ERROR))
+            }
+
+            // Check if there is already an existing incoming connection.
+            // If so, decline the new incoming connection to prevent conflicts in initializing the incoming call flow.
+            if (isExistsIncomingConnection()) {
+                // Return a failed connection indicating the line is busy.
+                return Connection.createFailedConnection(DisconnectCause(DisconnectCause.BUSY))
+            }
+
+            val connection = PhoneConnection.createIncomingPhoneConnection(applicationContext, metadata)
+            addConnection(metadata.callId, connection)
+            return connection
+        }
     }
 
     /**
@@ -376,11 +402,26 @@ class PhoneConnectionService : ConnectionService() {
     companion object {
         private const val TAG = "PhoneConnectionService"
 
-        private var connections: MutableMap<String, PhoneConnection> = mutableMapOf()
+        private val connections: ConcurrentHashMap<String, PhoneConnection> = ConcurrentHashMap()
         private var terminatedConnections: MutableList<String> = mutableListOf()
 
+        private val connectionResourceLock = Any()
+
+        @Synchronized
+        fun addConnection(callId: String, connection: PhoneConnection) {
+            if (!connections.containsKey(callId)) {
+                connections[callId] = connection
+            }
+        }
+
         fun isExistsActiveConnection(): Boolean {
-            return connections.values.any { it.state == Connection.STATE_ACTIVE }
+            synchronized(connectionResourceLock) {
+                return connections.values.any { it.state == Connection.STATE_ACTIVE }
+            }
+        }
+
+        fun isExistsIncomingConnection(): Boolean {
+            return connections.values.any { it.state == Connection.STATE_NEW || it.state == Connection.STATE_RINGING }
         }
 
         fun getActiveOrPendingConnection(): PhoneConnection? {
