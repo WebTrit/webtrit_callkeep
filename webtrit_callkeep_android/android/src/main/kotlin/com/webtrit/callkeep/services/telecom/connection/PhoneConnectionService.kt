@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.telecom.*
 import com.webtrit.callkeep.FlutterLog
 import com.webtrit.callkeep.api.foreground.TelephonyForegroundCallkeepApi
@@ -14,6 +16,8 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.models.OutgoingFailureType
 import com.webtrit.callkeep.common.ActivityHolder
+import java.util.Timer
+import java.util.TimerTask
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -273,7 +277,10 @@ class PhoneConnectionService : ConnectionService() {
      * Clean connection service resources.
      */
     private fun tearDown() {
-        getConnections().forEach { it.hungUp() }
+        getConnections().forEach {
+            it.hungUp()
+            cancelTimeout(it.id)
+        }
         cleanConnectionTerminated();
     }
 
@@ -303,19 +310,23 @@ class PhoneConnectionService : ConnectionService() {
     override fun onCreateOutgoingConnection(
         connectionManagerPhoneAccount: PhoneAccountHandle, request: ConnectionRequest
     ): Connection {
-        val metaData = CallMetadata.fromBundle(request.extras)
+        val metadata = CallMetadata.fromBundle(request.extras)
 
         synchronized(connectionResourceLock) {
             // Check if a connection with the same call ID already exists.
             // If so, reject the new connection request to prevent conflicts.
-            if (isConnectionAlreadyExists(metaData.callId)) {
+            if (isConnectionAlreadyExists(metadata.callId)) {
                 // Return a failed connection indicating the line is busy.
                 return Connection.createFailedConnection(DisconnectCause(DisconnectCause.BUSY))
             }
 
-            val connection = PhoneConnection.createOutgoingPhoneConnection(applicationContext, metaData)
-            state.setShouldListenProximity(metaData.proximityEnabled)
-            addConnection(metaData.callId, connection)
+            val connection = PhoneConnection.createOutgoingPhoneConnection(applicationContext, metadata)
+            state.setShouldListenProximity(metadata.proximityEnabled)
+            addConnection(
+                metadata.callId, connection, TIMEOUT_DURATION_MS, DEFAULT_OUTGOING_STATES
+            ) {
+                connection.hungUp()
+            }
             return connection
         }
     }
@@ -372,7 +383,11 @@ class PhoneConnectionService : ConnectionService() {
             }
 
             val connection = PhoneConnection.createIncomingPhoneConnection(applicationContext, metadata)
-            addConnection(metadata.callId, connection)
+            addConnection(
+                metadata.callId, connection, TIMEOUT_DURATION_MS, DEFAULT_INCOMING_STATES
+            ) {
+                connection.hungUp()
+            }
             return connection
         }
     }
@@ -410,16 +425,64 @@ class PhoneConnectionService : ConnectionService() {
 
     companion object {
         private const val TAG = "PhoneConnectionService"
+        private const val TIMEOUT_DURATION_MS = 60_000L
+
+        val DEFAULT_INCOMING_STATES = listOf(Connection.STATE_NEW, Connection.STATE_RINGING)
+        val DEFAULT_OUTGOING_STATES = listOf(Connection.STATE_DIALING)
 
         private val connections: ConcurrentHashMap<String, PhoneConnection> = ConcurrentHashMap()
+        private val connectionTimers: ConcurrentHashMap<String, Runnable> = ConcurrentHashMap()
+
         private var terminatedConnections: MutableList<String> = mutableListOf()
 
         private val connectionResourceLock = Any()
 
+        fun cancelTimeout(callId: String) {
+            connectionTimers.remove(callId)?.let {
+                FlutterLog.i(TAG, "Timeout canceled for callId: $callId")
+            }
+        }
+
+        private fun startTimeout(
+            callId: String, timeout: Long, validStates: List<Int> = DEFAULT_INCOMING_STATES, onTimeout: () -> Unit
+        ) {
+            val mainHandler = Handler(Looper.getMainLooper())
+
+            val timerTask = Runnable {
+                synchronized(connectionResourceLock) {
+                    val connection = connections[callId]
+                    if (connection != null && connection.state in validStates) {
+                        mainHandler.post {
+                            FlutterLog.i(TAG, "Timeout reached for callId: $callId. Ending call.")
+                            onTimeout()
+                        }
+                        remove(callId)
+                    }
+                }
+            }
+
+            connectionTimers[callId] = timerTask
+
+            Timer().schedule(object : TimerTask() {
+                override fun run() = timerTask.run()
+            }, timeout)
+        }
+
         @Synchronized
-        fun addConnection(callId: String, connection: PhoneConnection) {
+        fun addConnection(
+            callId: String,
+            connection: PhoneConnection,
+            timeout: Long? = null,
+            validStates: List<Int> = DEFAULT_INCOMING_STATES,
+            onTimeout: (() -> Unit)? = null
+        ) {
             if (!connections.containsKey(callId)) {
                 connections[callId] = connection
+
+                // Якщо передано timeout і onTimeout, запустити таймер
+                if (timeout != null && onTimeout != null) {
+                    startTimeout(callId, timeout, validStates, onTimeout)
+                }
             }
         }
 
