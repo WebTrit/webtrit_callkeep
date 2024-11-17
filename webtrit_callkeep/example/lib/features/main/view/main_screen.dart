@@ -36,14 +36,13 @@ class _MainScreenState extends State<MainScreen> {
             const SizedBox(
               height: 32,
             ),
-            Wrap(
-              alignment: WrapAlignment.center,
-              children: [
-                ElevatedButton(
-                  child: Text("Callkeep features"),
-                  onPressed: () => GoRouter.of(context).pushNamed(AppRoute.actions),
-                ),
-              ],
+            ElevatedButton(
+              child: Text("Callkeep features"),
+              onPressed: () => GoRouter.of(context).pushNamed(AppRoute.actions),
+            ),
+            ElevatedButton(
+              child: Text("Simulated Call Tests"),
+              onPressed: () => GoRouter.of(context).pushNamed(AppRoute.tests),
             ),
             SizedBox(height: 16),
             Text(

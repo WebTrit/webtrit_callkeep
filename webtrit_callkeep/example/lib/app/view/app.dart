@@ -57,6 +57,19 @@ class _AppState extends State<App> {
               child: const ActionsScreen(),
             ),
           ),
+          GoRoute(
+            name: AppRoute.tests,
+            path: '/tests',
+            builder: (context, state) => BlocProvider(
+              create: (context) {
+                return TestsCubit(
+                  Callkeep(),
+                  widget.callkeepBackgroundService,
+                );
+              },
+              child: const TestsScreen(),
+            ),
+          ),
         ],
       ),
     ],
