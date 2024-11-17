@@ -16,6 +16,7 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.models.OutgoingFailureType
 import com.webtrit.callkeep.common.ActivityHolder
+import com.webtrit.callkeep.managers.ProximitySensorManager
 import java.util.Timer
 import java.util.TimerTask
 import java.util.concurrent.ConcurrentHashMap
@@ -30,23 +31,11 @@ import java.util.concurrent.ConcurrentHashMap
  */
 class PhoneConnectionService : ConnectionService() {
     private lateinit var state: PhoneConnectionConsts
-    private lateinit var sensor: PhoneSensorListener
+    private lateinit var sensorManager: ProximitySensorManager
 
     override fun onCreate() {
         super.onCreate()
-        state = PhoneConnectionConsts()
-        sensor = PhoneSensorListener()
-
-        sensor.setSensorHandler {
-            state.setNearestState(it)
-            upsertProximityWakelock()
-        }
-    }
-
-    private fun upsertProximityWakelock() {
-        val isNear = state.isUserNear()
-        val shouldListen = state.shouldListenProximity()
-        sensor.upsertProximityWakelock(shouldListen && isNear)
+        sensorManager = ProximitySensorManager(applicationContext, PhoneConnectionConsts())
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
@@ -111,8 +100,7 @@ class PhoneConnectionService : ConnectionService() {
             // Ensure the connection exists before proceeding to decline call the call.
             getConnection(metadata.callId)?.declineCall()
             addConnectionTerminated(metadata.callId)
-            sensor.unListen(applicationContext)
-
+            sensorManager.stopListening()
         } catch (e: Exception) {
             FlutterLog.e(
                 TAG, "onDeclineCall ${metadata.callId} exception: $e"
@@ -135,7 +123,7 @@ class PhoneConnectionService : ConnectionService() {
             // Ensure the connection exists before proceeding to hang up the call.
             getConnection(metadata.callId)?.hungUp()
             addConnectionTerminated(metadata.callId)
-            sensor.unListen(applicationContext)
+            sensorManager.stopListening()
         } catch (e: Exception) {
             // WORKAROUND:
             // Sometimes it happens that the connection is no longer available when the user tries to end the call,
@@ -163,7 +151,7 @@ class PhoneConnectionService : ConnectionService() {
     private fun onAnswerCall(metadata: CallMetadata) {
         try {
             FlutterLog.i(TAG, "onAnswerCall, callId: ${metadata.callId}")
-            sensor.listen(applicationContext)
+            sensorManager.startListening()
             getConnection(metadata.callId)?.onAnswer()
         } catch (e: Exception) {
             FlutterLog.e(
@@ -187,7 +175,7 @@ class PhoneConnectionService : ConnectionService() {
     private fun onEstablishCall(metadata: CallMetadata) {
         try {
             FlutterLog.i(TAG, "onEstablishCall, callId: ${metadata.callId}")
-            sensor.listen(applicationContext)
+            sensorManager.startListening()
             getConnection(metadata.callId)?.establish()
         } catch (e: Exception) {
             FlutterLog.e(
@@ -247,13 +235,12 @@ class PhoneConnectionService : ConnectionService() {
     private fun onUpdateCall(metadata: CallMetadata) {
         try {
             FlutterLog.i(TAG, "onUpdateCall, callId: ${metadata.callId}")
-            state.setShouldListenProximity(metadata.proximityEnabled)
-            if (metadata.proximityEnabled) upsertProximityWakelock()
+
+            sensorManager.updateProximityWakelock()
+
             getConnection(metadata.callId)?.updateData(metadata)
         } catch (e: Exception) {
-            FlutterLog.e(
-                TAG, "onUpdateCall ${metadata.callId} exception: $e"
-            )
+            FlutterLog.e(TAG, "onUpdateCall ${metadata.callId} exception: $e")
         }
     }
 
@@ -415,7 +402,7 @@ class PhoneConnectionService : ConnectionService() {
 
     override fun onDestroy() {
         FlutterLog.i(TAG, "onDestroy")
-        sensor.unListen(this)
+        sensorManager.stopListening()
         //TODO: Change the method name to better understand the purpose
         onDetachActivity()
         super.onDestroy()
