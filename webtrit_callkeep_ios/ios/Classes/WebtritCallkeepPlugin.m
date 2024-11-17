@@ -239,10 +239,11 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   }
   if (proximityEnabled != nil) {
      if ([proximityEnabled boolValue]) {
-        //  [[AVAudioSession sharedInstance] setMode: AVAudioSessionModeVoiceChat error:nil];
+          [[AVAudioSession sharedInstance] setMode: AVAudioSessionModeVoiceChat error:nil];
      } else {
-        //  AVAudioSessionModeVideoChat causes another bug when the speaker automatically turns on during audio calls at the moment when the user declines an active call
-        //  [[AVAudioSession sharedInstance] setMode: AVAudioSessionModeVideoChat error:nil];
+//          Can cause bug when the speaker automatically turns on during audio calls at the moment when the user declines an active call
+//          needs additional testing
+          [[AVAudioSession sharedInstance] setMode: AVAudioSessionModeVideoChat error:nil];
      }
   }
     
