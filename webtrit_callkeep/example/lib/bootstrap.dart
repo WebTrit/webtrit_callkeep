@@ -10,11 +10,24 @@ import 'package:permission_handler/permission_handler.dart';
 
 import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 
+import 'isolates.dart' as isolate;
+
 Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
   final logger = Logger('bootstrap');
   WidgetsFlutterBinding.ensureInitialized();
+  isolate.logIsolateI('Main isolate');
 
   await Permission.notification.request();
+
+  CallkeepBackgroundService.setUpServiceCallback(
+    onStart: isolate.onStartForegroundService,
+    onChangedLifecycle: isolate.onChangedLifecycle,
+  );
+
+  CallkeepBackgroundService().setUp(
+    autoStartOnBoot: true,
+    autoRestartOnTerminate: true,
+  );
 
   WebtritCallkeepLogs().setLogsDelegate(CallkeepLogs());
 

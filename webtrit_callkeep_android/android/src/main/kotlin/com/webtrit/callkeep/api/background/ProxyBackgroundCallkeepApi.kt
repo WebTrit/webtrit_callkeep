@@ -7,7 +7,7 @@ import com.webtrit.callkeep.FlutterLog
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.helpers.Platform
-import com.webtrit.callkeep.common.models.CallMetadata
+import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.managers.NotificationManager
 import com.webtrit.callkeep.managers.AudioManager
 
@@ -50,18 +50,6 @@ class ProxyBackgroundCallkeepApi(
         notificationManager.showIncomingCallNotification(metadata, hasAnswerButton = false)
         this@ProxyBackgroundCallkeepApi.audioManager.startRingtone(metadata.ringtonePath)
         callback.invoke(Result.success(Unit))
-    }
-
-    /**
-     * Ends an ongoing call and cancels the active notification.
-     *
-     * @param metadata The metadata of the call to be ended.
-     */
-    override fun endCall(metadata: CallMetadata) {
-        notificationManager.cancelActiveNotification()
-        this@ProxyBackgroundCallkeepApi.audioManager.stopRingtone()
-        // Perform end call action (custom logic)
-        api.performEndCall(metadata.callId) {}
     }
 
     override fun endAllCalls() {

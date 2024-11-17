@@ -121,6 +121,31 @@ class PCallRequestError {
   late PCallRequestErrorEnum value;
 }
 
+enum PCallkeepLifecycleType {
+  onCreate,
+  onStart,
+  onResume,
+  onPause,
+  onStop,
+  onDestroy,
+  onAny,
+}
+
+enum PCallkeepIncomingType {
+  pushNotification,
+  socket,
+}
+
+class PCallkeepServiceStatus {
+  late PCallkeepIncomingType type;
+  late PCallkeepLifecycleType lifecycle;
+  late bool autoRestartOnTerminate;
+  late bool autoStartOnBoot;
+  late bool lockScreen;
+  late bool activityReady;
+  late bool activeCalls;
+}
+
 @HostApi()
 abstract class PHostBackgroundServiceApi {
   @async
@@ -141,6 +166,34 @@ abstract class PHostBackgroundServiceApi {
 }
 
 @HostApi()
+abstract class PHostIsolateApi {
+  @async
+  void setUpCallback({
+    required int callbackDispatcher,
+    required int onStartHandler,
+    required int onChangedLifecycleHandler,
+  });
+
+  @async
+  void setUp({
+    required PCallkeepIncomingType type,
+    bool autoRestartOnTerminate = false,
+    bool autoStartOnBoot = false,
+    String? androidNotificationName,
+    String? androidNotificationDescription,
+  });
+
+  @async
+  void startService();
+
+  @async
+  void stopService();
+
+  @async
+  void finishActivity();
+}
+
+@HostApi()
 abstract class PHostPermissionsApi {
   @async
   PSpecialPermissionStatusTypeEnum getFullScreenIntentPermissionStatus();
@@ -150,6 +203,15 @@ abstract class PHostPermissionsApi {
 
   @async
   PCallkeepAndroidBatteryMode getBatteryMode();
+}
+
+@FlutterApi()
+abstract class PDelegateBackgroundRegisterFlutterApi {
+  @async
+  void onWakeUpBackgroundHandler(int userCallbackHandle, PCallkeepServiceStatus status);
+
+  @async
+  void onApplicationStatusChanged(int applicationStatusCallbackHandle, PCallkeepServiceStatus status);
 }
 
 @HostApi()
@@ -294,6 +356,9 @@ abstract class PDelegateFlutterApi {
 
 @FlutterApi()
 abstract class PDelegateBackgroundServiceFlutterApi {
+  @async
+  void performAnswerCall(String callId);
+
   @async
   void performEndCall(String callId);
 

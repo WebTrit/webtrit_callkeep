@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.common.models
+package com.webtrit.callkeep.models
 
 import android.os.Bundle
 
@@ -34,7 +34,7 @@ open class FailureMetadata(
         fun fromBundle(bundle: Bundle): FailureMetadata {
             val message = bundle.getString(FAILURE_METADATA_MESSAGE)
             val rawOutgoingFailureType = bundle.getInt(FAILURE_OUTGOING_TYPE, 0)
-            val outgoingFailureType = OutgoingFailureType.values()[rawOutgoingFailureType]
+            val outgoingFailureType = OutgoingFailureType.entries[rawOutgoingFailureType]
             return FailureMetadata(message, outgoingFailureType)
         }
     }

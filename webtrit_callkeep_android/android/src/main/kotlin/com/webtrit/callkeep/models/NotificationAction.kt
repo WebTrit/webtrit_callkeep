@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.common.models
+package com.webtrit.callkeep.models
 
 import com.webtrit.callkeep.common.ContextHolder
 

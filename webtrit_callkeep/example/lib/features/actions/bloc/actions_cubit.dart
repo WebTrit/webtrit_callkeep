@@ -225,7 +225,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   void reportEndCall() async {
     try {
-      await _callkeep.reportEndCall(call1Identifier, "Display name", CallkeepEndCallReason.declinedElsewhere);
+      await _callkeep.reportEndCall(call1Identifier,"Display Name", CallkeepEndCallReason.declinedElsewhere);
       emit(state.update.addAction(action: "Success report end call"));
     } catch (error) {
       emit(state.update.addAction(action: "Error eeport  end  error: $error"));

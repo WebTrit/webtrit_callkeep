@@ -8,10 +8,8 @@ import android.util.Log
 import com.webtrit.callkeep.FlutterLog
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.api.background.ReportAction
-import com.webtrit.callkeep.common.ActivityHolder
-import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.common.helpers.registerCustomReceiver
-import com.webtrit.callkeep.common.models.CallMetadata
+import com.webtrit.callkeep.models.CallMetadata
 
 /**
  * This class represents a BroadcastReceiver for handling telephony call-related events in the background.
@@ -31,12 +29,13 @@ class TelephonyBackgroundCallkeepReceiver(
      *
      * @param context The Android context in which to register the receiver.
      */
-    fun registerReceiver(context: Context) {
+    fun registerReceiver() {
         Log.d(TAG, "TelephonyBackgroundCallkeepReceiver:registerReceiver")
 
         if (!isReceiverRegistered) {
             val intentFilter = IntentFilter()
             intentFilter.addAction(ReportAction.AcceptedCall.action)
+            intentFilter.addAction(ReportAction.HungUp.action)
             intentFilter.addAction(ReportAction.MissedCall.action)
 
             context.registerCustomReceiver(this, intentFilter)
@@ -44,7 +43,7 @@ class TelephonyBackgroundCallkeepReceiver(
         }
     }
 
-    fun unregisterReceiver(context: Context) {
+    fun unregisterReceiver() {
         Log.d(TAG, "TelephonyBackgroundCallkeepReceiver:unRegisterReceiver")
         try {
             context.unregisterReceiver(this)
@@ -58,6 +57,7 @@ class TelephonyBackgroundCallkeepReceiver(
 
         when (intent?.action) {
             ReportAction.AcceptedCall.action -> handleAcceptedCall(intent.extras)
+            ReportAction.HungUp.action -> handleHungUpCall(intent.extras)
             ReportAction.MissedCall.action -> handleMissedCall(intent.extras)
         }
     }
@@ -65,23 +65,19 @@ class TelephonyBackgroundCallkeepReceiver(
     private fun handleAcceptedCall(extras: Bundle?) {
         extras?.let {
             val metadata = CallMetadata.fromBundle(it)
-            if (!ActivityHolder.isActivityVisible()) {
-                FlutterLog.i(TAG, "Activity is not visible, launch activity")
-                val hostAppActivity = Platform.getLaunchActivity(context)?.apply {
-                    data = metadata.getCallUri()
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                }
-                context.startActivity(hostAppActivity);
-            }
-
-            // Notify the Flutter API that a call was accepted
-            api.endCallReceived(
+            api.performAnswerCall(
                 metadata.callId,
-                metadata.number,
-                metadata.hasVideo,
-                metadata.createdTime!!,
-                System.currentTimeMillis(),
-                null,
+            ) {}
+        }
+    }
+
+    private fun handleHungUpCall(extras: Bundle?) {
+        FlutterLog.i(TAG, "handleHungUpCall: $extras ")
+
+        extras?.let {
+            val metadata = CallMetadata.fromBundle(it)
+            api.performEndCall(
+                metadata.callId,
             ) {}
         }
     }
@@ -94,7 +90,7 @@ class TelephonyBackgroundCallkeepReceiver(
                 metadata.callId,
                 metadata.number,
                 metadata.hasVideo,
-                metadata.createdTime!!,
+                metadata.createdTime ?: System.currentTimeMillis(),
                 null,
                 System.currentTimeMillis()
             ) {}

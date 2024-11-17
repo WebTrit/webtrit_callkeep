@@ -39,7 +39,7 @@ class _DurationTimerState extends State<DurationTimer> {
             style: widget.textStyle ??
                 theme.textTheme.bodySmall!.copyWith(fontFeatures: [
                   const FontFeature.tabularFigures(),
-                ], color: theme.colorScheme.background),
+                ], color: theme.colorScheme.surface),
           )
         : const SizedBox();
   }

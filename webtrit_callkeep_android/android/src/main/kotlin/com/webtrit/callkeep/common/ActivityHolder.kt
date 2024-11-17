@@ -6,7 +6,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.lifecycle.Lifecycle
 import com.webtrit.callkeep.common.helpers.Platform
-import com.webtrit.callkeep.common.models.CallMetadata
+import com.webtrit.callkeep.models.CallMetadata
 
 @SuppressLint("StaticFieldLeak")
 object ActivityHolder {

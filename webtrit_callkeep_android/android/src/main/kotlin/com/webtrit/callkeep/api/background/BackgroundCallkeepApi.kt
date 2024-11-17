@@ -1,6 +1,6 @@
 package com.webtrit.callkeep.api.background
 
-import com.webtrit.callkeep.common.models.CallMetadata
+import com.webtrit.callkeep.models.CallMetadata
 
 /**
  * Interface for managing background calls within the Webtrit CallKeep Android module.
@@ -44,15 +44,6 @@ interface BackgroundCallkeepApi {
      */
     fun hungUp(
         metadata: CallMetadata, callback: (Result<Unit>) -> Unit
-    )
-
-    /**
-     * End an ongoing call.
-     *
-     * @param metadata The call metadata.
-     */
-    fun endCall(
-        metadata: CallMetadata
     )
 
     /**

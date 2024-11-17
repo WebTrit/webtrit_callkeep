@@ -10,9 +10,9 @@ import com.webtrit.callkeep.FlutterLog
 import com.webtrit.callkeep.api.foreground.TelephonyForegroundCallkeepApi
 import com.webtrit.callkeep.common.helpers.Telecom
 import com.webtrit.callkeep.common.helpers.TelephonyHelper
-import com.webtrit.callkeep.common.models.CallMetadata
-import com.webtrit.callkeep.common.models.FailureMetadata
-import com.webtrit.callkeep.common.models.OutgoingFailureType
+import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.models.FailureMetadata
+import com.webtrit.callkeep.models.OutgoingFailureType
 import com.webtrit.callkeep.common.ActivityHolder
 
 /**
@@ -102,7 +102,11 @@ class PhoneConnectionService : ConnectionService() {
                 TAG,
                 "onDeclineCall:: callId: ${metadata.callId} isActivityVisible: ${ActivityHolder.isActivityVisible()} currentActivityState: ${ActivityHolder.getActivityState()} connections: "
             )
-            connections[metadata.callId]!!.declineCall()
+            // The connection might be null, for example, if multiple notification receivers attempt to decline the call simultaneously.
+            // Ensure the connection exists before proceeding to decline call the call.
+            getConnection(metadata.callId)?.apply {
+                connections[metadata.callId]!!.declineCall()
+            }
             addConnectionTerminated(metadata.callId)
             sensor.unListen(applicationContext)
 
@@ -124,7 +128,11 @@ class PhoneConnectionService : ConnectionService() {
     private fun onHungUpCall(metadata: CallMetadata) {
         try {
             FlutterLog.i(TAG, "onHungUpCall, callId: ${metadata.callId}")
-            connections[metadata.callId]!!.hungUp()
+            // The connection might be null, for example, if multiple notification receivers attempt to decline the call simultaneously.
+            // Ensure the connection exists before proceeding to hang up the call.
+            getConnection(metadata.callId)?.apply {
+                connections[metadata.callId]!!.hungUp()
+            }
             addConnectionTerminated(metadata.callId)
             sensor.unListen(applicationContext)
         } catch (e: Exception) {
@@ -386,6 +394,18 @@ class PhoneConnectionService : ConnectionService() {
         private var connections: MutableMap<String, PhoneConnection> = mutableMapOf()
         private var terminatedConnections: MutableList<String> = mutableListOf()
 
+        fun isExistsActiveConnection(): Boolean {
+            return connections.values.any { it.state == Connection.STATE_ACTIVE }
+        }
+
+        fun getActiveOrPendingConnection(): PhoneConnection? {
+            return connections.values.find { it.state == Connection.STATE_NEW || it.state == Connection.STATE_RINGING || it.state == Connection.STATE_ACTIVE }
+        }
+
+        fun getConnection(id: String): PhoneConnection? {
+            return connections.values.find { it.id == id }
+        }
+
         fun remove(id: String) {
             connections.remove(id)
         }
@@ -415,6 +435,10 @@ class PhoneConnectionService : ConnectionService() {
 
         private fun addConnectionTerminated(id: String) {
             terminatedConnections.add(id)
+        }
+
+        fun cleanConnectionTerminated() {
+            terminatedConnections.clear()
         }
 
         fun startIncomingCall(context: Context, metadata: CallMetadata) {

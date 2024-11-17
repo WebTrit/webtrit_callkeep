@@ -6,7 +6,7 @@ import com.webtrit.callkeep.PCallRequestError
 import com.webtrit.callkeep.PEndCallReason
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.POptions
-import com.webtrit.callkeep.common.models.CallMetadata
+import com.webtrit.callkeep.models.CallMetadata
 
 /**
  * Interface for managing foreground calls within the Webtrit CallKeep Android module.
@@ -118,6 +118,11 @@ interface ForegroundCallkeepApi {
      * @param callback A callback function to handle the result of enabling/disabling the speakerphone.
      */
     fun setSpeaker(metadata: CallMetadata, callback: (Result<PCallRequestError?>) -> Unit)
+
+    /**
+     * Teardown Callkeep resources.
+     */
+    fun tearDown(callback: (Result<Unit>) -> Unit)
 
     /**
      * Detach the activity from CallKeep.

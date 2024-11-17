@@ -213,4 +213,72 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   Future<CallkeepAndroidBatteryMode> getBatteryMode() {
     throw UnimplementedError('getBatteryMode() has not been implemented.');
   }
+
+  /// Sets up the  service callback with optional handlers and configurations.
+  ///
+  /// [onStart] - A callback triggered when the service starts in the foreground. It provides
+  /// the current service status and additional data..
+  ///
+  /// [onChangedLifecycle] - A callback triggered when there is a change in the lifecycle
+  /// of the foreground service (e.g., when the service is paused, resumed, or stopped). .
+  ///
+  /// Throws an [UnimplementedError] if this method is not yet implemented.
+  Future<void> setUpServiceCallback({
+    required ForegroundStartServiceHandle onStart,
+    required ForegroundChangeLifecycleHandle onChangedLifecycle,
+  }) {
+    throw UnimplementedError('setUpServiceCallback() is not implemented');
+  }
+
+  /// Sets up the Android background service with optional handlers and configurations.
+  ///
+  /// [autoRestartOnTerminate] - If true, the service will automatically restart if it is
+  /// unexpectedly terminated by the system or the user. Default is false.
+  ///
+  /// [autoStartOnBoot] - If true, the service will automatically start after the device reboots.
+  /// Default is false.
+  ///
+  /// [androidNotificationName] - Specifies the name of the notification channel for Android
+  /// when the service runs in the background.
+  ///
+  /// [androidNotificationDescription] - Specifies the description of the notification channel
+  /// for Android..
+  ///
+  /// Throws an [UnimplementedError] if this method is not yet implemented.
+  Future<void> setUpAndroidBackgroundService({
+    required CallkeepIncomingType type,
+    bool autoRestartOnTerminate = false,
+    bool autoStartOnBoot = false,
+    String? androidNotificationName,
+    String? androidNotificationDescription,
+  }) {
+    throw UnimplementedError('setUpAndroidBackgroundService() is not implemented');
+  }
+
+  /// Starts the background service with the provided [data].
+  /// Throws an [UnimplementedError] if this method is not yet implemented.
+  void startService() {
+    throw UnimplementedError('startService() is not implemented');
+  }
+
+  /// Stops the background service.
+  ///
+  /// This method will stop the currently running background service. Once stopped,
+  /// the service will no longer be running until explicitly started again.
+  ///
+  /// Throws an [UnimplementedError] if this method is not yet implemented.
+  void stopService() {
+    throw UnimplementedError('stopService() is not implemented');
+  }
+
+  /// Finishes the current activity.
+  ///
+  /// This method is used to terminate or finish the current activity associated
+  /// with the service. Typically used when the activity is no longer needed or should
+  /// be cleaned up.
+  ///
+  /// Throws an [UnimplementedError] if this method is not yet implemented.
+  void finishActivity() {
+    throw UnimplementedError('finishActivity() is not implemented');
+  }
 }

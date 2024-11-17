@@ -15,25 +15,39 @@ import com.webtrit.callkeep.common.Broadcast
 import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.helpers.Telecom
-import com.webtrit.callkeep.common.models.CallMetadata
-import com.webtrit.callkeep.common.models.FailureMetadata
+import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.models.FailureMetadata
+import com.webtrit.callkeep.receivers.IncomingCallNotificationReceiver
 
 class TelephonyForegroundCallkeepApi(
     private val activity: Activity, flutterDelegateApi: PDelegateFlutterApi
 ) : ForegroundCallkeepApi {
-    private var isSetup = false
-
     private val flutterDelegate = TelephonyForegroundCallkeepReceiver(activity, flutterDelegateApi)
+    private val incomingCallReceiver = IncomingCallNotificationReceiver(
+        activity,
+        endCall = { callMetaData -> endCall(callMetaData) {} },
+        answerCall = { callMetaData -> answerCall(callMetaData) {} },
+    )
+
+    private var isSetup = false
 
     override fun setUp(options: POptions, callback: (Result<Unit>) -> Unit) {
         FlutterLog.i(TAG, "setUp: ${options.android}")
 
         if (!isSetup) {
             flutterDelegate.registerReceiver(activity)
+            incomingCallReceiver.registerReceiver()
             Telecom.registerPhoneAccount(activity)
             StorageDelegate.initIncomingPath(activity, options.android.incomingPath)
             StorageDelegate.initRootPath(activity, options.android.rootPath)
             StorageDelegate.initRingtonePath(activity, options.android.ringtoneSound)
+
+            // If an incoming call was answered in the background, retrieve the current new or ringing connection.
+            // Extract its metadata and sync the call state with the Flutter side by emitting it as a bundle.
+            PhoneConnectionService.getActiveOrPendingConnection()?.metadata?.let {
+                flutterDelegate.handleDidPushIncomingCall(it.toBundle())
+            }
+
             isSetup = true
         } else {
             FlutterLog.e(TAG, "Plugin already initialized")
@@ -107,8 +121,7 @@ class TelephonyForegroundCallkeepApi(
             callback.invoke(Result.success(null))
         } else {
             FlutterLog.e(
-                TAG,
-                "Error response as there is no connection with such ${metadata.callId} in the list."
+                TAG, "Error response as there is no connection with such ${metadata.callId} in the list."
             )
             callback.invoke(Result.success(PCallRequestError(PCallRequestErrorEnum.INTERNAL)))
         }
@@ -146,8 +159,15 @@ class TelephonyForegroundCallkeepApi(
         callback.invoke(Result.success(null))
     }
 
+    override fun tearDown(callback: (Result<Unit>) -> Unit) {
+        PhoneConnectionService.cleanConnectionTerminated()
+        incomingCallReceiver.unregisterReceiver()
+        callback.invoke(Result.success(Unit))
+    }
+
     override fun detachActivity() {
         FlutterLog.i(TAG, "detachActivity")
+        incomingCallReceiver.unregisterReceiver()
 
         try {
             flutterDelegate.clearOutgoingCallback()

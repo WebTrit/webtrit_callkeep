@@ -5,9 +5,9 @@ import android.app.Activity
 import com.webtrit.callkeep.api.CallkeepApiProvider
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.api.foreground.ForegroundCallkeepApi
-import com.webtrit.callkeep.common.models.CallMetadata
-import com.webtrit.callkeep.common.models.CallPaths
-import com.webtrit.callkeep.common.models.toCallHandle
+import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.models.CallPaths
+import com.webtrit.callkeep.models.toCallHandle
 
 class PigeonActivityApi(
     private val activity: Activity, flutterDelegateApi: PDelegateFlutterApi,
@@ -64,9 +64,8 @@ class PigeonActivityApi(
 
     override fun isSetUp(): Boolean = foregroundCallkeepApi.isSetUp()
 
-    // Only for iOS, not used in Android
     override fun tearDown(callback: (Result<Unit>) -> Unit) {
-        callback.invoke(Result.success(Unit))
+        foregroundCallkeepApi.tearDown(callback)
     }
 
     // Only for iOS, not used in Android

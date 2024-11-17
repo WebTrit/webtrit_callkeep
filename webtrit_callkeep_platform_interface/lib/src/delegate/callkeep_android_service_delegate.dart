@@ -1,5 +1,8 @@
 /// Callkeep background call delegate
 abstract class CallkeepBackgroundServiceDelegate {
+  /// Perform background answer
+  void performServiceAnswerCall(String callId);
+
   /// Perform background call end
   void performServiceEndCall(String callId);
 

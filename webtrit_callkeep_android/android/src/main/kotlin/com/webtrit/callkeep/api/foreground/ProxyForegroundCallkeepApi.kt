@@ -11,8 +11,8 @@ import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.POptions
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.helpers.Platform
-import com.webtrit.callkeep.common.models.CallMetadata
-import com.webtrit.callkeep.common.models.toPHandle
+import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.models.toPHandle
 import com.webtrit.callkeep.managers.NotificationManager
 import com.webtrit.callkeep.managers.AudioManager
 
@@ -129,6 +129,10 @@ class ProxyForegroundCallkeepApi(
             metadata.callId, metadata.hasSpeaker
         ) {}
         callback.invoke(Result.success(null))
+    }
+
+    override fun tearDown(callback: (Result<Unit>) -> Unit) {
+        callback.invoke(Result.success(Unit))
     }
 
     override fun detachActivity() {}
