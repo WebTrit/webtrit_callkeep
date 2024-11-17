@@ -407,7 +407,6 @@ class PhoneConnectionService : ConnectionService() {
             TAG,
             "onCreateIncomingConnectionFailed:: $connectionManagerPhoneAccount  $request connections: ${getConnections().map { it.toString() }} "
         )
-
         TelephonyForegroundCallkeepApi.notifyIncomingFailure(
             applicationContext, FailureMetadata("On create incoming connection failed")
         )
@@ -416,7 +415,6 @@ class PhoneConnectionService : ConnectionService() {
 
     override fun onDestroy() {
         FlutterLog.i(TAG, "onDestroy")
-
         sensor.unListen(this)
         //TODO: Change the method name to better understand the purpose
         onDetachActivity()
@@ -479,7 +477,6 @@ class PhoneConnectionService : ConnectionService() {
             if (!connections.containsKey(callId)) {
                 connections[callId] = connection
 
-                // Якщо передано timeout і onTimeout, запустити таймер
                 if (timeout != null && onTimeout != null) {
                     startTimeout(callId, timeout, validStates, onTimeout)
                 }
@@ -638,7 +635,6 @@ class PhoneConnectionService : ConnectionService() {
          *
          * @param metadata The [CallMetadata] for the incoming call.
          */
-
         private fun incomingCall(context: Context, metadata: CallMetadata) {
             FlutterLog.i(TAG, "onIncomingCall, callId: ${metadata.callId}")
 
