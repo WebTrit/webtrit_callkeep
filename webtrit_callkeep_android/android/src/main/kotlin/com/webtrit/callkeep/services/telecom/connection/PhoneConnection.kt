@@ -146,7 +146,7 @@ class PhoneConnection internal constructor(
 
         FlutterLog.i(TAG, "onDisconnect: ${metadata.callId}")
 
-        PhoneConnectionService.remove(metadata.callId)
+        PhoneConnectionService.connectionManager.removeConnection(metadata.callId)
         notificationManager.cancelActiveNotification()
         this@PhoneConnection.audioManager.stopRingtone()
         TelephonyForegroundCallkeepApi.notifyDeclineCall(context, metadata)

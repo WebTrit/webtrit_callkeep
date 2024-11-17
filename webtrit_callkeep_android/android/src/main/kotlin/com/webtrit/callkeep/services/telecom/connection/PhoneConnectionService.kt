@@ -5,8 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.telecom.*
 import com.webtrit.callkeep.FlutterLog
 import com.webtrit.callkeep.api.foreground.TelephonyForegroundCallkeepApi
@@ -17,9 +15,6 @@ import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.models.OutgoingFailureType
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.managers.ProximitySensorManager
-import java.util.Timer
-import java.util.TimerTask
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * `PhoneConnectionService` is a service class responsible for managing phone call connections
@@ -74,7 +69,7 @@ class PhoneConnectionService : ConnectionService() {
      * @see Connection.onDisconnect
      */
     private fun onDetachActivity() {
-        getConnections().forEach {
+        connectionManager.getConnections().forEach {
             FlutterLog.i(TAG, "onDetachActivity, disconnect outgoing call, callId: ${it.id}")
             it.onDisconnect()
         }
@@ -98,8 +93,8 @@ class PhoneConnectionService : ConnectionService() {
             )
             // The connection might be null, for example, if multiple notification receivers attempt to decline the call simultaneously.
             // Ensure the connection exists before proceeding to decline call the call.
-            getConnection(metadata.callId)?.declineCall()
-            addConnectionTerminated(metadata.callId)
+            connectionManager.getConnection(metadata.callId)?.declineCall()
+            connectionManager.addConnectionTerminated(metadata.callId)
             sensorManager.stopListening()
         } catch (e: Exception) {
             FlutterLog.e(
@@ -121,8 +116,8 @@ class PhoneConnectionService : ConnectionService() {
             FlutterLog.i(TAG, "onHungUpCall, callId: ${metadata.callId}")
             // The connection might be null, for example, if multiple notification receivers attempt to decline the call simultaneously.
             // Ensure the connection exists before proceeding to hang up the call.
-            getConnection(metadata.callId)?.hungUp()
-            addConnectionTerminated(metadata.callId)
+            connectionManager.getConnection(metadata.callId)?.hungUp()
+            connectionManager.addConnectionTerminated(metadata.callId)
             sensorManager.stopListening()
         } catch (e: Exception) {
             // WORKAROUND:
@@ -152,7 +147,7 @@ class PhoneConnectionService : ConnectionService() {
         try {
             FlutterLog.i(TAG, "onAnswerCall, callId: ${metadata.callId}")
             sensorManager.startListening()
-            getConnection(metadata.callId)?.onAnswer()
+            connectionManager.getConnection(metadata.callId)?.onAnswer()
         } catch (e: Exception) {
             FlutterLog.e(
                 TAG, "onAnswerCall ${metadata.callId} exception: $e"
@@ -176,7 +171,7 @@ class PhoneConnectionService : ConnectionService() {
         try {
             FlutterLog.i(TAG, "onEstablishCall, callId: ${metadata.callId}")
             sensorManager.startListening()
-            getConnection(metadata.callId)?.establish()
+            connectionManager.getConnection(metadata.callId)?.establish()
         } catch (e: Exception) {
             FlutterLog.e(
                 TAG, "onEstablishCall ${metadata.callId} exception: $e"
@@ -195,7 +190,7 @@ class PhoneConnectionService : ConnectionService() {
     private fun onChangeMute(metadata: CallMetadata) {
         try {
             FlutterLog.i(TAG, "onChangeMute, callId: ${metadata.callId}")
-            getConnection(metadata.callId)?.changeMuteState(metadata.hasMute)
+            connectionManager.getConnection(metadata.callId)?.changeMuteState(metadata.hasMute)
         } catch (e: Exception) {
             FlutterLog.e(
                 TAG, "onChangeMute ${metadata.callId} exception: $e"
@@ -214,7 +209,7 @@ class PhoneConnectionService : ConnectionService() {
     private fun onChangeHold(metadata: CallMetadata) {
         try {
             FlutterLog.i(TAG, "onChangeHold, callId: ${metadata.callId}")
-            getConnection(metadata.callId)?.run {
+            connectionManager.getConnection(metadata.callId)?.run {
                 if (metadata.hasHold) onHold() else onUnhold()
             }
         } catch (e: Exception) {
@@ -238,7 +233,7 @@ class PhoneConnectionService : ConnectionService() {
 
             sensorManager.updateProximityWakelock()
 
-            getConnection(metadata.callId)?.updateData(metadata)
+            connectionManager.getConnection(metadata.callId)?.updateData(metadata)
         } catch (e: Exception) {
             FlutterLog.e(TAG, "onUpdateCall ${metadata.callId} exception: $e")
         }
@@ -252,7 +247,7 @@ class PhoneConnectionService : ConnectionService() {
     private fun onSendDTMF(metadata: CallMetadata) {
         try {
             FlutterLog.i(TAG, "onSendDTMF, callId: ${metadata.callId}")
-            getConnection(metadata.callId)?.onPlayDtmfTone(metadata.dualToneMultiFrequency ?: return)
+            connectionManager.getConnection(metadata.callId)?.onPlayDtmfTone(metadata.dualToneMultiFrequency ?: return)
         } catch (e: Exception) {
             FlutterLog.e(
                 TAG, "onUpdateCall ${metadata.callId} exception: $e"
@@ -264,11 +259,11 @@ class PhoneConnectionService : ConnectionService() {
      * Clean connection service resources.
      */
     private fun tearDown() {
-        getConnections().forEach {
+        connectionManager.getConnections().forEach {
             it.hungUp()
-            cancelTimeout(it.id)
+            connectionManager.cancelTimeout(it.id)
         }
-        cleanConnectionTerminated();
+        connectionManager.clearTerminatedConnections()
     }
 
     /**
@@ -279,7 +274,7 @@ class PhoneConnectionService : ConnectionService() {
     private fun onChangeSpeaker(metadata: CallMetadata) {
         try {
             FlutterLog.i(TAG, "onChangeSpeaker, callId: ${metadata.callId}")
-            getConnection(metadata.callId)?.changeSpeakerState(metadata.hasSpeaker)
+            connectionManager.getConnection(metadata.callId)?.changeSpeakerState(metadata.hasSpeaker)
         } catch (e: Exception) {
             FlutterLog.e(
                 TAG, "onChangeSpeaker ${metadata.callId} exception: $e"
@@ -299,23 +294,22 @@ class PhoneConnectionService : ConnectionService() {
     ): Connection {
         val metadata = CallMetadata.fromBundle(request.extras)
 
-        synchronized(connectionResourceLock) {
-            // Check if a connection with the same call ID already exists.
-            // If so, reject the new connection request to prevent conflicts.
-            if (isConnectionAlreadyExists(metadata.callId)) {
-                // Return a failed connection indicating the line is busy.
-                return Connection.createFailedConnection(DisconnectCause(DisconnectCause.BUSY))
-            }
-
-            val connection = PhoneConnection.createOutgoingPhoneConnection(applicationContext, metadata)
-            state.setShouldListenProximity(metadata.proximityEnabled)
-            addConnection(
-                metadata.callId, connection, TIMEOUT_DURATION_MS, DEFAULT_OUTGOING_STATES
-            ) {
-                connection.hungUp()
-            }
-            return connection
+        // Check if a connection with the same call ID already exists.
+        // If so, reject the new connection request to prevent conflicts.
+        if (connectionManager.isConnectionAlreadyExists(metadata.callId)) {
+            // Return a failed connection indicating the line is busy.
+            return Connection.createFailedConnection(DisconnectCause(DisconnectCause.BUSY))
         }
+
+        val connection = PhoneConnection.createOutgoingPhoneConnection(applicationContext, metadata)
+        state.setShouldListenProximity(metadata.proximityEnabled)
+        connectionManager.addConnection(
+            metadata.callId, connection, TIMEOUT_DURATION_MS, DEFAULT_OUTGOING_STATES
+        ) {
+            connection.hungUp()
+        }
+        return connection
+
     }
 
     /**
@@ -353,30 +347,29 @@ class PhoneConnectionService : ConnectionService() {
     ): Connection {
         val metadata = CallMetadata.fromBundle(request.extras)
 
-        synchronized(connectionResourceLock) {
-            // Check if a connection with the same ID already exists.
-            // This can occur if receivers from both the activity and the service
-            // trigger the incoming call flow simultaneously.
-            if (isConnectionAlreadyExists(metadata.callId)) {
-                // Return a failed connection indicating an error.
-                return Connection.createFailedConnection(DisconnectCause(DisconnectCause.ERROR))
-            }
-
-            // Check if there is already an existing incoming connection.
-            // If so, decline the new incoming connection to prevent conflicts in initializing the incoming call flow.
-            if (isExistsIncomingConnection()) {
-                // Return a failed connection indicating the line is busy.
-                return Connection.createFailedConnection(DisconnectCause(DisconnectCause.BUSY))
-            }
-
-            val connection = PhoneConnection.createIncomingPhoneConnection(applicationContext, metadata)
-            addConnection(
-                metadata.callId, connection, TIMEOUT_DURATION_MS, DEFAULT_INCOMING_STATES
-            ) {
-                connection.hungUp()
-            }
-            return connection
+        // Check if a connection with the same ID already exists.
+        // This can occur if receivers from both the activity and the service
+        // trigger the incoming call flow simultaneously.
+        if (connectionManager.isConnectionAlreadyExists(metadata.callId)) {
+            // Return a failed connection indicating an error.
+            return Connection.createFailedConnection(DisconnectCause(DisconnectCause.ERROR))
         }
+
+        // Check if there is already an existing incoming connection.
+        // If so, decline the new incoming connection to prevent conflicts in initializing the incoming call flow.
+        if (connectionManager.isExistsIncomingConnection()) {
+            // Return a failed connection indicating the line is busy.
+            return Connection.createFailedConnection(DisconnectCause(DisconnectCause.BUSY))
+        }
+
+        val connection = PhoneConnection.createIncomingPhoneConnection(applicationContext, metadata)
+        connectionManager.addConnection(
+            metadata.callId, connection, TIMEOUT_DURATION_MS, DEFAULT_INCOMING_STATES
+        ) {
+            connection.hungUp()
+        }
+        return connection
+
     }
 
     /**
@@ -391,8 +384,7 @@ class PhoneConnectionService : ConnectionService() {
         connectionManagerPhoneAccount: PhoneAccountHandle?, request: ConnectionRequest?
     ) {
         FlutterLog.e(
-            TAG,
-            "onCreateIncomingConnectionFailed:: $connectionManagerPhoneAccount  $request connections: ${getConnections().map { it.toString() }} "
+            TAG, "onCreateIncomingConnectionFailed:: $connectionManagerPhoneAccount  $connectionManager "
         )
         TelephonyForegroundCallkeepApi.notifyIncomingFailure(
             applicationContext, FailureMetadata("On create incoming connection failed")
@@ -415,115 +407,7 @@ class PhoneConnectionService : ConnectionService() {
         val DEFAULT_INCOMING_STATES = listOf(Connection.STATE_NEW, Connection.STATE_RINGING)
         val DEFAULT_OUTGOING_STATES = listOf(Connection.STATE_DIALING)
 
-        private val connections: ConcurrentHashMap<String, PhoneConnection> = ConcurrentHashMap()
-        private val connectionTimers: ConcurrentHashMap<String, Runnable> = ConcurrentHashMap()
-
-        private var terminatedConnections: MutableList<String> = mutableListOf()
-
-        private val connectionResourceLock = Any()
-
-        fun cancelTimeout(callId: String) {
-            connectionTimers.remove(callId)?.let {
-                FlutterLog.i(TAG, "Timeout canceled for callId: $callId")
-            }
-        }
-
-        private fun startTimeout(
-            callId: String, timeout: Long, validStates: List<Int> = DEFAULT_INCOMING_STATES, onTimeout: () -> Unit
-        ) {
-            val mainHandler = Handler(Looper.getMainLooper())
-
-            val timerTask = Runnable {
-                synchronized(connectionResourceLock) {
-                    val connection = connections[callId]
-                    if (connection != null && connection.state in validStates) {
-                        mainHandler.post {
-                            FlutterLog.i(TAG, "Timeout reached for callId: $callId. Ending call.")
-                            onTimeout()
-                        }
-                        remove(callId)
-                    }
-                }
-            }
-
-            connectionTimers[callId] = timerTask
-
-            Timer().schedule(object : TimerTask() {
-                override fun run() = timerTask.run()
-            }, timeout)
-        }
-
-        @Synchronized
-        fun addConnection(
-            callId: String,
-            connection: PhoneConnection,
-            timeout: Long? = null,
-            validStates: List<Int> = DEFAULT_INCOMING_STATES,
-            onTimeout: (() -> Unit)? = null
-        ) {
-            if (!connections.containsKey(callId)) {
-                connections[callId] = connection
-
-                if (timeout != null && onTimeout != null) {
-                    startTimeout(callId, timeout, validStates, onTimeout)
-                }
-            }
-        }
-
-        fun isExistsActiveConnection(): Boolean {
-            synchronized(connectionResourceLock) {
-                return connections.values.any { it.state == Connection.STATE_ACTIVE }
-            }
-        }
-
-        fun isExistsIncomingConnection(): Boolean {
-            return connections.values.any { it.state == Connection.STATE_NEW || it.state == Connection.STATE_RINGING }
-        }
-
-        fun getActiveOrPendingConnection(): PhoneConnection? {
-            return connections.values.find { it.state == Connection.STATE_NEW || it.state == Connection.STATE_RINGING || it.state == Connection.STATE_ACTIVE }
-        }
-
-        fun getConnection(id: String): PhoneConnection? {
-            return connections.values.find { it.id == id }
-        }
-
-        fun remove(id: String) {
-            synchronized(connectionResourceLock) {
-                connections.remove(id)
-            }
-        }
-
-        fun getConnections(): List<PhoneConnection> {
-            return connections.values.toList()
-        }
-
-        fun isConnectionAlreadyExists(id: String): Boolean {
-            return connections.containsKey(id)
-        }
-
-        fun isConnectionAnswered(id: String): Boolean {
-            return connections[id]?.isAnswered() == true
-        }
-
-        fun isConnectionTerminated(id: String): Boolean {
-            return terminatedConnections.contains(id)
-        }
-
-        fun getActiveConnection(): PhoneConnection? {
-            for (connection in connections.values) {
-                if (connection.state == Connection.STATE_ACTIVE) return connection
-            }
-            return null
-        }
-
-        private fun addConnectionTerminated(id: String) {
-            terminatedConnections.add(id)
-        }
-
-        fun cleanConnectionTerminated() {
-            terminatedConnections.clear()
-        }
+        var connectionManager: ConnectionManager = ConnectionManager()
 
         fun startIncomingCall(context: Context, metadata: CallMetadata) {
             communicate(context, ServiceAction.IncomingCall, metadata)
@@ -606,7 +490,7 @@ class PhoneConnectionService : ConnectionService() {
             } else {
                 // If there is already an active call not on hold, we terminate it and start a new one,
                 // otherwise, we would encounter an exception when placing the outgoing call.
-                getActiveConnection()?.let {
+                connectionManager.getActiveConnection()?.let {
                     FlutterLog.i(TAG, "onOutgoingCall, hung up previous call: $it")
                     it.hungUp()
                 }
