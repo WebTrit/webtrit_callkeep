@@ -1,8 +1,6 @@
-package com.webtrit.callkeep.managers
+package com.webtrit.callkeep.services.telecom.connection
 
 import android.content.Context
-import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionConsts
-import com.webtrit.callkeep.services.telecom.connection.PhoneSensorListener
 
 class ProximitySensorManager(
     private val context: Context,
@@ -15,6 +13,10 @@ class ProximitySensorManager(
             state.setNearestState(isUserNear)
             updateProximityWakelock()
         }
+    }
+
+    fun setShouldListenProximity(shouldListen: Boolean) {
+        state.setShouldListenProximity(shouldListen);
     }
 
     /**

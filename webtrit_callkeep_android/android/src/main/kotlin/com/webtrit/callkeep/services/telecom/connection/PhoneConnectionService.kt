@@ -13,8 +13,6 @@ import com.webtrit.callkeep.common.helpers.TelephonyHelper
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.models.OutgoingFailureType
-import com.webtrit.callkeep.common.ActivityHolder
-import com.webtrit.callkeep.managers.ProximitySensorManager
 
 /**
  * `PhoneConnectionService` is a service class responsible for managing phone call connections
@@ -25,261 +23,26 @@ import com.webtrit.callkeep.managers.ProximitySensorManager
  * @constructor Creates a new instance of `PhoneConnectionService`.
  */
 class PhoneConnectionService : ConnectionService() {
-    private lateinit var state: PhoneConnectionConsts
     private lateinit var sensorManager: ProximitySensorManager
+    private lateinit var phoneConnectionServiceDispatcher: PhoneConnectionServiceDispatcher
 
     override fun onCreate() {
         super.onCreate()
         sensorManager = ProximitySensorManager(applicationContext, PhoneConnectionConsts())
+        phoneConnectionServiceDispatcher = PhoneConnectionServiceDispatcher(applicationContext, connectionManager, sensorManager)
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-        when (intent.action) {
-            // Avoid using onStartCommand for creating outgoing calls as the service may not be functioning properly.
-            // The system is responsible for managing service creation and destruction.
-            // Use the static method `outgoingCall` of PhoneConnectionService to create outgoing calls.
-            ServiceAction.OutgoingCall.action -> {}
+        val action = ServiceAction.from(intent.action)
+        val metadata = intent.extras?.let { CallMetadata.fromBundle(it) }
 
-            // Avoid using onStartCommand for creating incoming calls as the service may not be functioning properly.
-            // The system is responsible for managing service creation and destruction.
-            // Use the static method `incomingCall` of PhoneConnectionService to create incoming calls.
-            ServiceAction.IncomingCall.action -> {}
-
-            ServiceAction.HungUpCall.action -> onHungUpCall(CallMetadata.fromBundle(intent.extras!!))
-            ServiceAction.DeclineCall.action -> onDeclineCall(CallMetadata.fromBundle(intent.extras!!))
-            ServiceAction.AnswerCall.action -> onAnswerCall(CallMetadata.fromBundle(intent.extras!!))
-            ServiceAction.EstablishCall.action -> onEstablishCall(CallMetadata.fromBundle(intent.extras!!))
-            ServiceAction.Muting.action -> onChangeMute(CallMetadata.fromBundle(intent.extras!!))
-            ServiceAction.Holding.action -> onChangeHold(CallMetadata.fromBundle(intent.extras!!))
-            ServiceAction.UpdateCall.action -> onUpdateCall(CallMetadata.fromBundle(intent.extras!!))
-            ServiceAction.SendDTMF.action -> onSendDTMF(CallMetadata.fromBundle(intent.extras!!))
-            ServiceAction.Speaker.action -> onChangeSpeaker(CallMetadata.fromBundle(intent.extras!!))
-            ServiceAction.TearDown.action -> tearDown();
-            ServiceAction.DetachActivity.action -> onDetachActivity()
+        try {
+            phoneConnectionServiceDispatcher.dispatch(action, metadata)
+        } catch (e: Exception) {
+            FlutterLog.e(TAG, "Exception $e with service action: ${intent.action},")
         }
+
         return START_NOT_STICKY
-    }
-
-    /**
-     * This function is called when the current activity is being detached or destroyed.
-     * It iterates through all outgoing connections and invokes the `onDisconnect` method
-     * for each of them. This is typically used to clean up resources and gracefully
-     * disconnect from external services or components before the activity is destroyed.
-     *
-     * @see Connection.onDisconnect
-     */
-    private fun onDetachActivity() {
-        connectionManager.getConnections().forEach {
-            FlutterLog.i(TAG, "onDetachActivity, disconnect outgoing call, callId: ${it.id}")
-            it.onDisconnect()
-        }
-    }
-
-    /**
-     * Declines an incoming call associated with the provided `CallMetadata`.
-     * If a connection with the specified identifier exists, the `declineCall` method
-     * of that connection is invoked to decline the call.
-     *
-     * Additionally, this function unregisters the sensor listener within the application context.
-     *
-     * @param metadata The metadata associated with the call to be declined.
-     *
-     */
-    private fun onDeclineCall(metadata: CallMetadata) {
-        try {
-            FlutterLog.i(
-                TAG,
-                "onDeclineCall:: callId: ${metadata.callId} isActivityVisible: ${ActivityHolder.isActivityVisible()} currentActivityState: ${ActivityHolder.getActivityState()} connections: "
-            )
-            // The connection might be null, for example, if multiple notification receivers attempt to decline the call simultaneously.
-            // Ensure the connection exists before proceeding to decline call the call.
-            connectionManager.getConnection(metadata.callId)?.declineCall()
-            connectionManager.addConnectionTerminated(metadata.callId)
-            sensorManager.stopListening()
-        } catch (e: Exception) {
-            FlutterLog.e(
-                TAG, "onDeclineCall ${metadata.callId} exception: $e"
-            )
-        }
-    }
-
-    /**
-     * Handles hanging up a call based on the provided [CallMetadata].
-     *
-     * If a valid connection is found in the [connections] map, it initiates the hang-up process.
-     * If no connection is found, it triggers a callback and logs a workaround to handle cases where the connection is not available.
-     *
-     * @param metadata The call metadata containing the identifier.
-     */
-    private fun onHungUpCall(metadata: CallMetadata) {
-        try {
-            FlutterLog.i(TAG, "onHungUpCall, callId: ${metadata.callId}")
-            // The connection might be null, for example, if multiple notification receivers attempt to decline the call simultaneously.
-            // Ensure the connection exists before proceeding to hang up the call.
-            connectionManager.getConnection(metadata.callId)?.hungUp()
-            connectionManager.addConnectionTerminated(metadata.callId)
-            sensorManager.stopListening()
-        } catch (e: Exception) {
-            // WORKAROUND:
-            // Sometimes it happens that the connection is no longer available when the user tries to end the call,
-            // so in order for the logic to work, a callback is triggered.
-            // TODO: Investigate and address the root cause of missing connections.
-            TelephonyForegroundCallkeepApi.notifyDeclineCall(applicationContext, metadata)
-            FlutterLog.e(
-                TAG, "onDeclineCall ${metadata.callId} exception: $e"
-            )
-        }
-    }
-
-    /**
-     * Accepts an incoming call associated with the provided `CallMetadata`.
-     * This function registers a sensor listener within the application context,
-     * allowing for certain sensor-based call handling features.
-     *
-     * If a connection with the specified identifier exists, the `answer` method
-     * of that connection is invoked to accept the call.
-     *
-     * @param metadata The metadata associated with the call to be answered.
-     *
-     * @see PhoneConnection.answer
-     */
-    private fun onAnswerCall(metadata: CallMetadata) {
-        try {
-            FlutterLog.i(TAG, "onAnswerCall, callId: ${metadata.callId}")
-            sensorManager.startListening()
-            connectionManager.getConnection(metadata.callId)?.onAnswer()
-        } catch (e: Exception) {
-            FlutterLog.e(
-                TAG, "onAnswerCall ${metadata.callId} exception: $e"
-            )
-        }
-    }
-
-    /**
-     * Processes the action of picking up an incoming call.
-     * This function registers a sensor listener within the application context,
-     * enabling certain sensor-based call handling features.
-     *
-     * If a connection with the specified identifier exists, the `сallPickup` method
-     * of that connection is invoked to indicate that the call has been picked up.
-     *
-     * @param metadata The metadata associated with the call being picked up.
-     *
-     * @see PhoneConnection.establish
-     */
-    private fun onEstablishCall(metadata: CallMetadata) {
-        try {
-            FlutterLog.i(TAG, "onEstablishCall, callId: ${metadata.callId}")
-            sensorManager.startListening()
-            connectionManager.getConnection(metadata.callId)?.establish()
-        } catch (e: Exception) {
-            FlutterLog.e(
-                TAG, "onEstablishCall ${metadata.callId} exception: $e"
-            )
-        }
-    }
-
-    /**
-     * Changes the mute state of a call associated with the provided `CallMetadata`.
-     * If a connection with the specified identifier exists, the `changeMuteState` method
-     * of that connection is invoked to toggle the mute state of the call.
-     *
-     * @param metadata The metadata associated with the call for which the mute state is changed.
-     *
-     */
-    private fun onChangeMute(metadata: CallMetadata) {
-        try {
-            FlutterLog.i(TAG, "onChangeMute, callId: ${metadata.callId}")
-            connectionManager.getConnection(metadata.callId)?.changeMuteState(metadata.hasMute)
-        } catch (e: Exception) {
-            FlutterLog.e(
-                TAG, "onChangeMute ${metadata.callId} exception: $e"
-            )
-        }
-    }
-
-    /**
-     * Perform an action based on the hold status of a call associated with [metadata].
-     *
-     * This function checks the hold status in [metadata] and invokes the appropriate
-     * action on the corresponding connection if it exists.
-     *
-     * @param metadata The [CallMetadata] containing information about the call.
-     */
-    private fun onChangeHold(metadata: CallMetadata) {
-        try {
-            FlutterLog.i(TAG, "onChangeHold, callId: ${metadata.callId}")
-            connectionManager.getConnection(metadata.callId)?.run {
-                if (metadata.hasHold) onHold() else onUnhold()
-            }
-        } catch (e: Exception) {
-            FlutterLog.e(
-                TAG, "onChangeHold ${metadata.callId} exception: $e"
-            )
-        }
-    }
-
-    /**
-     * Update the state and metadata for a call based on the provided [metadata].
-     *
-     * This function is called when an action to update a call's metadata is received.
-     * It updates the video state and connection data for the call.
-     *
-     * @param metadata The [CallMetadata] containing updated call information.
-     */
-    private fun onUpdateCall(metadata: CallMetadata) {
-        try {
-            FlutterLog.i(TAG, "onUpdateCall, callId: ${metadata.callId}")
-
-            sensorManager.updateProximityWakelock()
-
-            connectionManager.getConnection(metadata.callId)?.updateData(metadata)
-        } catch (e: Exception) {
-            FlutterLog.e(TAG, "onUpdateCall ${metadata.callId} exception: $e")
-        }
-    }
-
-    /**
-     * Send a DTMF tone during a call, if a connection with the given DTMF exists.
-     *
-     * @param metadata The [CallMetadata] containing the DTMF tone and call identifier.
-     */
-    private fun onSendDTMF(metadata: CallMetadata) {
-        try {
-            FlutterLog.i(TAG, "onSendDTMF, callId: ${metadata.callId}")
-            connectionManager.getConnection(metadata.callId)?.onPlayDtmfTone(metadata.dualToneMultiFrequency ?: return)
-        } catch (e: Exception) {
-            FlutterLog.e(
-                TAG, "onUpdateCall ${metadata.callId} exception: $e"
-            )
-        }
-    }
-
-    /**
-     * Clean connection service resources.
-     */
-    private fun tearDown() {
-        connectionManager.getConnections().forEach {
-            it.hungUp()
-            connectionManager.cancelTimeout(it.id)
-        }
-        connectionManager.clearTerminatedConnections()
-    }
-
-    /**
-     * Handles changes in the speaker state of a call based on the provided metadata.
-     *
-     * @param metadata The metadata containing information about the call.
-     */
-    private fun onChangeSpeaker(metadata: CallMetadata) {
-        try {
-            FlutterLog.i(TAG, "onChangeSpeaker, callId: ${metadata.callId}")
-            connectionManager.getConnection(metadata.callId)?.changeSpeakerState(metadata.hasSpeaker)
-        } catch (e: Exception) {
-            FlutterLog.e(
-                TAG, "onChangeSpeaker ${metadata.callId} exception: $e"
-            )
-        }
     }
 
     /**
@@ -302,7 +65,7 @@ class PhoneConnectionService : ConnectionService() {
         }
 
         val connection = PhoneConnection.createOutgoingPhoneConnection(applicationContext, metadata)
-        state.setShouldListenProximity(metadata.proximityEnabled)
+        sensorManager.setShouldListenProximity(metadata.proximityEnabled)
         connectionManager.addConnection(
             metadata.callId, connection, TIMEOUT_DURATION_MS, DEFAULT_OUTGOING_STATES
         ) {
@@ -369,7 +132,6 @@ class PhoneConnectionService : ConnectionService() {
             connection.hungUp()
         }
         return connection
-
     }
 
     /**
@@ -395,8 +157,10 @@ class PhoneConnectionService : ConnectionService() {
     override fun onDestroy() {
         FlutterLog.i(TAG, "onDestroy")
         sensorManager.stopListening()
-        //TODO: Change the method name to better understand the purpose
-        onDetachActivity()
+        connectionManager.getConnections().forEach {
+            FlutterLog.i(TAG, "onDetachActivity, disconnect outgoing call, callId: ${it.id}")
+            it.onDisconnect()
+        }
         super.onDestroy()
     }
 
