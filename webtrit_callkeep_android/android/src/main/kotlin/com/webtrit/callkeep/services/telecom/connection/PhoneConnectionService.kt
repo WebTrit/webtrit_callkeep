@@ -42,7 +42,6 @@ class PhoneConnectionService : ConnectionService() {
         val isNear = state.isUserNear()
         val shouldListen = state.shouldListenProximity()
         sensor.upsertProximityWakelock(shouldListen && isNear)
-
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
@@ -104,9 +103,7 @@ class PhoneConnectionService : ConnectionService() {
             )
             // The connection might be null, for example, if multiple notification receivers attempt to decline the call simultaneously.
             // Ensure the connection exists before proceeding to decline call the call.
-            getConnection(metadata.callId)?.apply {
-                connections[metadata.callId]!!.declineCall()
-            }
+            getConnection(metadata.callId)?.declineCall()
             addConnectionTerminated(metadata.callId)
             sensor.unListen(applicationContext)
 
@@ -130,9 +127,7 @@ class PhoneConnectionService : ConnectionService() {
             FlutterLog.i(TAG, "onHungUpCall, callId: ${metadata.callId}")
             // The connection might be null, for example, if multiple notification receivers attempt to decline the call simultaneously.
             // Ensure the connection exists before proceeding to hang up the call.
-            getConnection(metadata.callId)?.apply {
-                connections[metadata.callId]!!.hungUp()
-            }
+            getConnection(metadata.callId)?.hungUp()
             addConnectionTerminated(metadata.callId)
             sensor.unListen(applicationContext)
         } catch (e: Exception) {
@@ -163,7 +158,7 @@ class PhoneConnectionService : ConnectionService() {
         try {
             FlutterLog.i(TAG, "onAnswerCall, callId: ${metadata.callId}")
             sensor.listen(applicationContext)
-            connections[metadata.callId]!!.onAnswer()
+            getConnection(metadata.callId)?.onAnswer()
         } catch (e: Exception) {
             FlutterLog.e(
                 TAG, "onAnswerCall ${metadata.callId} exception: $e"
@@ -187,7 +182,7 @@ class PhoneConnectionService : ConnectionService() {
         try {
             FlutterLog.i(TAG, "onEstablishCall, callId: ${metadata.callId}")
             sensor.listen(applicationContext)
-            connections[metadata.callId]!!.establish()
+            getConnection(metadata.callId)?.establish()
         } catch (e: Exception) {
             FlutterLog.e(
                 TAG, "onEstablishCall ${metadata.callId} exception: $e"
@@ -206,7 +201,7 @@ class PhoneConnectionService : ConnectionService() {
     private fun onChangeMute(metadata: CallMetadata) {
         try {
             FlutterLog.i(TAG, "onChangeMute, callId: ${metadata.callId}")
-            connections[metadata.callId]!!.changeMuteState(metadata.hasMute)
+            getConnection(metadata.callId)?.changeMuteState(metadata.hasMute)
         } catch (e: Exception) {
             FlutterLog.e(
                 TAG, "onChangeMute ${metadata.callId} exception: $e"
@@ -225,7 +220,7 @@ class PhoneConnectionService : ConnectionService() {
     private fun onChangeHold(metadata: CallMetadata) {
         try {
             FlutterLog.i(TAG, "onChangeHold, callId: ${metadata.callId}")
-            connections[metadata.callId]!!.run {
+            getConnection(metadata.callId)?.run {
                 if (metadata.hasHold) onHold() else onUnhold()
             }
         } catch (e: Exception) {
@@ -248,10 +243,7 @@ class PhoneConnectionService : ConnectionService() {
             FlutterLog.i(TAG, "onUpdateCall, callId: ${metadata.callId}")
             state.setShouldListenProximity(metadata.proximityEnabled)
             if (metadata.proximityEnabled) upsertProximityWakelock()
-
-            connections[metadata.callId]!!.run {
-                updateData(metadata)
-            }
+            getConnection(metadata.callId)?.updateData(metadata)
         } catch (e: Exception) {
             FlutterLog.e(
                 TAG, "onUpdateCall ${metadata.callId} exception: $e"
@@ -260,21 +252,20 @@ class PhoneConnectionService : ConnectionService() {
     }
 
     /**
-     * Send a DTMF tone during a call, if a connection with the given [metadata.DTMF] exists.
+     * Send a DTMF tone during a call, if a connection with the given DTMF exists.
      *
      * @param metadata The [CallMetadata] containing the DTMF tone and call identifier.
      */
     private fun onSendDTMF(metadata: CallMetadata) {
         try {
             FlutterLog.i(TAG, "onSendDTMF, callId: ${metadata.callId}")
-            connections[metadata.callId]!!.onPlayDtmfTone(metadata.dualToneMultiFrequency ?: return)
+            getConnection(metadata.callId)?.onPlayDtmfTone(metadata.dualToneMultiFrequency ?: return)
         } catch (e: Exception) {
             FlutterLog.e(
                 TAG, "onUpdateCall ${metadata.callId} exception: $e"
             )
         }
     }
-
 
     /**
      * Create an incoming connection and handle its initialization.
@@ -288,15 +279,12 @@ class PhoneConnectionService : ConnectionService() {
         request: ConnectionRequest,
     ): Connection {
         val metaData = CallMetadata.fromBundle(request.extras)
-
         val connection = PhoneConnection.createIncomingPhoneConnection(applicationContext, metaData)
 
         state.setShouldListenProximity(metaData.proximityEnabled)
         connections[metaData.callId] = connection
-
         return connection
     }
-
 
     /**
      * Handles changes in the speaker state of a call based on the provided metadata.
@@ -306,7 +294,7 @@ class PhoneConnectionService : ConnectionService() {
     private fun onChangeSpeaker(metadata: CallMetadata) {
         try {
             FlutterLog.i(TAG, "onChangeSpeaker, callId: ${metadata.callId}")
-            connections[metadata.callId]!!.changeSpeakerState(metadata.hasSpeaker)
+            getConnection(metadata.callId)?.changeSpeakerState(metadata.hasSpeaker)
         } catch (e: Exception) {
             FlutterLog.e(
                 TAG, "onChangeSpeaker ${metadata.callId} exception: $e"
@@ -327,11 +315,8 @@ class PhoneConnectionService : ConnectionService() {
         val metaData = CallMetadata.fromBundle(request.extras)
         val connection = PhoneConnection.createOutgoingPhoneConnection(applicationContext, metaData)
 
-
         state.setShouldListenProximity(metaData.proximityEnabled)
-
         connections[metaData.callId] = connection
-
         return connection
     }
 
