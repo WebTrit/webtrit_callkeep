@@ -87,7 +87,7 @@ class ForegroundCallServiceReceiver(
                 config.autoStartOnBoot,
                 lockScreen,
                 activityReady,
-                PhoneConnectionService.isExistsActiveConnection()
+                PhoneConnectionService.connectionManager.isExistsActiveConnection()
             )
         ) { response ->
             response.onSuccess {
@@ -118,7 +118,7 @@ class ForegroundCallServiceReceiver(
                 config.autoStartOnBoot,
                 lockScreen,
                 activityReady,
-                PhoneConnectionService.isExistsActiveConnection()
+                PhoneConnectionService.connectionManager.isExistsActiveConnection()
             )
         ) { response ->
             response.onSuccess {

@@ -44,7 +44,7 @@ class TelephonyForegroundCallkeepApi(
 
             // If an incoming call was answered in the background, retrieve the current new or ringing connection.
             // Extract its metadata and sync the call state with the Flutter side by emitting it as a bundle.
-            PhoneConnectionService.getActiveOrPendingConnection()?.metadata?.let {
+            PhoneConnectionService.connectionManager.getActiveOrPendingConnection()?.metadata?.let {
                 flutterDelegate.handleDidPushIncomingCall(it.toBundle())
             }
 
@@ -68,10 +68,10 @@ class TelephonyForegroundCallkeepApi(
     ) {
         FlutterLog.i(TAG, "reportNewIncomingCall ${metadata.callId}.")
         // User press hangup or decline call
-        if (PhoneConnectionService.isConnectionTerminated(metadata.callId)) {
+        if (PhoneConnectionService.connectionManager.isConnectionTerminated(metadata.callId)) {
             callback.invoke(Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED)))
-        } else if (PhoneConnectionService.isConnectionAlreadyExists(metadata.callId)) {
-            if (PhoneConnectionService.isConnectionAnswered(metadata.callId)) {
+        } else if (PhoneConnectionService.connectionManager.isConnectionAlreadyExists(metadata.callId)) {
+            if (PhoneConnectionService.connectionManager.isConnectionAnswered(metadata.callId)) {
                 callback.invoke(Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED)))
             } else {
                 callback.invoke(Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS)))
@@ -115,7 +115,7 @@ class TelephonyForegroundCallkeepApi(
     override fun answerCall(
         metadata: CallMetadata, callback: (Result<PCallRequestError?>) -> Unit
     ) {
-        if (PhoneConnectionService.isConnectionAlreadyExists(metadata.callId)) {
+        if (PhoneConnectionService.connectionManager.isConnectionAlreadyExists(metadata.callId)) {
             FlutterLog.i(TAG, "answerCall ${metadata.callId}.")
             PhoneConnectionService.startAnswerCall(activity, metadata)
             callback.invoke(Result.success(null))
