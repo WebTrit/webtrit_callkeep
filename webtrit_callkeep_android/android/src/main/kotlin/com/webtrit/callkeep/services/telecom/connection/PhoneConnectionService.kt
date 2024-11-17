@@ -66,6 +66,7 @@ class PhoneConnectionService : ConnectionService() {
             ServiceAction.UpdateCall.action -> onUpdateCall(CallMetadata.fromBundle(intent.extras!!))
             ServiceAction.SendDTMF.action -> onSendDTMF(CallMetadata.fromBundle(intent.extras!!))
             ServiceAction.Speaker.action -> onChangeSpeaker(CallMetadata.fromBundle(intent.extras!!))
+            ServiceAction.TearDown.action -> tearDown();
             ServiceAction.DetachActivity.action -> onDetachActivity()
         }
         return START_NOT_STICKY
@@ -269,6 +270,14 @@ class PhoneConnectionService : ConnectionService() {
     }
 
     /**
+     * Clean connection service resources.
+     */
+    private fun tearDown() {
+        getConnections().forEach { it.hungUp() }
+        cleanConnectionTerminated();
+    }
+
+    /**
      * Handles changes in the speaker state of a call based on the provided metadata.
      *
      * @param metadata The metadata containing information about the call.
@@ -433,7 +442,9 @@ class PhoneConnectionService : ConnectionService() {
         }
 
         fun remove(id: String) {
-            connections.remove(id)
+            synchronized(connectionResourceLock) {
+                connections.remove(id)
+            }
         }
 
         fun getConnections(): List<PhoneConnection> {
@@ -509,6 +520,10 @@ class PhoneConnectionService : ConnectionService() {
 
         fun startSpeaker(context: Context, metadata: CallMetadata) {
             communicate(context, ServiceAction.Speaker, metadata)
+        }
+
+        fun tearDown(context: Context) {
+            communicate(context, ServiceAction.TearDown, null)
         }
 
         fun notifyAboutDetachActivity(context: Context) {

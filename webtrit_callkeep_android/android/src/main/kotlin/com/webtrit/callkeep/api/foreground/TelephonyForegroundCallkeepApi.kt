@@ -160,7 +160,7 @@ class TelephonyForegroundCallkeepApi(
     }
 
     override fun tearDown(callback: (Result<Unit>) -> Unit) {
-        PhoneConnectionService.cleanConnectionTerminated()
+        PhoneConnectionService.tearDown(activity)
         incomingCallReceiver.unregisterReceiver()
         callback.invoke(Result.success(Unit))
     }
