@@ -126,6 +126,7 @@ class ForegroundCallService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action ?: ForegroundCallServiceEnums.INIT.action
+        val data = intent?.extras
 
         val config = StorageDelegate.getForegroundCallServiceConfiguration(applicationContext)
         val handles = StorageDelegate.getForegroundCallServiceHandles(applicationContext)
@@ -134,7 +135,7 @@ class ForegroundCallService : Service() {
 
         when (action) {
             ForegroundCallServiceEnums.INIT.action -> runService(config, handles)
-            ForegroundCallServiceEnums.START.action -> wakeUp(config, handles)
+            ForegroundCallServiceEnums.START.action -> wakeUp(config, handles, data)
             ForegroundCallServiceEnums.STOP.action -> tearDown()
         }
 
@@ -151,9 +152,9 @@ class ForegroundCallService : Service() {
     /**
      * Wakes up the service and sends a broadcast to synchronize call status.
      */
-    private fun wakeUp(config: ForegroundCallServiceConfig, handles: ForegroundCallServiceHandles) {
+    private fun wakeUp(config: ForegroundCallServiceConfig, handles: ForegroundCallServiceHandles, data: Bundle?) {
         runService(config, handles)
-        ForegroundCallServiceReceiver.wakeUp(applicationContext)
+        ForegroundCallServiceReceiver.wakeUp(applicationContext, data?.getString(PARAM_JSON_DATA))
     }
 
     /**
@@ -194,7 +195,7 @@ class ForegroundCallService : Service() {
         // Send the onStart event to the Flutter background isolate. Periodically checks socket status, reconnects if needed, or initiates connection on boot.
         // If the config type is SOCKET, triggers ForegroundCallServiceReceiver to wake up the application context.
         if (config.type == BackgroundIncomingCallType.SOCKET) {
-            ForegroundCallServiceReceiver.wakeUp(applicationContext)
+            ForegroundCallServiceReceiver.wakeUp(applicationContext, null)
         }
 
         isRunning.set(true)
@@ -232,8 +233,7 @@ class ForegroundCallService : Service() {
     companion object {
         private var backgroundEngine: FlutterEngine? = null
         private const val TAG = "ForegroundCallService"
-
-        private const val PARAM_START_DATA = "PARAM_WAKE_UP_DATA"
+        private const val PARAM_JSON_DATA = "PARAM_JSON_DATA"
 
         /**
          * Communicates with the service by starting it with the specified action and metadata.
@@ -253,8 +253,9 @@ class ForegroundCallService : Service() {
         /**
          * Wakes up the service with an option to auto-restart.
          */
-        fun start(context: Context) {
-            communicate(context, ForegroundCallServiceEnums.START, null);
+        fun start(context: Context, data: String? = null) {
+            val bundleData = data?.let { Bundle().apply { putString(PARAM_JSON_DATA, it) } }
+            communicate(context, ForegroundCallServiceEnums.START, bundleData)
         }
 
         /**

@@ -56,18 +56,16 @@ class PigeonIsolateApi(
         }
     }
 
-
-    override fun startService(callback: (Result<Unit>) -> Unit) {
-        Log.i(TAG, "startService")
+    override fun startService(jsonData: String?, callback: (Result<Unit>) -> Unit) {
+        Log.i(TAG, "startService, data: $jsonData")
         try {
-            ForegroundCallService.start(context)
+            ForegroundCallService.start(context, jsonData)
 
             callback(Result.success(Unit))
         } catch (e: Exception) {
             callback(Result.failure(e))
         }
     }
-
 
     override fun stopService(callback: (Result<Unit>) -> Unit) {
         Log.i(TAG, "stopService")

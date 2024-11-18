@@ -362,7 +362,8 @@ data class PCallkeepServiceStatus (
   val autoStartOnBoot: Boolean,
   val lockScreen: Boolean,
   val activityReady: Boolean,
-  val activeCalls: Boolean
+  val activeCalls: Boolean,
+  val jsonData: String
 )
  {
   companion object {
@@ -374,7 +375,8 @@ data class PCallkeepServiceStatus (
       val lockScreen = pigeonVar_list[4] as Boolean
       val activityReady = pigeonVar_list[5] as Boolean
       val activeCalls = pigeonVar_list[6] as Boolean
-      return PCallkeepServiceStatus(type, lifecycle, autoRestartOnTerminate, autoStartOnBoot, lockScreen, activityReady, activeCalls)
+      val jsonData = pigeonVar_list[7] as String
+      return PCallkeepServiceStatus(type, lifecycle, autoRestartOnTerminate, autoStartOnBoot, lockScreen, activityReady, activeCalls, jsonData)
     }
   }
   fun toList(): List<Any?> {
@@ -386,6 +388,7 @@ data class PCallkeepServiceStatus (
       lockScreen,
       activityReady,
       activeCalls,
+      jsonData,
     )
   }
 }
@@ -645,7 +648,7 @@ interface PHostBackgroundServiceApi {
 interface PHostIsolateApi {
   fun setUpCallback(callbackDispatcher: Long, onStartHandler: Long, onChangedLifecycleHandler: Long, callback: (Result<Unit>) -> Unit)
   fun setUp(type: PCallkeepIncomingType, autoRestartOnTerminate: Boolean, autoStartOnBoot: Boolean, androidNotificationName: String?, androidNotificationDescription: String?, callback: (Result<Unit>) -> Unit)
-  fun startService(callback: (Result<Unit>) -> Unit)
+  fun startService(jsonData: String?, callback: (Result<Unit>) -> Unit)
   fun stopService(callback: (Result<Unit>) -> Unit)
   fun finishActivity(callback: (Result<Unit>) -> Unit)
 
@@ -705,8 +708,10 @@ interface PHostIsolateApi {
       run {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.startService$separatedMessageChannelSuffix", codec)
         if (api != null) {
-          channel.setMessageHandler { _, reply ->
-            api.startService{ result: Result<Unit> ->
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val jsonDataArg = args[0] as String?
+            api.startService(jsonDataArg) { result: Result<Unit> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(wrapError(error))
