@@ -99,11 +99,6 @@ enum PCallkeepLifecycleType {
   onAny,
 }
 
-enum PCallkeepIncomingType {
-  pushNotification,
-  socket,
-}
-
 class PIOSOptions {
   PIOSOptions({
     required this.localizedName,
@@ -323,15 +318,12 @@ class PCallRequestError {
 
 class PCallkeepServiceStatus {
   PCallkeepServiceStatus({
-    required this.type,
     required this.lifecycle,
     required this.lockScreen,
     required this.activityReady,
     required this.activeCalls,
     required this.jsonData,
   });
-
-  PCallkeepIncomingType type;
 
   PCallkeepLifecycleType lifecycle;
 
@@ -345,7 +337,6 @@ class PCallkeepServiceStatus {
 
   Object encode() {
     return <Object?>[
-      type,
       lifecycle,
       lockScreen,
       activityReady,
@@ -357,12 +348,11 @@ class PCallkeepServiceStatus {
   static PCallkeepServiceStatus decode(Object result) {
     result as List<Object?>;
     return PCallkeepServiceStatus(
-      type: result[0]! as PCallkeepIncomingType,
-      lifecycle: result[1]! as PCallkeepLifecycleType,
-      lockScreen: result[2]! as bool,
-      activityReady: result[3]! as bool,
-      activeCalls: result[4]! as bool,
-      jsonData: result[5]! as String,
+      lifecycle: result[0]! as PCallkeepLifecycleType,
+      lockScreen: result[1]! as bool,
+      activityReady: result[2]! as bool,
+      activeCalls: result[3]! as bool,
+      jsonData: result[4]! as String,
     );
   }
 }
@@ -402,32 +392,29 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is PCallkeepLifecycleType) {
       buffer.putUint8(137);
       writeValue(buffer, value.index);
-    }    else if (value is PCallkeepIncomingType) {
-      buffer.putUint8(138);
-      writeValue(buffer, value.index);
     }    else if (value is PIOSOptions) {
-      buffer.putUint8(139);
+      buffer.putUint8(138);
       writeValue(buffer, value.encode());
     }    else if (value is PAndroidOptions) {
-      buffer.putUint8(140);
+      buffer.putUint8(139);
       writeValue(buffer, value.encode());
     }    else if (value is POptions) {
-      buffer.putUint8(141);
+      buffer.putUint8(140);
       writeValue(buffer, value.encode());
     }    else if (value is PHandle) {
-      buffer.putUint8(142);
+      buffer.putUint8(141);
       writeValue(buffer, value.encode());
     }    else if (value is PEndCallReason) {
-      buffer.putUint8(143);
+      buffer.putUint8(142);
       writeValue(buffer, value.encode());
     }    else if (value is PIncomingCallError) {
-      buffer.putUint8(144);
+      buffer.putUint8(143);
       writeValue(buffer, value.encode());
     }    else if (value is PCallRequestError) {
-      buffer.putUint8(145);
+      buffer.putUint8(144);
       writeValue(buffer, value.encode());
     }    else if (value is PCallkeepServiceStatus) {
-      buffer.putUint8(146);
+      buffer.putUint8(145);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -465,23 +452,20 @@ class _PigeonCodec extends StandardMessageCodec {
         final int? value = readValue(buffer) as int?;
         return value == null ? null : PCallkeepLifecycleType.values[value];
       case 138: 
-        final int? value = readValue(buffer) as int?;
-        return value == null ? null : PCallkeepIncomingType.values[value];
-      case 139: 
         return PIOSOptions.decode(readValue(buffer)!);
-      case 140: 
+      case 139: 
         return PAndroidOptions.decode(readValue(buffer)!);
-      case 141: 
+      case 140: 
         return POptions.decode(readValue(buffer)!);
-      case 142: 
+      case 141: 
         return PHandle.decode(readValue(buffer)!);
-      case 143: 
+      case 142: 
         return PEndCallReason.decode(readValue(buffer)!);
-      case 144: 
+      case 143: 
         return PIncomingCallError.decode(readValue(buffer)!);
-      case 145: 
+      case 144: 
         return PCallRequestError.decode(readValue(buffer)!);
-      case 146: 
+      case 145: 
         return PCallkeepServiceStatus.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -604,7 +588,7 @@ class PHostIsolateApi {
     }
   }
 
-  Future<void> setUp({required PCallkeepIncomingType type, bool autoRestartOnTerminate = false, bool autoStartOnBoot = false, String? androidNotificationName, String? androidNotificationDescription,}) async {
+  Future<void> setUp({bool autoRestartOnTerminate = false, bool autoStartOnBoot = false, String? androidNotificationName, String? androidNotificationDescription,}) async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.setUp$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
@@ -612,7 +596,7 @@ class PHostIsolateApi {
       binaryMessenger: pigeonVar_binaryMessenger,
     );
     final List<Object?>? pigeonVar_replyList =
-        await pigeonVar_channel.send(<Object?>[type, autoRestartOnTerminate, autoStartOnBoot, androidNotificationName, androidNotificationDescription]) as List<Object?>?;
+        await pigeonVar_channel.send(<Object?>[autoRestartOnTerminate, autoStartOnBoot, androidNotificationName, androidNotificationDescription]) as List<Object?>?;
     if (pigeonVar_replyList == null) {
       throw _createConnectionError(pigeonVar_channelName);
     } else if (pigeonVar_replyList.length > 1) {

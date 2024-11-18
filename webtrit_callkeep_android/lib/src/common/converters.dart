@@ -231,28 +231,6 @@ extension CallkeepLifecycleTypeConverter on CallkeepLifecycleType {
   }
 }
 
-extension CallkeepIncomingTypeConverter on CallkeepIncomingType {
-  PCallkeepIncomingType toPigeon() {
-    switch (this) {
-      case CallkeepIncomingType.pushNotification:
-        return PCallkeepIncomingType.pushNotification;
-      case CallkeepIncomingType.socket:
-        return PCallkeepIncomingType.socket;
-    }
-  }
-}
-
-extension PCallkeepIncomingTypeConverter on PCallkeepIncomingType {
-  CallkeepIncomingType toCallkeep() {
-    switch (this) {
-      case PCallkeepIncomingType.pushNotification:
-        return CallkeepIncomingType.pushNotification;
-      case PCallkeepIncomingType.socket:
-        return CallkeepIncomingType.socket;
-    }
-  }
-}
-
 extension PCallkeepLifecycleTypeConverter on PCallkeepLifecycleType {
   CallkeepLifecycleType toCallkeep() {
     switch (this) {
@@ -277,7 +255,6 @@ extension PCallkeepLifecycleTypeConverter on PCallkeepLifecycleType {
 extension PCallkeepServiceStatusConverter on PCallkeepServiceStatus {
   CallkeepServiceStatus toCallkeep() {
     return CallkeepServiceStatus(
-      type: type.toCallkeep(),
       lifecycle: lifecycle.toCallkeep(),
       lockScreen: lockScreen,
       activityReady: activityReady,
@@ -290,7 +267,6 @@ extension PCallkeepServiceStatusConverter on PCallkeepServiceStatus {
 extension CallkeepServiceStatusConverter on CallkeepServiceStatus {
   PCallkeepServiceStatus toPigeon() {
     return PCallkeepServiceStatus(
-      type: type.toPigeon(),
       lifecycle: lifecycle.toPigeon(),
       lockScreen: lockScreen,
       activityReady: activityReady,

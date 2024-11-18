@@ -175,17 +175,6 @@ enum class PCallkeepLifecycleType(val raw: Int) {
   }
 }
 
-enum class PCallkeepIncomingType(val raw: Int) {
-  PUSH_NOTIFICATION(0),
-  SOCKET(1);
-
-  companion object {
-    fun ofRaw(raw: Int): PCallkeepIncomingType? {
-      return values().firstOrNull { it.raw == raw }
-    }
-  }
-}
-
 /** Generated class from Pigeon that represents data sent in messages. */
 data class PIOSOptions (
   val localizedName: String,
@@ -356,7 +345,6 @@ data class PCallRequestError (
 
 /** Generated class from Pigeon that represents data sent in messages. */
 data class PCallkeepServiceStatus (
-  val type: PCallkeepIncomingType,
   val lifecycle: PCallkeepLifecycleType,
   val lockScreen: Boolean,
   val activityReady: Boolean,
@@ -366,18 +354,16 @@ data class PCallkeepServiceStatus (
  {
   companion object {
     fun fromList(pigeonVar_list: List<Any?>): PCallkeepServiceStatus {
-      val type = pigeonVar_list[0] as PCallkeepIncomingType
-      val lifecycle = pigeonVar_list[1] as PCallkeepLifecycleType
-      val lockScreen = pigeonVar_list[2] as Boolean
-      val activityReady = pigeonVar_list[3] as Boolean
-      val activeCalls = pigeonVar_list[4] as Boolean
-      val jsonData = pigeonVar_list[5] as String
-      return PCallkeepServiceStatus(type, lifecycle, lockScreen, activityReady, activeCalls, jsonData)
+      val lifecycle = pigeonVar_list[0] as PCallkeepLifecycleType
+      val lockScreen = pigeonVar_list[1] as Boolean
+      val activityReady = pigeonVar_list[2] as Boolean
+      val activeCalls = pigeonVar_list[3] as Boolean
+      val jsonData = pigeonVar_list[4] as String
+      return PCallkeepServiceStatus(lifecycle, lockScreen, activityReady, activeCalls, jsonData)
     }
   }
   fun toList(): List<Any?> {
     return listOf(
-      type,
       lifecycle,
       lockScreen,
       activityReady,
@@ -435,46 +421,41 @@ private open class GeneratedPigeonCodec : StandardMessageCodec() {
         }
       }
       138.toByte() -> {
-        return (readValue(buffer) as Long?)?.let {
-          PCallkeepIncomingType.ofRaw(it.toInt())
-        }
-      }
-      139.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           PIOSOptions.fromList(it)
         }
       }
-      140.toByte() -> {
+      139.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           PAndroidOptions.fromList(it)
         }
       }
-      141.toByte() -> {
+      140.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           POptions.fromList(it)
         }
       }
-      142.toByte() -> {
+      141.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           PHandle.fromList(it)
         }
       }
-      143.toByte() -> {
+      142.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           PEndCallReason.fromList(it)
         }
       }
-      144.toByte() -> {
+      143.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           PIncomingCallError.fromList(it)
         }
       }
-      145.toByte() -> {
+      144.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           PCallRequestError.fromList(it)
         }
       }
-      146.toByte() -> {
+      145.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           PCallkeepServiceStatus.fromList(it)
         }
@@ -520,40 +501,36 @@ private open class GeneratedPigeonCodec : StandardMessageCodec() {
         stream.write(137)
         writeValue(stream, value.raw)
       }
-      is PCallkeepIncomingType -> {
-        stream.write(138)
-        writeValue(stream, value.raw)
-      }
       is PIOSOptions -> {
-        stream.write(139)
+        stream.write(138)
         writeValue(stream, value.toList())
       }
       is PAndroidOptions -> {
-        stream.write(140)
+        stream.write(139)
         writeValue(stream, value.toList())
       }
       is POptions -> {
-        stream.write(141)
+        stream.write(140)
         writeValue(stream, value.toList())
       }
       is PHandle -> {
-        stream.write(142)
+        stream.write(141)
         writeValue(stream, value.toList())
       }
       is PEndCallReason -> {
-        stream.write(143)
+        stream.write(142)
         writeValue(stream, value.toList())
       }
       is PIncomingCallError -> {
-        stream.write(144)
+        stream.write(143)
         writeValue(stream, value.toList())
       }
       is PCallRequestError -> {
-        stream.write(145)
+        stream.write(144)
         writeValue(stream, value.toList())
       }
       is PCallkeepServiceStatus -> {
-        stream.write(146)
+        stream.write(145)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -641,7 +618,7 @@ interface PHostBackgroundServiceApi {
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface PHostIsolateApi {
   fun setUpCallback(callbackDispatcher: Long, onStartHandler: Long, onChangedLifecycleHandler: Long, callback: (Result<Unit>) -> Unit)
-  fun setUp(type: PCallkeepIncomingType, autoRestartOnTerminate: Boolean, autoStartOnBoot: Boolean, androidNotificationName: String?, androidNotificationDescription: String?, callback: (Result<Unit>) -> Unit)
+  fun setUp(autoRestartOnTerminate: Boolean, autoStartOnBoot: Boolean, androidNotificationName: String?, androidNotificationDescription: String?, callback: (Result<Unit>) -> Unit)
   fun startService(jsonData: String?, callback: (Result<Unit>) -> Unit)
   fun stopService(callback: (Result<Unit>) -> Unit)
   fun finishActivity(callback: (Result<Unit>) -> Unit)
@@ -681,12 +658,11 @@ interface PHostIsolateApi {
         if (api != null) {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
-            val typeArg = args[0] as PCallkeepIncomingType
-            val autoRestartOnTerminateArg = args[1] as Boolean
-            val autoStartOnBootArg = args[2] as Boolean
-            val androidNotificationNameArg = args[3] as String?
-            val androidNotificationDescriptionArg = args[4] as String?
-            api.setUp(typeArg, autoRestartOnTerminateArg, autoStartOnBootArg, androidNotificationNameArg, androidNotificationDescriptionArg) { result: Result<Unit> ->
+            val autoRestartOnTerminateArg = args[0] as Boolean
+            val autoStartOnBootArg = args[1] as Boolean
+            val androidNotificationNameArg = args[2] as String?
+            val androidNotificationDescriptionArg = args[3] as String?
+            api.setUp(autoRestartOnTerminateArg, autoStartOnBootArg, androidNotificationNameArg, androidNotificationDescriptionArg) { result: Result<Unit> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(wrapError(error))

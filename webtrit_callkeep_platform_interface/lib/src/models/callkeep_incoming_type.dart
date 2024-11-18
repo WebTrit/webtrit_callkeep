@@ -1,1 +1,0 @@
-enum CallkeepIncomingType { pushNotification, socket }

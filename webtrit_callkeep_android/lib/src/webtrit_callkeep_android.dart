@@ -289,14 +289,12 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
 
   @override
   Future<void> setUpAndroidBackgroundService({
-    required CallkeepIncomingType type,
     bool autoRestartOnTerminate = false,
     bool autoStartOnBoot = false,
     String? androidNotificationName,
     String? androidNotificationDescription,
   }) async {
     await _isolateApi.setUp(
-      type: type.toPigeon(),
       autoStartOnBoot: autoStartOnBoot,
       autoRestartOnTerminate: autoRestartOnTerminate,
       androidNotificationName: androidNotificationName,

@@ -16,7 +16,6 @@ import android.util.Log
 import androidx.core.app.ServiceCompat
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.StorageDelegate
-import com.webtrit.callkeep.models.BackgroundIncomingCallType
 import com.webtrit.callkeep.models.ForegroundCallServiceConfig
 import com.webtrit.callkeep.models.ForegroundCallServiceHandles
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
@@ -190,12 +189,6 @@ class ForegroundCallService : Service() {
             } else {
                 Log.v(TAG, "FlutterEngine is already attached to service")
             }
-        }
-
-        // Send the onStart event to the Flutter background isolate. Periodically checks socket status, reconnects if needed, or initiates connection on boot.
-        // If the config type is SOCKET, triggers ForegroundCallServiceReceiver to wake up the application context.
-        if (config.type == BackgroundIncomingCallType.SOCKET) {
-            ForegroundCallServiceReceiver.wakeUp(applicationContext, null)
         }
 
         isRunning.set(true)

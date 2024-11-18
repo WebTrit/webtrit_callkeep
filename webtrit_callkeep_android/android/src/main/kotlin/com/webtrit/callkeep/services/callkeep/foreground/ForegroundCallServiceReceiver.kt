@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
 import androidx.lifecycle.Lifecycle
-import com.webtrit.callkeep.PCallkeepIncomingType
 import com.webtrit.callkeep.PCallkeepServiceStatus
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.common.ActivityHolder
@@ -15,9 +14,7 @@ import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.common.helpers.registerCustomReceiver
 import com.webtrit.callkeep.common.helpers.toPCallkeepLifecycleType
-import com.webtrit.callkeep.models.ForegroundCallServiceConfig
 import com.webtrit.callkeep.models.ForegroundCallServiceHandles
-import com.webtrit.callkeep.models.toPCallkeepIncomingType
 import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 import io.flutter.Log
 
@@ -52,22 +49,21 @@ class ForegroundCallServiceReceiver(
     }
 
     override fun onReceive(context: Context, intent: Intent?) {
-        val config = StorageDelegate.getForegroundCallServiceConfiguration(context)
         val handles = StorageDelegate.getForegroundCallServiceHandles(context)
 
         when (intent?.action) {
             ForegroundCallServiceReceiverActions.WAKE_UP.action -> onWakeUpBackgroundHandler(
-                config, handles, intent.extras
+                handles, intent.extras
             )
 
             ForegroundCallServiceReceiverActions.CHANGE_LIFECYCLE.action -> onChangedLifecycleHandler(
-                intent.extras, config, handles
+                intent.extras, handles
             )
         }
     }
 
     private fun onWakeUpBackgroundHandler(
-        config: ForegroundCallServiceConfig, handles: ForegroundCallServiceHandles, extras: Bundle?
+        handles: ForegroundCallServiceHandles, extras: Bundle?
     ) {
 
         Log.d(TAG, "onWakeUpBackgroundHandler")
@@ -83,7 +79,6 @@ class ForegroundCallServiceReceiver(
 
         api.onWakeUpBackgroundHandler(
             wakeUpHandler, PCallkeepServiceStatus(
-                config.type?.toPCallkeepIncomingType() ?: PCallkeepIncomingType.PUSH_NOTIFICATION,
                 pLifecycle,
                 lockScreen,
                 activityReady,
@@ -102,7 +97,7 @@ class ForegroundCallServiceReceiver(
 
     @Suppress("DEPRECATION", "KotlinConstantConditions")
     private fun onChangedLifecycleHandler(
-        bundle: Bundle?, config: ForegroundCallServiceConfig, handles: ForegroundCallServiceHandles
+        bundle: Bundle?, handles: ForegroundCallServiceHandles
     ) {
         val activityReady = StorageDelegate.getActivityReady(context)
         val lockScreen = Platform.isLockScreen(context)
@@ -113,7 +108,6 @@ class ForegroundCallServiceReceiver(
 
         api.onApplicationStatusChanged(
             onChangedLifecycleHandler, PCallkeepServiceStatus(
-                config.type?.toPCallkeepIncomingType() ?: PCallkeepIncomingType.PUSH_NOTIFICATION,
                 lifecycle,
                 lockScreen,
                 activityReady,
