@@ -246,7 +246,6 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   ///
   /// Throws an [UnimplementedError] if this method is not yet implemented.
   Future<void> setUpAndroidBackgroundService({
-    required CallkeepIncomingType type,
     bool autoRestartOnTerminate = false,
     bool autoStartOnBoot = false,
     String? androidNotificationName,

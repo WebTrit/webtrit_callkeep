@@ -131,16 +131,8 @@ enum PCallkeepLifecycleType {
   onAny,
 }
 
-enum PCallkeepIncomingType {
-  pushNotification,
-  socket,
-}
-
 class PCallkeepServiceStatus {
-  late PCallkeepIncomingType type;
   late PCallkeepLifecycleType lifecycle;
-  late bool autoRestartOnTerminate;
-  late bool autoStartOnBoot;
   late bool lockScreen;
   late bool activityReady;
   late bool activeCalls;
@@ -177,7 +169,6 @@ abstract class PHostIsolateApi {
 
   @async
   void setUp({
-    required PCallkeepIncomingType type,
     bool autoRestartOnTerminate = false,
     bool autoStartOnBoot = false,
     String? androidNotificationName,

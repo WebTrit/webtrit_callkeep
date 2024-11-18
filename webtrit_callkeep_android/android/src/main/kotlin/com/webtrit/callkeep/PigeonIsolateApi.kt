@@ -5,7 +5,6 @@ import android.util.Log
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.models.ForegroundCallServiceHandles
-import com.webtrit.callkeep.models.toBackgroundIncomingCallType
 import com.webtrit.callkeep.services.callkeep.foreground.ForegroundCallService
 
 class PigeonIsolateApi(
@@ -33,7 +32,6 @@ class PigeonIsolateApi(
     }
 
     override fun setUp(
-        type: PCallkeepIncomingType,
         autoRestartOnTerminate: Boolean,
         autoStartOnBoot: Boolean,
         androidNotificationName: String?,
@@ -42,7 +40,6 @@ class PigeonIsolateApi(
     ) {
         try {
             val config = StorageDelegate.getForegroundCallServiceConfiguration(context).copy(
-                type = type.toBackgroundIncomingCallType(),
                 autoStartOnBoot = autoStartOnBoot,
                 autoRestartOnTerminate = autoRestartOnTerminate,
                 androidNotificationName = androidNotificationName,

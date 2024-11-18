@@ -68,7 +68,6 @@ class CallkeepBackgroundService {
   /// This method configures and sets up the Android background service using the provided
   /// parameters and handlers.
   Future<void> setUp({
-    CallkeepIncomingType type = CallkeepIncomingType.pushNotification,
     bool autoRestartOnTerminate = false,
     bool autoStartOnBoot = false,
     String androidNotificationName = 'WebTrit Inbound Calls',
@@ -83,7 +82,6 @@ class CallkeepBackgroundService {
     }
 
     return platform.setUpAndroidBackgroundService(
-      type: type,
       autoRestartOnTerminate: autoRestartOnTerminate,
       autoStartOnBoot: autoStartOnBoot,
       androidNotificationName: androidNotificationName,
