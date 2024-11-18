@@ -330,6 +330,7 @@ class PCallkeepServiceStatus {
     required this.lockScreen,
     required this.activityReady,
     required this.activeCalls,
+    required this.jsonData,
   });
 
   PCallkeepIncomingType type;
@@ -346,6 +347,8 @@ class PCallkeepServiceStatus {
 
   bool activeCalls;
 
+  String jsonData;
+
   Object encode() {
     return <Object?>[
       type,
@@ -355,6 +358,7 @@ class PCallkeepServiceStatus {
       lockScreen,
       activityReady,
       activeCalls,
+      jsonData,
     ];
   }
 
@@ -368,6 +372,7 @@ class PCallkeepServiceStatus {
       lockScreen: result[4]! as bool,
       activityReady: result[5]! as bool,
       activeCalls: result[6]! as bool,
+      jsonData: result[7]! as String,
     );
   }
 }
@@ -631,7 +636,7 @@ class PHostIsolateApi {
     }
   }
 
-  Future<void> startService() async {
+  Future<void> startService({String? jsonData}) async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.startService$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
@@ -639,7 +644,7 @@ class PHostIsolateApi {
       binaryMessenger: pigeonVar_binaryMessenger,
     );
     final List<Object?>? pigeonVar_replyList =
-        await pigeonVar_channel.send(null) as List<Object?>?;
+        await pigeonVar_channel.send(<Object?>[jsonData]) as List<Object?>?;
     if (pigeonVar_replyList == null) {
       throw _createConnectionError(pigeonVar_channelName);
     } else if (pigeonVar_replyList.length > 1) {

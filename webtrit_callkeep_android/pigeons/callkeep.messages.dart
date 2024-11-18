@@ -144,6 +144,7 @@ class PCallkeepServiceStatus {
   late bool lockScreen;
   late bool activityReady;
   late bool activeCalls;
+  late String jsonData;
 }
 
 @HostApi()
@@ -184,7 +185,9 @@ abstract class PHostIsolateApi {
   });
 
   @async
-  void startService();
+  void startService({
+    String? jsonData,
+  });
 
   @async
   void stopService();

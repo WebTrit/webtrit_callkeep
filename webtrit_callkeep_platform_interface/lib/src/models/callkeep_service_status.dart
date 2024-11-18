@@ -12,6 +12,7 @@ class CallkeepServiceStatus extends Equatable {
     required this.activityReady,
     required this.lockScreen,
     required this.activeCalls,
+    required this.data,
   });
 
   final CallkeepIncomingType type;
@@ -21,9 +22,11 @@ class CallkeepServiceStatus extends Equatable {
   final bool lockScreen;
   final bool activityReady;
   final bool activeCalls;
+  final Map<String, dynamic> data;
 
   @override
   List<Object?> get props => [
+        data,
         type,
         lifecycle,
         autoRestartOnTerminate,

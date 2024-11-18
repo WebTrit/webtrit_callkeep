@@ -257,7 +257,9 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
 
   /// Starts the background service with the provided [data].
   /// Throws an [UnimplementedError] if this method is not yet implemented.
-  void startService() {
+  void startService({
+    Map<String, dynamic> data = const {},
+  }) {
     throw UnimplementedError('startService() is not implemented');
   }
 

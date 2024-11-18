@@ -1,5 +1,7 @@
 // ignore_for_file: public_member_api_docs, always_use_package_imports
 
+import 'dart:convert';
+
 import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
 
 import 'callkeep.pigeon.dart';
@@ -282,6 +284,7 @@ extension PCallkeepServiceStatusConverter on PCallkeepServiceStatus {
       lockScreen: lockScreen,
       activityReady: activityReady,
       activeCalls: activeCalls,
+      data: jsonDecode(jsonData) as Map<String, dynamic>,
     );
   }
 }
@@ -296,6 +299,7 @@ extension CallkeepServiceStatusConverter on CallkeepServiceStatus {
       lockScreen: lockScreen,
       activityReady: activityReady,
       activeCalls: activeCalls,
+      jsonData: jsonEncode(data),
     );
   }
 }

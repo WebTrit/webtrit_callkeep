@@ -57,7 +57,7 @@ class ForegroundCallServiceReceiver(
 
         when (intent?.action) {
             ForegroundCallServiceReceiverActions.WAKE_UP.action -> onWakeUpBackgroundHandler(
-                config, handles
+                config, handles, intent.extras
             )
 
             ForegroundCallServiceReceiverActions.CHANGE_LIFECYCLE.action -> onChangedLifecycleHandler(
@@ -67,7 +67,7 @@ class ForegroundCallServiceReceiver(
     }
 
     private fun onWakeUpBackgroundHandler(
-        config: ForegroundCallServiceConfig, handles: ForegroundCallServiceHandles
+        config: ForegroundCallServiceConfig, handles: ForegroundCallServiceHandles, extras: Bundle?
     ) {
 
         Log.d(TAG, "onWakeUpBackgroundHandler")
@@ -79,6 +79,8 @@ class ForegroundCallServiceReceiver(
         val activityReady = StorageDelegate.getActivityReady(context)
         val wakeUpHandler = handles.onStartHandler
 
+        val jsonData = extras?.getString(PARAM_JSON_DATA) ?: "{}"
+
         api.onWakeUpBackgroundHandler(
             wakeUpHandler, PCallkeepServiceStatus(
                 config.type?.toPCallkeepIncomingType() ?: PCallkeepIncomingType.PUSH_NOTIFICATION,
@@ -87,7 +89,8 @@ class ForegroundCallServiceReceiver(
                 config.autoStartOnBoot,
                 lockScreen,
                 activityReady,
-                PhoneConnectionService.connectionManager.isExistsActiveConnection()
+                PhoneConnectionService.connectionManager.isExistsActiveConnection(),
+                jsonData
             )
         ) { response ->
             response.onSuccess {
@@ -118,7 +121,7 @@ class ForegroundCallServiceReceiver(
                 config.autoStartOnBoot,
                 lockScreen,
                 activityReady,
-                PhoneConnectionService.connectionManager.isExistsActiveConnection()
+                PhoneConnectionService.connectionManager.isExistsActiveConnection(), "{}",
             )
         ) { response ->
             response.onSuccess {
@@ -133,12 +136,18 @@ class ForegroundCallServiceReceiver(
     companion object {
         private const val TAG = "ForegroundCallServiceReceiver"
         private const val PARAM_CHANGE_LIFECYCLE_EVENT = "PARAM_CHANGE_LIFECYCLE_EVENT"
+        private const val PARAM_JSON_DATA = "PARAM_JSON_DATA"
 
-        fun wakeUp(context: Context) {
-            val callIntent = Intent(ForegroundCallServiceReceiverActions.WAKE_UP.action)
+
+        fun wakeUp(context: Context, data: String?) {
+            val callIntent = Intent(ForegroundCallServiceReceiverActions.WAKE_UP.action).apply {
+                data?.let {
+                    val bundle = Bundle().apply { putString(PARAM_JSON_DATA, it) }
+                    putExtras(bundle)
+                }
+            }
             context.sendBroadcast(callIntent)
         }
-
 
         fun changeLifecycle(context: Context, event: Lifecycle.Event) {
             val intent = Intent(ForegroundCallServiceReceiverActions.CHANGE_LIFECYCLE.action).apply {

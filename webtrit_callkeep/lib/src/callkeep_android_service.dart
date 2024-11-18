@@ -98,7 +98,9 @@ class CallkeepBackgroundService {
   ///
   /// This method invokes the platform-specific implementation to start the service
   /// with the provided data.
-  Future<void> startService() async {
+  Future<void> startService({
+    Map<String, dynamic> data = const {},
+  }) async {
     if (kIsWeb) {
       return Future.value();
     }
@@ -106,7 +108,7 @@ class CallkeepBackgroundService {
     if (!Platform.isAndroid) {
       return Future.value();
     }
-    return platform.startService();
+    return platform.startService(data: data);
   }
 
   /// Stops the running background service.
@@ -190,11 +192,11 @@ class CallkeepBackgroundService {
   ///
   /// Returns a [Future] that resolves after completition with unsafe result and may cause error in production.
   Future<dynamic> incomingCall(
-      String callId,
-      CallkeepHandle handle, {
-        String? displayName,
-        bool hasVideo = false,
-      }) {
+    String callId,
+    CallkeepHandle handle, {
+    String? displayName,
+    bool hasVideo = false,
+  }) {
     if (kIsWeb) {
       return Future.value();
     }

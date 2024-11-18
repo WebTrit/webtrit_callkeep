@@ -240,8 +240,11 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<dynamic> startService() {
-    return _isolateApi.startService();
+  Future<dynamic> startService({
+    Map<String, dynamic> data = const {},
+  }) {
+    final jsonData = jsonEncode(data);
+    return _isolateApi.startService(jsonData: jsonData);
   }
 
   @override
