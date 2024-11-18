@@ -279,8 +279,6 @@ extension PCallkeepServiceStatusConverter on PCallkeepServiceStatus {
     return CallkeepServiceStatus(
       type: type.toCallkeep(),
       lifecycle: lifecycle.toCallkeep(),
-      autoStartOnBoot: autoStartOnBoot,
-      autoRestartOnTerminate: autoRestartOnTerminate,
       lockScreen: lockScreen,
       activityReady: activityReady,
       activeCalls: activeCalls,
@@ -294,8 +292,6 @@ extension CallkeepServiceStatusConverter on CallkeepServiceStatus {
     return PCallkeepServiceStatus(
       type: type.toPigeon(),
       lifecycle: lifecycle.toPigeon(),
-      autoStartOnBoot: autoStartOnBoot,
-      autoRestartOnTerminate: autoRestartOnTerminate,
       lockScreen: lockScreen,
       activityReady: activityReady,
       activeCalls: activeCalls,

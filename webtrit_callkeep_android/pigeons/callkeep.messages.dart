@@ -139,8 +139,6 @@ enum PCallkeepIncomingType {
 class PCallkeepServiceStatus {
   late PCallkeepIncomingType type;
   late PCallkeepLifecycleType lifecycle;
-  late bool autoRestartOnTerminate;
-  late bool autoStartOnBoot;
   late bool lockScreen;
   late bool activityReady;
   late bool activeCalls;

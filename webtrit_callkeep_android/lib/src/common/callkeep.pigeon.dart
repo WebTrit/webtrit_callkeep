@@ -325,8 +325,6 @@ class PCallkeepServiceStatus {
   PCallkeepServiceStatus({
     required this.type,
     required this.lifecycle,
-    required this.autoRestartOnTerminate,
-    required this.autoStartOnBoot,
     required this.lockScreen,
     required this.activityReady,
     required this.activeCalls,
@@ -336,10 +334,6 @@ class PCallkeepServiceStatus {
   PCallkeepIncomingType type;
 
   PCallkeepLifecycleType lifecycle;
-
-  bool autoRestartOnTerminate;
-
-  bool autoStartOnBoot;
 
   bool lockScreen;
 
@@ -353,8 +347,6 @@ class PCallkeepServiceStatus {
     return <Object?>[
       type,
       lifecycle,
-      autoRestartOnTerminate,
-      autoStartOnBoot,
       lockScreen,
       activityReady,
       activeCalls,
@@ -367,12 +359,10 @@ class PCallkeepServiceStatus {
     return PCallkeepServiceStatus(
       type: result[0]! as PCallkeepIncomingType,
       lifecycle: result[1]! as PCallkeepLifecycleType,
-      autoRestartOnTerminate: result[2]! as bool,
-      autoStartOnBoot: result[3]! as bool,
-      lockScreen: result[4]! as bool,
-      activityReady: result[5]! as bool,
-      activeCalls: result[6]! as bool,
-      jsonData: result[7]! as String,
+      lockScreen: result[2]! as bool,
+      activityReady: result[3]! as bool,
+      activeCalls: result[4]! as bool,
+      jsonData: result[5]! as String,
     );
   }
 }

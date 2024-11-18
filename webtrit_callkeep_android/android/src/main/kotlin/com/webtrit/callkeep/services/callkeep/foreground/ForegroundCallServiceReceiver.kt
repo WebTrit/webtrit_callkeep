@@ -85,8 +85,6 @@ class ForegroundCallServiceReceiver(
             wakeUpHandler, PCallkeepServiceStatus(
                 config.type?.toPCallkeepIncomingType() ?: PCallkeepIncomingType.PUSH_NOTIFICATION,
                 pLifecycle,
-                config.autoRestartOnTerminate,
-                config.autoStartOnBoot,
                 lockScreen,
                 activityReady,
                 PhoneConnectionService.connectionManager.isExistsActiveConnection(),
@@ -117,8 +115,6 @@ class ForegroundCallServiceReceiver(
             onChangedLifecycleHandler, PCallkeepServiceStatus(
                 config.type?.toPCallkeepIncomingType() ?: PCallkeepIncomingType.PUSH_NOTIFICATION,
                 lifecycle,
-                config.autoRestartOnTerminate,
-                config.autoStartOnBoot,
                 lockScreen,
                 activityReady,
                 PhoneConnectionService.connectionManager.isExistsActiveConnection(), "{}",
