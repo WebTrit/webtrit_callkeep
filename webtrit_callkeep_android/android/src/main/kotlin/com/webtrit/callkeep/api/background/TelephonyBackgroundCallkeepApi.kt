@@ -10,7 +10,7 @@ import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 import com.webtrit.callkeep.models.CallMetadata
 
 import TelephonyBackgroundCallkeepReceiver
-import com.webtrit.callkeep.FlutterLog
+import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 
 /**
@@ -37,7 +37,7 @@ class TelephonyBackgroundCallkeepApi(
      * Unregisters a broadcast receiver to listen for events.
      */
     override fun unregister() {
-        FlutterLog.d(TAG, "TelephonyBackgroundCallkeepApi:unregister")
+        Log.d(TAG, "TelephonyBackgroundCallkeepApi:unregister")
         flutterDelegate.unregisterReceiver()
     }
 
@@ -53,7 +53,7 @@ class TelephonyBackgroundCallkeepApi(
     }
 
     override fun endAllCalls() {
-        FlutterLog.d(TAG, "endAllCalls")
+        Log.d(TAG, "endAllCalls")
 
         //TODO: Rename this notifyAboutDetachActivity to  endAllCalls
         PhoneConnectionService.notifyAboutDetachActivity(context)
@@ -65,7 +65,7 @@ class TelephonyBackgroundCallkeepApi(
      * @param metadata The metadata of the call to be answered.
      */
     override fun answer(metadata: CallMetadata) {
-        FlutterLog.d(TAG, "TelephonyBackgroundCallkeepApi:answer")
+        Log.d(TAG, "TelephonyBackgroundCallkeepApi:answer")
         PhoneConnectionService.startAnswerCall(context, metadata)
     }
 
@@ -76,7 +76,7 @@ class TelephonyBackgroundCallkeepApi(
      * @param callback A callback function to be invoked after hanging up the call.
      */
     override fun hungUp(metadata: CallMetadata, callback: (Result<Unit>) -> Unit) {
-        FlutterLog.i(TAG, " hung up call: $metadata")
+        Log.i(TAG, " hung up call: $metadata")
 
         PhoneConnectionService.startHungUpCall(context, metadata)
         callback(Result.success(Unit))
@@ -112,7 +112,7 @@ class TelephonyBackgroundCallkeepApi(
          * @param metadata The metadata of the accepted call.
          */
         fun notifyHungUp(context: Context, metadata: CallMetadata) {
-            FlutterLog.i(TAG, "notify hung up call: $metadata")
+            Log.i(TAG, "notify hung up call: $metadata")
             notify(context, ReportAction.HungUp.action, metadata.toBundle())
         }
 

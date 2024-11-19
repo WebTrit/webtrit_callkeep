@@ -1,6 +1,5 @@
 package com.webtrit.callkeep
 
-import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
@@ -43,7 +42,6 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
-        Log.d(TAG, "onAttachedToActivity")
         this.activityPluginBinding = binding
 
         lifeCycle = (binding.lifecycle as HiddenLifecycleReference).lifecycle

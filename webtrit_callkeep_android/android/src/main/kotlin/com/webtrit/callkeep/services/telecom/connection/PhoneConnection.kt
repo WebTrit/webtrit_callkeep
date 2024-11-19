@@ -9,9 +9,8 @@ import android.telecom.Connection
 import android.telecom.DisconnectCause
 import android.telecom.TelecomManager
 import android.telecom.VideoProfile
-import android.util.Log
 
-import com.webtrit.callkeep.FlutterLog
+import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.api.background.TelephonyBackgroundCallkeepApi
 import com.webtrit.callkeep.api.foreground.TelephonyForegroundCallkeepApi
 import com.webtrit.callkeep.common.ActivityHolder
@@ -107,14 +106,14 @@ class PhoneConnection internal constructor(
     override fun onAnswer() {
         super.onAnswer()
         answer = true
-        FlutterLog.i(TAG, "onAnswer: $metadata")
+        Log.i(TAG, "onAnswer: $metadata")
 
         try {
             notificationManager.cancelIncomingNotification()
             notificationManager.cancelMissedCall(metadata)
             this@PhoneConnection.audioManager.stopRingtone()
         } catch (e: Exception) {
-            FlutterLog.e(TAG, "onAnswer: $e")
+            Log.e(TAG, "onAnswer: $e")
         }
 
         TelephonyForegroundCallkeepApi.notifyAnswer(context, metadata)
@@ -144,7 +143,7 @@ class PhoneConnection internal constructor(
     override fun onDisconnect() {
         super.onDisconnect()
 
-        FlutterLog.i(TAG, "onDisconnect: ${metadata.callId}")
+        Log.i(TAG, "onDisconnect: ${metadata.callId}")
 
         PhoneConnectionService.connectionManager.removeConnection(metadata.callId)
         notificationManager.cancelActiveNotification()

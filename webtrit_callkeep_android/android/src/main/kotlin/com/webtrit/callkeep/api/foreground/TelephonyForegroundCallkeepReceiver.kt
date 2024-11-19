@@ -6,8 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
-
-import com.webtrit.callkeep.FlutterLog
+import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.PCallRequestError
 import com.webtrit.callkeep.PCallRequestErrorEnum
 import com.webtrit.callkeep.PDelegateFlutterApi
@@ -41,13 +40,13 @@ class TelephonyForegroundCallkeepReceiver(
      */
     fun registerReceiver(context: Context) {
         if (!isReceiverRegistered) {
-            FlutterLog.i(TAG, "register receiver")
+            Log.i(TAG, "register receiver")
 
             val intentFilter = createIntentFilter()
             context.registerCustomReceiver(this, intentFilter)
             isReceiverRegistered = true
         } else {
-            FlutterLog.i(TAG, "skipped receiver already registered")
+            Log.i(TAG, "skipped receiver already registered")
         }
 
     }
@@ -65,13 +64,13 @@ class TelephonyForegroundCallkeepReceiver(
         intentFilter.addAction(FailureAction.IncomingFailure.action)
         intentFilter.addAction(FailureAction.OutgoingFailure.action)
 
-        FlutterLog.i(TAG, "Create registration of actions: ${intentFilter.actionsIterator().asSequence().toList()}")
+        Log.i(TAG, "Create registration of actions: ${intentFilter.actionsIterator().asSequence().toList()}")
 
         return intentFilter
     }
 
     override fun onReceive(context: Context?, intent: Intent?) {
-        FlutterLog.i(TAG, "onReceive $intent.")
+        Log.i(TAG, "onReceive $intent.")
 
         when (intent?.action) {
             ReportAction.DidPushIncomingCall.action -> handleDidPushIncomingCall(intent.extras)

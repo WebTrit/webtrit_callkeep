@@ -6,7 +6,7 @@ import android.media.AudioManager
 import android.media.Ringtone
 import android.media.RingtoneManager
 
-import com.webtrit.callkeep.FlutterLog
+import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.AssetHolder
 import com.webtrit.callkeep.common.helpers.setLoopingCompat
 
@@ -65,14 +65,14 @@ class AudioManager(val context: Context) {
             val path = AssetHolder.flutterAssetManager.getAsset(asset)
 
             if (path != null) {
-                FlutterLog.i("AudioService", "Used asset: $path")
+                Log.i("AudioService", "Used asset: $path")
                 return RingtoneManager.getRingtone(context, path)
             } else {
-                FlutterLog.i("AudioService", "Used system ringtone")
+                Log.i("AudioService", "Used system ringtone")
                 getDefaultRingtone()
             }
         } catch (e: Exception) {
-            FlutterLog.e("AudioService", "$e")
+            Log.e("AudioService", "$e")
             getDefaultRingtone()
         }
     }

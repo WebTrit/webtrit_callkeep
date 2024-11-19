@@ -4,7 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.ContextCompat
-import android.util.Log
+import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.StorageDelegate
 
 class ForegroundCallBootReceiver : BroadcastReceiver() {
@@ -30,11 +30,12 @@ class ForegroundCallBootReceiver : BroadcastReceiver() {
                 }
             }
         } else {
-            Log.w("ForegroundBootReceiver", "Received unexpected action: $action")
+            Log.w(TAG, "Received unexpected action: $action")
         }
     }
 
     companion object {
         private const val ACTION_QUICKBOOT_POWERON = "android.intent.action.QUICKBOOT_POWERON"
+        private const val TAG = "ForegroundCallBootReceiver"
     }
 }

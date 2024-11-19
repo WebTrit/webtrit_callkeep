@@ -6,7 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.telecom.*
-import com.webtrit.callkeep.FlutterLog
+import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.api.foreground.TelephonyForegroundCallkeepApi
 import com.webtrit.callkeep.common.helpers.Telecom
 import com.webtrit.callkeep.common.helpers.TelephonyHelper
@@ -40,7 +40,7 @@ class PhoneConnectionService : ConnectionService() {
         try {
             phoneConnectionServiceDispatcher.dispatch(action, metadata)
         } catch (e: Exception) {
-            FlutterLog.e(TAG, "Exception $e with service action: ${intent.action},")
+            Log.e(TAG, "Exception $e with service action: ${intent.action},")
         }
 
         return START_NOT_STICKY
@@ -87,7 +87,7 @@ class PhoneConnectionService : ConnectionService() {
     override fun onCreateOutgoingConnectionFailed(
         connectionManagerPhoneAccount: PhoneAccountHandle?, request: ConnectionRequest?
     ) {
-        FlutterLog.e(
+        Log.e(
             TAG, "onCreateOutgoingConnectionFailed: $connectionManagerPhoneAccount  $request"
         )
 
@@ -146,7 +146,7 @@ class PhoneConnectionService : ConnectionService() {
     override fun onCreateIncomingConnectionFailed(
         connectionManagerPhoneAccount: PhoneAccountHandle?, request: ConnectionRequest?
     ) {
-        FlutterLog.e(
+        Log.e(
             TAG, "onCreateIncomingConnectionFailed:: $connectionManagerPhoneAccount  $connectionManager "
         )
         TelephonyForegroundCallkeepApi.notifyIncomingFailure(
@@ -156,10 +156,10 @@ class PhoneConnectionService : ConnectionService() {
     }
 
     override fun onDestroy() {
-        FlutterLog.i(TAG, "onDestroy")
+        Log.i(TAG, "onDestroy")
         sensorManager.stopListening()
         connectionManager.getConnections().forEach {
-            FlutterLog.i(TAG, "onDetachActivity, disconnect outgoing call, callId: ${it.id}")
+            Log.i(TAG, "onDetachActivity, disconnect outgoing call, callId: ${it.id}")
             it.onDisconnect()
         }
         super.onDestroy()
@@ -235,7 +235,7 @@ class PhoneConnectionService : ConnectionService() {
          */
         @SuppressLint("MissingPermission")
         private fun outgoingCall(context: Context, metadata: CallMetadata) {
-            FlutterLog.i(TAG, "onOutgoingCall, callId: ${metadata.callId}")
+            Log.i(TAG, "onOutgoingCall, callId: ${metadata.callId}")
 
             val uri: Uri = Uri.fromParts(PhoneAccount.SCHEME_TEL, metadata.number, null)
             val account = Telecom.getPhoneAccountHandle(context)
@@ -245,7 +245,7 @@ class PhoneConnectionService : ConnectionService() {
                 putParcelable(TelecomManager.EXTRA_OUTGOING_CALL_EXTRAS, metadata.toBundle())
             }
             if (TelephonyHelper(context).isEmergencyNumber(metadata.number)) {
-                FlutterLog.i(TAG, "onOutgoingCall, trying to call on emergency number: ${metadata.number}")
+                Log.i(TAG, "onOutgoingCall, trying to call on emergency number: ${metadata.number}")
                 TelephonyForegroundCallkeepApi.notifyOutgoingFailure(
                     context, FailureMetadata(
                         "Failed to establish outgoing connection: Emergency number",
@@ -256,7 +256,7 @@ class PhoneConnectionService : ConnectionService() {
                 // If there is already an active call not on hold, we terminate it and start a new one,
                 // otherwise, we would encounter an exception when placing the outgoing call.
                 connectionManager.getActiveConnection()?.let {
-                    FlutterLog.i(TAG, "onOutgoingCall, hung up previous call: $it")
+                    Log.i(TAG, "onOutgoingCall, hung up previous call: $it")
                     it.hungUp()
                 }
 
@@ -272,7 +272,7 @@ class PhoneConnectionService : ConnectionService() {
          * @param metadata The [CallMetadata] for the incoming call.
          */
         private fun incomingCall(context: Context, metadata: CallMetadata) {
-            FlutterLog.i(TAG, "onIncomingCall, callId: ${metadata.callId}")
+            Log.i(TAG, "onIncomingCall, callId: ${metadata.callId}")
 
             val telecomManager = Telecom.getTelecomManager(context)
             val account = Telecom.getPhoneAccountHandle(context)

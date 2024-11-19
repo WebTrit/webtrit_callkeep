@@ -6,8 +6,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 
-import com.webtrit.callkeep.FlutterLog
-
 object Broadcast {
     private const val TAG = "Broadcast sender"
 
@@ -17,7 +15,7 @@ object Broadcast {
         attribute: Bundle? = null,
         throwable: Bundle? = null
     ) {
-        FlutterLog.i(TAG, "notify $action $attribute $throwable")
+        Log.i(TAG, "notify $action $attribute $throwable")
 
         val handler = Handler(Looper.getMainLooper())
         handler.post {

@@ -2,8 +2,7 @@ package com.webtrit.callkeep.api.foreground
 
 import android.app.Activity
 import android.content.Context
-import com.webtrit.callkeep.FlutterLog
-
+import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.PCallRequestError
 import com.webtrit.callkeep.PCallRequestErrorEnum
 import com.webtrit.callkeep.PDelegateFlutterApi
@@ -32,7 +31,7 @@ class TelephonyForegroundCallkeepApi(
     private var isSetup = false
 
     override fun setUp(options: POptions, callback: (Result<Unit>) -> Unit) {
-        FlutterLog.i(TAG, "setUp: ${options.android}")
+        Log.i(TAG, "setUp: ${options.android}")
 
         if (!isSetup) {
             flutterDelegate.registerReceiver(activity)
@@ -50,7 +49,7 @@ class TelephonyForegroundCallkeepApi(
 
             isSetup = true
         } else {
-            FlutterLog.e(TAG, "Plugin already initialized")
+            Log.e(TAG, "Plugin already initialized")
         }
         callback.invoke(Result.success(Unit))
     }
@@ -58,7 +57,7 @@ class TelephonyForegroundCallkeepApi(
     override fun isSetUp(): Boolean = isSetup
 
     override fun startCall(metadata: CallMetadata, callback: (Result<PCallRequestError?>) -> Unit) {
-        FlutterLog.i(TAG, "startCall ${metadata.callId}.")
+        Log.i(TAG, "startCall ${metadata.callId}.")
         PhoneConnectionService.startOutgoingCall(activity, metadata)
         flutterDelegate.setOutgoingCallback(callback)
     }
@@ -66,7 +65,7 @@ class TelephonyForegroundCallkeepApi(
     override fun reportNewIncomingCall(
         metadata: CallMetadata, callback: (Result<PIncomingCallError?>) -> Unit
     ) {
-        FlutterLog.i(TAG, "reportNewIncomingCall ${metadata.callId}.")
+        Log.i(TAG, "reportNewIncomingCall ${metadata.callId}.")
         // User press hangup or decline call
         if (PhoneConnectionService.connectionManager.isConnectionTerminated(metadata.callId)) {
             callback.invoke(Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED)))
@@ -93,13 +92,13 @@ class TelephonyForegroundCallkeepApi(
     override fun reportConnectedOutgoingCall(
         metadata: CallMetadata, callback: (Result<Unit>) -> Unit
     ) {
-        FlutterLog.i(TAG, "reportConnectedOutgoingCall ${metadata.callId}.")
+        Log.i(TAG, "reportConnectedOutgoingCall ${metadata.callId}.")
         PhoneConnectionService.startEstablishCall(activity, metadata)
         callback.invoke(Result.success(Unit))
     }
 
     override fun reportUpdateCall(metadata: CallMetadata, callback: (Result<Unit>) -> Unit) {
-        FlutterLog.i(TAG, "reportUpdateCall ${metadata.callId}.")
+        Log.i(TAG, "reportUpdateCall ${metadata.callId}.")
         PhoneConnectionService.startUpdateCall(activity, metadata)
         callback.invoke(Result.success(Unit))
     }
@@ -107,7 +106,7 @@ class TelephonyForegroundCallkeepApi(
     override fun reportEndCall(
         metadata: CallMetadata, reason: PEndCallReason, callback: (Result<Unit>) -> Unit
     ) {
-        FlutterLog.i(TAG, "reportEndCall ${metadata.callId}.")
+        Log.i(TAG, "reportEndCall ${metadata.callId}.")
         PhoneConnectionService.startDeclineCall(activity, metadata)
         callback.invoke(Result.success(Unit))
     }
@@ -116,11 +115,11 @@ class TelephonyForegroundCallkeepApi(
         metadata: CallMetadata, callback: (Result<PCallRequestError?>) -> Unit
     ) {
         if (PhoneConnectionService.connectionManager.isConnectionAlreadyExists(metadata.callId)) {
-            FlutterLog.i(TAG, "answerCall ${metadata.callId}.")
+            Log.i(TAG, "answerCall ${metadata.callId}.")
             PhoneConnectionService.startAnswerCall(activity, metadata)
             callback.invoke(Result.success(null))
         } else {
-            FlutterLog.e(
+            Log.e(
                 TAG, "Error response as there is no connection with such ${metadata.callId} in the list."
             )
             callback.invoke(Result.success(PCallRequestError(PCallRequestErrorEnum.INTERNAL)))
@@ -128,25 +127,25 @@ class TelephonyForegroundCallkeepApi(
     }
 
     override fun endCall(metadata: CallMetadata, callback: (Result<PCallRequestError?>) -> Unit) {
-        FlutterLog.i(TAG, "endCall ${metadata.callId}.")
+        Log.i(TAG, "endCall ${metadata.callId}.")
         PhoneConnectionService.startHungUpCall(activity, metadata)
         callback.invoke(Result.success(null))
     }
 
     override fun sendDTMF(metadata: CallMetadata, callback: (Result<PCallRequestError?>) -> Unit) {
-        FlutterLog.i(TAG, "sendDTMF ${metadata.callId}.")
+        Log.i(TAG, "sendDTMF ${metadata.callId}.")
         PhoneConnectionService.startSendDtmfCall(activity, metadata)
         callback.invoke(Result.success(null))
     }
 
     override fun setMuted(metadata: CallMetadata, callback: (Result<PCallRequestError?>) -> Unit) {
-        FlutterLog.i(TAG, "setMuted ${metadata.callId}.")
+        Log.i(TAG, "setMuted ${metadata.callId}.")
         PhoneConnectionService.startMutingCall(activity, metadata)
         callback.invoke(Result.success(null))
     }
 
     override fun setHeld(metadata: CallMetadata, callback: (Result<PCallRequestError?>) -> Unit) {
-        FlutterLog.i(TAG, "setHeld ${metadata.callId}.")
+        Log.i(TAG, "setHeld ${metadata.callId}.")
         PhoneConnectionService.startHoldingCall(activity, metadata)
         callback.invoke(Result.success(null))
     }
@@ -154,7 +153,7 @@ class TelephonyForegroundCallkeepApi(
     override fun setSpeaker(
         metadata: CallMetadata, callback: (Result<PCallRequestError?>) -> Unit
     ) {
-        FlutterLog.i(TAG, "setSpeaker ${metadata.callId}.")
+        Log.i(TAG, "setSpeaker ${metadata.callId}.")
         PhoneConnectionService.startSpeaker(activity, metadata)
         callback.invoke(Result.success(null))
     }
@@ -166,7 +165,7 @@ class TelephonyForegroundCallkeepApi(
     }
 
     override fun detachActivity() {
-        FlutterLog.i(TAG, "detachActivity")
+        Log.i(TAG, "detachActivity")
         incomingCallReceiver.unregisterReceiver()
 
         try {
@@ -175,7 +174,7 @@ class TelephonyForegroundCallkeepApi(
             PhoneConnectionService.notifyAboutDetachActivity(activity)
 
         } catch (throwable: Throwable) {
-            FlutterLog.e(TAG, throwable.toString())
+            Log.e(TAG, throwable.toString())
         }
     }
 

@@ -3,9 +3,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
-import android.util.Log
 
-import com.webtrit.callkeep.FlutterLog
+import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.api.background.ReportAction
 import com.webtrit.callkeep.common.helpers.registerCustomReceiver
@@ -53,7 +52,7 @@ class TelephonyBackgroundCallkeepReceiver(
     }
 
     override fun onReceive(context: Context?, intent: Intent?) {
-        FlutterLog.i(TAG, "onReceive action - ${intent?.action} ")
+        Log.i(TAG, "onReceive action - ${intent?.action} ")
 
         when (intent?.action) {
             ReportAction.AcceptedCall.action -> handleAcceptedCall(intent.extras)
@@ -72,7 +71,7 @@ class TelephonyBackgroundCallkeepReceiver(
     }
 
     private fun handleHungUpCall(extras: Bundle?) {
-        FlutterLog.i(TAG, "handleHungUpCall: $extras ")
+        Log.i(TAG, "handleHungUpCall: $extras ")
 
         extras?.let {
             val metadata = CallMetadata.fromBundle(it)

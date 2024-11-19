@@ -1,13 +1,15 @@
-package com.webtrit.callkeep
+package com.webtrit.callkeep.common
 
 import android.util.Log
+import com.webtrit.callkeep.PDelegateLogsFlutterApi
+import com.webtrit.callkeep.PLogTypeEnum
 
-object FlutterLog {
+object Log {
     private const val LOG_TAG = "FlutterLog"
 
-    private var isolateDelegates = mutableListOf<PDelegateLogsFlutterApi>()
+    private var isolateDelegates = mutableListOf<com.webtrit.callkeep.PDelegateLogsFlutterApi>()
 
-    fun add(delegate: PDelegateLogsFlutterApi) {
+    fun add(delegate: com.webtrit.callkeep.PDelegateLogsFlutterApi) {
         Log.d(LOG_TAG, "Add flutter log delegate")
         isolateDelegates.add(delegate)
     }
@@ -30,6 +32,11 @@ object FlutterLog {
     fun i(tag: String, message: String) {
         Log.i(tag, message)
         emitLog(PLogTypeEnum.INFO, tag, message)
+    }
+
+    fun w(tag: String, message: String) {
+        Log.i(tag, message)
+        emitLog(PLogTypeEnum.WARN, tag, message)
     }
 
     private fun emitLog(type: PLogTypeEnum, tag: String, message: String) {
