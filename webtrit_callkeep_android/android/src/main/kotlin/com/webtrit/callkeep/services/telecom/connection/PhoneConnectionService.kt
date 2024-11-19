@@ -29,7 +29,8 @@ class PhoneConnectionService : ConnectionService() {
     override fun onCreate() {
         super.onCreate()
         sensorManager = ProximitySensorManager(applicationContext, PhoneConnectionConsts())
-        phoneConnectionServiceDispatcher = PhoneConnectionServiceDispatcher(applicationContext, connectionManager, sensorManager)
+        phoneConnectionServiceDispatcher =
+            PhoneConnectionServiceDispatcher(applicationContext, connectionManager, sensorManager)
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
@@ -166,7 +167,7 @@ class PhoneConnectionService : ConnectionService() {
 
     companion object {
         private const val TAG = "PhoneConnectionService"
-        private const val TIMEOUT_DURATION_MS = 60_000L
+        private const val TIMEOUT_DURATION_MS = 35_000L
 
         val DEFAULT_INCOMING_STATES = listOf(Connection.STATE_NEW, Connection.STATE_RINGING)
         val DEFAULT_OUTGOING_STATES = listOf(Connection.STATE_DIALING)
