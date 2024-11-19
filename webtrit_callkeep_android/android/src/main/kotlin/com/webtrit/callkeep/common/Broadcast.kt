@@ -6,8 +6,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 
-import com.webtrit.callkeep.FlutterLog
-
 object Broadcast {
     private const val TAG = "Broadcast sender"
 

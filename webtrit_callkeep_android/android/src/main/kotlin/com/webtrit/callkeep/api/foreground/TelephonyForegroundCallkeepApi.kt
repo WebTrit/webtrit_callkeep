@@ -2,8 +2,7 @@ package com.webtrit.callkeep.api.foreground
 
 import android.app.Activity
 import android.content.Context
-import com.webtrit.callkeep.FlutterLog
-
+import com.webtrit.callkeep.common.FlutterLog
 import com.webtrit.callkeep.PCallRequestError
 import com.webtrit.callkeep.PCallRequestErrorEnum
 import com.webtrit.callkeep.PDelegateFlutterApi

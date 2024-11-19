@@ -1,13 +1,15 @@
-package com.webtrit.callkeep
+package com.webtrit.callkeep.common
 
 import android.util.Log
+import com.webtrit.callkeep.PDelegateLogsFlutterApi
+import com.webtrit.callkeep.PLogTypeEnum
 
 object FlutterLog {
     private const val LOG_TAG = "FlutterLog"
 
-    private var isolateDelegates = mutableListOf<PDelegateLogsFlutterApi>()
+    private var isolateDelegates = mutableListOf<com.webtrit.callkeep.PDelegateLogsFlutterApi>()
 
-    fun add(delegate: PDelegateLogsFlutterApi) {
+    fun add(delegate: com.webtrit.callkeep.PDelegateLogsFlutterApi) {
         Log.d(LOG_TAG, "Add flutter log delegate")
         isolateDelegates.add(delegate)
     }

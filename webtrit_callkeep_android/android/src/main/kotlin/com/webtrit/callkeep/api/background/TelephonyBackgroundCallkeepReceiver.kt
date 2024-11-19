@@ -3,9 +3,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
-import android.util.Log
+import io.flutter.Log
 
-import com.webtrit.callkeep.FlutterLog
+import com.webtrit.callkeep.common.FlutterLog
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.api.background.ReportAction
 import com.webtrit.callkeep.common.helpers.registerCustomReceiver

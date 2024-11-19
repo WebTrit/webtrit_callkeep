@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.util.Log
-import com.webtrit.callkeep.FlutterLog
+import com.webtrit.callkeep.common.FlutterLog
 import com.webtrit.callkeep.common.helpers.registerCustomReceiver
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.NotificationAction

@@ -11,7 +11,7 @@ import android.telecom.TelecomManager
 import android.telecom.VideoProfile
 import android.util.Log
 
-import com.webtrit.callkeep.FlutterLog
+import com.webtrit.callkeep.common.FlutterLog
 import com.webtrit.callkeep.api.background.TelephonyBackgroundCallkeepApi
 import com.webtrit.callkeep.api.foreground.TelephonyForegroundCallkeepApi
 import com.webtrit.callkeep.common.ActivityHolder
