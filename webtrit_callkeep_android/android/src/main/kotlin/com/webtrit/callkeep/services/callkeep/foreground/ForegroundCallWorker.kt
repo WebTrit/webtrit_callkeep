@@ -19,12 +19,13 @@ class ForegroundCallWorker(context: Context, workerParams: WorkerParameters) : W
             )
             Result.success()
         } catch (e: Exception) {
-            Log.e("ForegroundCallWorker", "Failed to start service", e)
+            Log.e(TAG, "Failed to start service: $e")
             Result.retry()
         }
     }
 
     companion object {
+        private const val TAG = "ForegroundCallWorker"
         private const val ACTION_RESTART_FOREGROUND_SERVICE =
             "id.flutter.webtrit.foreground_call_service.ACTION_RESTART_FOREGROUND_SERVICE"
 
