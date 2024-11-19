@@ -2,9 +2,8 @@ package com.webtrit.callkeep
 
 import android.app.Activity
 import android.content.Context
-import android.util.Log
 import androidx.lifecycle.Lifecycle
-import com.webtrit.callkeep.common.FlutterLog
+import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.services.callkeep.foreground.ForegroundCallServiceReceiver
@@ -35,7 +34,7 @@ class WebtritCallkeepPluginState(
     var activity: Activity? = null
 
     fun initIsolateApi() {
-        FlutterLog.i(TAG, "initIsolateApi $this")
+        Log.i(TAG, "initIsolateApi $this")
 
         // Register isolate api for all plugin instances  possibility trigger call service isolate
         pigeonIsolateApi = PigeonIsolateApi(context);
@@ -50,15 +49,15 @@ class WebtritCallkeepPluginState(
 
     fun attachLogs() {
         logsHostApi = PDelegateLogsFlutterApi(messenger)
-        FlutterLog.add(logsHostApi!!)
+        Log.add(logsHostApi!!)
     }
 
     fun deAttachLogs() {
-        logsHostApi?.let { FlutterLog.remove(it) }
+        logsHostApi?.let { Log.remove(it) }
     }
 
     fun initMainIsolateApi(activity: Activity) {
-        FlutterLog.i(TAG, "initActivity $this")
+        Log.i(TAG, "initActivity $this")
         Log.d(TAG, "onStateChanged attached activity")
         this.activity = activity;
         StorageDelegate.setActivityReady(activity, false)
@@ -74,7 +73,7 @@ class WebtritCallkeepPluginState(
     }
 
     fun initBackgroundIsolateApi(context: Context) {
-        FlutterLog.i(TAG, "initBackgroundIsolateApi $this")
+        Log.i(TAG, "initBackgroundIsolateApi $this")
 
         val delegate = PDelegateBackgroundServiceFlutterApi(messenger)
         pigeonServiceApi = PigeonServiceApi(context, delegate)
@@ -85,7 +84,7 @@ class WebtritCallkeepPluginState(
     }
 
     fun destroyService() {
-        FlutterLog.i(TAG, "destroyService $this")
+        Log.i(TAG, "destroyService $this")
 
         pigeonServiceApi?.unregister()
         PHostBackgroundServiceApi.setUp(messenger, null)
@@ -94,7 +93,7 @@ class WebtritCallkeepPluginState(
     }
 
     fun detachActivity() {
-        FlutterLog.i(TAG, "detachActivity $this")
+        Log.i(TAG, "detachActivity $this")
         StorageDelegate.setActivityReady(context, false)
         ActivityHolder.setActivity(null)
         pigeonActivityApi?.detachActivity()
@@ -103,7 +102,7 @@ class WebtritCallkeepPluginState(
     }
 
     fun onDetach() {
-        FlutterLog.i(TAG, "onDetach $this")
+        Log.i(TAG, "onDetach $this")
     }
 
     fun onStateChanged(event: Lifecycle.Event) {

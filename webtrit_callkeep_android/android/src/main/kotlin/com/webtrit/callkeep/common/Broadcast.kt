@@ -15,7 +15,7 @@ object Broadcast {
         attribute: Bundle? = null,
         throwable: Bundle? = null
     ) {
-        FlutterLog.i(TAG, "notify $action $attribute $throwable")
+        Log.i(TAG, "notify $action $attribute $throwable")
 
         val handler = Handler(Looper.getMainLooper())
         handler.post {

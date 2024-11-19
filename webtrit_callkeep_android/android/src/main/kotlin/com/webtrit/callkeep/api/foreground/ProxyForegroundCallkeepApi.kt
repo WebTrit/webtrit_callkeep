@@ -1,7 +1,7 @@
 package com.webtrit.callkeep.api.foreground
 
 import android.app.Activity
-import com.webtrit.callkeep.common.FlutterLog
+import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.PCallRequestError
 import com.webtrit.callkeep.PDelegateFlutterApi
 import com.webtrit.callkeep.PEndCallReason
@@ -30,7 +30,7 @@ class ProxyForegroundCallkeepApi(
             StorageDelegate.initRingtonePath(activity, options.android.ringtoneSound)
             isSetup = true
         } else {
-            FlutterLog.e(LOG_TAG, "Plugin already initialized")
+            Log.e(LOG_TAG, "Plugin already initialized")
         }
         callback.invoke(Result.success(Unit))
     }

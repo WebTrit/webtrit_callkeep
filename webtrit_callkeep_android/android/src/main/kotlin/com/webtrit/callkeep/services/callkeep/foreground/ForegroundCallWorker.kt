@@ -8,7 +8,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
-import io.flutter.Log
+import com.webtrit.callkeep.common.Log
 import java.util.concurrent.TimeUnit
 
 class ForegroundCallWorker(context: Context, workerParams: WorkerParameters) : Worker(context, workerParams) {

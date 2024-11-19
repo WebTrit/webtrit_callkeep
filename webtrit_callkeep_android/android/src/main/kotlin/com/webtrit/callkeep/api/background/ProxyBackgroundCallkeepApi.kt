@@ -1,9 +1,8 @@
 package com.webtrit.callkeep.api.background
 
 import android.content.Context
-import android.util.Log
 
-import com.webtrit.callkeep.common.FlutterLog
+import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.helpers.Platform
@@ -53,7 +52,7 @@ class ProxyBackgroundCallkeepApi(
     }
 
     override fun endAllCalls() {
-        FlutterLog.d(TAG, "endAllCalls")
+        Log.d(TAG, "endAllCalls")
     }
 
     /**
