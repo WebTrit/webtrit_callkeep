@@ -12,9 +12,11 @@ import 'package:pigeon/pigeon.dart';
     ),
   ),
 )
+
 class PIOSOptions {
   late String localizedName;
   late String? ringtoneSound;
+  late String? ringbackSound;
   late String? iconTemplateImageAssetName;
   late int maximumCallGroups;
   late int maximumCallsPerCallGroup;

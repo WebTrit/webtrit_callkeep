@@ -18,6 +18,7 @@ class CallkeepIOSOptions extends Equatable {
     required this.maximumCallsPerCallGroup,
     required this.supportedHandleTypes,
     this.ringtoneSound,
+    this.ringbackSound,
     this.iconTemplateImageAssetName,
     this.supportsVideo = false,
     this.includesCallsInRecents = true,
@@ -26,6 +27,7 @@ class CallkeepIOSOptions extends Equatable {
 
   final String localizedName;
   final String? ringtoneSound;
+  final String? ringbackSound;
   final String? iconTemplateImageAssetName;
   final int maximumCallGroups;
   final int maximumCallsPerCallGroup;
@@ -38,6 +40,7 @@ class CallkeepIOSOptions extends Equatable {
   List<Object?> get props => [
         localizedName,
         ringtoneSound,
+        ringbackSound,
         iconTemplateImageAssetName,
         maximumCallGroups,
         maximumCallsPerCallGroup,

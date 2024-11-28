@@ -119,6 +119,7 @@ extension CallkeepIOSOptionsConverter on CallkeepIOSOptions {
     return PIOSOptions(
       localizedName: localizedName,
       ringtoneSound: ringtoneSound,
+      ringbackSound: ringbackSound,
       iconTemplateImageAssetName: iconTemplateImageAssetName,
       maximumCallGroups: maximumCallGroups,
       maximumCallsPerCallGroup: maximumCallsPerCallGroup,

@@ -70,6 +70,7 @@ class PIOSOptions {
   PIOSOptions({
     required this.localizedName,
     this.ringtoneSound,
+    this.ringbackSound,
     this.iconTemplateImageAssetName,
     required this.maximumCallGroups,
     required this.maximumCallsPerCallGroup,
@@ -84,6 +85,8 @@ class PIOSOptions {
   String localizedName;
 
   String? ringtoneSound;
+
+  String? ringbackSound;
 
   String? iconTemplateImageAssetName;
 
@@ -107,6 +110,7 @@ class PIOSOptions {
     return <Object?>[
       localizedName,
       ringtoneSound,
+      ringbackSound,
       iconTemplateImageAssetName,
       maximumCallGroups,
       maximumCallsPerCallGroup,
@@ -124,46 +128,52 @@ class PIOSOptions {
     return PIOSOptions(
       localizedName: result[0]! as String,
       ringtoneSound: result[1] as String?,
-      iconTemplateImageAssetName: result[2] as String?,
-      maximumCallGroups: result[3]! as int,
-      maximumCallsPerCallGroup: result[4]! as int,
-      supportsHandleTypeGeneric: result[5] as bool?,
-      supportsHandleTypePhoneNumber: result[6] as bool?,
-      supportsHandleTypeEmailAddress: result[7] as bool?,
-      supportsVideo: result[8]! as bool,
-      includesCallsInRecents: result[9]! as bool,
-      driveIdleTimerDisabled: result[10]! as bool,
+      ringbackSound: result[2] as String?,
+      iconTemplateImageAssetName: result[3] as String?,
+      maximumCallGroups: result[4]! as int,
+      maximumCallsPerCallGroup: result[5]! as int,
+      supportsHandleTypeGeneric: result[6] as bool?,
+      supportsHandleTypePhoneNumber: result[7] as bool?,
+      supportsHandleTypeEmailAddress: result[8] as bool?,
+      supportsVideo: result[9]! as bool,
+      includesCallsInRecents: result[10]! as bool,
+      driveIdleTimerDisabled: result[11]! as bool,
     );
   }
 }
 
 class PAndroidOptions {
   PAndroidOptions({
-    this.ringtoneSound,
     required this.incomingPath,
     required this.rootPath,
+    this.ringtoneSound,
+    this.ringbackSound,
   });
-
-  String? ringtoneSound;
 
   String incomingPath;
 
   String rootPath;
 
+  String? ringtoneSound;
+
+  String? ringbackSound;
+
   Object encode() {
     return <Object?>[
-      ringtoneSound,
       incomingPath,
       rootPath,
+      ringtoneSound,
+      ringbackSound,
     ];
   }
 
   static PAndroidOptions decode(Object result) {
     result as List<Object?>;
     return PAndroidOptions(
-      ringtoneSound: result[0] as String?,
-      incomingPath: result[1]! as String,
-      rootPath: result[2]! as String,
+      incomingPath: result[0]! as String,
+      rootPath: result[1]! as String,
+      ringtoneSound: result[2] as String?,
+      ringbackSound: result[3] as String?,
     );
   }
 }
@@ -1295,6 +1305,61 @@ class AndroidHelperHostApi {
       );
     } else {
       return (__pigeon_replyList[0] as bool?)!;
+    }
+  }
+}
+
+class PHostSoundApi {
+  /// Constructor for [PHostSoundApi].  The [binaryMessenger] named argument is
+  /// available for dependency injection.  If it is left null, the default
+  /// BinaryMessenger will be used which routes to the host platform.
+  PHostSoundApi({BinaryMessenger? binaryMessenger})
+      : __pigeon_binaryMessenger = binaryMessenger;
+  final BinaryMessenger? __pigeon_binaryMessenger;
+
+  static const MessageCodec<Object?> pigeonChannelCodec = StandardMessageCodec();
+
+  Future<void> playRingbackSound() async {
+    const String __pigeon_channelName = 'dev.flutter.pigeon.webtrit_callkeep_ios.PHostSoundApi.playRingbackSound';
+    final BasicMessageChannel<Object?> __pigeon_channel = BasicMessageChannel<Object?>(
+      __pigeon_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: __pigeon_binaryMessenger,
+    );
+    final List<Object?>? __pigeon_replyList =
+        await __pigeon_channel.send(null) as List<Object?>?;
+    if (__pigeon_replyList == null) {
+      throw _createConnectionError(__pigeon_channelName);
+    } else if (__pigeon_replyList.length > 1) {
+      throw PlatformException(
+        code: __pigeon_replyList[0]! as String,
+        message: __pigeon_replyList[1] as String?,
+        details: __pigeon_replyList[2],
+      );
+    } else {
+      return;
+    }
+  }
+
+  Future<void> stopRingbackSound() async {
+    const String __pigeon_channelName = 'dev.flutter.pigeon.webtrit_callkeep_ios.PHostSoundApi.stopRingbackSound';
+    final BasicMessageChannel<Object?> __pigeon_channel = BasicMessageChannel<Object?>(
+      __pigeon_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: __pigeon_binaryMessenger,
+    );
+    final List<Object?>? __pigeon_replyList =
+        await __pigeon_channel.send(null) as List<Object?>?;
+    if (__pigeon_replyList == null) {
+      throw _createConnectionError(__pigeon_channelName);
+    } else if (__pigeon_replyList.length > 1) {
+      throw PlatformException(
+        code: __pigeon_replyList[0]! as String,
+        message: __pigeon_replyList[1] as String?,
+        details: __pigeon_replyList[2],
+      );
+    } else {
+      return;
     }
   }
 }

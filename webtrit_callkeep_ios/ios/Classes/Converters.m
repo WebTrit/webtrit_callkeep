@@ -152,6 +152,7 @@ extern CXHandleType WTPHandleTypeEnumToCallKit(WTPHandleTypeEnum value) {
 + (WTPIOSOptions *)fromMap:(NSDictionary *)dict {
   id localizedName = dict[@"localizedName"];
   id ringtoneSound = dict[@"ringtoneSound"];
+  id ringbackSound = dict[@"ringbackSound"];
   id iconTemplateImageAssetName = dict[@"iconTemplateImageAssetName"];
   id maximumCallGroups = dict[@"maximumCallGroups"];
   id maximumCallsPerCallGroup = dict[@"maximumCallsPerCallGroup"];
@@ -164,6 +165,7 @@ extern CXHandleType WTPHandleTypeEnumToCallKit(WTPHandleTypeEnum value) {
 
   return [WTPIOSOptions makeWithLocalizedName:localizedName
                                 ringtoneSound:(ringtoneSound == [NSNull null]) ? nil : ringtoneSound
+                                ringbackSound:(ringbackSound == [NSNull null]) ? nil : ringbackSound
                    iconTemplateImageAssetName:(iconTemplateImageAssetName == [NSNull null]) ? nil : iconTemplateImageAssetName
                             maximumCallGroups:[maximumCallGroups integerValue]
                      maximumCallsPerCallGroup:[maximumCallsPerCallGroup integerValue]
@@ -178,6 +180,7 @@ extern CXHandleType WTPHandleTypeEnumToCallKit(WTPHandleTypeEnum value) {
   return @{
     @"localizedName": self.localizedName,
     @"ringtoneSound": (self.ringtoneSound ?: [NSNull null]),
+    @"ringbackSound": (self.ringbackSound ?: [NSNull null]),
     @"iconTemplateImageAssetName": (self.iconTemplateImageAssetName ?: [NSNull null]),
     @"maximumCallGroups": @(self.maximumCallGroups),
     @"maximumCallsPerCallGroup": @(self.maximumCallsPerCallGroup),

@@ -94,6 +94,7 @@ typedef NS_ENUM(NSUInteger, WTPCallRequestErrorEnum) {
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)makeWithLocalizedName:(NSString *)localizedName
     ringtoneSound:(nullable NSString *)ringtoneSound
+    ringbackSound:(nullable NSString *)ringbackSound
     iconTemplateImageAssetName:(nullable NSString *)iconTemplateImageAssetName
     maximumCallGroups:(NSInteger )maximumCallGroups
     maximumCallsPerCallGroup:(NSInteger )maximumCallsPerCallGroup
@@ -105,6 +106,7 @@ typedef NS_ENUM(NSUInteger, WTPCallRequestErrorEnum) {
     driveIdleTimerDisabled:(BOOL )driveIdleTimerDisabled;
 @property(nonatomic, copy) NSString * localizedName;
 @property(nonatomic, copy, nullable) NSString * ringtoneSound;
+@property(nonatomic, copy, nullable) NSString * ringbackSound;
 @property(nonatomic, copy, nullable) NSString * iconTemplateImageAssetName;
 @property(nonatomic, assign) NSInteger  maximumCallGroups;
 @property(nonatomic, assign) NSInteger  maximumCallsPerCallGroup;
@@ -119,12 +121,14 @@ typedef NS_ENUM(NSUInteger, WTPCallRequestErrorEnum) {
 @interface WTPAndroidOptions : NSObject
 /// `init` unavailable to enforce nonnull fields, see the `make` class method.
 - (instancetype)init NS_UNAVAILABLE;
-+ (instancetype)makeWithRingtoneSound:(nullable NSString *)ringtoneSound
-    incomingPath:(NSString *)incomingPath
-    rootPath:(NSString *)rootPath;
-@property(nonatomic, copy, nullable) NSString * ringtoneSound;
++ (instancetype)makeWithIncomingPath:(NSString *)incomingPath
+    rootPath:(NSString *)rootPath
+    ringtoneSound:(nullable NSString *)ringtoneSound
+    ringbackSound:(nullable NSString *)ringbackSound;
 @property(nonatomic, copy) NSString * incomingPath;
 @property(nonatomic, copy) NSString * rootPath;
+@property(nonatomic, copy, nullable) NSString * ringtoneSound;
+@property(nonatomic, copy, nullable) NSString * ringbackSound;
 @end
 
 @interface WTPOptions : NSObject
@@ -253,5 +257,15 @@ NSObject<FlutterMessageCodec> *WTAndroidHelperHostApiGetCodec(void);
 @end
 
 extern void SetUpWTAndroidHelperHostApi(id<FlutterBinaryMessenger> binaryMessenger, NSObject<WTAndroidHelperHostApi> *_Nullable api);
+
+/// The codec used by WTPHostSoundApi.
+NSObject<FlutterMessageCodec> *WTPHostSoundApiGetCodec(void);
+
+@protocol WTPHostSoundApi
+- (void)playRingbackSound:(void (^)(FlutterError *_Nullable))completion;
+- (void)stopRingbackSound:(void (^)(FlutterError *_Nullable))completion;
+@end
+
+extern void SetUpWTPHostSoundApi(id<FlutterBinaryMessenger> binaryMessenger, NSObject<WTPHostSoundApi> *_Nullable api);
 
 NS_ASSUME_NONNULL_END
