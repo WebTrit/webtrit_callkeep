@@ -26,6 +26,8 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
 
   final _permissionsApi = PHostPermissionsApi();
 
+  final _soundApi = PHostSoundApi();
+
   @override
   void setDelegate(
     CallkeepDelegate? delegate,
@@ -300,6 +302,16 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
       androidNotificationName: androidNotificationName,
       androidNotificationDescription: androidNotificationDescription,
     );
+  }
+
+  @override
+  Future<void> playRingbackSound() {
+    return _soundApi.playRingbackSound();
+  }
+
+  @override
+  Future<void> stopRingbackSound() {
+    return _soundApi.stopRingbackSound();
   }
 }
 

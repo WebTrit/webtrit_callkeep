@@ -16,6 +16,7 @@ object StorageDelegate {
     private const val FLUTTER_INCOMING_INITIAL_ROUTE = "FLUTTER_INCOMING_INITIAL_ROUTE"
     private const val FLUTTER_ROOT_INITIAL_ROUTE = "FLUTTER_ROOT_INITIAL_ROUTE"
     private const val RINGTONE_PATH_KEY = "RINGTONE_PATH_KEY"
+    private const val RINGBACK_PATH_KEY = "RINGBACK_PATH_KEY"
     private const val SERVICE_CONFIGURATION_KEY = "SERVICE_CONFIGURATION_KEY"
     private const val SERVICE_HANDLES_KEY = "SERVICE_HANDLES_KEY"
 
@@ -80,6 +81,28 @@ object StorageDelegate {
      */
     fun getRingtonePath(context: Context): String? {
         return getSharedPreferences(context)?.getString(RINGTONE_PATH_KEY, null)
+    }
+
+
+    /**
+     * Initializes the ringback path in SharedPreferences.
+     *
+     * @param context The application context.
+     * @param path The ringback path to store.
+     */
+    fun initRingbackPath(context: Context, path: String?) {
+        if (path == null) return
+        getSharedPreferences(context)?.edit()?.putString(RINGBACK_PATH_KEY, path)?.apply()
+    }
+
+    /**
+     * Retrieves the stored ringback path from SharedPreferences.
+     *
+     * @param context The application context.
+     * @return The stored ringback path or null if not found.
+     */
+    fun getRingbackPath(context: Context): String? {
+        return getSharedPreferences(context)?.getString(RINGBACK_PATH_KEY, null)
     }
 
     private fun getSharedPreferences(context: Context?): SharedPreferences? {

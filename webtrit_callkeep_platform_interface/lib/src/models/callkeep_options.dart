@@ -49,12 +49,23 @@ class CallkeepIOSOptions extends Equatable {
 }
 
 class CallkeepAndroidOptions extends Equatable {
-  const CallkeepAndroidOptions({required this.incomingPath, required this.rootPath, this.ringtoneSound});
+  const CallkeepAndroidOptions({
+    required this.incomingPath,
+    required this.rootPath,
+    this.ringtoneSound,
+    this.ringbackSound,
+  });
 
-  final String? ringtoneSound;
   final String incomingPath;
   final String rootPath;
+  final String? ringtoneSound;
+  final String? ringbackSound;
 
   @override
-  List<Object?> get props => [ringtoneSound, incomingPath, rootPath];
+  List<Object?> get props => [
+        incomingPath,
+        rootPath,
+        ringtoneSound,
+        ringbackSound,
+      ];
 }

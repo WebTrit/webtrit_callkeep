@@ -11,25 +11,28 @@ import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.BinaryMessenger
 
 class WebtritCallkeepPluginState(
-    val context: Context, val messenger: BinaryMessenger, val assets: FlutterPlugin.FlutterAssets
+    val context: Context, private val messenger: BinaryMessenger, val assets: FlutterPlugin.FlutterAssets
 ) {
     /** Handles interactions with the API when the application is active and in the foreground */
-    var pigeonActivityApi: PigeonActivityApi? = null
+    private var pigeonActivityApi: PigeonActivityApi? = null
 
     /** Handles interactions with the API when the application is active and in the foreground */
-    var pigeonServiceApi: PigeonServiceApi? = null
+    private var pigeonServiceApi: PigeonServiceApi? = null
 
     // Handles interactions with the isolate API
-    var pigeonIsolateApi: PigeonIsolateApi? = null
+    private var pigeonIsolateApi: PigeonIsolateApi? = null
 
     /** Handles interactions with the logs host API */
-    var logsHostApi: PDelegateLogsFlutterApi? = null
+    private var logsHostApi: PDelegateLogsFlutterApi? = null
 
     /** Handles interactions with the permissions host API */
-    var permissionsApi: PigeonPermissionsApi? = null
+    private var permissionsApi: PigeonPermissionsApi? = null
+
+    /** Handles interactions with the sound host API */
+    private var soundApi: PigeonSoundApi? = null
 
     /** Handles interactions with the isolate API */
-    var foregroundCallServiceReceiver: ForegroundCallServiceReceiver? = null;
+    private var foregroundCallServiceReceiver: ForegroundCallServiceReceiver? = null;
 
     var activity: Activity? = null
 
@@ -47,7 +50,7 @@ class WebtritCallkeepPluginState(
         attachLogs()
     }
 
-    fun attachLogs() {
+    private fun attachLogs() {
         logsHostApi = PDelegateLogsFlutterApi(messenger)
         Log.add(logsHostApi!!)
     }
@@ -66,6 +69,9 @@ class WebtritCallkeepPluginState(
 
         permissionsApi = PigeonPermissionsApi(context)
         PHostPermissionsApi.setUp(messenger, permissionsApi)
+
+        soundApi = PigeonSoundApi(context)
+        PHostSoundApi.setUp(messenger, soundApi)
 
         val flutterDelegateApi = PDelegateFlutterApi(messenger)
         pigeonActivityApi = PigeonActivityApi(activity, flutterDelegateApi)

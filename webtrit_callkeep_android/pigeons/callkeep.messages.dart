@@ -27,9 +27,10 @@ class PIOSOptions {
 }
 
 class PAndroidOptions {
-  late String? ringtoneSound;
   late String incomingPath;
   late String rootPath;
+  late String? ringtoneSound;
+  late String? ringbackSound;
 }
 
 class POptions {
@@ -197,6 +198,15 @@ abstract class PHostPermissionsApi {
 
   @async
   PCallkeepAndroidBatteryMode getBatteryMode();
+}
+
+@HostApi()
+abstract class PHostSoundApi {
+  @async
+  void playRingbackSound();
+
+  @async
+  void stopRingbackSound();
 }
 
 @FlutterApi()

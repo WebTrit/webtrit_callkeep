@@ -28,6 +28,7 @@ class ProxyForegroundCallkeepApi(
             StorageDelegate.initIncomingPath(activity, options.android.incomingPath)
             StorageDelegate.initRootPath(activity, options.android.rootPath)
             StorageDelegate.initRingtonePath(activity, options.android.ringtoneSound)
+            StorageDelegate.initRingbackPath(activity, options.android.ringbackSound)
             isSetup = true
         } else {
             Log.e(LOG_TAG, "Plugin already initialized")
@@ -87,6 +88,7 @@ class ProxyForegroundCallkeepApi(
     ) {
         flutterDelegateApi.performAnswerCall(metadata.callId) {}
         flutterDelegateApi.didActivateAudioSession {}
+        audioManager.stopRingtone()
         callback.invoke(Result.success(null))
     }
 
