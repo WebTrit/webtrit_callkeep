@@ -126,6 +126,7 @@ static id GetNullableObjectAtIndex(NSArray *array, NSInteger key) {
 @implementation WTPIOSOptions
 + (instancetype)makeWithLocalizedName:(NSString *)localizedName
     ringtoneSound:(nullable NSString *)ringtoneSound
+    ringbackSound:(nullable NSString *)ringbackSound
     iconTemplateImageAssetName:(nullable NSString *)iconTemplateImageAssetName
     maximumCallGroups:(NSInteger )maximumCallGroups
     maximumCallsPerCallGroup:(NSInteger )maximumCallsPerCallGroup
@@ -138,6 +139,7 @@ static id GetNullableObjectAtIndex(NSArray *array, NSInteger key) {
   WTPIOSOptions* pigeonResult = [[WTPIOSOptions alloc] init];
   pigeonResult.localizedName = localizedName;
   pigeonResult.ringtoneSound = ringtoneSound;
+  pigeonResult.ringbackSound = ringbackSound;
   pigeonResult.iconTemplateImageAssetName = iconTemplateImageAssetName;
   pigeonResult.maximumCallGroups = maximumCallGroups;
   pigeonResult.maximumCallsPerCallGroup = maximumCallsPerCallGroup;
@@ -153,15 +155,16 @@ static id GetNullableObjectAtIndex(NSArray *array, NSInteger key) {
   WTPIOSOptions *pigeonResult = [[WTPIOSOptions alloc] init];
   pigeonResult.localizedName = GetNullableObjectAtIndex(list, 0);
   pigeonResult.ringtoneSound = GetNullableObjectAtIndex(list, 1);
-  pigeonResult.iconTemplateImageAssetName = GetNullableObjectAtIndex(list, 2);
-  pigeonResult.maximumCallGroups = [GetNullableObjectAtIndex(list, 3) integerValue];
-  pigeonResult.maximumCallsPerCallGroup = [GetNullableObjectAtIndex(list, 4) integerValue];
-  pigeonResult.supportsHandleTypeGeneric = GetNullableObjectAtIndex(list, 5);
-  pigeonResult.supportsHandleTypePhoneNumber = GetNullableObjectAtIndex(list, 6);
-  pigeonResult.supportsHandleTypeEmailAddress = GetNullableObjectAtIndex(list, 7);
-  pigeonResult.supportsVideo = [GetNullableObjectAtIndex(list, 8) boolValue];
-  pigeonResult.includesCallsInRecents = [GetNullableObjectAtIndex(list, 9) boolValue];
-  pigeonResult.driveIdleTimerDisabled = [GetNullableObjectAtIndex(list, 10) boolValue];
+  pigeonResult.ringbackSound = GetNullableObjectAtIndex(list, 2);
+  pigeonResult.iconTemplateImageAssetName = GetNullableObjectAtIndex(list, 3);
+  pigeonResult.maximumCallGroups = [GetNullableObjectAtIndex(list, 4) integerValue];
+  pigeonResult.maximumCallsPerCallGroup = [GetNullableObjectAtIndex(list, 5) integerValue];
+  pigeonResult.supportsHandleTypeGeneric = GetNullableObjectAtIndex(list, 6);
+  pigeonResult.supportsHandleTypePhoneNumber = GetNullableObjectAtIndex(list, 7);
+  pigeonResult.supportsHandleTypeEmailAddress = GetNullableObjectAtIndex(list, 8);
+  pigeonResult.supportsVideo = [GetNullableObjectAtIndex(list, 9) boolValue];
+  pigeonResult.includesCallsInRecents = [GetNullableObjectAtIndex(list, 10) boolValue];
+  pigeonResult.driveIdleTimerDisabled = [GetNullableObjectAtIndex(list, 11) boolValue];
   return pigeonResult;
 }
 + (nullable WTPIOSOptions *)nullableFromList:(NSArray *)list {
@@ -171,6 +174,7 @@ static id GetNullableObjectAtIndex(NSArray *array, NSInteger key) {
   return @[
     self.localizedName ?: [NSNull null],
     self.ringtoneSound ?: [NSNull null],
+    self.ringbackSound ?: [NSNull null],
     self.iconTemplateImageAssetName ?: [NSNull null],
     @(self.maximumCallGroups),
     @(self.maximumCallsPerCallGroup),
@@ -185,20 +189,23 @@ static id GetNullableObjectAtIndex(NSArray *array, NSInteger key) {
 @end
 
 @implementation WTPAndroidOptions
-+ (instancetype)makeWithRingtoneSound:(nullable NSString *)ringtoneSound
-    incomingPath:(NSString *)incomingPath
-    rootPath:(NSString *)rootPath {
++ (instancetype)makeWithIncomingPath:(NSString *)incomingPath
+    rootPath:(NSString *)rootPath
+    ringtoneSound:(nullable NSString *)ringtoneSound
+    ringbackSound:(nullable NSString *)ringbackSound {
   WTPAndroidOptions* pigeonResult = [[WTPAndroidOptions alloc] init];
-  pigeonResult.ringtoneSound = ringtoneSound;
   pigeonResult.incomingPath = incomingPath;
   pigeonResult.rootPath = rootPath;
+  pigeonResult.ringtoneSound = ringtoneSound;
+  pigeonResult.ringbackSound = ringbackSound;
   return pigeonResult;
 }
 + (WTPAndroidOptions *)fromList:(NSArray *)list {
   WTPAndroidOptions *pigeonResult = [[WTPAndroidOptions alloc] init];
-  pigeonResult.ringtoneSound = GetNullableObjectAtIndex(list, 0);
-  pigeonResult.incomingPath = GetNullableObjectAtIndex(list, 1);
-  pigeonResult.rootPath = GetNullableObjectAtIndex(list, 2);
+  pigeonResult.incomingPath = GetNullableObjectAtIndex(list, 0);
+  pigeonResult.rootPath = GetNullableObjectAtIndex(list, 1);
+  pigeonResult.ringtoneSound = GetNullableObjectAtIndex(list, 2);
+  pigeonResult.ringbackSound = GetNullableObjectAtIndex(list, 3);
   return pigeonResult;
 }
 + (nullable WTPAndroidOptions *)nullableFromList:(NSArray *)list {
@@ -206,9 +213,10 @@ static id GetNullableObjectAtIndex(NSArray *array, NSInteger key) {
 }
 - (NSArray *)toList {
   return @[
-    self.ringtoneSound ?: [NSNull null],
     self.incomingPath ?: [NSNull null],
     self.rootPath ?: [NSNull null],
+    self.ringtoneSound ?: [NSNull null],
+    self.ringbackSound ?: [NSNull null],
   ];
 }
 @end
@@ -1244,6 +1252,48 @@ void SetUpWTAndroidHelperHostApi(id<FlutterBinaryMessenger> binaryMessenger, NSO
       [channel setMessageHandler:^(id _Nullable message, FlutterReply callback) {
         [api isLockScreenWithCompletion:^(NSNumber *_Nullable output, FlutterError *_Nullable error) {
           callback(wrapResult(output, error));
+        }];
+      }];
+    } else {
+      [channel setMessageHandler:nil];
+    }
+  }
+}
+NSObject<FlutterMessageCodec> *WTPHostSoundApiGetCodec(void) {
+  static FlutterStandardMessageCodec *sSharedObject = nil;
+  sSharedObject = [FlutterStandardMessageCodec sharedInstance];
+  return sSharedObject;
+}
+
+void SetUpWTPHostSoundApi(id<FlutterBinaryMessenger> binaryMessenger, NSObject<WTPHostSoundApi> *api) {
+  {
+    FlutterBasicMessageChannel *channel =
+      [[FlutterBasicMessageChannel alloc]
+        initWithName:@"dev.flutter.pigeon.webtrit_callkeep_ios.PHostSoundApi.playRingbackSound"
+        binaryMessenger:binaryMessenger
+        codec:WTPHostSoundApiGetCodec()];
+    if (api) {
+      NSCAssert([api respondsToSelector:@selector(playRingbackSound:)], @"WTPHostSoundApi api (%@) doesn't respond to @selector(playRingbackSound:)", api);
+      [channel setMessageHandler:^(id _Nullable message, FlutterReply callback) {
+        [api playRingbackSound:^(FlutterError *_Nullable error) {
+          callback(wrapResult(nil, error));
+        }];
+      }];
+    } else {
+      [channel setMessageHandler:nil];
+    }
+  }
+  {
+    FlutterBasicMessageChannel *channel =
+      [[FlutterBasicMessageChannel alloc]
+        initWithName:@"dev.flutter.pigeon.webtrit_callkeep_ios.PHostSoundApi.stopRingbackSound"
+        binaryMessenger:binaryMessenger
+        codec:WTPHostSoundApiGetCodec()];
+    if (api) {
+      NSCAssert([api respondsToSelector:@selector(stopRingbackSound:)], @"WTPHostSoundApi api (%@) doesn't respond to @selector(stopRingbackSound:)", api);
+      [channel setMessageHandler:^(id _Nullable message, FlutterReply callback) {
+        [api stopRingbackSound:^(FlutterError *_Nullable error) {
+          callback(wrapResult(nil, error));
         }];
       }];
     } else {

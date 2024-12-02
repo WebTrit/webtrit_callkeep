@@ -14,6 +14,7 @@ import 'package:pigeon/pigeon.dart';
 class PIOSOptions {
   late String localizedName;
   late String? ringtoneSound;
+  late String? ringbackSound;
   late String? iconTemplateImageAssetName;
   late int maximumCallGroups;
   late int maximumCallsPerCallGroup;
@@ -26,9 +27,10 @@ class PIOSOptions {
 }
 
 class PAndroidOptions {
-  late String? ringtoneSound;
   late String incomingPath;
   late String rootPath;
+  late String? ringtoneSound;
+  late String? ringbackSound;
 }
 
 class POptions {
@@ -158,7 +160,7 @@ abstract class PHostApi {
 
   @ObjCSelector('reportEndCall:displayName:reason:')
   @async
-  void reportEndCall(String uuidString,String displayName, PEndCallReason reason);
+  void reportEndCall(String uuidString, String displayName, PEndCallReason reason);
 
   @ObjCSelector('startCall:handle:displayNameOrContactIdentifier:video:proximityEnabled:')
   @async
@@ -283,4 +285,15 @@ abstract class AndroidHelperHostApi {
 
   @async
   bool isLockScreen();
+}
+
+@HostApi()
+abstract class PHostSoundApi {
+  @ObjCSelector('playRingbackSound')
+  @async
+  void playRingbackSound();
+
+  @ObjCSelector('stopRingbackSound')
+  @async
+  void stopRingbackSound();
 }

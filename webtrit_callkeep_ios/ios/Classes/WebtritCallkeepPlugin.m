@@ -12,7 +12,7 @@
 
 static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
 
-@interface WebtritCallkeepPlugin ()<PKPushRegistryDelegate, CXProviderDelegate, WTPPushRegistryHostApi, WTPHostApi>
+@interface WebtritCallkeepPlugin ()<PKPushRegistryDelegate, CXProviderDelegate, WTPPushRegistryHostApi, WTPHostApi, WTPHostSoundApi>
 @end
 
 @implementation WebtritCallkeepPlugin {
@@ -21,6 +21,7 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   PKPushRegistry *_pushRegistry;
   WTPDelegateFlutterApi *_delegateFlutterApi;
   CXProvider *_provider;
+  AVAudioPlayer *_ringback;
   CXCallController *_callController;
   BOOL _driveIdleTimerDisabled;
 }
@@ -44,6 +45,7 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
     SetUpWTPPushRegistryHostApi(binaryMessenger, self);
     _delegateFlutterApi = [[WTPDelegateFlutterApi alloc] initWithBinaryMessenger:binaryMessenger];
     SetUpWTPHostApi(binaryMessenger, self);
+    SetUpWTPHostSoundApi(binaryMessenger, self);
   }
   return self;
 }
@@ -55,6 +57,7 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   NSObject<FlutterBinaryMessenger> *binaryMessenger = [_registrar messenger];
   SetUpWTPHostApi(binaryMessenger, nil);
   SetUpWTPPushRegistryHostApi(binaryMessenger, nil);
+  SetUpWTPHostSoundApi(binaryMessenger, nil);
 }
 
 - (BOOL)isSetUp {
@@ -85,7 +88,11 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
     [_provider setDelegate:self queue:nil];
 
     _callController = [[CXCallController alloc] init];
-
+      
+    if (iosOptions.ringbackSound != nil) {
+      _ringback = [self createRingbackPlayer:iosOptions.ringbackSound];
+    }
+ 
     _driveIdleTimerDisabled = iosOptions.driveIdleTimerDisabled;
   } else {
 #ifdef DEBUG
@@ -138,6 +145,11 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
     if (_callController == nil) {
       _callController = [[CXCallController alloc] init];
     }
+    
+    if (_ringback == nil && iosOptions.ringbackSound != nil) {
+      _ringback = [self createRingbackPlayer:iosOptions.ringbackSound];
+    }
+    
     _driveIdleTimerDisabled = iosOptions.driveIdleTimerDisabled;
   } else {
 #ifdef DEBUG
@@ -419,6 +431,28 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
                                           details:nil]);
     }
   }];
+}
+
+#pragma mark - WTPHostSoundApi
+
+- (AVAudioPlayer *) createRingbackPlayer:(NSString *)soundAsset {
+    NSString* key = [_registrar lookupKeyForAsset:soundAsset];
+    NSString* path = [[NSBundle mainBundle] pathForResource:key ofType:nil];
+    NSURL *soundFileURL = [NSURL fileURLWithPath:path];
+    AVAudioPlayer* p = [[AVAudioPlayer alloc] initWithContentsOfURL:soundFileURL error:nil];
+    p.numberOfLoops = -1;
+    return p;
+}
+
+- (void)playRingbackSound:(void (^)(FlutterError * _Nullable))completion{
+    if(_ringback != nil)[_ringback play];
+    completion(nil);
+}
+
+- (void)stopRingbackSound:(void (^)(FlutterError * _Nullable))completion{ 
+    if(_ringback != nil)[_ringback pause];
+    
+    completion(nil);
 }
 
 #pragma mark - FlutterApplicationLifeCycleDelegate

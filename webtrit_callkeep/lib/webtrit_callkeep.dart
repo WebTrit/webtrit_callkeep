@@ -3,3 +3,4 @@ export 'src/callkeep.dart';
 export 'src/callkeep_android_service.dart';
 export 'src/webtrit_callkeep_logs.dart';
 export 'src/webtrit_callkeep_permissions.dart';
+export 'src/webtrit_callkeep_sound.dart';

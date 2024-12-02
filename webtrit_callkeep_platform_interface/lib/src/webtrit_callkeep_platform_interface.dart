@@ -282,4 +282,16 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   void finishActivity() {
     throw UnimplementedError('finishActivity() is not implemented');
   }
+
+  /// Play the ringback sound.
+  /// Returns [Future] that resolves on sound was successfully played.
+  Future<void> playRingbackSound() {
+    throw UnimplementedError('playRingbackSound() has not been implemented.');
+  }
+
+  /// Stop the ringback sound.
+  /// Returns [Future] that resolves on sound was successfully played.
+  Future<void> stopRingbackSound() {
+    throw UnimplementedError('stopRingbackSound() has not been implemented.');
+  }
 }

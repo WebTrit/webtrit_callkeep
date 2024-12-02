@@ -40,6 +40,7 @@ class TelephonyForegroundCallkeepApi(
             StorageDelegate.initIncomingPath(activity, options.android.incomingPath)
             StorageDelegate.initRootPath(activity, options.android.rootPath)
             StorageDelegate.initRingtonePath(activity, options.android.ringtoneSound)
+            StorageDelegate.initRingbackPath(activity, options.android.ringbackSound)
 
             // If an incoming call was answered in the background, retrieve the current new or ringing connection.
             // Extract its metadata and sync the call state with the Flutter side by emitting it as a bundle.

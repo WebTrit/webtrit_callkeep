@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
 
-/// The [WebtritCallkeepPermissions] class is used to set the logs delegate.
+/// The [WebtritCallkeepPermissions] class is used to set the permissions delegate.
 /// The logs delegate is used to receive logs from the native side.
 class WebtritCallkeepPermissions {
   /// The singleton constructor of [WebtritCallkeepPermissions].

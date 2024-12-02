@@ -14,6 +14,7 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
 
   final _pushRegistryApi = PPushRegistryHostApi();
   final _api = PHostApi();
+  final _soundApi = PHostSoundApi();
 
   final _UUIDToCallIdMapping _uuidToCallIdMapping = _UUIDToCallIdMapping();
   final _CallkeepActionHistory _callkeepActionHistory = _CallkeepActionHistory();
@@ -172,6 +173,16 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
   @override
   Future<CallkeepCallRequestError?> sendDTMF(String callId, String key) async {
     return _api.sendDTMF(_uuidToCallIdMapping.put(callId: callId), key).then((value) => value?.value.toCallkeep());
+  }
+
+  @override
+  Future<void> playRingbackSound() {
+    return _soundApi.playRingbackSound();
+  }
+
+  @override
+  Future<void> stopRingbackSound() {
+    return _soundApi.stopRingbackSound();
   }
 }
 

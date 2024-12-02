@@ -12,9 +12,11 @@ import 'package:pigeon/pigeon.dart';
     ),
   ),
 )
+
 class PIOSOptions {
   late String localizedName;
   late String? ringtoneSound;
+  late String? ringbackSound;
   late String? iconTemplateImageAssetName;
   late int maximumCallGroups;
   late int maximumCallsPerCallGroup;
@@ -27,9 +29,10 @@ class PIOSOptions {
 }
 
 class PAndroidOptions {
-  late String? ringtoneSound;
   late String incomingPath;
   late String rootPath;
+  late String? ringtoneSound;
+  late String? ringbackSound;
 }
 
 class POptions {
@@ -197,6 +200,15 @@ abstract class PHostPermissionsApi {
 
   @async
   PCallkeepAndroidBatteryMode getBatteryMode();
+}
+
+@HostApi()
+abstract class PHostSoundApi {
+  @async
+  void playRingbackSound();
+
+  @async
+  void stopRingbackSound();
 }
 
 @FlutterApi()
