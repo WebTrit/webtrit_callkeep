@@ -10,7 +10,6 @@ class PigeonSoundApi(
 
     private val audioManager = AudioManager(context)
 
-
     override fun playRingbackSound(callback: (Result<Unit>) -> Unit) {
         val assetPath = StorageDelegate.getRingbackPath(context)
         if (assetPath != null) audioManager.startRingback(assetPath)
