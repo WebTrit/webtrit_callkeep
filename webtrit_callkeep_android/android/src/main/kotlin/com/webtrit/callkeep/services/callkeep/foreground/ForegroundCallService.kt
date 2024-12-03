@@ -133,7 +133,7 @@ class ForegroundCallService : Service() {
         ensureNotification(config)
 
         when (action) {
-            ForegroundCallServiceEnums.INIT.action -> runService(config, handles)
+            ForegroundCallServiceEnums.INIT.action -> runService(config, handles, data)
             ForegroundCallServiceEnums.START.action -> wakeUp(config, handles, data)
             ForegroundCallServiceEnums.STOP.action -> tearDown()
         }
@@ -152,7 +152,7 @@ class ForegroundCallService : Service() {
      * Wakes up the service and sends a broadcast to synchronize call status.
      */
     private fun wakeUp(config: ForegroundCallServiceConfig, handles: ForegroundCallServiceHandles, data: Bundle?) {
-        runService(config, handles)
+        runService(config, handles, data)
         ForegroundCallServiceReceiver.wakeUp(applicationContext, data?.getString(PARAM_JSON_DATA))
     }
 
@@ -169,7 +169,7 @@ class ForegroundCallService : Service() {
      * Runs the service and starts the Flutter background isolate.
      */
     @SuppressLint("WakelockTimeout")
-    private fun runService(config: ForegroundCallServiceConfig, handles: ForegroundCallServiceHandles) {
+    private fun runService(config: ForegroundCallServiceConfig, handles: ForegroundCallServiceHandles, data: Bundle?) {
         if (config.autoRestartOnTerminate) {
             ForegroundCallWorker.Companion.enqueue(applicationContext)
         }
@@ -188,6 +188,11 @@ class ForegroundCallService : Service() {
                 isEngineAttached = true
             } else {
                 Log.v(TAG, "FlutterEngine is already attached to service")
+
+                // Trigger the isolate callback to synchronize the call status.
+                // This handles scenarios where the service is restarted by the system after being stopped
+                // or initiated during the boot process.
+                ForegroundCallServiceReceiver.wakeUp(applicationContext, data?.getString(PARAM_JSON_DATA))
             }
         }
 
