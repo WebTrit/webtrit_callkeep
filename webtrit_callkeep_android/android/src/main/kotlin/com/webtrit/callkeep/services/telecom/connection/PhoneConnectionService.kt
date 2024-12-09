@@ -103,7 +103,9 @@ class PhoneConnectionService : ConnectionService() {
             FailureMetadata("onCreateOutgoingConnectionFailed: $connectionManagerPhoneAccount  $request")
         )
 
-        wakelockManager.releaseWakeLock()
+        if (!connectionManager.hasVideoConnections()) {
+            wakelockManager.releaseWakeLock()
+        }
 
         super.onCreateOutgoingConnectionFailed(connectionManagerPhoneAccount, request)
     }
@@ -170,14 +172,19 @@ class PhoneConnectionService : ConnectionService() {
             applicationContext, FailureMetadata("On create incoming connection failed")
         )
 
-        wakelockManager.releaseWakeLock()
+        if (!connectionManager.hasVideoConnections()) {
+            wakelockManager.releaseWakeLock()
+        }
 
         super.onCreateIncomingConnectionFailed(connectionManagerPhoneAccount, request)
     }
 
     private fun disconnectConnection(connection: PhoneConnection) {
         connectionManager.removeConnection(connection.metadata.callId)
-        wakelockManager.releaseWakeLock();
+
+        if (!connectionManager.hasVideoConnections()) {
+            wakelockManager.releaseWakeLock()
+        }
     }
 
     override fun onDestroy() {
