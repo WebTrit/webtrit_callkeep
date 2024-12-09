@@ -138,6 +138,7 @@ class PhoneConnectionService : ConnectionService() {
 
         val connection =
             PhoneConnection.createIncomingPhoneConnection(applicationContext, metadata, ::disconnectConnection)
+        sensorManager.setShouldListenProximity(true)
         connectionManager.addConnection(
             metadata.callId, connection, TIMEOUT_DURATION_MS, DEFAULT_INCOMING_STATES
         ) {
