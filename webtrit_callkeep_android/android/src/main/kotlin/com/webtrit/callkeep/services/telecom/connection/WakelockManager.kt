@@ -5,7 +5,6 @@ import android.view.WindowManager
 import com.webtrit.callkeep.common.ActivityHolder
 
 class WakelockManager {
-
     private val operationQueue = mutableListOf<(Activity) -> Unit>()
 
     // Reference to the listener for unsubscribing later
