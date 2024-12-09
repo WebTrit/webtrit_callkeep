@@ -5,23 +5,62 @@ import android.view.WindowManager
 import com.webtrit.callkeep.common.ActivityHolder
 
 class WakelockManager {
+
+    private val operationQueue = mutableListOf<(Activity) -> Unit>()
+
+    // Reference to the listener for unsubscribing later
+    private val activityChangeListener: (Activity?) -> Unit = { activity ->
+        activity?.let { executePendingOperations(it) }
+    }
+
+    init {
+        // Subscribe to ActivityHolder changes
+        ActivityHolder.addActivityChangeListener(activityChangeListener)
+    }
+
     /**
      * Keeps the screen on by applying the FLAG_KEEP_SCREEN_ON to the current activity.
      */
     fun acquireWakeLock() {
-        activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        executeOrQueue { it.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
     }
 
     /**
      * Releases the wake lock by clearing the FLAG_KEEP_SCREEN_ON from the current activity.
      */
     fun releaseWakeLock() {
-        activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        executeOrQueue { it.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
     }
 
     /**
-     * Gets the current activity from ActivityHolder.
+     * Executes the given operation immediately if Activity is non-null,
+     * otherwise queues it for execution when Activity becomes available.
      */
-    private val activity: Activity?
-        get() = ActivityHolder.getActivity()
+    private fun executeOrQueue(operation: (Activity) -> Unit) {
+        val currentActivity = ActivityHolder.getActivity()
+        if (currentActivity != null) {
+            operation(currentActivity)
+        } else {
+            operationQueue.add(operation)
+        }
+    }
+
+    /**
+     * Executes all pending operations from the queue when Activity becomes available.
+     */
+    private fun executePendingOperations(activity: Activity) {
+        val iterator = operationQueue.iterator()
+        while (iterator.hasNext()) {
+            val operation = iterator.next()
+            operation(activity)
+            iterator.remove()
+        }
+    }
+
+    /**
+     * Disposes of the WakelockManager by unsubscribing from ActivityHolder updates.
+     */
+    fun dispose() {
+        ActivityHolder.removeActivityChangeListener(activityChangeListener)
+    }
 }

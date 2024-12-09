@@ -184,7 +184,7 @@ class PhoneConnectionService : ConnectionService() {
     override fun onDestroy() {
         Log.i(TAG, "onDestroy")
         sensorManager.stopListening()
-        wakelockManager.releaseWakeLock()
+        wakelockManager.dispose()
         connectionManager.getConnections().forEach {
             Log.i(TAG, "onDetachActivity, disconnect outgoing call, callId: ${it.id}")
             it.onDisconnect()
