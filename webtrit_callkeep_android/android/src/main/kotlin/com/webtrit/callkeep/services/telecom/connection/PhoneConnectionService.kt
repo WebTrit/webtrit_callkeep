@@ -143,7 +143,7 @@ class PhoneConnectionService : ConnectionService() {
         ) {
             connection.hungUp()
         }
-        
+
         if (metadata.hasVideo) {
             wakelockManager.acquireWakeLock()
         }
@@ -177,8 +177,6 @@ class PhoneConnectionService : ConnectionService() {
     private fun disconnectConnection(connection: PhoneConnection) {
         connectionManager.removeConnection(connection.metadata.callId)
         wakelockManager.releaseWakeLock();
-
-        TelephonyForegroundCallkeepApi.notifyDeclineCall(this.baseContext, connection.metadata)
     }
 
     override fun onDestroy() {

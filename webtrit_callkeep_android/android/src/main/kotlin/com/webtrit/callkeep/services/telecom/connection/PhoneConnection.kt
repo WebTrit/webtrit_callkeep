@@ -146,8 +146,13 @@ class PhoneConnection internal constructor(
 
         Log.i(TAG, "onDisconnect: ${metadata.callId}")
 
-        notificationManager.cancelActiveNotification()
+        this@PhoneConnection.notificationManager.cancelActiveNotification()
         this@PhoneConnection.audioManager.stopRingtone()
+
+        // This call is required to confirm the hangup, ensuring the call flow completes correctly,
+        // or to provide a notification if the system terminates the Flutter side when app is open.
+        TelephonyForegroundCallkeepApi.notifyDeclineCall(context, metadata)
+
         onDisconnectCallback.invoke(this)
 
         destroy()
