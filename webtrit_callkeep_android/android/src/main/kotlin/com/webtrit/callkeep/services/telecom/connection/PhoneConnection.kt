@@ -28,6 +28,7 @@ import com.webtrit.callkeep.managers.NotificationManager
 class PhoneConnection internal constructor(
     private val context: Context,
     var metadata: CallMetadata,
+    var onDisconnectCallback: (connection: PhoneConnection) -> Unit,
 ) : Connection() {
     private var isMute = false
     private var isHasSpeaker = false
@@ -145,10 +146,10 @@ class PhoneConnection internal constructor(
 
         Log.i(TAG, "onDisconnect: ${metadata.callId}")
 
-        PhoneConnectionService.connectionManager.removeConnection(metadata.callId)
         notificationManager.cancelActiveNotification()
         this@PhoneConnection.audioManager.stopRingtone()
-        TelephonyForegroundCallkeepApi.notifyDeclineCall(context, metadata)
+        onDisconnectCallback.invoke(this)
+
         destroy()
     }
 
@@ -347,11 +348,12 @@ class PhoneConnection internal constructor(
          * @param metadata The call metadata.
          * @return The created incoming phone connection.
          */
-        fun createIncomingPhoneConnection(context: Context, metadata: CallMetadata) =
-            PhoneConnection(context = context, metadata = metadata).apply {
-                setInitialized()
-                setRinging()
-            }
+        fun createIncomingPhoneConnection(
+            context: Context, metadata: CallMetadata, onDisconnect: (connection: PhoneConnection) -> Unit,
+        ) = PhoneConnection(context = context, metadata = metadata, onDisconnect).apply {
+            setInitialized()
+            setRinging()
+        }
 
         /**
          * Create an outgoing phone connection.
@@ -360,15 +362,16 @@ class PhoneConnection internal constructor(
          * @param metadata The call metadata.
          * @return The created outgoing phone connection.
          */
-        fun createOutgoingPhoneConnection(context: Context, metadata: CallMetadata) =
-            PhoneConnection(context = context, metadata = metadata).apply {
-                setDialing()
-                setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
-                // ‍️Weirdly on some Samsung phones (A50, S9...) using `setInitialized` will not display the native UI ...
-                // when making a call from the native Phone application. The call will still be displayed correctly without it.
-                if (!Build.MANUFACTURER.equals("Samsung", ignoreCase = true)) {
-                    setInitialized()
-                }
+        fun createOutgoingPhoneConnection(
+            context: Context, metadata: CallMetadata, onDisconnect: (connection: PhoneConnection) -> Unit,
+        ) = PhoneConnection(context = context, metadata = metadata, onDisconnect).apply {
+            setDialing()
+            setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
+            // ‍️Weirdly on some Samsung phones (A50, S9...) using `setInitialized` will not display the native UI ...
+            // when making a call from the native Phone application. The call will still be displayed correctly without it.
+            if (!Build.MANUFACTURER.equals("Samsung", ignoreCase = true)) {
+                setInitialized()
             }
+        }
     }
 }

@@ -25,6 +25,7 @@ import com.webtrit.callkeep.models.OutgoingFailureType
 class PhoneConnectionService : ConnectionService() {
     private lateinit var sensorManager: ProximitySensorManager
     private lateinit var phoneConnectionServiceDispatcher: PhoneConnectionServiceDispatcher
+    private var wakelockManager: WakelockManager = WakelockManager()
 
     override fun onCreate() {
         super.onCreate()
@@ -65,13 +66,19 @@ class PhoneConnectionService : ConnectionService() {
             return Connection.createFailedConnection(DisconnectCause(DisconnectCause.BUSY))
         }
 
-        val connection = PhoneConnection.createOutgoingPhoneConnection(applicationContext, metadata)
+        val connection =
+            PhoneConnection.createOutgoingPhoneConnection(applicationContext, metadata, ::disconnectConnection)
         sensorManager.setShouldListenProximity(metadata.proximityEnabled)
         connectionManager.addConnection(
             metadata.callId, connection, TIMEOUT_DURATION_MS, DEFAULT_OUTGOING_STATES
         ) {
             connection.hungUp()
         }
+
+        if (metadata.hasVideo) {
+            wakelockManager.acquireWakeLock()
+        }
+
         return connection
 
     }
@@ -95,6 +102,9 @@ class PhoneConnectionService : ConnectionService() {
             applicationContext,
             FailureMetadata("onCreateOutgoingConnectionFailed: $connectionManagerPhoneAccount  $request")
         )
+
+        wakelockManager.releaseWakeLock()
+
         super.onCreateOutgoingConnectionFailed(connectionManagerPhoneAccount, request)
     }
 
@@ -126,12 +136,18 @@ class PhoneConnectionService : ConnectionService() {
             return Connection.createFailedConnection(DisconnectCause(DisconnectCause.BUSY))
         }
 
-        val connection = PhoneConnection.createIncomingPhoneConnection(applicationContext, metadata)
+        val connection =
+            PhoneConnection.createIncomingPhoneConnection(applicationContext, metadata, ::disconnectConnection)
         connectionManager.addConnection(
             metadata.callId, connection, TIMEOUT_DURATION_MS, DEFAULT_INCOMING_STATES
         ) {
             connection.hungUp()
         }
+        
+        if (metadata.hasVideo) {
+            wakelockManager.acquireWakeLock()
+        }
+
         return connection
     }
 
@@ -152,12 +168,23 @@ class PhoneConnectionService : ConnectionService() {
         TelephonyForegroundCallkeepApi.notifyIncomingFailure(
             applicationContext, FailureMetadata("On create incoming connection failed")
         )
+
+        wakelockManager.releaseWakeLock()
+
         super.onCreateIncomingConnectionFailed(connectionManagerPhoneAccount, request)
+    }
+
+    private fun disconnectConnection(connection: PhoneConnection) {
+        connectionManager.removeConnection(connection.metadata.callId)
+        wakelockManager.releaseWakeLock();
+
+        TelephonyForegroundCallkeepApi.notifyDeclineCall(this.baseContext, connection.metadata)
     }
 
     override fun onDestroy() {
         Log.i(TAG, "onDestroy")
         sensorManager.stopListening()
+        wakelockManager.releaseWakeLock()
         connectionManager.getConnections().forEach {
             Log.i(TAG, "onDetachActivity, disconnect outgoing call, callId: ${it.id}")
             it.onDisconnect()
