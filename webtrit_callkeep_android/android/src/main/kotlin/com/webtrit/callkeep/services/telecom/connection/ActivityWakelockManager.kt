@@ -4,7 +4,7 @@ import android.app.Activity
 import android.view.WindowManager
 import com.webtrit.callkeep.common.ActivityProvider
 
-class ScreenWakelockManager(private val activityProvider: ActivityProvider) {
+class ActivityWakelockManager(private val activityProvider: ActivityProvider) {
     private val operationQueue = mutableListOf<(Activity) -> Unit>()
 
     // Reference to the listener for unsubscribing later

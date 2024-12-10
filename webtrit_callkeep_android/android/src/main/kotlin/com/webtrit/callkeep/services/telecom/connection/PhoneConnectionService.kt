@@ -25,13 +25,13 @@ import com.webtrit.callkeep.models.OutgoingFailureType
  */
 class PhoneConnectionService : ConnectionService() {
     private lateinit var sensorManager: ProximitySensorManager
-    private lateinit var screenWakelockManager: ScreenWakelockManager
+    private lateinit var activityWakelockManager: ActivityWakelockManager
     private lateinit var phoneConnectionServiceDispatcher: PhoneConnectionServiceDispatcher
 
     override fun onCreate() {
         super.onCreate()
         sensorManager = ProximitySensorManager(applicationContext, PhoneConnectionConsts())
-        screenWakelockManager = ScreenWakelockManager(ActivityHolder)
+        activityWakelockManager = ActivityWakelockManager(ActivityHolder)
         phoneConnectionServiceDispatcher =
             PhoneConnectionServiceDispatcher(applicationContext, connectionManager, sensorManager)
     }
@@ -78,7 +78,7 @@ class PhoneConnectionService : ConnectionService() {
         }
 
         if (metadata.hasVideo) {
-            screenWakelockManager.acquireScreenWakeLock()
+            activityWakelockManager.acquireScreenWakeLock()
         }
 
         return connection
@@ -106,7 +106,7 @@ class PhoneConnectionService : ConnectionService() {
         )
 
         if (!connectionManager.hasVideoConnections()) {
-            screenWakelockManager.releaseScreenWakeLock()
+            activityWakelockManager.releaseScreenWakeLock()
         }
 
         super.onCreateOutgoingConnectionFailed(connectionManagerPhoneAccount, request)
@@ -150,7 +150,7 @@ class PhoneConnectionService : ConnectionService() {
         }
 
         if (metadata.hasVideo) {
-            screenWakelockManager.acquireScreenWakeLock()
+            activityWakelockManager.acquireScreenWakeLock()
         }
 
         return connection
@@ -175,7 +175,7 @@ class PhoneConnectionService : ConnectionService() {
         )
 
         if (!connectionManager.hasVideoConnections()) {
-            screenWakelockManager.releaseScreenWakeLock()
+            activityWakelockManager.releaseScreenWakeLock()
         }
 
         super.onCreateIncomingConnectionFailed(connectionManagerPhoneAccount, request)
@@ -185,14 +185,14 @@ class PhoneConnectionService : ConnectionService() {
         connectionManager.removeConnection(connection.metadata.callId)
 
         if (!connectionManager.hasVideoConnections()) {
-            screenWakelockManager.releaseScreenWakeLock()
+            activityWakelockManager.releaseScreenWakeLock()
         }
     }
 
     override fun onDestroy() {
         Log.i(TAG, "onDestroy")
         sensorManager.stopListening()
-        screenWakelockManager.dispose()
+        activityWakelockManager.dispose()
         connectionManager.getConnections().forEach {
             Log.i(TAG, "onDetachActivity, disconnect outgoing call, callId: ${it.id}")
             it.onDisconnect()
