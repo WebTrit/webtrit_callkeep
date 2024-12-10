@@ -9,16 +9,21 @@ import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.models.CallMetadata
 
 @SuppressLint("StaticFieldLeak")
-object ActivityHolder {
+object ActivityHolder : ActivityProvider {
     private var lifecycle: Lifecycle.Event? = null
     private var activity: Activity? = null
 
-    fun getActivity(): Activity? {
+    private val activityChangeListeners = mutableListOf<(Activity?) -> Unit>()
+
+    override fun getActivity(): Activity? {
         return activity
     }
 
-    fun setActivity(activity: Activity?) {
-        ActivityHolder.activity = activity
+    fun setActivity(newActivity: Activity?) {
+        if (activity != newActivity) {
+            activity = newActivity
+            notifyActivityChanged(newActivity)
+        }
     }
 
     fun getActivityState(): Lifecycle.Event {
@@ -38,12 +43,23 @@ object ActivityHolder {
             data = metadata?.getCallUri()
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
-        context.startActivity(hostAppActivity);
-
+        context.startActivity(hostAppActivity)
     }
 
     fun finish() {
         activity?.moveTaskToBack(true)
         activity?.finish()
+    }
+
+    override fun addActivityChangeListener(listener: (Activity?) -> Unit) {
+        activityChangeListeners.add(listener)
+    }
+
+    override fun removeActivityChangeListener(listener: (Activity?) -> Unit) {
+        activityChangeListeners.remove(listener)
+    }
+
+    private fun notifyActivityChanged(newActivity: Activity?) {
+        activityChangeListeners.forEach { it.invoke(newActivity) }
     }
 }

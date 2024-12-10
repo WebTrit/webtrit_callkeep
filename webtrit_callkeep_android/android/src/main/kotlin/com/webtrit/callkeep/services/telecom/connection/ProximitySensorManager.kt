@@ -16,7 +16,7 @@ class ProximitySensorManager(
     }
 
     fun setShouldListenProximity(shouldListen: Boolean) {
-        state.setShouldListenProximity(shouldListen);
+        state.setShouldListenProximity(shouldListen)
     }
 
     /**

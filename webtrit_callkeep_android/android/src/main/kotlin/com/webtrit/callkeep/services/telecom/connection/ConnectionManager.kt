@@ -106,6 +106,15 @@ class ConnectionManager {
     }
 
     /**
+     * Check if available video connections.
+     */
+    fun hasVideoConnections(): Boolean {
+        synchronized(connectionResourceLock) {
+            return connections.any { it.value.metadata.hasVideo }
+        }
+    }
+
+    /**
      * Check if a connection is terminated.
      */
     fun isConnectionTerminated(callId: String): Boolean {

@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.telecom.*
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.api.foreground.TelephonyForegroundCallkeepApi
+import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.helpers.Telecom
 import com.webtrit.callkeep.common.helpers.TelephonyHelper
 import com.webtrit.callkeep.models.CallMetadata
@@ -24,11 +25,13 @@ import com.webtrit.callkeep.models.OutgoingFailureType
  */
 class PhoneConnectionService : ConnectionService() {
     private lateinit var sensorManager: ProximitySensorManager
+    private lateinit var activityWakelockManager: ActivityWakelockManager
     private lateinit var phoneConnectionServiceDispatcher: PhoneConnectionServiceDispatcher
 
     override fun onCreate() {
         super.onCreate()
         sensorManager = ProximitySensorManager(applicationContext, PhoneConnectionConsts())
+        activityWakelockManager = ActivityWakelockManager(ActivityHolder)
         phoneConnectionServiceDispatcher =
             PhoneConnectionServiceDispatcher(applicationContext, connectionManager, sensorManager)
     }
@@ -65,13 +68,19 @@ class PhoneConnectionService : ConnectionService() {
             return Connection.createFailedConnection(DisconnectCause(DisconnectCause.BUSY))
         }
 
-        val connection = PhoneConnection.createOutgoingPhoneConnection(applicationContext, metadata)
+        val connection =
+            PhoneConnection.createOutgoingPhoneConnection(applicationContext, metadata, ::disconnectConnection)
         sensorManager.setShouldListenProximity(metadata.proximityEnabled)
         connectionManager.addConnection(
             metadata.callId, connection, TIMEOUT_DURATION_MS, DEFAULT_OUTGOING_STATES
         ) {
             connection.hungUp()
         }
+
+        if (metadata.hasVideo) {
+            activityWakelockManager.acquireScreenWakeLock()
+        }
+
         return connection
 
     }
@@ -95,6 +104,11 @@ class PhoneConnectionService : ConnectionService() {
             applicationContext,
             FailureMetadata("onCreateOutgoingConnectionFailed: $connectionManagerPhoneAccount  $request")
         )
+
+        if (!connectionManager.hasVideoConnections()) {
+            activityWakelockManager.releaseScreenWakeLock()
+        }
+
         super.onCreateOutgoingConnectionFailed(connectionManagerPhoneAccount, request)
     }
 
@@ -126,12 +140,19 @@ class PhoneConnectionService : ConnectionService() {
             return Connection.createFailedConnection(DisconnectCause(DisconnectCause.BUSY))
         }
 
-        val connection = PhoneConnection.createIncomingPhoneConnection(applicationContext, metadata)
+        val connection =
+            PhoneConnection.createIncomingPhoneConnection(applicationContext, metadata, ::disconnectConnection)
+        sensorManager.setShouldListenProximity(true)
         connectionManager.addConnection(
             metadata.callId, connection, TIMEOUT_DURATION_MS, DEFAULT_INCOMING_STATES
         ) {
             connection.hungUp()
         }
+
+        if (metadata.hasVideo) {
+            activityWakelockManager.acquireScreenWakeLock()
+        }
+
         return connection
     }
 
@@ -152,12 +173,26 @@ class PhoneConnectionService : ConnectionService() {
         TelephonyForegroundCallkeepApi.notifyIncomingFailure(
             applicationContext, FailureMetadata("On create incoming connection failed")
         )
+
+        if (!connectionManager.hasVideoConnections()) {
+            activityWakelockManager.releaseScreenWakeLock()
+        }
+
         super.onCreateIncomingConnectionFailed(connectionManagerPhoneAccount, request)
+    }
+
+    private fun disconnectConnection(connection: PhoneConnection) {
+        connectionManager.removeConnection(connection.metadata.callId)
+
+        if (!connectionManager.hasVideoConnections()) {
+            activityWakelockManager.releaseScreenWakeLock()
+        }
     }
 
     override fun onDestroy() {
         Log.i(TAG, "onDestroy")
         sensorManager.stopListening()
+        activityWakelockManager.dispose()
         connectionManager.getConnections().forEach {
             Log.i(TAG, "onDetachActivity, disconnect outgoing call, callId: ${it.id}")
             it.onDisconnect()
