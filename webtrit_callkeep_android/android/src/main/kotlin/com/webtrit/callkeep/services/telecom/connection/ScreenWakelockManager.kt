@@ -2,9 +2,9 @@ package com.webtrit.callkeep.services.telecom.connection
 
 import android.app.Activity
 import android.view.WindowManager
-import com.webtrit.callkeep.common.ActivityHolder
+import com.webtrit.callkeep.common.ActivityProvider
 
-class ScreenWakelockManager {
+class ScreenWakelockManager(private val activityProvider: ActivityProvider) {
     private val operationQueue = mutableListOf<(Activity) -> Unit>()
 
     // Reference to the listener for unsubscribing later
@@ -13,8 +13,7 @@ class ScreenWakelockManager {
     }
 
     init {
-        // Subscribe to ActivityHolder changes
-        ActivityHolder.addActivityChangeListener(activityChangeListener)
+        activityProvider.addActivityChangeListener(activityChangeListener)
     }
 
     /**
@@ -36,7 +35,7 @@ class ScreenWakelockManager {
      * otherwise queues it for execution when Activity becomes available.
      */
     private fun executeOrQueue(operation: (Activity) -> Unit) {
-        val currentActivity = ActivityHolder.getActivity()
+        val currentActivity = activityProvider.getActivity()
         if (currentActivity != null) {
             operation(currentActivity)
         } else {
@@ -60,6 +59,6 @@ class ScreenWakelockManager {
      * Disposes of the WakelockManager by unsubscribing from ActivityHolder updates.
      */
     fun dispose() {
-        ActivityHolder.removeActivityChangeListener(activityChangeListener)
+        activityProvider.removeActivityChangeListener(activityChangeListener)
     }
 }

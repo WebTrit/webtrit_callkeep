@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.telecom.*
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.api.foreground.TelephonyForegroundCallkeepApi
+import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.helpers.Telecom
 import com.webtrit.callkeep.common.helpers.TelephonyHelper
 import com.webtrit.callkeep.models.CallMetadata
@@ -24,12 +25,13 @@ import com.webtrit.callkeep.models.OutgoingFailureType
  */
 class PhoneConnectionService : ConnectionService() {
     private lateinit var sensorManager: ProximitySensorManager
+    private lateinit var screenWakelockManager: ScreenWakelockManager
     private lateinit var phoneConnectionServiceDispatcher: PhoneConnectionServiceDispatcher
-    private var screenWakelockManager: ScreenWakelockManager = ScreenWakelockManager()
 
     override fun onCreate() {
         super.onCreate()
         sensorManager = ProximitySensorManager(applicationContext, PhoneConnectionConsts())
+        screenWakelockManager = ScreenWakelockManager(ActivityHolder)
         phoneConnectionServiceDispatcher =
             PhoneConnectionServiceDispatcher(applicationContext, connectionManager, sensorManager)
     }
