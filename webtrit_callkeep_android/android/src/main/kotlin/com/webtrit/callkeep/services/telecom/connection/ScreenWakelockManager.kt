@@ -4,7 +4,7 @@ import android.app.Activity
 import android.view.WindowManager
 import com.webtrit.callkeep.common.ActivityHolder
 
-class WakelockManager {
+class ScreenWakelockManager {
     private val operationQueue = mutableListOf<(Activity) -> Unit>()
 
     // Reference to the listener for unsubscribing later
@@ -20,14 +20,14 @@ class WakelockManager {
     /**
      * Keeps the screen on by applying the FLAG_KEEP_SCREEN_ON to the current activity.
      */
-    fun acquireWakeLock() {
+    fun acquireScreenWakeLock() {
         executeOrQueue { it.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
     }
 
     /**
      * Releases the wake lock by clearing the FLAG_KEEP_SCREEN_ON from the current activity.
      */
-    fun releaseWakeLock() {
+    fun releaseScreenWakeLock() {
         executeOrQueue { it.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
     }
 

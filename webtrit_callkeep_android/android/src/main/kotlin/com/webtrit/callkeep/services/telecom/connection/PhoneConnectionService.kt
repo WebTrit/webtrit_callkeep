@@ -25,7 +25,7 @@ import com.webtrit.callkeep.models.OutgoingFailureType
 class PhoneConnectionService : ConnectionService() {
     private lateinit var sensorManager: ProximitySensorManager
     private lateinit var phoneConnectionServiceDispatcher: PhoneConnectionServiceDispatcher
-    private var wakelockManager: WakelockManager = WakelockManager()
+    private var screenWakelockManager: ScreenWakelockManager = ScreenWakelockManager()
 
     override fun onCreate() {
         super.onCreate()
@@ -76,7 +76,7 @@ class PhoneConnectionService : ConnectionService() {
         }
 
         if (metadata.hasVideo) {
-            wakelockManager.acquireWakeLock()
+            screenWakelockManager.acquireScreenWakeLock()
         }
 
         return connection
@@ -104,7 +104,7 @@ class PhoneConnectionService : ConnectionService() {
         )
 
         if (!connectionManager.hasVideoConnections()) {
-            wakelockManager.releaseWakeLock()
+            screenWakelockManager.releaseScreenWakeLock()
         }
 
         super.onCreateOutgoingConnectionFailed(connectionManagerPhoneAccount, request)
@@ -148,7 +148,7 @@ class PhoneConnectionService : ConnectionService() {
         }
 
         if (metadata.hasVideo) {
-            wakelockManager.acquireWakeLock()
+            screenWakelockManager.acquireScreenWakeLock()
         }
 
         return connection
@@ -173,7 +173,7 @@ class PhoneConnectionService : ConnectionService() {
         )
 
         if (!connectionManager.hasVideoConnections()) {
-            wakelockManager.releaseWakeLock()
+            screenWakelockManager.releaseScreenWakeLock()
         }
 
         super.onCreateIncomingConnectionFailed(connectionManagerPhoneAccount, request)
@@ -183,14 +183,14 @@ class PhoneConnectionService : ConnectionService() {
         connectionManager.removeConnection(connection.metadata.callId)
 
         if (!connectionManager.hasVideoConnections()) {
-            wakelockManager.releaseWakeLock()
+            screenWakelockManager.releaseScreenWakeLock()
         }
     }
 
     override fun onDestroy() {
         Log.i(TAG, "onDestroy")
         sensorManager.stopListening()
-        wakelockManager.dispose()
+        screenWakelockManager.dispose()
         connectionManager.getConnections().forEach {
             Log.i(TAG, "onDetachActivity, disconnect outgoing call, callId: ${it.id}")
             it.onDisconnect()
