@@ -1,5 +1,7 @@
 package com.webtrit.callkeep.services.telecom.connection
 
+import android.os.Handler
+import android.os.Looper
 import android.telecom.Connection
 import java.util.Timer
 import java.util.TimerTask
@@ -54,11 +56,13 @@ class ConnectionManager {
     ) {
         val timerTask = object : TimerTask() {
             override fun run() {
-                synchronized(connectionResourceLock) {
-                    val connection = connections[callId]
-                    if (connection != null && connection.state in validStates) {
-                        onTimeout()
-                        removeConnection(callId)
+                Handler(Looper.getMainLooper()).post {
+                    synchronized(connectionResourceLock) {
+                        val connection = connections[callId]
+                        if (connection != null && connection.state in validStates) {
+                            onTimeout()
+                            removeConnection(callId)
+                        }
                     }
                 }
             }
