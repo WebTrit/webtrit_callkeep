@@ -4,6 +4,8 @@ import java.lang.Exception
 import android.content.Context
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.telecom.CallAudioState
 import android.telecom.Connection
 import android.telecom.DisconnectCause
@@ -28,6 +30,7 @@ import com.webtrit.callkeep.managers.NotificationManager
 class PhoneConnection internal constructor(
     private val context: Context,
     var metadata: CallMetadata,
+    var timeout: ConnectionTimeout? = null,
     var onDisconnectCallback: (connection: PhoneConnection) -> Unit,
 ) : Connection() {
     private var isMute = false
@@ -143,7 +146,6 @@ class PhoneConnection internal constructor(
      */
     override fun onDisconnect() {
         super.onDisconnect()
-
         Log.i(TAG, "onDisconnect: ${metadata.callId}")
 
         this@PhoneConnection.notificationManager.cancelActiveNotification()
@@ -204,9 +206,31 @@ class PhoneConnection internal constructor(
      */
     override fun onStateChanged(state: Int) {
         super.onStateChanged(state)
+
+        // Handle timeout for the specific state
+        handleIncomingTimeout(state)
+
         when (state) {
             STATE_DIALING -> onDialing()
             STATE_ACTIVE -> onActiveConnection()
+        }
+    }
+
+    private fun handleIncomingTimeout(state: Int) {
+        if (state in timeout?.states.orEmpty()) {
+            // Start the timeout if the current state is in the allowed states
+            timeout?.start {
+                Log.i(TAG, "Timeout reached for callId: ${metadata.callId} in state: $state")
+
+                // Disconnect the call with an appropriate cause
+                setDisconnected(DisconnectCause(DisconnectCause.CANCELED, "Timeout in state: $state"))
+
+                // Trigger the disconnect logic
+                onDisconnect()
+            }
+        } else {
+            // Cancel the timeout if the state is not in the allowed states
+            timeout?.cancel()
         }
     }
 
@@ -342,7 +366,6 @@ class PhoneConnection internal constructor(
         return "PhoneConnection(metadata=$metadata, isMute=$isMute, isHasSpeaker=$isHasSpeaker, answer=$answer, id='$id')"
     }
 
-
     companion object {
         private const val TAG = "PhoneConnection"
 
@@ -355,7 +378,12 @@ class PhoneConnection internal constructor(
          */
         fun createIncomingPhoneConnection(
             context: Context, metadata: CallMetadata, onDisconnect: (connection: PhoneConnection) -> Unit,
-        ) = PhoneConnection(context = context, metadata = metadata, onDisconnect).apply {
+        ) = PhoneConnection(
+            context = context,
+            metadata = metadata,
+            timeout = ConnectionTimeout.createIncomingConnectionTimeout(),
+            onDisconnect
+        ).apply {
             setInitialized()
             setRinging()
         }
@@ -369,7 +397,12 @@ class PhoneConnection internal constructor(
          */
         fun createOutgoingPhoneConnection(
             context: Context, metadata: CallMetadata, onDisconnect: (connection: PhoneConnection) -> Unit,
-        ) = PhoneConnection(context = context, metadata = metadata, onDisconnect).apply {
+        ) = PhoneConnection(
+            context = context,
+            metadata = metadata,
+            timeout = ConnectionTimeout.createOutgoingConnectionTimeout(),
+            onDisconnect
+        ).apply {
             setDialing()
             setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
             // ‍️Weirdly on some Samsung phones (A50, S9...) using `setInitialized` will not display the native UI ...
@@ -378,5 +411,44 @@ class PhoneConnection internal constructor(
                 setInitialized()
             }
         }
+    }
+}
+
+class ConnectionTimeout(
+    val timeoutDurationMs: Long, val states: List<Int>
+) {
+    private val handler = Handler(Looper.getMainLooper())
+    private var timeoutRunnable: Runnable? = null
+
+    /**
+     * Starts the timeout with the specified callback.
+     * @param timeoutCallback The callback to invoke when the timeout is reached.
+     */
+    fun start(timeoutCallback: () -> Unit) {
+        cancel() // Ensure no previous timeout is running
+
+        timeoutRunnable = Runnable { timeoutCallback.invoke() }
+        handler.postDelayed(timeoutRunnable!!, timeoutDurationMs)
+    }
+
+    /**
+     * Cancels the timeout.
+     */
+    fun cancel() {
+        timeoutRunnable?.let { handler.removeCallbacks(it) }
+        timeoutRunnable = null
+    }
+
+    companion object {
+        private val DEFAULT_INCOMING_STATES = listOf(Connection.STATE_NEW, Connection.STATE_RINGING)
+        private val DEFAULT_OUTGOING_STATES = listOf(Connection.STATE_DIALING)
+
+        private const val TIMEOUT_DURATION_MS = 35_000L
+
+        fun createOutgoingConnectionTimeout(
+        ) = ConnectionTimeout(TIMEOUT_DURATION_MS, DEFAULT_OUTGOING_STATES)
+
+        fun createIncomingConnectionTimeout(
+        ) = ConnectionTimeout(TIMEOUT_DURATION_MS, DEFAULT_INCOMING_STATES)
     }
 }

@@ -73,7 +73,6 @@ class PhoneConnectionServiceDispatcher(
 
     private fun handleTearDown() {
         connectionManager.getConnections().forEach {
-            connectionManager.cancelTimeout(it.id)
             it.hungUp()
         }
         connectionManager.clearTerminatedConnections()
