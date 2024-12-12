@@ -5,7 +5,6 @@ import java.util.concurrent.ConcurrentHashMap
 
 class ConnectionManager {
     private val connections: ConcurrentHashMap<String, PhoneConnection> = ConcurrentHashMap()
-    private val terminatedConnections: MutableList<String> = mutableListOf()
     private val connectionResourceLock = Any()
 
     // TODO(Serdun): The current modifier is incorrect; this method is public but should be restricted.
@@ -19,18 +18,6 @@ class ConnectionManager {
             if (!connections.containsKey(callId)) {
                 connections[callId] = connection
             }
-        }
-    }
-
-    /**
-     * Remove a connection by ID.
-     */
-    // TODO(Serdun): The current modifier is incorrect; this method is public but should be restricted.
-    // Consider limiting its accessibility to the connection service only.
-    @Synchronized
-    fun removeConnection(callId: String) {
-        synchronized(connectionResourceLock) {
-            connections.remove(callId)
         }
     }
 
@@ -70,22 +57,8 @@ class ConnectionManager {
     /**
      * Check if a connection is terminated.
      */
-    fun isConnectionTerminated(callId: String): Boolean {
-        return terminatedConnections.contains(callId)
-    }
-
-    /**
-     * Clear all terminated connections.
-     */
-    fun clearTerminatedConnections() {
-        terminatedConnections.clear()
-    }
-
-    /**
-     * Mark a connection as terminated.
-     */
-    fun addConnectionTerminated(id: String) {
-        terminatedConnections.add(id)
+    fun isConnectionDisconnected(callId: String): Boolean {
+        return connections.get(callId)?.state == Connection.STATE_DISCONNECTED
     }
 
     /**
@@ -144,14 +117,11 @@ class ConnectionManager {
                 "Call ID: $callId, State: ${connection.state}"
             }.joinToString(separator = "\n")
 
-            val terminatedInfo = terminatedConnections.joinToString(separator = ", ")
 
             return """
             ConnectionManager {
                 Active Connections:
                 $connectionsInfo
-                Terminated Connections:
-                $terminatedInfo
             }
         """.trimIndent()
         }
