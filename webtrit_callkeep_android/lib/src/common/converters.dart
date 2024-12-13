@@ -276,3 +276,78 @@ extension CallkeepServiceStatusConverter on CallkeepServiceStatus {
     );
   }
 }
+
+extension PCallkeepConnectionStateConverter on PCallkeepConnectionState {
+  CallkeepConnectionState toCallkeep() {
+    switch (this) {
+      case PCallkeepConnectionState.stateInitializing:
+        return CallkeepConnectionState.stateInitializing;
+      case PCallkeepConnectionState.stateNew:
+        return CallkeepConnectionState.stateNew;
+      case PCallkeepConnectionState.stateRinging:
+        return CallkeepConnectionState.stateRinging;
+      case PCallkeepConnectionState.stateDialing:
+        return CallkeepConnectionState.stateDialing;
+      case PCallkeepConnectionState.stateActive:
+        return CallkeepConnectionState.stateActive;
+      case PCallkeepConnectionState.stateHolding:
+        return CallkeepConnectionState.stateHolding;
+      case PCallkeepConnectionState.stateDisconnected:
+        return CallkeepConnectionState.stateDisconnected;
+      case PCallkeepConnectionState.statePullingCall:
+        return CallkeepConnectionState.statePullingCall;
+    }
+  }
+}
+
+extension PCallkeepDisconnectCauseTypeConverter on PCallkeepDisconnectCauseType {
+  CallkeepDisconnectCauseType toCallkeep() {
+    switch (this) {
+      case PCallkeepDisconnectCauseType.unknown:
+        return CallkeepDisconnectCauseType.unknown;
+      case PCallkeepDisconnectCauseType.error:
+        return CallkeepDisconnectCauseType.error;
+      case PCallkeepDisconnectCauseType.local:
+        return CallkeepDisconnectCauseType.local;
+      case PCallkeepDisconnectCauseType.remote:
+        return CallkeepDisconnectCauseType.remote;
+      case PCallkeepDisconnectCauseType.canceled:
+        return CallkeepDisconnectCauseType.canceled;
+      case PCallkeepDisconnectCauseType.missed:
+        return CallkeepDisconnectCauseType.missed;
+      case PCallkeepDisconnectCauseType.rejected:
+        return CallkeepDisconnectCauseType.rejected;
+      case PCallkeepDisconnectCauseType.busy:
+        return CallkeepDisconnectCauseType.busy;
+      case PCallkeepDisconnectCauseType.restricted:
+        return CallkeepDisconnectCauseType.restricted;
+      case PCallkeepDisconnectCauseType.other:
+        return CallkeepDisconnectCauseType.other;
+      case PCallkeepDisconnectCauseType.connectionManagerNotSupported:
+        return CallkeepDisconnectCauseType.connectionManagerNotSupported;
+      case PCallkeepDisconnectCauseType.answeredElsewhere:
+        return CallkeepDisconnectCauseType.answeredElsewhere;
+      case PCallkeepDisconnectCauseType.callPulled:
+        return CallkeepDisconnectCauseType.callPulled;
+    }
+  }
+}
+
+extension PCallkeepDisconnectCauseConverter on PCallkeepDisconnectCause {
+  CallkeepDisconnectCause toCallkeep() {
+    return CallkeepDisconnectCause(
+      type: type.toCallkeep(),
+      reason: reason,
+    );
+  }
+}
+
+extension PCallkeepConnectionConverter on PCallkeepConnection {
+  CallkeepConnection toCallkeep() {
+    return CallkeepConnection(
+      callId: callId,
+      state: state.toCallkeep(),
+      disconnectCause: disconnectCause.toCallkeep(),
+    );
+  }
+}

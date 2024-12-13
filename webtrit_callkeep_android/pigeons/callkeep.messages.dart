@@ -12,7 +12,6 @@ import 'package:pigeon/pigeon.dart';
     ),
   ),
 )
-
 class PIOSOptions {
   late String localizedName;
   late String? ringtoneSound;
@@ -140,6 +139,44 @@ class PCallkeepServiceStatus {
   late bool activityReady;
   late bool activeCalls;
   late String jsonData;
+}
+
+enum PCallkeepConnectionState {
+  stateInitializing,
+  stateNew,
+  stateRinging,
+  stateDialing,
+  stateActive,
+  stateHolding,
+  stateDisconnected,
+  statePullingCall;
+}
+
+enum PCallkeepDisconnectCauseType {
+  unknown,
+  error,
+  local,
+  remote,
+  canceled,
+  missed,
+  rejected,
+  busy,
+  restricted,
+  other,
+  connectionManagerNotSupported,
+  answeredElsewhere,
+  callPulled,
+}
+
+class PCallkeepDisconnectCause {
+  late PCallkeepDisconnectCauseType type;
+  late String? reason;
+}
+
+class PCallkeepConnection {
+  late String callId;
+  late PCallkeepConnectionState state;
+  late PCallkeepDisconnectCause disconnectCause;
 }
 
 @HostApi()
@@ -297,6 +334,13 @@ abstract class PHostApi {
   @ObjCSelector('sendDTMF:key:')
   @async
   PCallRequestError? sendDTMF(String callId, String key);
+}
+
+@HostApi()
+abstract class PHostConnectionsApi {
+  @ObjCSelector('getConnection:')
+  @async
+  PCallkeepConnection? getConnection(String callId);
 }
 
 @FlutterApi()
