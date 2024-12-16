@@ -31,7 +31,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         ContextHolder.init(context);
         AssetHolder.init(context, assets)
 
-        state = WebtritCallkeepPluginState(context, messenger, assets).apply {
+        state = WebtritCallkeepPluginState(context, messenger).apply {
             initIsolateApi()
         }
     }
