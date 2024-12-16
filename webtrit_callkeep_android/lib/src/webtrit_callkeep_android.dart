@@ -19,14 +19,14 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
 
   final _backgroundServiceApi = PHostBackgroundServiceApi();
   final _isolateApi = PHostIsolateApi();
+  final _soundApi = PHostSoundApi();
+  final _connectionsApi = PHostConnectionsApi();
 
   int? _isolatePluginCallbackHandle;
   int? _onChangedLifecycleHandle;
   int? _onStartHandle;
 
   final _permissionsApi = PHostPermissionsApi();
-
-  final _soundApi = PHostSoundApi();
 
   @override
   void setDelegate(
@@ -312,6 +312,11 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   @override
   Future<void> stopRingbackSound() {
     return _soundApi.stopRingbackSound();
+  }
+
+  @override
+  Future<CallkeepConnection?> getConnection(String callId) async {
+    return _connectionsApi.getConnection(callId).then((value) => value?.toCallkeep());
   }
 }
 

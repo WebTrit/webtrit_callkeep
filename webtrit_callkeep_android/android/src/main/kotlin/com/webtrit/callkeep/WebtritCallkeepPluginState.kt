@@ -7,11 +7,10 @@ import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.services.callkeep.foreground.ForegroundCallServiceReceiver
-import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.BinaryMessenger
 
 class WebtritCallkeepPluginState(
-    val context: Context, private val messenger: BinaryMessenger, val assets: FlutterPlugin.FlutterAssets
+    val context: Context, private val messenger: BinaryMessenger
 ) {
     /** Handles interactions with the API when the application is active and in the foreground */
     private var pigeonActivityApi: PigeonActivityApi? = null
@@ -31,8 +30,11 @@ class WebtritCallkeepPluginState(
     /** Handles interactions with the sound host API */
     private var soundApi: PigeonSoundApi? = null
 
+    /** Handles interactions with the connections host API */
+    private var connectionsApi: PigeonConnectionsApi? = null
+
     /** Handles interactions with the isolate API */
-    private var foregroundCallServiceReceiver: ForegroundCallServiceReceiver? = null;
+    private var foregroundCallServiceReceiver: ForegroundCallServiceReceiver? = null
 
     var activity: Activity? = null
 
@@ -40,9 +42,11 @@ class WebtritCallkeepPluginState(
         Log.i(TAG, "initIsolateApi $this")
 
         // Register isolate api for all plugin instances  possibility trigger call service isolate
-        pigeonIsolateApi = PigeonIsolateApi(context);
-
+        pigeonIsolateApi = PigeonIsolateApi(context)
         PHostIsolateApi.setUp(messenger, pigeonIsolateApi)
+
+        connectionsApi = PigeonConnectionsApi()
+        PHostConnectionsApi.setUp(messenger, connectionsApi)
 
         foregroundCallServiceReceiver =
             ForegroundCallServiceReceiver(PDelegateBackgroundRegisterFlutterApi(messenger), context)
@@ -62,7 +66,7 @@ class WebtritCallkeepPluginState(
     fun initMainIsolateApi(activity: Activity) {
         Log.i(TAG, "initActivity $this")
         Log.d(TAG, "onStateChanged attached activity")
-        this.activity = activity;
+        this.activity = activity
         StorageDelegate.setActivityReady(activity, false)
 
         ActivityHolder.setActivity(activity)
@@ -104,7 +108,7 @@ class WebtritCallkeepPluginState(
         ActivityHolder.setActivity(null)
         pigeonActivityApi?.detachActivity()
 
-        permissionsApi = null;
+        permissionsApi = null
     }
 
     fun onDetach() {
