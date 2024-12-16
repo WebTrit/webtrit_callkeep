@@ -68,7 +68,7 @@ class TelephonyForegroundCallkeepApi(
     ) {
         Log.i(TAG, "reportNewIncomingCall ${metadata.callId}.")
         // User press hangup or decline call
-        if (PhoneConnectionService.connectionManager.isConnectionTerminated(metadata.callId)) {
+        if (PhoneConnectionService.connectionManager.isConnectionDisconnected(metadata.callId)) {
             callback.invoke(Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED)))
         } else if (PhoneConnectionService.connectionManager.isConnectionAlreadyExists(metadata.callId)) {
             if (PhoneConnectionService.connectionManager.isConnectionAnswered(metadata.callId)) {

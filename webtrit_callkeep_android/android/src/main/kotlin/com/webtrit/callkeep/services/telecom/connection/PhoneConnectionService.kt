@@ -32,8 +32,7 @@ class PhoneConnectionService : ConnectionService() {
         super.onCreate()
         sensorManager = ProximitySensorManager(applicationContext, PhoneConnectionConsts())
         activityWakelockManager = ActivityWakelockManager(ActivityHolder)
-        phoneConnectionServiceDispatcher =
-            PhoneConnectionServiceDispatcher(applicationContext, connectionManager, sensorManager)
+        phoneConnectionServiceDispatcher = PhoneConnectionServiceDispatcher(connectionManager, sensorManager)
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
@@ -174,7 +173,7 @@ class PhoneConnectionService : ConnectionService() {
     }
 
     private fun disconnectConnection(connection: PhoneConnection) {
-        connectionManager.removeConnection(connection.metadata.callId)
+        Log.e(TAG, "disconnectConnection:: $connection")
 
         if (!connectionManager.hasVideoConnections()) {
             activityWakelockManager.releaseScreenWakeLock()
