@@ -71,11 +71,7 @@ class PhoneConnectionService : ConnectionService() {
         val connection =
             PhoneConnection.createOutgoingPhoneConnection(applicationContext, metadata, ::disconnectConnection)
         sensorManager.setShouldListenProximity(metadata.proximityEnabled)
-        connectionManager.addConnection(
-            metadata.callId, connection, TIMEOUT_DURATION_MS, DEFAULT_OUTGOING_STATES
-        ) {
-            connection.hungUp()
-        }
+        connectionManager.addConnection(metadata.callId, connection)
 
         if (metadata.hasVideo) {
             activityWakelockManager.acquireScreenWakeLock()
@@ -143,11 +139,7 @@ class PhoneConnectionService : ConnectionService() {
         val connection =
             PhoneConnection.createIncomingPhoneConnection(applicationContext, metadata, ::disconnectConnection)
         sensorManager.setShouldListenProximity(true)
-        connectionManager.addConnection(
-            metadata.callId, connection, TIMEOUT_DURATION_MS, DEFAULT_INCOMING_STATES
-        ) {
-            connection.hungUp()
-        }
+        connectionManager.addConnection(metadata.callId, connection)
 
         if (metadata.hasVideo) {
             activityWakelockManager.acquireScreenWakeLock()
@@ -202,10 +194,6 @@ class PhoneConnectionService : ConnectionService() {
 
     companion object {
         private const val TAG = "PhoneConnectionService"
-        private const val TIMEOUT_DURATION_MS = 35_000L
-
-        val DEFAULT_INCOMING_STATES = listOf(Connection.STATE_NEW, Connection.STATE_RINGING)
-        val DEFAULT_OUTGOING_STATES = listOf(Connection.STATE_DIALING)
 
         var connectionManager: ConnectionManager = ConnectionManager()
 
