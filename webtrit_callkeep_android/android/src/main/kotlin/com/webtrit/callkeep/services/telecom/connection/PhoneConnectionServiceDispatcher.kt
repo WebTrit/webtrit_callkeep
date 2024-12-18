@@ -1,10 +1,9 @@
 package com.webtrit.callkeep.services.telecom.connection
 
-import android.content.Context
 import com.webtrit.callkeep.models.CallMetadata
 
-class PhoneConnectionServiceDispatcher(
-    private val context: Context,
+class
+PhoneConnectionServiceDispatcher(
     private val connectionManager: ConnectionManager,
     private val proximitySensorManager: ProximitySensorManager
 ) {
@@ -32,13 +31,11 @@ class PhoneConnectionServiceDispatcher(
 
     private fun handleDeclineCall(metadata: CallMetadata) {
         connectionManager.getConnection(metadata.callId)?.declineCall()
-        connectionManager.addConnectionTerminated(metadata.callId)
         proximitySensorManager.stopListening()
     }
 
     private fun handleHungUpCall(metadata: CallMetadata) {
         connectionManager.getConnection(metadata.callId)?.hungUp()
-        connectionManager.addConnectionTerminated(metadata.callId)
         proximitySensorManager.stopListening()
     }
 
@@ -73,10 +70,8 @@ class PhoneConnectionServiceDispatcher(
 
     private fun handleTearDown() {
         connectionManager.getConnections().forEach {
-            connectionManager.cancelTimeout(it.id)
             it.hungUp()
         }
-        connectionManager.clearTerminatedConnections()
     }
 
     private fun handleDetachActivity() {

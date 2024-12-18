@@ -294,4 +294,11 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   Future<void> stopRingbackSound() {
     throw UnimplementedError('stopRingbackSound() has not been implemented.');
   }
+
+  /// Get the connection details for the given [callId].
+  ///
+  /// Returns a [Future] resolving to a [CallkeepConnection] if found, or null otherwise.
+  Future<CallkeepConnection?> getConnection(String callId) {
+    throw UnimplementedError('getConnection() has not been implemented.');
+  }
 }
