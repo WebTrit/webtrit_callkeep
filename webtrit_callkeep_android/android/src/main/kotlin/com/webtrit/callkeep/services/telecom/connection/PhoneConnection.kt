@@ -327,7 +327,6 @@ class PhoneConnection internal constructor(
      * Handle actions when the connection becomes active.
      */
     private fun onActiveConnection() {
-        notificationManager.cancelActiveNotification()
         this@PhoneConnection.audioManager.stopRingtone()
         notificationManager.showActiveCallNotification(metadata)
         if (Build.VERSION.SDK_INT == Build.VERSION_CODES.O_MR1) {
