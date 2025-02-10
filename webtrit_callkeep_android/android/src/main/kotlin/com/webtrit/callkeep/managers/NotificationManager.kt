@@ -1,17 +1,21 @@
 package com.webtrit.callkeep.managers
 
 import  android.content.Context
+import android.content.Intent
+import com.webtrit.callkeep.common.ContextHolder.context
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.notifications.ActiveCallNotificationBuilder
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
 import com.webtrit.callkeep.notifications.MissedCallNotificationBuilder
+import com.webtrit.callkeep.services.ActiveCallService
 
 //TODO: Reorganize this service
+//TODO: refactor notification handling to track multiple active lines + outgoing calls maybe?
+
 class NotificationManager(
     context: Context
 ) {
     private val incomingCallNotificationBuilder = IncomingCallNotificationBuilder(context)
-    private val activeCallNotificationBuilder = ActiveCallNotificationBuilder(context)
     private val missedCallNotificationBuilder = MissedCallNotificationBuilder(context)
 
     fun showIncomingCallNotification(callMetaData: CallMetadata, hasAnswerButton: Boolean = true) {
@@ -21,8 +25,9 @@ class NotificationManager(
     }
 
     fun showActiveCallNotification(callMetaData: CallMetadata) {
-        activeCallNotificationBuilder.setMetaData(callMetaData)
-        activeCallNotificationBuilder.show()
+        val intent = Intent(context, ActiveCallService::class.java)
+        callMetaData.toBundle().let { intent.putExtra("metadata",it) }
+        context.startService(intent)
     }
 
     fun showMissedCallNotification(callMetaData: CallMetadata) {
@@ -36,7 +41,7 @@ class NotificationManager(
     }
 
     fun cancelActiveNotification() {
-        activeCallNotificationBuilder.hide()
+        context.stopService(Intent(context, ActiveCallService::class.java))
         incomingCallNotificationBuilder.hide()
     }
 

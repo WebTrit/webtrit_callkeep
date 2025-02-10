@@ -10,6 +10,8 @@
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
 
     <!-- Needed for auto start at boot if keep alive service is enabled -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -37,6 +39,11 @@
             android:name=".services.callkeep.foreground.ForegroundCallService"
             android:exported="false"
             android:foregroundServiceType="phoneCall" />
+
+        <service
+            android:name=".services.ActiveCallService"
+            android:exported="false"
+            android:foregroundServiceType="phoneCall|microphone|camera" />
 
         <receiver
             android:name=".services.callkeep.foreground.ForegroundCallBootReceiver"

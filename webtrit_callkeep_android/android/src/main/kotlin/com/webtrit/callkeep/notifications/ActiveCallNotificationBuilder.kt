@@ -26,7 +26,7 @@ class ActiveCallNotificationBuilder(
         notificationManager.createNotificationChannel(notificationChannel)
     }
 
-    private fun build(): Notification {
+     fun build(): Notification {
         val notificationBuilder = Notification.Builder(
             context, NOTIFICATION_ACTIVE_CALL_CHANNEL_ID
         ).apply {
