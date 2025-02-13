@@ -8,6 +8,7 @@ import com.webtrit.callkeep.PEndCallReason
 import com.webtrit.callkeep.PEndCallReasonEnum
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.POptions
+import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.models.CallMetadata
@@ -75,7 +76,7 @@ class ProxyForegroundCallkeepApi(
         notificationManager.cancelActiveNotification()
         this@ProxyForegroundCallkeepApi.audioManager.stopRingtone()
         if (Platform.isLockScreen(activity)) {
-            activity.finish()
+            ActivityHolder.finish();
         }
         if (reason.value == PEndCallReasonEnum.UNANSWERED) {
             notificationManager.showMissedCallNotification(metadata)
@@ -99,7 +100,7 @@ class ProxyForegroundCallkeepApi(
         notificationManager.cancelActiveNotification()
         this@ProxyForegroundCallkeepApi.audioManager.stopRingtone()
         if (Platform.isLockScreen(activity)) {
-            activity.finish()
+            ActivityHolder.finish();
         }
         callback.invoke(Result.success(null))
     }
