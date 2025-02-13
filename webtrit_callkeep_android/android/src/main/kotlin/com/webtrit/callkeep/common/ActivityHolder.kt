@@ -15,6 +15,8 @@ object ActivityHolder : ActivityProvider {
 
     private val activityChangeListeners = mutableListOf<(Activity?) -> Unit>()
 
+    private const val TAG = "ActivityHolder"
+
     override fun getActivity(): Activity? {
         return activity
     }
@@ -47,8 +49,16 @@ object ActivityHolder : ActivityProvider {
     }
 
     fun finish() {
+        Log.i(TAG, "Finishing activity")
+
+        // Using moveTaskToBack(true) instead of finish(), because finish()
+        // may cause the error "Error broadcast intent callback: result=CANCELLED".
+        // This happens when the activity is finished while handling
+        // a notification or a BroadcastReceiver, which cancels relevant operations.
+        // moveTaskToBack(true) simply moves the app to the background,
+        // preserving all active processes.
+        // Reference: https://stackoverflow.com/questions/39480931/error-broadcast-intent-callback-result-cancelled-forintent-act-com-google-and
         activity?.moveTaskToBack(true)
-        activity?.finish()
     }
 
     override fun addActivityChangeListener(listener: (Activity?) -> Unit) {
