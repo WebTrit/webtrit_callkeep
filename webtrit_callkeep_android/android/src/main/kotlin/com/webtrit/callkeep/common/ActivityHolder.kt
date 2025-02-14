@@ -43,8 +43,14 @@ object ActivityHolder : ActivityProvider {
     fun start(metadata: CallMetadata?, context: Context) {
         val hostAppActivity = Platform.getLaunchActivity(context)?.apply {
             data = metadata?.getCallUri()
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            // Ensures the activity is started in a new task if needed (required when launching from a service)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                    // Prevents recreating the activity if it's already at the top of the task
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                    // Brings the existing activity to the foreground instead of creating a new one
+                    Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT
         }
+
         context.startActivity(hostAppActivity)
     }
 
@@ -60,6 +66,7 @@ object ActivityHolder : ActivityProvider {
         // Reference: https://stackoverflow.com/questions/39480931/error-broadcast-intent-callback-result-cancelled-forintent-act-com-google-and
         activity?.moveTaskToBack(true)
     }
+
 
     override fun addActivityChangeListener(listener: (Activity?) -> Unit) {
         activityChangeListeners.add(listener)
