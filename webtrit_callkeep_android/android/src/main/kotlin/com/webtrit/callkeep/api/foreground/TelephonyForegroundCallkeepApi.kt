@@ -172,7 +172,8 @@ class TelephonyForegroundCallkeepApi(
         try {
             flutterDelegate.clearOutgoingCallback()
             activity.unregisterReceiver(flutterDelegate)
-            PhoneConnectionService.notifyAboutDetachActivity(activity)
+            // TODO(Serdun): BUG Not allowed to start service Intent
+            PhoneConnectionService.tearDown(activity)
 
         } catch (throwable: Throwable) {
             Log.e(TAG, throwable.toString())

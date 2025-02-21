@@ -244,10 +244,6 @@ class PhoneConnectionService : ConnectionService() {
             communicate(context, ServiceAction.TearDown, null)
         }
 
-        fun notifyAboutDetachActivity(context: Context) {
-            communicate(context, ServiceAction.DetachActivity, null)
-        }
-
         /**
          * Handles new outgoing calls and starts the connection service if the service is not running.
          * For more information on system management of creating connection services,
