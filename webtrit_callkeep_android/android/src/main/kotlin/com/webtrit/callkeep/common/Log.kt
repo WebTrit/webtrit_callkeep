@@ -1,47 +1,82 @@
 package com.webtrit.callkeep.common
 
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.webtrit.callkeep.PDelegateLogsFlutterApi
 import com.webtrit.callkeep.PLogTypeEnum
 
+/**
+ * A simplified logging utility that sends logs to delegates or system log if no delegates are registered.
+ */
 object Log {
     private const val LOG_TAG = "FlutterLog"
 
-    private var isolateDelegates = mutableListOf<com.webtrit.callkeep.PDelegateLogsFlutterApi>()
+    // List of delegates that will receive log messages
+    private var isolateDelegates = mutableListOf<PDelegateLogsFlutterApi>()
 
-    fun add(delegate: com.webtrit.callkeep.PDelegateLogsFlutterApi) {
-        Log.d(LOG_TAG, "Add flutter log delegate")
+    /**
+     * Adds a delegate to receive log messages.
+     *
+     * @param delegate The log delegate that will handle log messages.
+     */
+    fun add(delegate: PDelegateLogsFlutterApi) {
         isolateDelegates.add(delegate)
     }
 
+    /**
+     * Removes a delegate from receiving log messages.
+     *
+     * @param delegate The log delegate to be removed.
+     */
     fun remove(delegate: PDelegateLogsFlutterApi) {
-        Log.d(LOG_TAG, "Remove flutter log delegate")
-        isolateDelegates.add(delegate)
+        isolateDelegates.remove(delegate)
     }
 
-    fun e(tag: String, message: String) {
-        Log.e(tag, message)
-        emitLog(PLogTypeEnum.ERROR, tag, message)
-    }
-
-    fun d(tag: String, message: String) {
-        Log.d(tag, message)
-        emitLog(PLogTypeEnum.DEBUG, tag, message)
-    }
-
-    fun i(tag: String, message: String) {
-        Log.i(tag, message)
-        emitLog(PLogTypeEnum.INFO, tag, message)
-    }
-
-    fun w(tag: String, message: String) {
-        Log.i(tag, message)
-        emitLog(PLogTypeEnum.WARN, tag, message)
-    }
-
-    private fun emitLog(type: PLogTypeEnum, tag: String, message: String) {
-        isolateDelegates.forEach {
-            it.onLog(type, tag, message) {}
+    /**
+     * Logs a message with the specified log type.
+     *
+     * @param type The log type (ERROR, DEBUG, INFO, WARN).
+     * @param tag The tag associated with the log message.
+     * @param message The message to be logged.
+     */
+    private fun log(type: PLogTypeEnum, tag: String, message: String) {
+        if (isolateDelegates.isEmpty()) {
+            // If no delegates, log to Android's system log
+            when (type) {
+                PLogTypeEnum.DEBUG -> Log.d(tag, message)
+                PLogTypeEnum.INFO -> Log.i(tag, message)
+                PLogTypeEnum.WARN -> Log.w(tag, message)
+                PLogTypeEnum.ERROR -> Log.e(tag, message)
+                PLogTypeEnum.VERBOSE -> Log.v(tag, message)
+            }
+        } else {
+            // If delegates exist, send the log to them
+            Handler(Looper.getMainLooper()).post {
+                isolateDelegates.forEach {
+                    it.onLog(type, tag, message) {}
+                }
+            }
         }
     }
+
+    /**
+     * Logs an error message.
+     */
+    fun e(tag: String, message: String) = log(PLogTypeEnum.ERROR, tag, message)
+
+    /**
+     * Logs a debug message.
+     */
+    fun d(tag: String, message: String) = log(PLogTypeEnum.DEBUG, tag, message)
+
+    /**
+     * Logs an informational message.
+     */
+    fun i(tag: String, message: String) = log(PLogTypeEnum.INFO, tag, message)
+
+    /**
+     * Logs a warning message.
+     */
+    fun w(tag: String, message: String) = log(PLogTypeEnum.WARN, tag, message)
 }
