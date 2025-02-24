@@ -49,7 +49,7 @@ class ActiveCallNotificationBuilder(
     override fun show() {
         if (notificationManager.areNotificationsEnabled()) {
             try {
-                notificationManager.notify(R.integer.notification_active_call_id, build())
+                notificationManager.notify(ACTIVE_CALL_NOTIFICATION_ID, build())
             } catch (e: SecurityException) {
                 Log.e(IncomingCallNotificationBuilder.TAG, "Notifications exception", e)
             }
@@ -65,5 +65,6 @@ class ActiveCallNotificationBuilder(
     companion object {
         const val TAG = "ACTIVE_CALL_NOTIFICATION"
         const val NOTIFICATION_ACTIVE_CALL_CHANNEL_ID = "NOTIFICATION_ACTIVE_CALL_CHANNEL_ID"
+        const val ACTIVE_CALL_NOTIFICATION_ID = 1 //  R.integer.notification_active_call_id
     }
 }

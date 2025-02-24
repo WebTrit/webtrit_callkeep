@@ -9,7 +9,6 @@ import androidx.core.app.ServiceCompat
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.notifications.ActiveCallNotificationBuilder
-import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
 
 class ActiveCallService : Service() {
     private var activeCallNotificationBuilder = ActiveCallNotificationBuilder(ContextHolder.context)
@@ -33,13 +32,13 @@ class ActiveCallService : Service() {
 
             ServiceCompat.startForeground(
                 this,
-                ForegroundCallNotificationBuilder.FOREGROUND_CALL_NOTIFICATION_ID,
+                ActiveCallNotificationBuilder.ACTIVE_CALL_NOTIFICATION_ID,
                 notification,
                 types,
             )
         } else {
             startForeground(
-                ForegroundCallNotificationBuilder.FOREGROUND_CALL_NOTIFICATION_ID, notification
+                ActiveCallNotificationBuilder.ACTIVE_CALL_NOTIFICATION_ID, notification
             )
         }
 
