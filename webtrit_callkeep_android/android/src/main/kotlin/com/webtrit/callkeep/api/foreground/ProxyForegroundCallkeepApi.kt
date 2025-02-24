@@ -23,7 +23,6 @@ class ProxyForegroundCallkeepApi(
     private val notificationManager = NotificationManager(activity)
     private val audioManager = AudioManager(activity)
 
-
     override fun setUp(options: POptions, callback: (Result<Unit>) -> Unit) {
         if (!isSetup) {
             StorageDelegate.initIncomingPath(activity, options.android.incomingPath)
@@ -32,7 +31,7 @@ class ProxyForegroundCallkeepApi(
             StorageDelegate.initRingbackPath(activity, options.android.ringbackSound)
             isSetup = true
         } else {
-            Log.e(LOG_TAG, "Plugin already initialized")
+            Log.i(LOG_TAG, "Plugin already initialized")
         }
         callback.invoke(Result.success(Unit))
     }

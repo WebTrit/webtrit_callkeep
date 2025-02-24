@@ -50,7 +50,7 @@ class TelephonyForegroundCallkeepApi(
 
             isSetup = true
         } else {
-            Log.e(TAG, "Plugin already initialized")
+            Log.i(TAG, "Plugin already initialized")
         }
         callback.invoke(Result.success(Unit))
     }

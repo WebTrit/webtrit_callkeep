@@ -173,7 +173,7 @@ class PhoneConnectionService : ConnectionService() {
     }
 
     private fun disconnectConnection(connection: PhoneConnection) {
-        Log.e(TAG, "disconnectConnection:: $connection")
+        Log.i(TAG, "disconnectConnection:: $connection")
 
         if (!connectionManager.hasVideoConnections()) {
             activityWakelockManager.releaseScreenWakeLock()
