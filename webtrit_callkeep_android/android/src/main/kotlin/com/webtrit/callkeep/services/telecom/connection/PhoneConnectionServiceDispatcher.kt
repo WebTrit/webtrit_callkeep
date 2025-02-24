@@ -19,7 +19,6 @@ PhoneConnectionServiceDispatcher(
             ServiceAction.SendDTMF -> metadata?.let { handleSendDTMF(it) }
             ServiceAction.Speaker -> metadata?.let { handleSpeaker(it) }
             ServiceAction.TearDown -> handleTearDown()
-            ServiceAction.DetachActivity -> handleDetachActivity()
             else -> throw IllegalArgumentException("Unknown service action: $action")
         }
     }
@@ -72,9 +71,5 @@ PhoneConnectionServiceDispatcher(
         connectionManager.getConnections().forEach {
             it.hungUp()
         }
-    }
-
-    private fun handleDetachActivity() {
-        connectionManager.getConnections().forEach { it.onDisconnect() }
     }
 }

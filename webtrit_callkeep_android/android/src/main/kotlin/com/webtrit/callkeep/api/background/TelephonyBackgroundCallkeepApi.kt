@@ -55,8 +55,7 @@ class TelephonyBackgroundCallkeepApi(
     override fun endAllCalls() {
         Log.d(TAG, "endAllCalls")
 
-        //TODO: Rename this notifyAboutDetachActivity to  endAllCalls
-        PhoneConnectionService.notifyAboutDetachActivity(context)
+        PhoneConnectionService.tearDown(context)
     }
 
     /**

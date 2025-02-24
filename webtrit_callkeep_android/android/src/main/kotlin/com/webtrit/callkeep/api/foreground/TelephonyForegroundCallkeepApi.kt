@@ -172,8 +172,7 @@ class TelephonyForegroundCallkeepApi(
         try {
             flutterDelegate.clearOutgoingCallback()
             activity.unregisterReceiver(flutterDelegate)
-            PhoneConnectionService.notifyAboutDetachActivity(activity)
-
+            PhoneConnectionService.tearDown(activity)
         } catch (throwable: Throwable) {
             Log.e(TAG, throwable.toString())
         }
