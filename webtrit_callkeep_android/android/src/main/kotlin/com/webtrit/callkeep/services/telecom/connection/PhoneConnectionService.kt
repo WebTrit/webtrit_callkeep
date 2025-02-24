@@ -30,7 +30,6 @@ class PhoneConnectionService : ConnectionService() {
 
     override fun onCreate() {
         super.onCreate()
-
         // Set the service state to true when the system starts the service.
         isRunning = true
         sensorManager = ProximitySensorManager(applicationContext, PhoneConnectionConsts())
@@ -185,7 +184,6 @@ class PhoneConnectionService : ConnectionService() {
 
     override fun onDestroy() {
         Log.i(TAG, "onDestroy")
-
         // Set the service state to false when the system destroys the service.
         isRunning = false
         sensorManager.stopListening()
