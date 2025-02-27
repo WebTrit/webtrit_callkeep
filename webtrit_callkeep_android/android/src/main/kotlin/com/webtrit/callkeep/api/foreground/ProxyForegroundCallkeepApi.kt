@@ -72,7 +72,7 @@ class ProxyForegroundCallkeepApi(
     ) {
         flutterDelegateApi.performEndCall(metadata.callId) {}
         flutterDelegateApi.didDeactivateAudioSession {}
-        notificationManager.cancelActiveNotification()
+        notificationManager.cancelActiveCallNotification(metadata.callId)
         this@ProxyForegroundCallkeepApi.audioManager.stopRingtone()
         if (Platform.isLockScreen(activity)) {
             ActivityHolder.finish();
@@ -96,7 +96,7 @@ class ProxyForegroundCallkeepApi(
         flutterDelegateApi.performEndCall(metadata.callId) {}
         flutterDelegateApi.didDeactivateAudioSession {}
 
-        notificationManager.cancelActiveNotification()
+        notificationManager.cancelActiveCallNotification(metadata.callId)
         this@ProxyForegroundCallkeepApi.audioManager.stopRingtone()
         if (Platform.isLockScreen(activity)) {
             ActivityHolder.finish();

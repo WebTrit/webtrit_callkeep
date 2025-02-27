@@ -2,6 +2,7 @@ package com.webtrit.callkeep.managers
 
 import  android.content.Context
 import android.content.Intent
+import android.os.Bundle
 import com.webtrit.callkeep.common.ContextHolder.context
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.notifications.ActiveCallNotificationBuilder
@@ -24,10 +25,10 @@ class NotificationManager(
         incomingCallNotificationBuilder.show()
     }
 
-    fun showActiveCallNotification(callMetaData: CallMetadata) {
-        val intent = Intent(context, ActiveCallService::class.java)
-        callMetaData.toBundle().let { intent.putExtra("metadata",it) }
-        context.startService(intent)
+    // TODO: rename
+    fun showActiveCallNotification(id: String, callMetaData: CallMetadata) {
+        activeCalls[id] = callMetaData
+        upsertActiveCallsService()
     }
 
     fun showMissedCallNotification(callMetaData: CallMetadata) {
@@ -40,12 +41,29 @@ class NotificationManager(
         missedCallNotificationBuilder.cancel()
     }
 
-    fun cancelActiveNotification() {
-        context.stopService(Intent(context, ActiveCallService::class.java))
-        incomingCallNotificationBuilder.hide()
+    // TODO: rename
+    fun cancelActiveCallNotification(id: String) {
+        activeCalls.remove(id)
+        upsertActiveCallsService()
     }
 
     fun cancelIncomingNotification() {
         incomingCallNotificationBuilder.hide()
+    }
+
+    private fun upsertActiveCallsService() {
+        if (activeCalls.isNotEmpty()) {
+            val activeCallsBundles = activeCalls.map { it.value.toBundle() }
+            val intent = Intent(context, ActiveCallService::class.java)
+            intent.putExtra("metadata", ArrayList(activeCallsBundles))
+            context.startService(intent)
+        } else {
+            context.stopService(Intent(context, ActiveCallService::class.java))
+        }
+    }
+
+    companion object {
+        const val TAG = "NotificationManager"
+        var activeCalls = mutableMapOf<String, CallMetadata>()
     }
 }

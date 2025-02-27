@@ -166,7 +166,7 @@ class PhoneConnection internal constructor(
         super.onDisconnect()
         Log.i(TAG, "onDisconnect: ${metadata.callId}")
 
-        this@PhoneConnection.notificationManager.cancelActiveNotification()
+        this@PhoneConnection.notificationManager.cancelActiveCallNotification(id)
         this@PhoneConnection.audioManager.stopRingtone()
 
         // This call is required to confirm the hangup, ensuring the call flow completes correctly,
@@ -347,7 +347,7 @@ class PhoneConnection internal constructor(
      */
     private fun onActiveConnection() {
         this@PhoneConnection.audioManager.stopRingtone()
-        notificationManager.showActiveCallNotification(metadata)
+        notificationManager.showActiveCallNotification(id, metadata)
         if (Build.VERSION.SDK_INT == Build.VERSION_CODES.O_MR1) {
             TelephonyForegroundCallkeepApi.notifyMuting(
                 context, metadata.copy(hasMute = this.isMute)

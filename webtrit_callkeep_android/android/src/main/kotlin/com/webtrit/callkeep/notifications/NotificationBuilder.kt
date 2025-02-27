@@ -11,8 +11,10 @@ import com.webtrit.callkeep.models.CallMetadata
 
 abstract class NotificationBuilder(
     private val context: Context
-) {
+) { 
+    // TODO: move to specific child
     private var callMetaData: CallMetadata? = null
+    // TODO: move to specific child
     private var notificationData: Map<String, Any> = mutableMapOf()
 
     protected val notificationManager: NotificationManagerCompat

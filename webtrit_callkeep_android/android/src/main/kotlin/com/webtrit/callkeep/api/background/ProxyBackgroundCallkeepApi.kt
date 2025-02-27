@@ -76,7 +76,7 @@ class ProxyBackgroundCallkeepApi(
      * @param callback A callback function to be invoked after hanging up the call.
      */
     override fun hungUp(metadata: CallMetadata, callback: (Result<Unit>) -> Unit) {
-        notificationManager.cancelActiveNotification()
+        notificationManager.cancelActiveCallNotification(metadata.callId)
         this@ProxyBackgroundCallkeepApi.audioManager.stopRingtone()
         callback(Result.success(Unit))
     }
