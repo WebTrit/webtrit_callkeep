@@ -7,12 +7,11 @@ import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import androidx.core.app.ServiceCompat
-import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.notifications.ActiveCallNotificationBuilder
 
 class ActiveCallService : Service() {
-    private var activeCallNotificationBuilder = ActiveCallNotificationBuilder(ContextHolder.context)
+    private var activeCallNotificationBuilder = ActiveCallNotificationBuilder()
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val bundle = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

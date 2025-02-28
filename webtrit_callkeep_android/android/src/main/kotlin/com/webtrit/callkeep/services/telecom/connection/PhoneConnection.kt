@@ -37,7 +37,7 @@ class PhoneConnection internal constructor(
     private var isHasSpeaker = false
     private var answer = false
 
-    private val notificationManager = NotificationManager(context)
+    private val notificationManager = NotificationManager()
     private val audioManager = AudioManager(context)
 
     init {

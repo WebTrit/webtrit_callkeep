@@ -3,25 +3,19 @@ package com.webtrit.callkeep.notifications
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.content.Context
 import androidx.core.app.NotificationCompat
 import com.webtrit.callkeep.R
 import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.common.ContextHolder.context
 
-class ActiveCallNotificationBuilder(
-    private val context: Context,
-) : NotificationBuilder(context) {
+class ActiveCallNotificationBuilder() : NotificationBuilder() {
     private var callsMetaData = ArrayList<CallMetadata>()
 
     fun setCallsMetaData(callsMetaData: List<CallMetadata>) {
         this.callsMetaData = callsMetaData as ArrayList<CallMetadata>
     }
 
-    init {
-        registerNotificationChannel()
-    }
-
-    private fun registerNotificationChannel() {
+    override fun registerNotificationChannel() {
         val notificationChannel = NotificationChannel(
             NOTIFICATION_ACTIVE_CALL_CHANNEL_ID,
             context.getString(R.string.push_notification_active_call_channel_title),
@@ -32,7 +26,7 @@ class ActiveCallNotificationBuilder(
         notificationManager.createNotificationChannel(notificationChannel)
     }
 
-    fun build(): Notification {
+    override fun build(): Notification {
         val title = if (callsMetaData.size > 1) {
             context.getString(R.string.push_notification_active_calls_channel_title)
         } else {
@@ -57,12 +51,6 @@ class ActiveCallNotificationBuilder(
         notification.flags = notification.flags or NotificationCompat.FLAG_INSISTENT
         return notification
     }
-
-    override fun show() {}
-
-    override fun hide() {}
-
-    override fun cancel() {}
 
 
     companion object {

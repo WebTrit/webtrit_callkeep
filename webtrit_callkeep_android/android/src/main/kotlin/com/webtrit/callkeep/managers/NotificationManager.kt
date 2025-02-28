@@ -1,59 +1,66 @@
 package com.webtrit.callkeep.managers
 
-import  android.content.Context
+import android.app.Notification
 import android.content.Intent
-import android.os.Bundle
+import androidx.core.app.NotificationManagerCompat
+import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.ContextHolder.context
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.notifications.ActiveCallNotificationBuilder
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
 import com.webtrit.callkeep.notifications.MissedCallNotificationBuilder
 import com.webtrit.callkeep.services.ActiveCallService
+import io.flutter.Log
 
-//TODO: Reorganize this service
-//TODO: refactor notification handling to track multiple active lines + outgoing calls maybe?
-
-class NotificationManager(
-    context: Context
-) {
-    private val incomingCallNotificationBuilder = IncomingCallNotificationBuilder(context)
-    private val missedCallNotificationBuilder = MissedCallNotificationBuilder(context)
+class NotificationManager() {
+    private val notificationManager by lazy { NotificationManagerCompat.from(context) }
+    private val incomingCallNotificationBuilder by lazy { IncomingCallNotificationBuilder() }
+    private val missedCallNotificationBuilder by lazy { MissedCallNotificationBuilder() }
 
     fun showIncomingCallNotification(callMetaData: CallMetadata, hasAnswerButton: Boolean = true) {
-        incomingCallNotificationBuilder.setMetaData(callMetaData)
-        incomingCallNotificationBuilder.setNotificationData(mapOf(IncomingCallNotificationBuilder.NOTIFICATION_DATA_HAS_ANSWER_BUTTON to hasAnswerButton))
-        incomingCallNotificationBuilder.show()
-    }
+        val notification =  incomingCallNotificationBuilder.apply {
+            setCallMetaData(callMetaData)
+            setHasAnswerButton(hasAnswerButton)
+        }.build()
 
-    // TODO: rename
-    fun showActiveCallNotification(id: String, callMetaData: CallMetadata) {
-        activeCalls[id] = callMetaData
-        upsertActiveCallsService()
-    }
-
-    fun showMissedCallNotification(callMetaData: CallMetadata) {
-        missedCallNotificationBuilder.setMetaData(callMetaData)
-        missedCallNotificationBuilder.show()
-    }
-
-    fun cancelMissedCall(callMetaData: CallMetadata) {
-        missedCallNotificationBuilder.setMetaData(callMetaData)
-        missedCallNotificationBuilder.cancel()
-    }
-
-    // TODO: rename
-    fun cancelActiveCallNotification(id: String) {
-        activeCalls.remove(id)
-        upsertActiveCallsService()
+        showRegularNotification(notification, R.integer.notification_incoming_call_id)
     }
 
     fun cancelIncomingNotification() {
-        incomingCallNotificationBuilder.hide()
+        cancelRegularNotification(R.integer.notification_incoming_call_id)
+    }
+
+    fun showMissedCallNotification(callMetaData: CallMetadata) {
+        val notification = missedCallNotificationBuilder.apply {
+            setCallMetaData(callMetaData)
+        }.build()
+        val id = callMetaData.number.hashCode()
+
+        showRegularNotification(notification, id)
+    }
+
+    fun cancelMissedCall(callMetaData: CallMetadata) {
+        cancelRegularNotification(callMetaData.number.hashCode())
+    }
+
+    fun showActiveCallNotification(id: String, callMetaData: CallMetadata) {
+        // Re add to head of the list if already exists to update position on held calls switch
+        val existPosition = activeCalls.indexOfFirst { it.callId == id }
+        if (existPosition != -1) activeCalls.removeAt(existPosition)
+        activeCalls.add(0, callMetaData)
+
+        upsertActiveCallsService()
+    }
+
+    fun cancelActiveCallNotification(id: String) {
+        val existPosition = activeCalls.indexOfFirst { it.callId == id }
+        if (existPosition != -1) activeCalls.removeAt(existPosition)
+
+        upsertActiveCallsService()
     }
 
     private fun upsertActiveCallsService() {
         if (activeCalls.isNotEmpty()) {
-            val activeCallsBundles = activeCalls.map { it.value.toBundle() }
+            val activeCallsBundles = activeCalls.map { it.toBundle() }
             val intent = Intent(context, ActiveCallService::class.java)
             intent.putExtra("metadata", ArrayList(activeCallsBundles))
             context.startService(intent)
@@ -62,8 +69,25 @@ class NotificationManager(
         }
     }
 
+    private fun showRegularNotification(notification: Notification, id: Int) {
+        if (!notificationManager.areNotificationsEnabled()) {
+            Log.d(TAG, "Notifications disabled")
+            return
+        }
+
+        try {
+            notificationManager.notify(id, notification)
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Notifications exception", e)
+        }
+    }
+
+    private fun cancelRegularNotification(id: Int) {
+        notificationManager.cancel(id)
+    }
+
     companion object {
         const val TAG = "NotificationManager"
-        var activeCalls = mutableMapOf<String, CallMetadata>()
+        private var activeCalls = mutableListOf<CallMetadata>()
     }
 }

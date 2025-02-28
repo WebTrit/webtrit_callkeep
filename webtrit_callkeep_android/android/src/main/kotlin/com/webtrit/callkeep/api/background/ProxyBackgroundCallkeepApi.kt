@@ -21,7 +21,7 @@ class ProxyBackgroundCallkeepApi(
     private val context: Context,
     private val api: PDelegateBackgroundServiceFlutterApi,
 ) : BackgroundCallkeepApi {
-    private val notificationManager = NotificationManager(context)
+    private val notificationManager = NotificationManager()
     private val audioManager = AudioManager(context)
 
     /**
