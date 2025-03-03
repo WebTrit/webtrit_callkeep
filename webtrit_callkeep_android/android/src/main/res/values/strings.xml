@@ -5,6 +5,7 @@
     <string name="hang_up_button_text">Decline</string>
     <string name="push_notification_incoming_call_channel_title">Incoming call</string>
     <string name="push_notification_active_call_channel_title">Active call</string>
+    <string name="push_notification_active_calls_channel_title">Active calls</string>
     <string name="push_notification_missed_call_channel_title">Missed call</string>
     <string name="push_notification_incoming_call_channel_description">Notification of incoming calls</string>
     <string name="push_notification_active_call_channel_description">Notification of active calls</string>

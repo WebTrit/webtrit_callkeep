@@ -20,7 +20,7 @@ class ProxyForegroundCallkeepApi(
     private val activity: Activity, private val flutterDelegateApi: PDelegateFlutterApi
 ) : ForegroundCallkeepApi {
     private var isSetup = false
-    private val notificationManager = NotificationManager(activity)
+    private val notificationManager = NotificationManager()
     private val audioManager = AudioManager(activity)
 
     override fun setUp(options: POptions, callback: (Result<Unit>) -> Unit) {
@@ -72,7 +72,7 @@ class ProxyForegroundCallkeepApi(
     ) {
         flutterDelegateApi.performEndCall(metadata.callId) {}
         flutterDelegateApi.didDeactivateAudioSession {}
-        notificationManager.cancelActiveNotification()
+        notificationManager.cancelActiveCallNotification(metadata.callId)
         this@ProxyForegroundCallkeepApi.audioManager.stopRingtone()
         if (Platform.isLockScreen(activity)) {
             ActivityHolder.finish();
@@ -96,7 +96,7 @@ class ProxyForegroundCallkeepApi(
         flutterDelegateApi.performEndCall(metadata.callId) {}
         flutterDelegateApi.didDeactivateAudioSession {}
 
-        notificationManager.cancelActiveNotification()
+        notificationManager.cancelActiveCallNotification(metadata.callId)
         this@ProxyForegroundCallkeepApi.audioManager.stopRingtone()
         if (Platform.isLockScreen(activity)) {
             ActivityHolder.finish();

@@ -6,17 +6,22 @@ import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import io.flutter.Log
 import com.webtrit.callkeep.R
+import com.webtrit.callkeep.common.ContextHolder.context
+import com.webtrit.callkeep.models.CallMetadata
 
-class MissedCallNotificationBuilder(
-    private val context: Context
-) : NotificationBuilder(context) {
-    init {
-        registerNotificationChannel()
+class MissedCallNotificationBuilder() : NotificationBuilder() {
+    private var callMetaData: CallMetadata? = null
+
+    fun setCallMetaData(callMetaData: CallMetadata) {
+        this.callMetaData = callMetaData
     }
 
-    private fun registerNotificationChannel() {
+    private fun getCallMetaData(): CallMetadata {
+        return callMetaData ?: throw IllegalStateException("Call metadata is not set")
+    }
+
+    override fun registerNotificationChannel() {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         val notificationChannel = NotificationChannel(
@@ -29,17 +34,19 @@ class MissedCallNotificationBuilder(
         notificationManager.createNotificationChannel(notificationChannel)
     }
 
-    private fun build(): Notification {
+    override fun build(): Notification {
+        val callMetaData = getCallMetaData()
+
         val notificationBuilder = Notification.Builder(context, MISSED_CALL_NOTIFICATION_CHANNEL_ID).apply {
             setSmallIcon(R.drawable.baseline_phone_missed_24)
             setContentTitle(context.getString(R.string.push_notification_missed_call_channel_title))
-            setContentText("You have a missed call from ${getMetaData().name}")
+            setContentText("You have a missed call from ${callMetaData.name}")
             setAutoCancel(true)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 setCategory(Notification.CATEGORY_MISSED_CALL)
             }
             setFullScreenIntent(
-                buildOpenAppIntent(context, getMetaData().getCallUri()), true
+                buildOpenAppIntent(context, callMetaData.getCallUri()), true
             )
         }
         val notification = notificationBuilder.build()
@@ -47,29 +54,6 @@ class MissedCallNotificationBuilder(
         return notification
     }
 
-    override fun cancel() {
-        val id = getMetaData().number.hashCode()
-        notificationManager.cancel(id)
-
-    }
-
-    override fun show() {
-        if (notificationManager.areNotificationsEnabled()) {
-            val id = getMetaData().number.hashCode()
-
-            try {
-                notificationManager.notify(id, build())
-            } catch (e: SecurityException) {
-                Log.e(TAG, "Notifications exception", e)
-            }
-        } else {
-            Log.d(TAG, "Notifications are disabled")
-        }
-    }
-
-    override fun hide() {
-        notificationManager.deleteNotificationChannel(MISSED_CALL_NOTIFICATION_CHANNEL_ID)
-    }
 
     companion object {
         const val TAG = "MISSED_CALL_NOTIFICATION"

@@ -4,24 +4,29 @@ import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.Bundle
 import android.os.IBinder
 import androidx.core.app.ServiceCompat
-import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.notifications.ActiveCallNotificationBuilder
 
 class ActiveCallService : Service() {
-    private var activeCallNotificationBuilder = ActiveCallNotificationBuilder(ContextHolder.context)
+    private var activeCallNotificationBuilder = ActiveCallNotificationBuilder()
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val bundle = intent?.getBundleExtra("metadata")
-        val metadata = CallMetadata.fromBundle(bundle!!)
-        activeCallNotificationBuilder.setMetaData(metadata)
+        val bundle = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent?.getParcelableArrayListExtra("metadata", Bundle::class.java)
+        } else {
+            intent?.getParcelableArrayListExtra<Bundle>("metadata");
+        }
+        val callsMetadata = bundle?.map { CallMetadata.fromBundle(it) } ?: emptyList()
+        
+        activeCallNotificationBuilder.setCallsMetaData(callsMetadata)
         val notification = activeCallNotificationBuilder.build();
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val types = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                if (metadata.hasVideo) {
+                if (callsMetadata.any { it.hasVideo }) {
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
                 } else {
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE

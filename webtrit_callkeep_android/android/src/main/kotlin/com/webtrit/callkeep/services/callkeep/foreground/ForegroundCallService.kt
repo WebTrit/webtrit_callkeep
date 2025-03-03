@@ -38,7 +38,7 @@ class ForegroundCallService : Service() {
 
         ContextHolder.init(applicationContext)
 
-        notificationBuilder = ForegroundCallNotificationBuilder(applicationContext)
+        notificationBuilder = ForegroundCallNotificationBuilder()
 
         val config = StorageDelegate.getForegroundCallServiceConfiguration(applicationContext)
 
@@ -62,9 +62,9 @@ class ForegroundCallService : Service() {
      */
     private fun startForegroundService(config: ForegroundCallServiceConfig) {
         Log.d(TAG, "Starting foreground service")
-        val notification = notificationBuilder.build(
-            config.androidNotificationName!!, config.androidNotificationDescription!!
-        )
+        notificationBuilder.setTitle(config.androidNotificationName!!)
+        notificationBuilder.setContent(config.androidNotificationDescription!!)
+        val notification = notificationBuilder.build()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ServiceCompat.startForeground(
