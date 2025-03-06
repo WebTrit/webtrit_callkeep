@@ -31,6 +31,11 @@ class PermissionsHelper(private val context: Context) {
         }
     }
 
+    fun hasCameraPermission(): Boolean {
+        val cameraPermission = context.checkSelfPermission(android.Manifest.permission.CAMERA)
+        return cameraPermission == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
     companion object {
         private const val TAG = "PermissionsHelper"
     }

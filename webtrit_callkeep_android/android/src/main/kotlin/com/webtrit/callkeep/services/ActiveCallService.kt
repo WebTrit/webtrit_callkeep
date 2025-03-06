@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import androidx.core.app.ServiceCompat
+import com.webtrit.callkeep.common.helpers.PermissionsHelper
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.notifications.ActiveCallNotificationBuilder
 
@@ -26,7 +27,9 @@ class ActiveCallService : Service() {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val types = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                if (callsMetadata.any { it.hasVideo }) {
+                val hasVideo = callsMetadata.any { it.hasVideo }
+                val hasCameraPermission = PermissionsHelper(this).hasCameraPermission()
+                if (hasVideo && hasCameraPermission) {
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
                 } else {
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
