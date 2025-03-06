@@ -10,6 +10,7 @@ import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.PCallRequestError
 import com.webtrit.callkeep.PCallRequestErrorEnum
 import com.webtrit.callkeep.PDelegateFlutterApi
+import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.PigeonCallback
 import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.common.helpers.registerCustomReceiver
@@ -105,7 +106,7 @@ class TelephonyForegroundCallkeepReceiver(
             flutterDelegateApi.didDeactivateAudioSession {}
 
             if (Platform.isLockScreen(activity)) {
-                activity.finish()
+                ActivityHolder.finish();
             }
         }
     }

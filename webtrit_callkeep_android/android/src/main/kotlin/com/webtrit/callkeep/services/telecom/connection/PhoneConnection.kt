@@ -104,25 +104,43 @@ class PhoneConnection internal constructor(
 
     /**
      * Callback method invoked when an incoming call is answered.
-     * This method is called when the user answers an incoming call.
-     * Use this overload if the video state is not relevant.
+     *
+     * This method is called when the user answers an incoming call. It handles several tasks, including
+     * marking the call as answered, updating the UI, and notifying the system. It sets the connection
+     * as active immediately, even before receiving the 200 OK response from the other side. This is
+     * because the ringing and notifications are no longer needed once the call is answered, and
+     * waiting for the 200 OK could introduce unnecessary delays.
+     *
+     * The method also cancels any incoming call notifications, stops the ringtone, and notifies
+     * the system that the call has been answered. If the video state is not relevant for your use case,
+     * you can use this overload without worrying about video-related processing.
      */
     override fun onAnswer() {
         super.onAnswer()
         answer = true
         Log.i(TAG, "onAnswer: $metadata")
+        // Set connection as active without waiting for the 200 OK response
+        // as ringing and notifications are no longer needed once the call is answered
+        setActive()
 
         try {
+            // Cancel incoming call notification and missed call notification
             notificationManager.cancelIncomingNotification()
             notificationManager.cancelMissedCall(metadata)
+
+            // Stop the ringtone to indicate the call has been answered
             this@PhoneConnection.audioManager.stopRingtone()
         } catch (e: Exception) {
             Log.e(TAG, "onAnswer: $e")
         }
 
+        // Notify the  activity about the answered call, if app is in the foreground
         TelephonyForegroundCallkeepApi.notifyAnswer(context, metadata)
+
+        // Notify the background call service about the answered call, if app is in the background
         TelephonyBackgroundCallkeepApi.notifyAnswer(context, metadata)
 
+        // Start the activity for the answered call if the app is in the background
         ActivityHolder.start(metadata, context)
     }
 
@@ -207,6 +225,7 @@ class PhoneConnection internal constructor(
     override fun onStateChanged(state: Int) {
         super.onStateChanged(state)
 
+        Log.i(TAG, "onStateChanged: $state")
         // Handle timeout for the specific state
         handleIncomingTimeout(state)
 
@@ -327,7 +346,6 @@ class PhoneConnection internal constructor(
      * Handle actions when the connection becomes active.
      */
     private fun onActiveConnection() {
-        notificationManager.cancelActiveNotification()
         this@PhoneConnection.audioManager.stopRingtone()
         notificationManager.showActiveCallNotification(metadata)
         if (Build.VERSION.SDK_INT == Build.VERSION_CODES.O_MR1) {

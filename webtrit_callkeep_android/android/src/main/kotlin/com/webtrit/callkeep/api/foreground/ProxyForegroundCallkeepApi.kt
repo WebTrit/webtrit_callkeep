@@ -8,6 +8,7 @@ import com.webtrit.callkeep.PEndCallReason
 import com.webtrit.callkeep.PEndCallReasonEnum
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.POptions
+import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.models.CallMetadata
@@ -22,7 +23,6 @@ class ProxyForegroundCallkeepApi(
     private val notificationManager = NotificationManager(activity)
     private val audioManager = AudioManager(activity)
 
-
     override fun setUp(options: POptions, callback: (Result<Unit>) -> Unit) {
         if (!isSetup) {
             StorageDelegate.initIncomingPath(activity, options.android.incomingPath)
@@ -31,7 +31,7 @@ class ProxyForegroundCallkeepApi(
             StorageDelegate.initRingbackPath(activity, options.android.ringbackSound)
             isSetup = true
         } else {
-            Log.e(LOG_TAG, "Plugin already initialized")
+            Log.i(LOG_TAG, "Plugin already initialized")
         }
         callback.invoke(Result.success(Unit))
     }
@@ -75,7 +75,7 @@ class ProxyForegroundCallkeepApi(
         notificationManager.cancelActiveNotification()
         this@ProxyForegroundCallkeepApi.audioManager.stopRingtone()
         if (Platform.isLockScreen(activity)) {
-            activity.finish()
+            ActivityHolder.finish();
         }
         if (reason.value == PEndCallReasonEnum.UNANSWERED) {
             notificationManager.showMissedCallNotification(metadata)
@@ -99,7 +99,7 @@ class ProxyForegroundCallkeepApi(
         notificationManager.cancelActiveNotification()
         this@ProxyForegroundCallkeepApi.audioManager.stopRingtone()
         if (Platform.isLockScreen(activity)) {
-            activity.finish()
+            ActivityHolder.finish();
         }
         callback.invoke(Result.success(null))
     }

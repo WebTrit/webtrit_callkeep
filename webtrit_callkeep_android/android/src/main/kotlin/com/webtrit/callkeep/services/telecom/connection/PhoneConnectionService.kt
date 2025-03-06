@@ -30,6 +30,8 @@ class PhoneConnectionService : ConnectionService() {
 
     override fun onCreate() {
         super.onCreate()
+        // Set the service state to true when the system starts the service.
+        isRunning = true
         sensorManager = ProximitySensorManager(applicationContext, PhoneConnectionConsts())
         activityWakelockManager = ActivityWakelockManager(ActivityHolder)
         phoneConnectionServiceDispatcher = PhoneConnectionServiceDispatcher(connectionManager, sensorManager)
@@ -173,7 +175,7 @@ class PhoneConnectionService : ConnectionService() {
     }
 
     private fun disconnectConnection(connection: PhoneConnection) {
-        Log.e(TAG, "disconnectConnection:: $connection")
+        Log.i(TAG, "disconnectConnection:: $connection")
 
         if (!connectionManager.hasVideoConnections()) {
             activityWakelockManager.releaseScreenWakeLock()
@@ -182,6 +184,8 @@ class PhoneConnectionService : ConnectionService() {
 
     override fun onDestroy() {
         Log.i(TAG, "onDestroy")
+        // Set the service state to false when the system destroys the service.
+        isRunning = false
         sensorManager.stopListening()
         activityWakelockManager.dispose()
         connectionManager.getConnections().forEach {
@@ -193,6 +197,15 @@ class PhoneConnectionService : ConnectionService() {
 
     companion object {
         private const val TAG = "PhoneConnectionService"
+
+        // The service state is used to determine if the service is running. This is useful to avoid invoking onStartCommand when the service is down.
+        private var _isRunning = false
+
+        var isRunning: Boolean
+            get() = _isRunning
+            private set(value) {
+                _isRunning = value
+            }
 
         var connectionManager: ConnectionManager = ConnectionManager()
 
@@ -242,10 +255,6 @@ class PhoneConnectionService : ConnectionService() {
 
         fun tearDown(context: Context) {
             communicate(context, ServiceAction.TearDown, null)
-        }
-
-        fun notifyAboutDetachActivity(context: Context) {
-            communicate(context, ServiceAction.DetachActivity, null)
         }
 
         /**
@@ -319,10 +328,14 @@ class PhoneConnectionService : ConnectionService() {
                 }
 
                 else -> {
-                    val intent = Intent(context, PhoneConnectionService::class.java)
-                    intent.action = action.action
-                    metadata?.toBundle()?.let { intent.putExtras(it) }
-                    context.startService(intent)
+                    if (isRunning) {
+                        val intent = Intent(context, PhoneConnectionService::class.java)
+                        intent.action = action.action
+                        metadata?.toBundle()?.let { intent.putExtras(it) }
+                        context.startService(intent)
+                    } else {
+                        Log.i(TAG, "Unable to send command to connection service as it is not running")
+                    }
                 }
             }
         }
