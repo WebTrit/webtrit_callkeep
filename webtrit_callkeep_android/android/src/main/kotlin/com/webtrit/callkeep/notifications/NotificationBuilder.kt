@@ -11,13 +11,6 @@ import com.webtrit.callkeep.common.ContextHolder.context
 import com.webtrit.callkeep.common.helpers.Platform
 
 abstract class NotificationBuilder() {
-    init {
-        this.registerNotificationChannel()
-    }
-
-    protected val notificationManager: NotificationManagerCompat
-        get() = NotificationManagerCompat.from(context)
-
     protected fun buildOpenAppIntent(context: Context, uri: Uri = Uri.EMPTY): PendingIntent {
         val hostAppActivity = Platform.getLaunchActivity(context)?.apply {
             data = uri
@@ -28,8 +21,6 @@ abstract class NotificationBuilder() {
             context, R.integer.notification_incoming_call_id, hostAppActivity, PendingIntent.FLAG_IMMUTABLE
         )
     }
-
-    abstract fun registerNotificationChannel();
 
     abstract fun build(): Notification;
 

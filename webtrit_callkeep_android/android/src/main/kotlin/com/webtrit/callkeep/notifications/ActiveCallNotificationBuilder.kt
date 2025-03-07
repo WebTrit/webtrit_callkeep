@@ -1,29 +1,17 @@
 package com.webtrit.callkeep.notifications
 
 import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import androidx.core.app.NotificationCompat
 import com.webtrit.callkeep.R
-import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.common.ContextHolder.context
+import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.notifications.NotificationChannelManager.NOTIFICATION_ACTIVE_CALL_CHANNEL_ID
 
 class ActiveCallNotificationBuilder() : NotificationBuilder() {
     private var callsMetaData = ArrayList<CallMetadata>()
 
     fun setCallsMetaData(callsMetaData: List<CallMetadata>) {
         this.callsMetaData = callsMetaData as ArrayList<CallMetadata>
-    }
-
-    override fun registerNotificationChannel() {
-        val notificationChannel = NotificationChannel(
-            NOTIFICATION_ACTIVE_CALL_CHANNEL_ID,
-            context.getString(R.string.push_notification_active_call_channel_title),
-            NotificationManager.IMPORTANCE_DEFAULT
-        ).apply {
-            description = context.getString(R.string.push_notification_active_call_channel_description)
-        }
-        notificationManager.createNotificationChannel(notificationChannel)
     }
 
     override fun build(): Notification {
@@ -55,7 +43,6 @@ class ActiveCallNotificationBuilder() : NotificationBuilder() {
 
     companion object {
         const val TAG = "ACTIVE_CALL_NOTIFICATION"
-        const val NOTIFICATION_ACTIVE_CALL_CHANNEL_ID = "NOTIFICATION_ACTIVE_CALL_CHANNEL_ID"
         const val ACTIVE_CALL_NOTIFICATION_ID = 1 //  R.integer.notification_active_call_id
     }
 }

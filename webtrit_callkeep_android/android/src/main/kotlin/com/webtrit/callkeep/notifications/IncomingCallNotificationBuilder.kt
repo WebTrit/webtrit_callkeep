@@ -1,8 +1,6 @@
 package com.webtrit.callkeep.notifications
 
 import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Person
 import android.content.Intent
@@ -13,6 +11,7 @@ import com.webtrit.callkeep.R
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.common.ContextHolder.context
+import com.webtrit.callkeep.notifications.NotificationChannelManager.INCOMING_CALL_NOTIFICATION_CHANNEL_ID
 
 class IncomingCallNotificationBuilder() : NotificationBuilder() {
     private var callMetaData: CallMetadata? = null
@@ -28,20 +27,6 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
 
     private fun getCallMetaData(): CallMetadata {
         return callMetaData ?: throw IllegalStateException("Call metadata is not set")
-    }
-
-    override fun registerNotificationChannel() {
-        val notificationChannel = NotificationChannel(
-            INCOMING_CALL_NOTIFICATION_CHANNEL_ID,
-            context.getString(R.string.push_notification_incoming_call_channel_title),
-            NotificationManager.IMPORTANCE_HIGH
-        ).apply {
-            description = context.getString(R.string.push_notification_incoming_call_channel_description)
-            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            setShowBadge(true)
-            setSound(null, null)
-        }
-        notificationManager.createNotificationChannel(notificationChannel)
     }
 
     private fun getAnsweredCallIntent(callMetaData: CallMetadata): PendingIntent {
@@ -110,10 +95,5 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
         val notification = notificationBuilder.build()
         notification.flags = notification.flags or NotificationCompat.FLAG_INSISTENT
         return notification
-    }
-
-    companion object {
-        const val TAG = "INCOMING_CALL_NOTIFICATION"
-        const val INCOMING_CALL_NOTIFICATION_CHANNEL_ID = "INCOMING_CALL_NOTIFICATION_SILENT_CHANNEL_ID"
     }
 }
