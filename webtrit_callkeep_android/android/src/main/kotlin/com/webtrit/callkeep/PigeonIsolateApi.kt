@@ -67,8 +67,9 @@ class PigeonIsolateApi(
     override fun stopService(callback: (Result<Unit>) -> Unit) {
         Log.i(TAG, "stopService")
         try {
-            ForegroundCallService.stop(context)
-
+            if (ForegroundCallService.isRunning.get()) {
+                ForegroundCallService.stop(context)
+            }
             callback(Result.success(Unit))
         } catch (e: Exception) {
             callback(Result.failure(e))
