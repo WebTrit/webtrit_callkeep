@@ -328,6 +328,9 @@ class PhoneConnection internal constructor(
             notificationManager.showMissedCallNotification(metadata)
             TelephonyBackgroundCallkeepApi.notifyMissedIncomingCall(context, metadata)
         }
+
+        notificationManager.cancelIncomingNotification()
+
         Log.d(TAG, "PhoneConnection:declineCall")
         setDisconnected(DisconnectCause(DisconnectCause.REMOTE))
         onDisconnect()
