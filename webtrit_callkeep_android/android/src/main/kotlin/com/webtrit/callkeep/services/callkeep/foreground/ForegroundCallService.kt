@@ -28,7 +28,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 class ForegroundCallService : Service() {
     private lateinit var notificationBuilder: ForegroundCallNotificationBuilder
 
-    private var isRunning = AtomicBoolean(false)
     private var isEngineAttached = false
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -232,6 +231,9 @@ class ForegroundCallService : Service() {
         private var backgroundEngine: FlutterEngine? = null
         private const val TAG = "ForegroundCallService"
         private const val PARAM_JSON_DATA = "PARAM_JSON_DATA"
+
+        @JvmStatic
+        val isRunning = AtomicBoolean(false)
 
         /**
          * Communicates with the service by starting it with the specified action and metadata.
