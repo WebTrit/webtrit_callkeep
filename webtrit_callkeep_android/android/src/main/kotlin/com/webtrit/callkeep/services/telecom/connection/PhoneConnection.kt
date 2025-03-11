@@ -123,17 +123,6 @@ class PhoneConnection internal constructor(
         // as ringing and notifications are no longer needed once the call is answered
         setActive()
 
-        try {
-            // Cancel incoming call notification and missed call notification
-            notificationManager.cancelIncomingNotification()
-            notificationManager.cancelMissedCall(metadata)
-
-            // Stop the ringtone to indicate the call has been answered
-            this@PhoneConnection.audioManager.stopRingtone()
-        } catch (e: Exception) {
-            Log.e(TAG, "onAnswer: $e")
-        }
-
         // Notify the  activity about the answered call, if app is in the foreground
         TelephonyForegroundCallkeepApi.notifyAnswer(context, metadata)
 
@@ -166,6 +155,7 @@ class PhoneConnection internal constructor(
         super.onDisconnect()
         Log.i(TAG, "onDisconnect: ${metadata.callId}")
 
+        this@PhoneConnection.notificationManager.cancelIncomingNotification()
         this@PhoneConnection.notificationManager.cancelActiveCallNotification(id)
         this@PhoneConnection.audioManager.stopRingtone()
 
@@ -329,8 +319,6 @@ class PhoneConnection internal constructor(
             TelephonyBackgroundCallkeepApi.notifyMissedIncomingCall(context, metadata)
         }
 
-        notificationManager.cancelIncomingNotification()
-
         Log.d(TAG, "PhoneConnection:declineCall")
         setDisconnected(DisconnectCause(DisconnectCause.REMOTE))
         onDisconnect()
@@ -350,6 +338,11 @@ class PhoneConnection internal constructor(
      */
     private fun onActiveConnection() {
         this@PhoneConnection.audioManager.stopRingtone()
+
+        // Cancel incoming call notification and missed call notification
+        notificationManager.cancelIncomingNotification()
+        notificationManager.cancelMissedCall(metadata)
+
         notificationManager.showActiveCallNotification(id, metadata)
         if (Build.VERSION.SDK_INT == Build.VERSION_CODES.O_MR1) {
             TelephonyForegroundCallkeepApi.notifyMuting(
