@@ -1,8 +1,6 @@
 package com.webtrit.callkeep.services.telecom.connection
 
-import java.lang.Exception
 import android.content.Context
-import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -11,15 +9,15 @@ import android.telecom.Connection
 import android.telecom.DisconnectCause
 import android.telecom.TelecomManager
 import android.telecom.VideoProfile
-
-import com.webtrit.callkeep.common.Log
+import androidx.core.net.toUri
 import com.webtrit.callkeep.api.background.TelephonyBackgroundCallkeepApi
 import com.webtrit.callkeep.api.foreground.TelephonyForegroundCallkeepApi
 import com.webtrit.callkeep.common.ActivityHolder
+import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.helpers.Platform
-import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.managers.AudioManager
 import com.webtrit.callkeep.managers.NotificationManager
+import com.webtrit.callkeep.models.CallMetadata
 
 /**
  * Represents a phone connection for handling telephony calls.
@@ -253,6 +251,7 @@ class PhoneConnection internal constructor(
      *
      * @param state The new audio state of the call.
      */
+    @Deprecated("Deprecated in Java")
     override fun onCallAudioStateChanged(state: CallAudioState?) {
         super.onCallAudioStateChanged(state)
 
@@ -287,7 +286,7 @@ class PhoneConnection internal constructor(
     fun updateData(metadata: CallMetadata) {
         this.metadata = this.metadata.mergeWith(metadata)
         this.extras = metadata.toBundle()
-        setAddress(Uri.parse(metadata.number), TelecomManager.PRESENTATION_ALLOWED)
+        setAddress(metadata.number.toUri(), TelecomManager.PRESENTATION_ALLOWED)
         setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
         changeVideoState(metadata.hasVideo)
     }
