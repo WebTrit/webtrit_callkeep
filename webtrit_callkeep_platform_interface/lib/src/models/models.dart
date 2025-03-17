@@ -8,6 +8,7 @@ export 'callkeep_lifecycle_type.dart';
 export 'callkeep_log_type.dart';
 export 'callkeep_options.dart';
 export 'callkeep_service_status.dart';
+export 'callkeep_signaling_status.dart';
 export 'callkeep_special_permission.dart';
 export 'callkeep_special_permission_status.dart';
 export 'callkeep_types.dart';

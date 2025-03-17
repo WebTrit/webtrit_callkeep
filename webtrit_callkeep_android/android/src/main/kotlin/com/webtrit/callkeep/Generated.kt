@@ -214,6 +214,20 @@ enum class PCallkeepDisconnectCauseType(val raw: Int) {
   }
 }
 
+enum class PCallkeepSignalingStatus(val raw: Int) {
+  DISCONNECTING(0),
+  DISCONNECT(1),
+  CONNECTING(2),
+  CONNECT(3),
+  FAILURE(4);
+
+  companion object {
+    fun ofRaw(raw: Int): PCallkeepSignalingStatus? {
+      return values().firstOrNull { it.raw == raw }
+    }
+  }
+}
+
 /** Generated class from Pigeon that represents data sent in messages. */
 data class PIOSOptions (
   val localizedName: String,
@@ -521,51 +535,56 @@ private open class GeneratedPigeonCodec : StandardMessageCodec() {
         }
       }
       140.toByte() -> {
-        return (readValue(buffer) as? List<Any?>)?.let {
-          PIOSOptions.fromList(it)
+        return (readValue(buffer) as Long?)?.let {
+          PCallkeepSignalingStatus.ofRaw(it.toInt())
         }
       }
       141.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PAndroidOptions.fromList(it)
+          PIOSOptions.fromList(it)
         }
       }
       142.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          POptions.fromList(it)
+          PAndroidOptions.fromList(it)
         }
       }
       143.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PHandle.fromList(it)
+          POptions.fromList(it)
         }
       }
       144.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PEndCallReason.fromList(it)
+          PHandle.fromList(it)
         }
       }
       145.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PIncomingCallError.fromList(it)
+          PEndCallReason.fromList(it)
         }
       }
       146.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PCallRequestError.fromList(it)
+          PIncomingCallError.fromList(it)
         }
       }
       147.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PCallkeepServiceStatus.fromList(it)
+          PCallRequestError.fromList(it)
         }
       }
       148.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PCallkeepDisconnectCause.fromList(it)
+          PCallkeepServiceStatus.fromList(it)
         }
       }
       149.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          PCallkeepDisconnectCause.fromList(it)
+        }
+      }
+      150.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           PCallkeepConnection.fromList(it)
         }
@@ -619,44 +638,48 @@ private open class GeneratedPigeonCodec : StandardMessageCodec() {
         stream.write(139)
         writeValue(stream, value.raw)
       }
-      is PIOSOptions -> {
+      is PCallkeepSignalingStatus -> {
         stream.write(140)
-        writeValue(stream, value.toList())
+        writeValue(stream, value.raw)
       }
-      is PAndroidOptions -> {
+      is PIOSOptions -> {
         stream.write(141)
         writeValue(stream, value.toList())
       }
-      is POptions -> {
+      is PAndroidOptions -> {
         stream.write(142)
         writeValue(stream, value.toList())
       }
-      is PHandle -> {
+      is POptions -> {
         stream.write(143)
         writeValue(stream, value.toList())
       }
-      is PEndCallReason -> {
+      is PHandle -> {
         stream.write(144)
         writeValue(stream, value.toList())
       }
-      is PIncomingCallError -> {
+      is PEndCallReason -> {
         stream.write(145)
         writeValue(stream, value.toList())
       }
-      is PCallRequestError -> {
+      is PIncomingCallError -> {
         stream.write(146)
         writeValue(stream, value.toList())
       }
-      is PCallkeepServiceStatus -> {
+      is PCallRequestError -> {
         stream.write(147)
         writeValue(stream, value.toList())
       }
-      is PCallkeepDisconnectCause -> {
+      is PCallkeepServiceStatus -> {
         stream.write(148)
         writeValue(stream, value.toList())
       }
-      is PCallkeepConnection -> {
+      is PCallkeepDisconnectCause -> {
         stream.write(149)
+        writeValue(stream, value.toList())
+      }
+      is PCallkeepConnection -> {
+        stream.write(150)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -1360,6 +1383,7 @@ interface PHostApi {
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface PHostConnectionsApi {
   fun getConnection(callId: String, callback: (Result<PCallkeepConnection?>) -> Unit)
+  fun updateActivitySignalingStatus(status: PCallkeepSignalingStatus, callback: (Result<Unit>) -> Unit)
 
   companion object {
     /** The codec used by PHostConnectionsApi. */
@@ -1383,6 +1407,25 @@ interface PHostConnectionsApi {
               } else {
                 val data = result.getOrNull()
                 reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostConnectionsApi.updateActivitySignalingStatus$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val statusArg = args[0] as PCallkeepSignalingStatus
+            api.updateActivitySignalingStatus(statusArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
               }
             }
           }

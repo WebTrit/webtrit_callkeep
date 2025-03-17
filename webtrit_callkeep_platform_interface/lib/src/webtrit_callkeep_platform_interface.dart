@@ -301,4 +301,12 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   Future<CallkeepConnection?> getConnection(String callId) {
     throw UnimplementedError('getConnection() has not been implemented.');
   }
+
+  /// Updates the signaling status of the activity connection.
+  ///
+  /// Set the signaling status for the current activity connection,
+  /// represented by the [CallkeepSignalingStatus] enum.
+  Future<void> updateActivitySignalingStatus(CallkeepSignalingStatus status) {
+    throw UnimplementedError('getConnection() has not been implemented.');
+  }
 }

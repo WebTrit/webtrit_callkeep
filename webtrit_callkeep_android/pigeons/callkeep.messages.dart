@@ -168,6 +168,14 @@ enum PCallkeepDisconnectCauseType {
   callPulled,
 }
 
+enum PCallkeepSignalingStatus {
+  disconnecting,
+  disconnect,
+  connecting,
+  connect,
+  failure,
+}
+
 class PCallkeepDisconnectCause {
   late PCallkeepDisconnectCauseType type;
   late String? reason;
@@ -341,6 +349,9 @@ abstract class PHostConnectionsApi {
   @ObjCSelector('getConnection:')
   @async
   PCallkeepConnection? getConnection(String callId);
+
+  @async
+  void updateActivitySignalingStatus(PCallkeepSignalingStatus status);
 }
 
 @FlutterApi()

@@ -26,4 +26,16 @@ class CallkeepConnections {
 
     return platform.getConnection(callId);
   }
+
+  /// Updates the signaling status of the activity connection.
+  ///
+  /// Set the signaling status for the current activity connection,
+  /// represented by the [CallkeepSignalingStatus] enum.
+  Future<void> updateActivitySignalingStatus(CallkeepSignalingStatus status) {
+    if (kIsWeb || !Platform.isAndroid) {
+      return Future.value();
+    }
+
+    return platform.updateActivitySignalingStatus(status);
+  }
 }

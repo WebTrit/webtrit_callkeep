@@ -232,6 +232,40 @@ extension CallkeepLifecycleTypeConverter on CallkeepLifecycleType {
   }
 }
 
+extension PCallkeepSignalingStatusConverter on PCallkeepSignalingStatus {
+  CallkeepSignalingStatus toCallkeep() {
+    switch (this) {
+      case PCallkeepSignalingStatus.disconnecting:
+        return CallkeepSignalingStatus.disconnecting;
+      case PCallkeepSignalingStatus.disconnect:
+        return CallkeepSignalingStatus.disconnect;
+      case PCallkeepSignalingStatus.connecting:
+        return CallkeepSignalingStatus.connecting;
+      case PCallkeepSignalingStatus.connect:
+        return CallkeepSignalingStatus.connect;
+      case PCallkeepSignalingStatus.failure:
+        return CallkeepSignalingStatus.failure;
+    }
+  }
+}
+
+extension CallkeepSignalingStatusConverter on CallkeepSignalingStatus {
+  PCallkeepSignalingStatus toPigeon() {
+    switch (this) {
+      case CallkeepSignalingStatus.disconnecting:
+        return PCallkeepSignalingStatus.disconnecting;
+      case CallkeepSignalingStatus.disconnect:
+        return PCallkeepSignalingStatus.disconnect;
+      case CallkeepSignalingStatus.connecting:
+        return PCallkeepSignalingStatus.connecting;
+      case CallkeepSignalingStatus.connect:
+        return PCallkeepSignalingStatus.connect;
+      case CallkeepSignalingStatus.failure:
+        return PCallkeepSignalingStatus.failure;
+    }
+  }
+}
+
 extension PCallkeepLifecycleTypeConverter on PCallkeepLifecycleType {
   CallkeepLifecycleType toCallkeep() {
     switch (this) {
