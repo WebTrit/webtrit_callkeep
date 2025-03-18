@@ -1,6 +1,5 @@
 package com.webtrit.callkeep
 
-import android.app.Activity
 import android.content.Context
 import androidx.lifecycle.Lifecycle
 import com.webtrit.callkeep.common.Log
@@ -36,10 +35,14 @@ class WebtritCallkeepPluginState(
     /** Handles interactions with the isolate API */
     private var foregroundCallServiceReceiver: ForegroundCallServiceReceiver? = null
 
-    var activity: Activity? = null
-
     fun initIsolateApi() {
         Log.i(TAG, "initIsolateApi $this")
+
+        permissionsApi = PigeonPermissionsApi(context)
+        PHostPermissionsApi.setUp(messenger, permissionsApi)
+
+        soundApi = PigeonSoundApi(context)
+        PHostSoundApi.setUp(messenger, soundApi)
 
         // Register isolate api for all plugin instances  possibility trigger call service isolate
         pigeonIsolateApi = PigeonIsolateApi(context)
@@ -51,10 +54,6 @@ class WebtritCallkeepPluginState(
         foregroundCallServiceReceiver =
             ForegroundCallServiceReceiver(PDelegateBackgroundRegisterFlutterApi(messenger), context)
 
-        attachLogs()
-    }
-
-    private fun attachLogs() {
         logsHostApi = PDelegateLogsFlutterApi(messenger)
         Log.add(logsHostApi!!)
     }
@@ -63,20 +62,7 @@ class WebtritCallkeepPluginState(
         logsHostApi?.let { Log.remove(it) }
     }
 
-    fun initMainIsolateApi(activity: Activity) {
-        Log.i(TAG, "initActivity $this")
-        Log.d(TAG, "onStateChanged attached activity")
-        this.activity = activity
-        StorageDelegate.setActivityReady(activity, false)
-
-        ActivityHolder.setActivity(activity)
-
-        permissionsApi = PigeonPermissionsApi(context)
-        PHostPermissionsApi.setUp(messenger, permissionsApi)
-
-        soundApi = PigeonSoundApi(context)
-        PHostSoundApi.setUp(messenger, soundApi)
-
+    fun initMainIsolateApi() {
         val flutterDelegateApi = PDelegateFlutterApi(messenger)
         pigeonActivityApi = PigeonActivityApi(context, flutterDelegateApi)
         PHostApi.setUp(messenger, pigeonActivityApi)

@@ -3,8 +3,10 @@ package com.webtrit.callkeep
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
+import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.AssetHolder
 import com.webtrit.callkeep.common.ContextHolder
+import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.services.callkeep.foreground.ForegroundCallService
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -47,7 +49,10 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         lifeCycle = (binding.lifecycle as HiddenLifecycleReference).lifecycle
         lifeCycle!!.addObserver(this)
 
-        this.state.initMainIsolateApi(binding.activity)
+        StorageDelegate.setActivityReady(binding.activity, false)
+        ActivityHolder.setActivity(binding.activity)
+
+        this.state.initMainIsolateApi()
     }
 
     override fun onDetachedFromActivity() {
