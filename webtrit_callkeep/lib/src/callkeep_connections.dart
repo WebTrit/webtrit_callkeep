@@ -27,6 +27,18 @@ class CallkeepConnections {
     return platform.getConnection(callId);
   }
 
+  /// Retrieves a list of all active Callkeep connections.
+  ///
+  /// Returns a [Future] that resolves to a list of [CallkeepConnection] objects representing
+  /// the active connections.
+  Future<List<CallkeepConnection>> getConnections() {
+    if (kIsWeb || !Platform.isAndroid) {
+      return Future.value([]);
+    }
+
+    return platform.getConnections();
+  }
+
   /// Updates the signaling status of the activity connection.
   ///
   /// Set the signaling status for the current activity connection,

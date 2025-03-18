@@ -1383,6 +1383,7 @@ interface PHostApi {
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface PHostConnectionsApi {
   fun getConnection(callId: String, callback: (Result<PCallkeepConnection?>) -> Unit)
+  fun getConnections(callback: (Result<List<PCallkeepConnection>>) -> Unit)
   fun updateActivitySignalingStatus(status: PCallkeepSignalingStatus, callback: (Result<Unit>) -> Unit)
 
   companion object {
@@ -1401,6 +1402,24 @@ interface PHostConnectionsApi {
             val args = message as List<Any?>
             val callIdArg = args[0] as String
             api.getConnection(callIdArg) { result: Result<PCallkeepConnection?> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostConnectionsApi.getConnections$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.getConnections{ result: Result<List<PCallkeepConnection>> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(wrapError(error))
