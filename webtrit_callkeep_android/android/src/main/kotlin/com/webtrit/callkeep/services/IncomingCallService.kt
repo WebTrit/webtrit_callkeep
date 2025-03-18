@@ -24,6 +24,8 @@ import com.webtrit.callkeep.services.dispatchers.IncomingCallEventDispatcher
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
+import com.webtrit.callkeep.services.helpers.IsolateSelector
+import com.webtrit.callkeep.services.helpers.IsolateType
 import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -55,9 +57,6 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
         set(value) {
             _isolatePushNotificationFlutterApi = value
         }
-
-    private val signalingStatus: PCallkeepSignalingStatus?
-        get() = SignalingHolder.getStatus()
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -125,13 +124,9 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
             incomingCallNotificationBuilder.apply { setCallMetaData(metadata) }.build()
         )
 
-        Log.d(TAG, "Incoming call launched: signalingStatus = $signalingStatus")
-        if (signalingStatus !in listOf(PCallkeepSignalingStatus.CONNECT, PCallkeepSignalingStatus.CONNECTING)) {
-            // Launch the isolate and start background synchronization
+        if (IsolateSelector.getIsolateType() == IsolateType.BACKGROUND) {
             startIncomingCallIsolate()
-
-            Log.d(TAG, "Incoming call launched: signalingStatus = $signalingStatus")
-
+            
             isolatePushNotificationFlutterApi?.onNotificationSync(
                 StorageDelegate.getOnNotificationSync(applicationContext),
                 PCallkeepPushNotificationSyncStatus.SYNCHRONIZE_CALL_STATUS
@@ -143,8 +138,6 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
                     Log.e(TAG, "Failed to synchronize background call status")
                 }
             }
-        } else {
-            Log.d(TAG, "Skipping background synchronization: signalingStatus = $signalingStatus")
         }
     }
 
@@ -202,12 +195,11 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
      * @param declineSource The source of the decline, either USER or SERVER.
      */
     private fun terminateCall(metadata: CallMetadata, declineSource: DeclineSource) {
-        if (signalingStatus in listOf(PCallkeepSignalingStatus.CONNECT, PCallkeepSignalingStatus.CONNECTING)) {
+        when (IsolateSelector.getIsolateType()) {
             // If the signaling status is CONNECT or CONNECTING, handle the call hang-up in the main isolate (Activity)
-            PhoneConnectionService.startHungUpCall(baseContext, metadata)
-        } else {
+            IsolateType.MAIN -> PhoneConnectionService.startHungUpCall(baseContext, metadata)
             // If the app is in the background, closed, or minimized, handle the call in the background isolate
-            when (declineSource) {
+            IsolateType.BACKGROUND -> when (declineSource) {
                 DeclineSource.USER -> handleUserDecline(metadata)
                 DeclineSource.SERVER -> handleServerDecline(metadata)
             }
@@ -215,17 +207,14 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
     }
 
     private fun answerCall(metadata: CallMetadata) {
-        if (signalingStatus in listOf(PCallkeepSignalingStatus.CONNECT, PCallkeepSignalingStatus.CONNECTING)) {
+        when (IsolateSelector.getIsolateType()) {
             // If the signaling status is CONNECT or CONNECTING, handle the call hang-up in the main isolate (Activity)
-            PhoneConnectionService.startAnswerCall(baseContext, metadata);
-        } else {
-            _isolateCalkeepFlutterApi?.performAnswerCall(metadata.callId) { response ->
+            IsolateType.MAIN -> PhoneConnectionService.startAnswerCall(baseContext, metadata);
+            IsolateType.BACKGROUND -> _isolateCalkeepFlutterApi?.performAnswerCall(metadata.callId) { response ->
                 response.onSuccess {
-                    Log.d(TAG, "onWakeUpBackgroundHandler: $it")
                     PhoneConnectionService.startAnswerCall(baseContext, metadata);
                 }
                 response.onFailure {
-                    Log.e(TAG, "on answer failure: $it")
                     PhoneConnectionService.tearDown(baseContext);
                 }
             }
@@ -311,7 +300,6 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
 
         @JvmStatic
         val isRunning = AtomicBoolean(false)
-
 
         /**
          * Communicates with the service by starting it with the specified action and metadata.
