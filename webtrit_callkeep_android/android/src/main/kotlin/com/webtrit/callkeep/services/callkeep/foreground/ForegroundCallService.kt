@@ -17,7 +17,6 @@ import androidx.core.app.ServiceCompat
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.models.ForegroundCallServiceConfig
-import com.webtrit.callkeep.models.ForegroundCallServiceHandles
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
 import io.flutter.FlutterInjector
 import io.flutter.embedding.engine.FlutterEngine
@@ -127,13 +126,12 @@ class ForegroundCallService : Service() {
         val data = intent?.extras
 
         val config = StorageDelegate.getForegroundCallServiceConfiguration(applicationContext)
-        val handles = StorageDelegate.getForegroundCallServiceHandles(applicationContext)
 
         ensureNotification(config)
 
         when (action) {
-            ForegroundCallServiceEnums.INIT.action -> runService(config, handles, data)
-            ForegroundCallServiceEnums.START.action -> wakeUp(config, handles, data)
+            ForegroundCallServiceEnums.INIT.action -> runService(config, data)
+            ForegroundCallServiceEnums.START.action -> wakeUp(config, data)
             ForegroundCallServiceEnums.STOP.action -> tearDown()
         }
 
@@ -150,8 +148,8 @@ class ForegroundCallService : Service() {
     /**
      * Wakes up the service and sends a broadcast to synchronize call status.
      */
-    private fun wakeUp(config: ForegroundCallServiceConfig, handles: ForegroundCallServiceHandles, data: Bundle?) {
-        runService(config, handles, data)
+    private fun wakeUp(config: ForegroundCallServiceConfig, data: Bundle?) {
+        runService(config, data)
         ForegroundCallServiceReceiver.wakeUp(applicationContext, data?.getString(PARAM_JSON_DATA))
     }
 
@@ -168,17 +166,18 @@ class ForegroundCallService : Service() {
      * Runs the service and starts the Flutter background isolate.
      */
     @SuppressLint("WakelockTimeout")
-    private fun runService(config: ForegroundCallServiceConfig, handles: ForegroundCallServiceHandles, data: Bundle?) {
+    private fun runService(config: ForegroundCallServiceConfig, data: Bundle?) {
         if (config.autoRestartOnTerminate) {
             ForegroundCallWorker.Companion.enqueue(applicationContext)
         }
 
         Log.v(TAG, "Running service logic")
         getLock(applicationContext)?.acquire(10 * 60 * 1000L /*10 minutes*/)
+        val callbackDispatcher = StorageDelegate.getCallbackDispatcher(applicationContext)
 
         if (backgroundEngine == null) {
             Log.v(TAG, "Starting new background isolate")
-            startBackgroundIsolate(this, handles.callbackDispatcher)
+            startBackgroundIsolate(this, callbackDispatcher)
             isEngineAttached = true
         } else {
             if (!isEngineAttached) {

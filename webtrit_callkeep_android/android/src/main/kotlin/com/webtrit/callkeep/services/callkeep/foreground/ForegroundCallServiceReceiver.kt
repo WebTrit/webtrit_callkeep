@@ -15,7 +15,6 @@ import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.common.helpers.registerCustomReceiver
 import com.webtrit.callkeep.common.helpers.toPCallkeepLifecycleType
-import com.webtrit.callkeep.models.ForegroundCallServiceHandles
 import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 
 class ForegroundCallServiceReceiver(
@@ -49,21 +48,19 @@ class ForegroundCallServiceReceiver(
     }
 
     override fun onReceive(context: Context, intent: Intent?) {
-        val handles = StorageDelegate.getForegroundCallServiceHandles(context)
-
         when (intent?.action) {
             ForegroundCallServiceReceiverActions.WAKE_UP.action -> onWakeUpBackgroundHandler(
-                handles, intent.extras
+                intent.extras
             )
 
             ForegroundCallServiceReceiverActions.CHANGE_LIFECYCLE.action -> onChangedLifecycleHandler(
-                intent.extras, handles
+                intent.extras
             )
         }
     }
 
     private fun onWakeUpBackgroundHandler(
-        handles: ForegroundCallServiceHandles, extras: Bundle?
+        extras: Bundle?
     ) {
 
         Log.d(TAG, "onWakeUpBackgroundHandler")
@@ -73,7 +70,7 @@ class ForegroundCallServiceReceiver(
         val pLifecycle = lifecycle.toPCallkeepLifecycleType()
 
         val activityReady = StorageDelegate.getActivityReady(context)
-        val wakeUpHandler = handles.onStartHandler
+        val wakeUpHandler = StorageDelegate.getOnStartHandler(context)
 
         val jsonData = extras?.getString(PARAM_JSON_DATA) ?: "{}"
 
@@ -96,15 +93,13 @@ class ForegroundCallServiceReceiver(
     }
 
     @Suppress("DEPRECATION", "KotlinConstantConditions")
-    private fun onChangedLifecycleHandler(
-        bundle: Bundle?, handles: ForegroundCallServiceHandles
-    ) {
+    private fun onChangedLifecycleHandler(bundle: Bundle?) {
         val activityReady = StorageDelegate.getActivityReady(context)
         val lockScreen = Platform.isLockScreen(context)
         val event = bundle?.getSerializable(PARAM_CHANGE_LIFECYCLE_EVENT) as Lifecycle.Event?
 
         val lifecycle = (event ?: Lifecycle.Event.ON_ANY).toPCallkeepLifecycleType()
-        val onChangedLifecycleHandler = handles.onChangedLifecycleHandler
+        val onChangedLifecycleHandler = StorageDelegate.getOnChangedLifecycleHandler(context)
 
         api.onApplicationStatusChanged(
             onChangedLifecycleHandler, PCallkeepServiceStatus(

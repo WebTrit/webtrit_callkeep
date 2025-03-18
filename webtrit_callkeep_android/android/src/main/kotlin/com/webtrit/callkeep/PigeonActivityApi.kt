@@ -58,7 +58,6 @@ class PigeonActivityApi(
             paths = CallPaths(callPath, rootPath),
             ringtonePath = ringtonePath
         )
-
         foregroundCallkeepApi.reportNewIncomingCall(callMetaData, callback)
     }
 

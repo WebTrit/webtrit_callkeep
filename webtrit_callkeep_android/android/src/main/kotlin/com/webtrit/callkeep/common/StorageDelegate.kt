@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.webtrit.callkeep.common.helpers.JsonHelper
 import com.webtrit.callkeep.models.ForegroundCallServiceConfig
-import com.webtrit.callkeep.models.ForegroundCallServiceHandles
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -18,7 +17,11 @@ object StorageDelegate {
     private const val RINGTONE_PATH_KEY = "RINGTONE_PATH_KEY"
     private const val RINGBACK_PATH_KEY = "RINGBACK_PATH_KEY"
     private const val SERVICE_CONFIGURATION_KEY = "SERVICE_CONFIGURATION_KEY"
-    private const val SERVICE_HANDLES_KEY = "SERVICE_HANDLES_KEY"
+    private const val CALLBACK_DISPATCHER_KEY = "callbackDispatcher"
+    private const val ON_START_HANDLER_KEY = "onStartHandler"
+    private const val ON_CHANGED_LIFECYCLE_HANDLER_KEY = "onChangedLifecycleHandler"
+    private const val ON_NOTIFICATION_SYNC_KEY = "onNotificationSync"
+
 
     private var sharedPreferences: SharedPreferences? = null
 
@@ -137,18 +140,52 @@ object StorageDelegate {
         )
     }
 
-    fun setServiceHandles(context: Context, config: ForegroundCallServiceHandles) {
-        val jsonString = Json.encodeToString(config)
+
+    fun setCallbackDispatcher(context: Context, value: Long) {
         getSharedPreferences(context)?.edit()?.apply {
-            putString(SERVICE_HANDLES_KEY, jsonString)
+            putLong(CALLBACK_DISPATCHER_KEY, value)
             apply()
         }
     }
 
-    fun getForegroundCallServiceHandles(context: Context): ForegroundCallServiceHandles {
-        val jsonString = getSharedPreferences(context)?.getString(SERVICE_HANDLES_KEY, null)
-        return jsonString?.let {
-            JsonHelper.json.decodeFromString<ForegroundCallServiceHandles>(it)
-        } ?: throw Exception("ServiceHandles not found")
+    fun setOnStartHandler(context: Context, value: Long) {
+        getSharedPreferences(context)?.edit()?.apply {
+            putLong(ON_START_HANDLER_KEY, value)
+            apply()
+        }
+    }
+
+    fun setOnNotificationSync(context: Context, value: Long) {
+        getSharedPreferences(context)?.edit()?.apply {
+            putLong(ON_NOTIFICATION_SYNC_KEY, value)
+            apply()
+        }
+    }
+
+    fun setOnChangedLifecycleHandler(context: Context, value: Long) {
+        getSharedPreferences(context)?.edit()?.apply {
+            putLong(ON_CHANGED_LIFECYCLE_HANDLER_KEY, value)
+            apply()
+        }
+    }
+
+    fun getCallbackDispatcher(context: Context): Long {
+        return getSharedPreferences(context)?.getLong(CALLBACK_DISPATCHER_KEY, -1)
+            ?: throw Exception("CallbackDispatcher not found")
+    }
+
+    fun getOnStartHandler(context: Context): Long {
+        return getSharedPreferences(context)?.getLong(ON_START_HANDLER_KEY, -1)
+            ?: throw Exception("OnStartHandler not found")
+    }
+
+    fun getOnChangedLifecycleHandler(context: Context): Long {
+        return getSharedPreferences(context)?.getLong(ON_CHANGED_LIFECYCLE_HANDLER_KEY, -1)
+            ?: throw Exception("OnChangedLifecycleHandler not found")
+    }
+
+    fun getOnNotificationSync(context: Context): Long {
+        return getSharedPreferences(context)?.getLong(ON_NOTIFICATION_SYNC_KEY, -1)
+            ?: throw Exception("OnNotificationSync not found")
     }
 }
