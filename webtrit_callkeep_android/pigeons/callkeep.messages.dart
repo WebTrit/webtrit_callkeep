@@ -133,6 +133,11 @@ enum PCallkeepLifecycleType {
   onAny,
 }
 
+enum PCallkeepPushNotificationSyncStatus {
+  synchronizeCallStatus,
+  releaseResources,
+}
+
 class PCallkeepServiceStatus {
   late PCallkeepLifecycleType lifecycle;
   late bool lockScreen;
@@ -216,6 +221,12 @@ abstract class PHostIsolateApi {
   });
 
   @async
+  void initializePushNotificationCallback({
+    required int callbackDispatcher,
+    required int onNotificationSync,
+  });
+
+  @async
   void setUp({
     bool autoRestartOnTerminate = false,
     bool autoStartOnBoot = false,
@@ -263,6 +274,9 @@ abstract class PDelegateBackgroundRegisterFlutterApi {
 
   @async
   void onApplicationStatusChanged(int applicationStatusCallbackHandle, PCallkeepServiceStatus status);
+
+  @async
+  void onNotificationSync(int pushNotificationSyncStatusHandle, PCallkeepPushNotificationSyncStatus status);
 }
 
 @HostApi()

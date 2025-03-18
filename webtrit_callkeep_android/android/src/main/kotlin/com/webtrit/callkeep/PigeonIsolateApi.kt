@@ -49,6 +49,19 @@ class PigeonIsolateApi(
         }
     }
 
+    override fun initializePushNotificationCallback(
+        callbackDispatcher: Long, onNotificationSync: Long, callback: (Result<Unit>) -> Unit
+    ) {
+        try {
+            StorageDelegate.setCallbackDispatcher(context, callbackDispatcher)
+            StorageDelegate.setOnNotificationSync(context, onNotificationSync)
+
+            callback(Result.success(Unit))
+        } catch (e: Exception) {
+            callback(Result.failure(e))
+        }
+    }
+
     override fun startService(jsonData: String?, callback: (Result<Unit>) -> Unit) {
         Log.i(TAG, "startService, data: $jsonData")
         try {
