@@ -23,11 +23,11 @@ import com.webtrit.callkeep.models.toPHandle
  * This class serves as a BroadcastReceiver for handling telephony-related events in the foreground of the application.
  * It is responsible for listening to specific broadcast actions and notifying the Flutter API of various call-related events.
  *
- * @param activity The current Android activity.
+ * @param context The current Context.
  * @param flutterDelegateApi The Flutter API delegate for communication with the Flutter application.
  */
 class TelephonyForegroundCallkeepReceiver(
-    val activity: Activity,
+    val context: Context,
     private val flutterDelegateApi: PDelegateFlutterApi
 ) : BroadcastReceiver() {
 
@@ -105,8 +105,8 @@ class TelephonyForegroundCallkeepReceiver(
             flutterDelegateApi.performEndCall(callMetaData.callId) {}
             flutterDelegateApi.didDeactivateAudioSession {}
 
-            if (Platform.isLockScreen(activity)) {
-                ActivityHolder.finish();
+            if (Platform.isLockScreen(context)) {
+                ActivityHolder.finish()
             }
         }
     }

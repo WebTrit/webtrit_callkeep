@@ -1,7 +1,7 @@
 package com.webtrit.callkeep
 
 import android.annotation.SuppressLint
-import android.app.Activity
+import android.content.Context
 import com.webtrit.callkeep.api.CallkeepApiProvider
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.api.foreground.ForegroundCallkeepApi
@@ -10,10 +10,10 @@ import com.webtrit.callkeep.models.CallPaths
 import com.webtrit.callkeep.models.toCallHandle
 
 class PigeonActivityApi(
-    private val activity: Activity, flutterDelegateApi: PDelegateFlutterApi,
+    private val context: Context, flutterDelegateApi: PDelegateFlutterApi,
 ) : PHostApi {
     private val foregroundCallkeepApi: ForegroundCallkeepApi =
-        CallkeepApiProvider.getForegroundCallkeepApi(activity, flutterDelegateApi)
+        CallkeepApiProvider.getForegroundCallkeepApi(context, flutterDelegateApi)
 
     override fun setUp(options: POptions, callback: (Result<Unit>) -> Unit) {
         foregroundCallkeepApi.setUp(options, callback)
@@ -46,9 +46,9 @@ class PigeonActivityApi(
         hasVideo: Boolean,
         callback: (Result<PIncomingCallError?>) -> Unit
     ) {
-        val callPath = StorageDelegate.getIncomingPath(activity)
-        val rootPath = StorageDelegate.getRootPath(activity)
-        val ringtonePath = StorageDelegate.getRingtonePath(activity)
+        val callPath = StorageDelegate.getIncomingPath(context)
+        val rootPath = StorageDelegate.getRootPath(context)
+        val ringtonePath = StorageDelegate.getRingtonePath(context)
 
         val callMetaData = CallMetadata(
             callId = callId,

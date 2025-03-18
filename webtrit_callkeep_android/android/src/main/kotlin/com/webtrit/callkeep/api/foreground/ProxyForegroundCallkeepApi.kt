@@ -1,6 +1,7 @@
 package com.webtrit.callkeep.api.foreground
 
 import android.app.Activity
+import android.content.Context
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.PCallRequestError
 import com.webtrit.callkeep.PDelegateFlutterApi
@@ -17,18 +18,18 @@ import com.webtrit.callkeep.managers.NotificationManager
 import com.webtrit.callkeep.managers.AudioManager
 
 class ProxyForegroundCallkeepApi(
-    private val activity: Activity, private val flutterDelegateApi: PDelegateFlutterApi
+    private val context: Context, private val flutterDelegateApi: PDelegateFlutterApi
 ) : ForegroundCallkeepApi {
     private var isSetup = false
     private val notificationManager = NotificationManager()
-    private val audioManager = AudioManager(activity)
+    private val audioManager = AudioManager(context)
 
     override fun setUp(options: POptions, callback: (Result<Unit>) -> Unit) {
         if (!isSetup) {
-            StorageDelegate.initIncomingPath(activity, options.android.incomingPath)
-            StorageDelegate.initRootPath(activity, options.android.rootPath)
-            StorageDelegate.initRingtonePath(activity, options.android.ringtoneSound)
-            StorageDelegate.initRingbackPath(activity, options.android.ringbackSound)
+            StorageDelegate.initIncomingPath(context, options.android.incomingPath)
+            StorageDelegate.initRootPath(context, options.android.rootPath)
+            StorageDelegate.initRingtonePath(context, options.android.ringtoneSound)
+            StorageDelegate.initRingbackPath(context, options.android.ringbackSound)
             isSetup = true
         } else {
             Log.i(LOG_TAG, "Plugin already initialized")
@@ -74,8 +75,8 @@ class ProxyForegroundCallkeepApi(
         flutterDelegateApi.didDeactivateAudioSession {}
         notificationManager.cancelActiveCallNotification(metadata.callId)
         this@ProxyForegroundCallkeepApi.audioManager.stopRingtone()
-        if (Platform.isLockScreen(activity)) {
-            ActivityHolder.finish();
+        if (Platform.isLockScreen(context)) {
+            ActivityHolder.finish()
         }
         if (reason.value == PEndCallReasonEnum.UNANSWERED) {
             notificationManager.showMissedCallNotification(metadata)
@@ -98,7 +99,7 @@ class ProxyForegroundCallkeepApi(
 
         notificationManager.cancelActiveCallNotification(metadata.callId)
         this@ProxyForegroundCallkeepApi.audioManager.stopRingtone()
-        if (Platform.isLockScreen(activity)) {
+        if (Platform.isLockScreen(context)) {
             ActivityHolder.finish();
         }
         callback.invoke(Result.success(null))
