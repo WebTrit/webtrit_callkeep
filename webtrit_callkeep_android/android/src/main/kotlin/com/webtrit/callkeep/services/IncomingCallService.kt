@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
@@ -19,10 +20,12 @@ import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.helpers.FlutterEngineHelper
 import com.webtrit.callkeep.common.helpers.PermissionsHelper
 import com.webtrit.callkeep.common.helpers.startForegroundServiceCompat
+import com.webtrit.callkeep.events.IncomingCallEventDispatcher
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
 import com.webtrit.callkeep.services.callkeep.foreground.ForegroundCallService
+import com.webtrit.callkeep.services.callkeep.foreground.ForegroundCallServiceEnums
 import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -31,7 +34,7 @@ enum class DeclineSource {
 }
 
 enum class IncomingCallServiceEnums {
-    LAUNCH;
+    LAUNCH, ANSWER, HANGUP;
 }
 
 class IncomingCallService : Service(), PHostBackgroundServiceApi {
@@ -95,9 +98,13 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
         val metadata = intent?.extras?.let { CallMetadata.fromBundle(it) }
 
         when (intent?.action) {
-            NotificationAction.Answer.action -> answerCall(metadata!!)
-            NotificationAction.Hangup.action -> terminateCall(metadata!!, DeclineSource.USER)
+            // Notification actions
+            NotificationAction.Answer.action -> IncomingCallEventDispatcher.answer(baseContext, metadata!!)
+            NotificationAction.Hangup.action -> IncomingCallEventDispatcher.hungUp(baseContext, metadata!!)
+            // Incoming call service actions
             IncomingCallServiceEnums.LAUNCH.name -> handleIncomingCallLaunch(metadata!!)
+            IncomingCallServiceEnums.ANSWER.name -> answerCall(metadata!!)
+            IncomingCallServiceEnums.HANGUP.name -> terminateCall(metadata!!, DeclineSource.USER)
             else -> Log.e(TAG, "Missing or unknown intent action")
         }
 
@@ -197,9 +204,7 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
      * @param declineSource The source of the decline, either USER or SERVER.
      */
     private fun terminateCall(metadata: CallMetadata, declineSource: DeclineSource) {
-        if (ForegroundCallService.isRunning.get()) {
-            ForegroundCallService.endCall(baseContext, metadata.callId)
-        } else if (signalingStatus in listOf(PCallkeepSignalingStatus.CONNECT, PCallkeepSignalingStatus.CONNECTING)) {
+        if (signalingStatus in listOf(PCallkeepSignalingStatus.CONNECT, PCallkeepSignalingStatus.CONNECTING)) {
             // If the signaling status is CONNECT or CONNECTING, handle the call hang-up in the main isolate (Activity)
             PhoneConnectionService.startHungUpCall(baseContext, metadata)
         } else {
@@ -212,9 +217,7 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
     }
 
     private fun answerCall(metadata: CallMetadata) {
-        if (ForegroundCallService.isRunning.get()) {
-            ForegroundCallService.answerCall(baseContext, metadata.callId)
-        } else if (signalingStatus in listOf(PCallkeepSignalingStatus.CONNECT, PCallkeepSignalingStatus.CONNECTING)) {
+        if (signalingStatus in listOf(PCallkeepSignalingStatus.CONNECT, PCallkeepSignalingStatus.CONNECTING)) {
             // If the signaling status is CONNECT or CONNECTING, handle the call hang-up in the main isolate (Activity)
             PhoneConnectionService.startAnswerCall(baseContext, metadata);
         } else {
@@ -311,20 +314,29 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
         @JvmStatic
         val isRunning = AtomicBoolean(false)
 
+
         /**
-         * Wakes up the service with an option to auto-restart.
+         * Communicates with the service by starting it with the specified action and metadata.
          */
-        fun start(context: Context, metadata: CallMetadata) {
+        private fun communicate(context: Context, action: IncomingCallServiceEnums, metadata: Bundle?) {
             val intent = Intent(context, IncomingCallService::class.java).apply {
-                this.action = IncomingCallServiceEnums.LAUNCH.name
-                putExtras(metadata.toBundle())
+                this.action = action.name
+                metadata?.let { putExtras(it) }
             }
             context.startForegroundService(intent)
+
         }
 
-        fun stop(context: Context) {
-            val intent = Intent(context, IncomingCallService::class.java)
-            context.stopService(intent)
-        }
+        fun start(context: Context, metadata: CallMetadata) =
+            communicate(context, IncomingCallServiceEnums.LAUNCH, metadata.toBundle())
+
+        @SuppressLint("ImplicitSamInstance")
+        fun stop(context: Context) = context.stopService(Intent(context, IncomingCallService::class.java))
+
+        fun answer(context: Context, metadata: CallMetadata) =
+            communicate(context, IncomingCallServiceEnums.ANSWER, metadata.toBundle())
+
+        fun hangup(context: Context, metadata: CallMetadata) =
+            communicate(context, IncomingCallServiceEnums.HANGUP, metadata.toBundle())
     }
 }

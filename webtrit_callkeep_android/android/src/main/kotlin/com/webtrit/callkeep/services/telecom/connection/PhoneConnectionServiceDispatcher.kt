@@ -2,10 +2,8 @@ package com.webtrit.callkeep.services.telecom.connection
 
 import com.webtrit.callkeep.models.CallMetadata
 
-class
-PhoneConnectionServiceDispatcher(
-    private val connectionManager: ConnectionManager,
-    private val proximitySensorManager: ProximitySensorManager
+class PhoneConnectionServiceDispatcher(
+    private val connectionManager: ConnectionManager, private val proximitySensorManager: ProximitySensorManager,
 ) {
     fun dispatch(action: ServiceAction, metadata: CallMetadata?) {
         when (action) {

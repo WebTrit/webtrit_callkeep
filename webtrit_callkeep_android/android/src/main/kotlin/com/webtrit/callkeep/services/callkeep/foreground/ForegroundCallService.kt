@@ -269,7 +269,7 @@ class ForegroundCallService : Service(), PHostBackgroundServiceApi {
     }
 
 
-    @Suppress("DEPRECATION", "KotlinConstantConditions")
+    @Suppress("DEPRECATION")
     private fun onChangedLifecycleHandler(bundle: Bundle?) {
         val activityReady = StorageDelegate.getActivityReady(baseContext)
         val lockScreen = Platform.isLockScreen(baseContext)
@@ -319,43 +319,22 @@ class ForegroundCallService : Service(), PHostBackgroundServiceApi {
             }
         }
 
-        /**
-         * Wakes up the service with an option to auto-restart.
-         */
-        fun start(context: Context, data: String? = null) {
-            val bundleData = data?.let { Bundle().apply { putString(PARAM_JSON_DATA, it) } }
-            communicate(context, ForegroundCallServiceEnums.START, bundleData)
-        }
+        fun start(context: Context, data: String? = null) = communicate(
+            context, ForegroundCallServiceEnums.START, data?.let { Bundle().apply { putString(PARAM_JSON_DATA, it) } })
 
-        /**
-         * Tears down the service.
-         */
-        fun stop(context: Context) {
-            communicate(context, ForegroundCallServiceEnums.STOP, null)
-        }
+        fun changeLifecycle(context: Context, event: Lifecycle.Event) = communicate(
+            context,
+            ForegroundCallServiceEnums.CHANGE_LIFECYCLE,
+            Bundle().apply { putSerializable(PARAM_CHANGE_LIFECYCLE_EVENT, event) })
 
-        fun changeLifecycle(context: Context, event: Lifecycle.Event) {
-            communicate(
-                context,
-                ForegroundCallServiceEnums.CHANGE_LIFECYCLE,
-                Bundle().apply { putSerializable(PARAM_CHANGE_LIFECYCLE_EVENT, event) })
-        }
+        fun stop(context: Context) = communicate(context, ForegroundCallServiceEnums.STOP, null)
 
-        fun endCall(context: Context, callId: String) {
-            communicate(
-                context,
-                ForegroundCallServiceEnums.DECLINE,
-                CallMetadata(callId = callId).toBundle()
-            )
-        }
+        fun endCall(context: Context, callMetadata: CallMetadata) =
+            communicate(context, ForegroundCallServiceEnums.DECLINE, callMetadata.toBundle())
 
-        fun answerCall(context: Context, callId: String) {
-            communicate(
-                context,
-                ForegroundCallServiceEnums.ANSWER,
-                CallMetadata(callId = callId).toBundle()
-            )
-        }
+        fun answerCall(context: Context, callMetadata: CallMetadata) =
+            communicate(context, ForegroundCallServiceEnums.ANSWER, callMetadata.toBundle())
+
 
         /**
          * Acquires a partial wake lock to keep the CPU running.
