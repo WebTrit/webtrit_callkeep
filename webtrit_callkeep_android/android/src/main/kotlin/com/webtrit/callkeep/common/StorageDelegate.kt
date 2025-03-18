@@ -22,7 +22,6 @@ object StorageDelegate {
     private const val ON_CHANGED_LIFECYCLE_HANDLER_KEY = "onChangedLifecycleHandler"
     private const val ON_NOTIFICATION_SYNC_KEY = "onNotificationSync"
 
-
     private var sharedPreferences: SharedPreferences? = null
 
     /**
@@ -86,7 +85,6 @@ object StorageDelegate {
         return getSharedPreferences(context)?.getString(RINGTONE_PATH_KEY, null)
     }
 
-
     /**
      * Initializes the ringback path in SharedPreferences.
      *
@@ -115,14 +113,6 @@ object StorageDelegate {
         return sharedPreferences
     }
 
-    fun setActivityReady(context: Context, ready: Boolean) {
-        getSharedPreferences(context)?.edit()?.putBoolean("setActivityReady", ready)?.apply()
-    }
-
-    fun getActivityReady(context: Context): Boolean {
-        return getSharedPreferences(context)?.getBoolean("setActivityReady", false) ?: false
-    }
-
     fun setServiceConfiguration(context: Context, config: ForegroundCallServiceConfig) {
         val jsonString = Json.encodeToString(config)
         getSharedPreferences(context)?.edit()?.apply {
@@ -139,7 +129,6 @@ object StorageDelegate {
             null, null, autoRestartOnTerminate = false, autoStartOnBoot = false
         )
     }
-
 
     fun setCallbackDispatcher(context: Context, value: Long) {
         getSharedPreferences(context)?.edit()?.apply {

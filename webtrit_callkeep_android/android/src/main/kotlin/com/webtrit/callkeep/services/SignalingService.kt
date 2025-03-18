@@ -205,7 +205,6 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         val lockScreen = Platform.isLockScreen(baseContext)
         val pLifecycle = lifecycle.toPCallkeepLifecycleType()
 
-        val activityReady = StorageDelegate.getActivityReady(baseContext)
         val wakeUpHandler = StorageDelegate.getOnStartHandler(baseContext)
 
         val jsonData = extras?.getString(PARAM_JSON_DATA) ?: "{}"
@@ -214,7 +213,8 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
             wakeUpHandler, PCallkeepServiceStatus(
                 pLifecycle,
                 lockScreen,
-                activityReady,
+                // TODO: Remove activityReady from the status
+                false,
                 PhoneConnectionService.connectionManager.isExistsActiveConnection(),
                 jsonData
             )
@@ -231,7 +231,6 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
 
     @Suppress("DEPRECATION")
     private fun onChangedLifecycleHandler(bundle: Bundle?) {
-        val activityReady = StorageDelegate.getActivityReady(baseContext)
         val lockScreen = Platform.isLockScreen(baseContext)
         val event = bundle?.getSerializable(PARAM_CHANGE_LIFECYCLE_EVENT) as Lifecycle.Event?
 
@@ -242,7 +241,8 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
             onChangedLifecycleHandler, PCallkeepServiceStatus(
                 lifecycle,
                 lockScreen,
-                activityReady,
+                // TODO: Remove activityReady from the status
+                false,
                 PhoneConnectionService.connectionManager.isExistsActiveConnection(), "{}",
             )
         ) { response ->

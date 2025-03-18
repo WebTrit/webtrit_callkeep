@@ -54,16 +54,13 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
 
         val flutterDelegateApi = PDelegateFlutterApi(messenger)
         PHostApi.setUp(messenger, PigeonActivityApi(context, flutterDelegateApi))
-
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         delegateLogsFlutterApi?.let { Log.remove(it) }
 
-
         PHostApi.setUp(this.messenger, null)
 
-        StorageDelegate.setActivityReady(context, false)
         ActivityHolder.setActivity(null)
     }
 
@@ -73,7 +70,6 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         lifeCycle = (binding.lifecycle as HiddenLifecycleReference).lifecycle
         lifeCycle!!.addObserver(this)
 
-        StorageDelegate.setActivityReady(binding.activity, false)
         ActivityHolder.setActivity(binding.activity)
     }
 
