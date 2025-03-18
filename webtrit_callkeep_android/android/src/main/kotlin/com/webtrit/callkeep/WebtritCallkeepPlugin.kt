@@ -20,7 +20,7 @@ import io.flutter.embedding.engine.plugins.service.ServicePluginBinding
 class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, LifecycleEventObserver {
     private var activityPluginBinding: ActivityPluginBinding? = null
     private var lifeCycle: Lifecycle? = null
-    var service: ForegroundCallService? = null
+    var foregroundSocketService: ForegroundCallService? = null
 
     private lateinit var state: WebtritCallkeepPluginState
 
@@ -61,15 +61,23 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     }
 
     override fun onAttachedToService(binding: ServicePluginBinding) {
-        if (binding.service !is ForegroundCallService) return
+        if (binding.service is ForegroundCallService) {
+            this.foregroundSocketService = binding.service as ForegroundCallService
+            this.state.initBackgroundIsolateApi(binding.service.applicationContext)
 
-        this.service = binding.service as ForegroundCallService
+            val delegate = PDelegateBackgroundServiceFlutterApi(state.messenger)
+            val isolateDelegate = PDelegateBackgroundRegisterFlutterApi(state.messenger)
 
-        this.state.initBackgroundIsolateApi(binding.service.applicationContext)
+            foregroundSocketService?.isolateCalkeepFlutterApi = delegate
+            foregroundSocketService?.isolatePushNotificationFlutterApi = isolateDelegate
+
+            PHostBackgroundServiceApi.setUp(state.messenger, foregroundSocketService)
+        }
     }
 
     override fun onDetachedFromService() {
-        this.state.destroyService()
+        PHostBackgroundServiceApi.setUp(state.messenger, null)
+        foregroundSocketService = null
     }
 
     override fun onDetachedFromActivityForConfigChanges() {
@@ -82,7 +90,10 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     }
 
     override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
-        state.onStateChanged(event)
+        ActivityHolder.setLifecycle(event)
+        if (foregroundSocketService != null) {
+            ForegroundCallService.changeLifecycle(foregroundSocketService!!, event)
+        }
     }
 
     companion object {

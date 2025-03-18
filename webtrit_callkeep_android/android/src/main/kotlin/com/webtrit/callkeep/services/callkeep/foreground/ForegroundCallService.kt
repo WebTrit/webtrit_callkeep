@@ -14,22 +14,67 @@ import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.ServiceCompat
+import androidx.lifecycle.Lifecycle
+import com.webtrit.callkeep.PCallkeepServiceStatus
+import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
+import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
+import com.webtrit.callkeep.PHandle
+import com.webtrit.callkeep.PHostBackgroundServiceApi
+import com.webtrit.callkeep.api.CallkeepApiProvider
+import com.webtrit.callkeep.api.background.BackgroundCallkeepApi
+import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.helpers.FlutterEngineHelper
+import com.webtrit.callkeep.common.helpers.Platform
+import com.webtrit.callkeep.common.helpers.toPCallkeepLifecycleType
+import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.models.CallPaths
 import com.webtrit.callkeep.models.ForegroundCallServiceConfig
+import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
+import com.webtrit.callkeep.receivers.IncomingCallNotificationReceiver
+import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 import java.util.concurrent.atomic.AtomicBoolean
 
-class ForegroundCallService : Service() {
+class ForegroundCallService : Service(), PHostBackgroundServiceApi {
     private lateinit var notificationBuilder: ForegroundCallNotificationBuilder
     private lateinit var flutterEngineHelper: FlutterEngineHelper
 
-    override fun onBind(intent: Intent?): IBinder? = null
+    private var _isolatePushNotificationFlutterApi: PDelegateBackgroundRegisterFlutterApi? = null
+    var isolatePushNotificationFlutterApi: PDelegateBackgroundRegisterFlutterApi?
+        get() = _isolatePushNotificationFlutterApi
+        set(value) {
+            _isolatePushNotificationFlutterApi = value
+        }
+
+    private var _isolateCalkeepFlutterApi: PDelegateBackgroundServiceFlutterApi? = null
+    var isolateCalkeepFlutterApi: PDelegateBackgroundServiceFlutterApi?
+        get() = _isolateCalkeepFlutterApi
+        set(value) {
+            _isolateCalkeepFlutterApi = value
+        }
+
+    private lateinit var connectionService: BackgroundCallkeepApi
+    private lateinit var incomingCallReceiver: IncomingCallNotificationReceiver
+
+    fun register() {
+        incomingCallReceiver.registerReceiver()
+        connectionService.register()
+    }
+
+    fun unregister() {
+        try {
+            connectionService.unregister()
+        } catch (e: Exception) {
+            Log.e(TAG, e.toString())
+        }
+
+        incomingCallReceiver.unregisterReceiver()
+    }
 
     override fun onCreate() {
         super.onCreate()
-
         ContextHolder.init(applicationContext)
 
         notificationBuilder = ForegroundCallNotificationBuilder()
@@ -113,7 +158,7 @@ class ForegroundCallService : Service() {
         flutterEngineHelper.detachAndDestroyEngine()
 
         isRunning.set(false)
-
+        unregister()
         super.onDestroy()
     }
 
@@ -126,9 +171,10 @@ class ForegroundCallService : Service() {
         ensureNotification(config)
 
         when (action) {
-            ForegroundCallServiceEnums.INIT.action -> runService(config, data)
+            ForegroundCallServiceEnums.INIT.action -> runService(config)
             ForegroundCallServiceEnums.START.action -> wakeUp(config, data)
             ForegroundCallServiceEnums.STOP.action -> tearDown()
+            ForegroundCallServiceEnums.CHANGE_LIFECYCLE.action -> onChangedLifecycleHandler(data)
         }
 
         return START_STICKY
@@ -145,8 +191,9 @@ class ForegroundCallService : Service() {
      * Wakes up the service and sends a broadcast to synchronize call status.
      */
     private fun wakeUp(config: ForegroundCallServiceConfig, data: Bundle?) {
-        runService(config, data)
-        ForegroundCallServiceReceiver.wakeUp(applicationContext, data?.getString(PARAM_JSON_DATA))
+        runService(config)
+        wakeUpBackgroundHandler(data)
+//        ForegroundCallServiceReceiver.wakeUp(applicationContext, data?.getString(PARAM_JSON_DATA))
     }
 
     /**
@@ -162,7 +209,7 @@ class ForegroundCallService : Service() {
      * Runs the service and starts the Flutter background isolate.
      */
     @SuppressLint("WakelockTimeout")
-    private fun runService(config: ForegroundCallServiceConfig, data: Bundle?) {
+    private fun runService(config: ForegroundCallServiceConfig) {
         if (config.autoRestartOnTerminate) {
             ForegroundCallWorker.Companion.enqueue(applicationContext)
         }
@@ -173,11 +220,84 @@ class ForegroundCallService : Service() {
         flutterEngineHelper.startOrAttachEngine()
 
         isRunning.set(true)
+
+        connectionService = CallkeepApiProvider.getBackgroundCallkeepApi(baseContext, _isolateCalkeepFlutterApi!!)
+
+        incomingCallReceiver = IncomingCallNotificationReceiver(
+            baseContext,
+            endCall = { callMetaData -> connectionService.hungUp(callMetaData) {} },
+            answerCall = { callMetaData -> connectionService.answer(callMetaData) },
+        )
+
+        register()
+    }
+
+
+    private fun wakeUpBackgroundHandler(
+        extras: Bundle?
+    ) {
+
+        Log.d(TAG, "onWakeUpBackgroundHandler")
+
+        val lifecycle = ActivityHolder.getActivityState()
+        val lockScreen = Platform.isLockScreen(baseContext)
+        val pLifecycle = lifecycle.toPCallkeepLifecycleType()
+
+        val activityReady = StorageDelegate.getActivityReady(baseContext)
+        val wakeUpHandler = StorageDelegate.getOnStartHandler(baseContext)
+
+        val jsonData = extras?.getString(PARAM_JSON_DATA) ?: "{}"
+
+        _isolatePushNotificationFlutterApi?.onWakeUpBackgroundHandler(
+            wakeUpHandler, PCallkeepServiceStatus(
+                pLifecycle,
+                lockScreen,
+                activityReady,
+                PhoneConnectionService.connectionManager.isExistsActiveConnection(),
+                jsonData
+            )
+        ) { response ->
+            response.onSuccess {
+                Log.d(TAG, "onWakeUpBackgroundHandler: $it")
+            }
+            response.onFailure {
+                Log.e(TAG, "onWakeUpBackgroundHandler: $it")
+            }
+        }
+    }
+
+
+    @Suppress("DEPRECATION", "KotlinConstantConditions")
+    private fun onChangedLifecycleHandler(bundle: Bundle?) {
+        val activityReady = StorageDelegate.getActivityReady(baseContext)
+        val lockScreen = Platform.isLockScreen(baseContext)
+        val event = bundle?.getSerializable(PARAM_CHANGE_LIFECYCLE_EVENT) as Lifecycle.Event?
+
+        val lifecycle = (event ?: Lifecycle.Event.ON_ANY).toPCallkeepLifecycleType()
+        val onChangedLifecycleHandler = StorageDelegate.getOnChangedLifecycleHandler(baseContext)
+
+        _isolatePushNotificationFlutterApi?.onApplicationStatusChanged(
+            onChangedLifecycleHandler, PCallkeepServiceStatus(
+                lifecycle,
+                lockScreen,
+                activityReady,
+                PhoneConnectionService.connectionManager.isExistsActiveConnection(), "{}",
+            )
+        ) { response ->
+            response.onSuccess {
+                Log.d(TAG, "appChanged: $it")
+            }
+            response.onFailure {
+                Log.e(TAG, "appChanged: $it")
+            }
+        }
     }
 
     companion object {
         private const val TAG = "ForegroundCallService"
         private const val PARAM_JSON_DATA = "PARAM_JSON_DATA"
+        private const val PARAM_CHANGE_LIFECYCLE_EVENT = "PARAM_CHANGE_LIFECYCLE_EVENT"
+
 
         @JvmStatic
         val isRunning = AtomicBoolean(false)
@@ -212,6 +332,13 @@ class ForegroundCallService : Service() {
             communicate(context, ForegroundCallServiceEnums.STOP, null)
         }
 
+        fun changeLifecycle(context: Context, event: Lifecycle.Event) {
+            communicate(
+                context,
+                ForegroundCallServiceEnums.CHANGE_LIFECYCLE,
+                Bundle().apply { putSerializable(PARAM_CHANGE_LIFECYCLE_EVENT, event) })
+        }
+
         /**
          * Acquires a partial wake lock to keep the CPU running.
          */
@@ -224,10 +351,44 @@ class ForegroundCallService : Service() {
             }
         }
     }
+
+    override fun incomingCall(
+        callId: String, handle: PHandle, displayName: String?, hasVideo: Boolean, callback: (Result<Unit>) -> Unit
+    ) {
+
+        val callPath = StorageDelegate.getIncomingPath(baseContext)
+        val rootPath = StorageDelegate.getRootPath(baseContext)
+        val ringtonePath = StorageDelegate.getRingtonePath(baseContext)
+
+        val callMetaData = CallMetadata(
+            callId = callId,
+            handle = handle.toCallHandle(),
+            displayName = displayName,
+            hasVideo = hasVideo,
+            paths = CallPaths(callPath, rootPath),
+            ringtonePath = ringtonePath,
+            createdTime = System.currentTimeMillis()
+        )
+
+        connectionService.incomingCall(callMetaData, callback)
+    }
+
+    override fun endCall(callId: String, callback: (Result<Unit>) -> Unit) {
+        val callMetaData = CallMetadata(callId = callId)
+        connectionService.hungUp(callMetaData, callback)
+        callback.invoke(Result.success(Unit)) // TODO: Ensure proper cleanup of connections
+    }
+
+    override fun endAllCalls(callback: (Result<Unit>) -> Unit) {
+        connectionService.endAllCalls()
+        callback.invoke(Result.success(Unit)) // TODO: Ensure proper cleanup of connections
+    }
+
+    override fun onBind(intent: Intent?): IBinder? = null
 }
 
 enum class ForegroundCallServiceEnums {
-    INIT, START, STOP;
+    INIT, START, STOP, CHANGE_LIFECYCLE;
 
     val action: String
         get() = ContextHolder.appUniqueKey + name + "_foreground_call_service"

@@ -1,21 +1,16 @@
 package com.webtrit.callkeep
 
 import android.content.Context
-import androidx.lifecycle.Lifecycle
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.StorageDelegate
-import com.webtrit.callkeep.services.callkeep.foreground.ForegroundCallServiceReceiver
 import io.flutter.plugin.common.BinaryMessenger
 
 class WebtritCallkeepPluginState(
-    val context: Context, private val messenger: BinaryMessenger
+    val context: Context, val messenger: BinaryMessenger
 ) {
     /** Handles interactions with the API when the application is active and in the foreground */
     private var pigeonActivityApi: PigeonActivityApi? = null
-
-    /** Handles interactions with the API when the application is active and in the foreground */
-    private var pigeonServiceApi: PigeonServiceApi? = null
 
     // Handles interactions with the isolate API
     private var pigeonIsolateApi: PigeonIsolateApi? = null
@@ -32,8 +27,6 @@ class WebtritCallkeepPluginState(
     /** Handles interactions with the connections host API */
     private var connectionsApi: PigeonConnectionsApi? = null
 
-    /** Handles interactions with the isolate API */
-    private var foregroundCallServiceReceiver: ForegroundCallServiceReceiver? = null
 
     fun initIsolateApi() {
         Log.i(TAG, "initIsolateApi $this")
@@ -51,9 +44,6 @@ class WebtritCallkeepPluginState(
         connectionsApi = PigeonConnectionsApi()
         PHostConnectionsApi.setUp(messenger, connectionsApi)
 
-        foregroundCallServiceReceiver =
-            ForegroundCallServiceReceiver(PDelegateBackgroundRegisterFlutterApi(messenger), context)
-
         logsHostApi = PDelegateLogsFlutterApi(messenger)
         Log.add(logsHostApi!!)
     }
@@ -70,22 +60,6 @@ class WebtritCallkeepPluginState(
 
     fun initBackgroundIsolateApi(context: Context) {
         Log.i(TAG, "initBackgroundIsolateApi $this")
-
-        val delegate = PDelegateBackgroundServiceFlutterApi(messenger)
-        pigeonServiceApi = PigeonServiceApi(context, delegate)
-        pigeonServiceApi?.register()
-        PHostBackgroundServiceApi.setUp(messenger, pigeonServiceApi)
-
-        foregroundCallServiceReceiver?.registerReceiver(context)
-    }
-
-    fun destroyService() {
-        Log.i(TAG, "destroyService $this")
-
-        pigeonServiceApi?.unregister()
-        PHostBackgroundServiceApi.setUp(messenger, null)
-
-        foregroundCallServiceReceiver?.unregisterReceiver(context)
     }
 
     fun detachActivity() {
@@ -99,12 +73,6 @@ class WebtritCallkeepPluginState(
 
     fun onDetach() {
         Log.i(TAG, "onDetach $this")
-    }
-
-    fun onStateChanged(event: Lifecycle.Event) {
-        Log.d(TAG, "onStateChanged $event")
-        ActivityHolder.setLifecycle(event)
-        ForegroundCallServiceReceiver.changeLifecycle(context, event)
     }
 
     companion object {
