@@ -1,19 +1,17 @@
 package com.webtrit.callkeep.services
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
-import androidx.core.app.ServiceCompat
 import androidx.lifecycle.Lifecycle
 import com.webtrit.callkeep.PCallkeepServiceStatus
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
@@ -26,16 +24,17 @@ import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.helpers.FlutterEngineHelper
+import com.webtrit.callkeep.common.helpers.PermissionsHelper
 import com.webtrit.callkeep.common.helpers.Platform
+import com.webtrit.callkeep.common.helpers.startForegroundServiceCompat
 import com.webtrit.callkeep.common.helpers.toPCallkeepLifecycleType
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.CallPaths
 import com.webtrit.callkeep.models.ForegroundCallServiceConfig
 import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
-import com.webtrit.callkeep.receivers.IncomingCallNotificationReceiver
-import com.webtrit.callkeep.workers.ForegroundCallWorker
 import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
+import com.webtrit.callkeep.workers.ForegroundCallWorker
 import java.util.concurrent.atomic.AtomicBoolean
 
 class SignalingService : Service(), PHostBackgroundServiceApi {
@@ -57,22 +56,6 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         }
 
     private lateinit var connectionService: BackgroundCallkeepApi
-    private lateinit var incomingCallReceiver: IncomingCallNotificationReceiver
-
-    fun register() {
-        incomingCallReceiver.registerReceiver()
-        connectionService.register()
-    }
-
-    fun unregister() {
-        try {
-            connectionService.unregister()
-        } catch (e: Exception) {
-            Log.e(TAG, e.toString())
-        }
-
-        incomingCallReceiver.unregisterReceiver()
-    }
 
     override fun onCreate() {
         super.onCreate()
@@ -82,22 +65,10 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
 
         val config = StorageDelegate.getForegroundCallServiceConfiguration(applicationContext)
 
-        checkNotificationPermission()
         startForegroundService(config)
 
         val callbackDispatcher = StorageDelegate.getCallbackDispatcher(applicationContext)
         flutterEngineHelper = FlutterEngineHelper(applicationContext, callbackDispatcher, this)
-    }
-
-    /**
-     * Checks for notification permission on Android 13+ (API level 33).
-     */
-    private fun checkNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                Log.e(TAG, "Notification permission not granted")
-            }
-        }
     }
 
     /**
@@ -109,17 +80,15 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         notificationBuilder.setContent(config.androidNotificationDescription!!)
         val notification = notificationBuilder.build()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ServiceCompat.startForeground(
+        if (PermissionsHelper(baseContext).hasNotificationPermission()) {
+            startForegroundServiceCompat(
                 this,
                 ForegroundCallNotificationBuilder.FOREGROUND_CALL_NOTIFICATION_ID,
                 notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
+                if (SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL else null
             )
         } else {
-            startForeground(
-                ForegroundCallNotificationBuilder.FOREGROUND_CALL_NOTIFICATION_ID, notification
-            )
+            stopSelf()
         }
     }
 
@@ -159,7 +128,6 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         flutterEngineHelper.detachAndDestroyEngine()
 
         isRunning.set(false)
-        unregister()
         super.onDestroy()
     }
 
@@ -196,7 +164,6 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
     private fun wakeUp(config: ForegroundCallServiceConfig, data: Bundle?) {
         runService(config)
         wakeUpBackgroundHandler(data)
-//        ForegroundCallServiceReceiver.wakeUp(applicationContext, data?.getString(PARAM_JSON_DATA))
     }
 
     /**
@@ -226,20 +193,12 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
 
         connectionService = CallkeepApiProvider.getBackgroundCallkeepApi(baseContext, _isolateCalkeepFlutterApi!!)
 
-        incomingCallReceiver = IncomingCallNotificationReceiver(
-            baseContext,
-            endCall = { callMetaData -> connectionService.hungUp(callMetaData) {} },
-            answerCall = { callMetaData -> connectionService.answer(callMetaData) },
-        )
-
-        register()
     }
 
 
     private fun wakeUpBackgroundHandler(
         extras: Bundle?
     ) {
-
         Log.d(TAG, "onWakeUpBackgroundHandler")
 
         val lifecycle = ActivityHolder.getActivityState()
@@ -299,7 +258,6 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
     override fun incomingCall(
         callId: String, handle: PHandle, displayName: String?, hasVideo: Boolean, callback: (Result<Unit>) -> Unit
     ) {
-
         val callPath = StorageDelegate.getIncomingPath(baseContext)
         val rootPath = StorageDelegate.getRootPath(baseContext)
         val ringtonePath = StorageDelegate.getRingtonePath(baseContext)
@@ -335,7 +293,6 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         private const val PARAM_JSON_DATA = "PARAM_JSON_DATA"
         private const val PARAM_CHANGE_LIFECYCLE_EVENT = "PARAM_CHANGE_LIFECYCLE_EVENT"
 
-
         @JvmStatic
         val isRunning = AtomicBoolean(false)
 
@@ -355,7 +312,9 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         }
 
         fun start(context: Context, data: String? = null) = communicate(
-            context, ForegroundCallServiceEnums.START, data?.let { Bundle().apply { putString(PARAM_JSON_DATA, it) } })
+            context,
+            ForegroundCallServiceEnums.START,
+            data?.let { Bundle().apply { putString(PARAM_JSON_DATA, it) } })
 
         fun changeLifecycle(context: Context, event: Lifecycle.Event) = communicate(
             context,
