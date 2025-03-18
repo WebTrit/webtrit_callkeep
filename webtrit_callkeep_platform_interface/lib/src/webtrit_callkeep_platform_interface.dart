@@ -302,6 +302,14 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('getConnection() has not been implemented.');
   }
 
+  /// Retrieves a list of all active Callkeep connections.
+  ///
+  /// Returns a [Future] that resolves to a list of [CallkeepConnection] objects representing
+  /// the active connections.
+  Future<List<CallkeepConnection>> getConnections() {
+    throw UnimplementedError('getConnections() has not been implemented.');
+  }
+
   /// Updates the signaling status of the activity connection.
   ///
   /// Set the signaling status for the current activity connection,

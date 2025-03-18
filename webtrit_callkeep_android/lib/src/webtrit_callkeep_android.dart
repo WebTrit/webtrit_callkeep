@@ -320,6 +320,11 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
+  Future<List<CallkeepConnection>> getConnections() async {
+    return _connectionsApi.getConnections().then((value) => value.map((it) => it.toCallkeep()).toList());
+  }
+
+  @override
   Future<void> updateActivitySignalingStatus(CallkeepSignalingStatus status) {
     return _connectionsApi.updateActivitySignalingStatus(status.toPigeon());
   }
