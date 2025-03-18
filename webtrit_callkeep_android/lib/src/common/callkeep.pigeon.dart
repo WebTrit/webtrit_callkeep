@@ -126,6 +126,14 @@ enum PCallkeepDisconnectCauseType {
   callPulled,
 }
 
+enum PCallkeepSignalingStatus {
+  disconnecting,
+  disconnect,
+  connecting,
+  connect,
+  failure,
+}
+
 class PIOSOptions {
   PIOSOptions({
     required this.localizedName,
@@ -492,35 +500,38 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is PCallkeepDisconnectCauseType) {
       buffer.putUint8(139);
       writeValue(buffer, value.index);
-    }    else if (value is PIOSOptions) {
+    }    else if (value is PCallkeepSignalingStatus) {
       buffer.putUint8(140);
-      writeValue(buffer, value.encode());
-    }    else if (value is PAndroidOptions) {
+      writeValue(buffer, value.index);
+    }    else if (value is PIOSOptions) {
       buffer.putUint8(141);
       writeValue(buffer, value.encode());
-    }    else if (value is POptions) {
+    }    else if (value is PAndroidOptions) {
       buffer.putUint8(142);
       writeValue(buffer, value.encode());
-    }    else if (value is PHandle) {
+    }    else if (value is POptions) {
       buffer.putUint8(143);
       writeValue(buffer, value.encode());
-    }    else if (value is PEndCallReason) {
+    }    else if (value is PHandle) {
       buffer.putUint8(144);
       writeValue(buffer, value.encode());
-    }    else if (value is PIncomingCallError) {
+    }    else if (value is PEndCallReason) {
       buffer.putUint8(145);
       writeValue(buffer, value.encode());
-    }    else if (value is PCallRequestError) {
+    }    else if (value is PIncomingCallError) {
       buffer.putUint8(146);
       writeValue(buffer, value.encode());
-    }    else if (value is PCallkeepServiceStatus) {
+    }    else if (value is PCallRequestError) {
       buffer.putUint8(147);
       writeValue(buffer, value.encode());
-    }    else if (value is PCallkeepDisconnectCause) {
+    }    else if (value is PCallkeepServiceStatus) {
       buffer.putUint8(148);
       writeValue(buffer, value.encode());
-    }    else if (value is PCallkeepConnection) {
+    }    else if (value is PCallkeepDisconnectCause) {
       buffer.putUint8(149);
+      writeValue(buffer, value.encode());
+    }    else if (value is PCallkeepConnection) {
+      buffer.putUint8(150);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -564,24 +575,27 @@ class _PigeonCodec extends StandardMessageCodec {
         final int? value = readValue(buffer) as int?;
         return value == null ? null : PCallkeepDisconnectCauseType.values[value];
       case 140: 
-        return PIOSOptions.decode(readValue(buffer)!);
+        final int? value = readValue(buffer) as int?;
+        return value == null ? null : PCallkeepSignalingStatus.values[value];
       case 141: 
-        return PAndroidOptions.decode(readValue(buffer)!);
+        return PIOSOptions.decode(readValue(buffer)!);
       case 142: 
-        return POptions.decode(readValue(buffer)!);
+        return PAndroidOptions.decode(readValue(buffer)!);
       case 143: 
-        return PHandle.decode(readValue(buffer)!);
+        return POptions.decode(readValue(buffer)!);
       case 144: 
-        return PEndCallReason.decode(readValue(buffer)!);
+        return PHandle.decode(readValue(buffer)!);
       case 145: 
-        return PIncomingCallError.decode(readValue(buffer)!);
+        return PEndCallReason.decode(readValue(buffer)!);
       case 146: 
-        return PCallRequestError.decode(readValue(buffer)!);
+        return PIncomingCallError.decode(readValue(buffer)!);
       case 147: 
-        return PCallkeepServiceStatus.decode(readValue(buffer)!);
+        return PCallRequestError.decode(readValue(buffer)!);
       case 148: 
-        return PCallkeepDisconnectCause.decode(readValue(buffer)!);
+        return PCallkeepServiceStatus.decode(readValue(buffer)!);
       case 149: 
+        return PCallkeepDisconnectCause.decode(readValue(buffer)!);
+      case 150: 
         return PCallkeepConnection.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -1395,6 +1409,28 @@ class PHostConnectionsApi {
       );
     } else {
       return (pigeonVar_replyList[0] as PCallkeepConnection?);
+    }
+  }
+
+  Future<void> updateActivitySignalingStatus(PCallkeepSignalingStatus status) async {
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostConnectionsApi.updateActivitySignalingStatus$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final List<Object?>? pigeonVar_replyList =
+        await pigeonVar_channel.send(<Object?>[status]) as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else {
+      return;
     }
   }
 }

@@ -318,6 +318,11 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   Future<CallkeepConnection?> getConnection(String callId) async {
     return _connectionsApi.getConnection(callId).then((value) => value?.toCallkeep());
   }
+
+  @override
+  Future<void> updateActivitySignalingStatus(CallkeepSignalingStatus status) {
+    return _connectionsApi.updateActivitySignalingStatus(status.toPigeon());
+  }
 }
 
 class _CallkeepDelegateRelay implements PDelegateFlutterApi {
