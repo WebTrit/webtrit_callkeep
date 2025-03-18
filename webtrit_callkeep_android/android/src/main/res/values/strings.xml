@@ -2,7 +2,8 @@
     <string name="client_title">User name</string>
     <string name="incoming_call_title">Incoming call</string>
     <string name="answer_call_button_text">Answer</string>
-    <string name="hang_up_button_text">Decline</string>
+    <string name="decline_button_text">Decline</string>
+    <string name="hang_up_button_text">Hung up</string>
     <string name="push_notification_incoming_call_channel_title">Incoming call</string>
     <string name="push_notification_active_call_channel_title">Active call</string>
     <string name="push_notification_active_calls_channel_title">Active calls</string>

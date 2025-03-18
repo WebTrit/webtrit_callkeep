@@ -9,19 +9,31 @@ import android.os.IBinder
 import androidx.core.app.ServiceCompat
 import com.webtrit.callkeep.common.helpers.PermissionsHelper
 import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.notifications.ActiveCallNotificationBuilder
+import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 
 class ActiveCallService : Service() {
     private var activeCallNotificationBuilder = ActiveCallNotificationBuilder()
+    private var activeCalls = ArrayList<CallMetadata>()
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Handle the hangup action from the notification
+        if (NotificationAction.Hangup.action == intent?.action) {
+            PhoneConnectionService.startHungUpCall(baseContext, activeCalls.first())
+            return START_NOT_STICKY
+        }
+
+        // Start the service in the foreground
         val bundle = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent?.getParcelableArrayListExtra("metadata", Bundle::class.java)
         } else {
             intent?.getParcelableArrayListExtra<Bundle>("metadata");
         }
         val callsMetadata = bundle?.map { CallMetadata.fromBundle(it) } ?: emptyList()
-        
+        activeCalls.clear()
+        activeCalls.addAll(callsMetadata)
+
         activeCallNotificationBuilder.setCallsMetaData(callsMetadata)
         val notification = activeCallNotificationBuilder.build();
 
