@@ -3,15 +3,16 @@ package com.webtrit.callkeep.common.helpers
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
+import android.Manifest
 import io.flutter.Log
 
 class PermissionsHelper(private val context: Context) {
     fun canUseFullScreenIntent(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val canUseFullScreenIntent = notificationManager.canUseFullScreenIntent()
-            canUseFullScreenIntent
+            notificationManager.canUseFullScreenIntent()
         } else {
             Log.i(TAG, "Can't check full screen intent permission on this device")
             true
@@ -32,8 +33,19 @@ class PermissionsHelper(private val context: Context) {
     }
 
     fun hasCameraPermission(): Boolean {
-        val cameraPermission = context.checkSelfPermission(android.Manifest.permission.CAMERA)
-        return cameraPermission == android.content.pm.PackageManager.PERMISSION_GRANTED
+        val cameraPermission = context.checkSelfPermission(Manifest.permission.CAMERA)
+        return cameraPermission == PackageManager.PERMISSION_GRANTED
+    }
+
+    /**
+     * Checks if notification permission is granted on Android 13+ (API level 33).
+     */
+    fun hasNotificationPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
     }
 
     companion object {
