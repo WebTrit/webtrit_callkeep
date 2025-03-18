@@ -8,10 +8,8 @@ import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.AssetHolder
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
-import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.services.IncomingCallService
 import com.webtrit.callkeep.services.SignalingService
-
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.FlutterPlugin.FlutterAssets
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -34,7 +32,6 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     private var incomingCallService: IncomingCallService? = null
 
     private var delegateLogsFlutterApi: PDelegateLogsFlutterApi? = null
-
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         // Store binnyMessenger for later use if instance of the flutter engine belongs to main isolate OR call service isolate
@@ -62,6 +59,11 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         PHostApi.setUp(this.messenger, null)
 
         ActivityHolder.setActivity(null)
+
+        PHostPermissionsApi.setUp(messenger, null)
+        PHostSoundApi.setUp(messenger, null)
+        PHostIsolateApi.setUp(messenger, null)
+        PHostConnectionsApi.setUp(messenger, null)
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
