@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.services.callkeep.foreground
+package com.webtrit.callkeep.services
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -34,10 +34,11 @@ import com.webtrit.callkeep.models.ForegroundCallServiceConfig
 import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
 import com.webtrit.callkeep.receivers.IncomingCallNotificationReceiver
+import com.webtrit.callkeep.workers.ForegroundCallWorker
 import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 import java.util.concurrent.atomic.AtomicBoolean
 
-class ForegroundCallService : Service(), PHostBackgroundServiceApi {
+class SignalingService : Service(), PHostBackgroundServiceApi {
     private lateinit var notificationBuilder: ForegroundCallNotificationBuilder
     private lateinit var flutterEngineHelper: FlutterEngineHelper
 
@@ -308,7 +309,7 @@ class ForegroundCallService : Service(), PHostBackgroundServiceApi {
          * Communicates with the service by starting it with the specified action and metadata.
          */
         private fun communicate(context: Context, action: ForegroundCallServiceEnums, metadata: Bundle?) {
-            val intent = Intent(context, ForegroundCallService::class.java).apply {
+            val intent = Intent(context, SignalingService::class.java).apply {
                 this.action = action.action
                 metadata?.let { putExtras(it) }
             }

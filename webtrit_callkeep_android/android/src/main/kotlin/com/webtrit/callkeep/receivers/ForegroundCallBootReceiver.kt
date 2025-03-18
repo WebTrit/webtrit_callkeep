@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.services.callkeep.foreground
+package com.webtrit.callkeep.receivers
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -6,6 +6,7 @@ import android.content.Intent
 import androidx.core.content.ContextCompat
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.StorageDelegate
+import com.webtrit.callkeep.services.SignalingService
 
 class ForegroundCallBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -14,7 +15,7 @@ class ForegroundCallBootReceiver : BroadcastReceiver() {
 
             val config = StorageDelegate.getForegroundCallServiceConfiguration(context)
             if (config.autoStartOnBoot) {
-                val wakeLock = ForegroundCallService.getLock(context)
+                val wakeLock = SignalingService.Companion.getLock(context)
                 wakeLock?.let {
                     if (!it.isHeld) {
                         it.acquire(10 * 60 * 1000L /*10 minutes*/)
@@ -23,7 +24,7 @@ class ForegroundCallBootReceiver : BroadcastReceiver() {
 
                 try {
                     ContextCompat.startForegroundService(
-                        context, Intent(context, ForegroundCallService::class.java)
+                        context, Intent(context, SignalingService::class.java)
                     )
                 } catch (e: Exception) {
                     e.printStackTrace()

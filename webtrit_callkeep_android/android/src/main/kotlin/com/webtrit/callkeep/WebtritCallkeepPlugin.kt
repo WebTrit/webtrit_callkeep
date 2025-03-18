@@ -9,7 +9,7 @@ import com.webtrit.callkeep.common.AssetHolder
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.services.IncomingCallService
-import com.webtrit.callkeep.services.callkeep.foreground.ForegroundCallService
+import com.webtrit.callkeep.services.SignalingService
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -22,7 +22,7 @@ import io.flutter.embedding.engine.plugins.service.ServicePluginBinding
 class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, LifecycleEventObserver {
     private var activityPluginBinding: ActivityPluginBinding? = null
     private var lifeCycle: Lifecycle? = null
-    var foregroundSocketService: ForegroundCallService? = null
+    var foregroundSocketService: SignalingService? = null
     var incomingCallService: IncomingCallService? = null
 
     private lateinit var state: WebtritCallkeepPluginState
@@ -77,8 +77,8 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
             PHostBackgroundServiceApi.setUp(state?.messenger!!, incomingCallService)
         }
 
-        if (binding.service is ForegroundCallService) {
-            this.foregroundSocketService = binding.service as ForegroundCallService
+        if (binding.service is SignalingService) {
+            this.foregroundSocketService = binding.service as SignalingService
             this.state.initBackgroundIsolateApi(binding.service.applicationContext)
 
             val delegate = PDelegateBackgroundServiceFlutterApi(state.messenger)
@@ -109,7 +109,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
         ActivityHolder.setLifecycle(event)
         if (foregroundSocketService != null) {
-            ForegroundCallService.changeLifecycle(foregroundSocketService!!, event)
+            SignalingService.changeLifecycle(foregroundSocketService!!, event)
         }
     }
 

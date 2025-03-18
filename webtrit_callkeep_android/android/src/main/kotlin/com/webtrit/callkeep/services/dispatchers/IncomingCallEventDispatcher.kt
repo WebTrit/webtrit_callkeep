@@ -1,9 +1,9 @@
-package com.webtrit.callkeep.events
+package com.webtrit.callkeep.services.dispatchers
 
 import android.content.Context
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.IncomingCallService
-import com.webtrit.callkeep.services.callkeep.foreground.ForegroundCallService
+import com.webtrit.callkeep.services.SignalingService
 
 interface IncomingCallServiceContract {
     fun answerIncomingCall(context: Context, metadata: CallMetadata)
@@ -12,26 +12,26 @@ interface IncomingCallServiceContract {
 
 object ForegroundCallAdapter : IncomingCallServiceContract {
     override fun answerIncomingCall(context: Context, metadata: CallMetadata) {
-        ForegroundCallService.answerCall(context, metadata)
+        SignalingService.answerCall(context, metadata)
     }
 
     override fun declineIncomingCall(context: Context, metadata: CallMetadata) {
-        ForegroundCallService.endCall(context, metadata)
+        SignalingService.endCall(context, metadata)
     }
 }
 
 object IncomingCallAdapter : IncomingCallServiceContract {
     override fun answerIncomingCall(context: Context, metadata: CallMetadata) {
-        if (ForegroundCallService.isRunning.get()) {
-            ForegroundCallService.answerCall(context, metadata)
+        if (SignalingService.isRunning.get()) {
+            SignalingService.answerCall(context, metadata)
         } else {
             IncomingCallService.answer(context, metadata)
         }
     }
 
     override fun declineIncomingCall(context: Context, metadata: CallMetadata) {
-        if (ForegroundCallService.isRunning.get()) {
-            ForegroundCallService.endCall(context, metadata)
+        if (SignalingService.isRunning.get()) {
+            SignalingService.endCall(context, metadata)
         } else {
             IncomingCallService.hangup(context, metadata)
         }
@@ -40,7 +40,7 @@ object IncomingCallAdapter : IncomingCallServiceContract {
 
 object IncomingCallEventDispatcher {
     private fun getActiveService(): IncomingCallServiceContract {
-        return if (ForegroundCallService.isRunning.get()) {
+        return if (SignalingService.isRunning.get()) {
             ForegroundCallAdapter
         } else {
             IncomingCallAdapter

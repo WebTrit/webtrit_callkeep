@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.services.callkeep.foreground
+package com.webtrit.callkeep.workers
 
 import android.content.Context
 import android.content.Intent
@@ -9,13 +9,14 @@ import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.webtrit.callkeep.common.Log
+import com.webtrit.callkeep.services.SignalingService
 import java.util.concurrent.TimeUnit
 
 class ForegroundCallWorker(context: Context, workerParams: WorkerParameters) : Worker(context, workerParams) {
     override fun doWork(): Result {
         return try {
             ContextCompat.startForegroundService(
-                applicationContext, Intent(applicationContext, ForegroundCallService::class.java)
+                applicationContext, Intent(applicationContext, SignalingService::class.java)
             )
             Result.success()
         } catch (e: Exception) {

@@ -1,6 +1,9 @@
-package com.webtrit.callkeep.services.telecom.connection
+package com.webtrit.callkeep.services.dispatchers
 
 import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.services.telecom.connection.ConnectionManager
+import com.webtrit.callkeep.services.telecom.connection.ProximitySensorManager
+import com.webtrit.callkeep.services.telecom.connection.ServiceAction
 
 class PhoneConnectionServiceDispatcher(
     private val connectionManager: ConnectionManager, private val proximitySensorManager: ProximitySensorManager,

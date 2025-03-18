@@ -4,7 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.StorageDelegate
-import com.webtrit.callkeep.services.callkeep.foreground.ForegroundCallService
+import com.webtrit.callkeep.services.SignalingService
 
 class PigeonIsolateApi(
     private val context: Context
@@ -65,7 +65,7 @@ class PigeonIsolateApi(
     override fun startService(jsonData: String?, callback: (Result<Unit>) -> Unit) {
         Log.i(TAG, "startService, data: $jsonData")
         try {
-            ForegroundCallService.start(context, jsonData)
+            SignalingService.start(context, jsonData)
 
             callback(Result.success(Unit))
         } catch (e: Exception) {
@@ -76,8 +76,8 @@ class PigeonIsolateApi(
     override fun stopService(callback: (Result<Unit>) -> Unit) {
         Log.i(TAG, "stopService")
         try {
-            if (ForegroundCallService.isRunning.get()) {
-                ForegroundCallService.stop(context)
+            if (SignalingService.isRunning.get()) {
+                SignalingService.stop(context)
             }
             callback(Result.success(Unit))
         } catch (e: Exception) {

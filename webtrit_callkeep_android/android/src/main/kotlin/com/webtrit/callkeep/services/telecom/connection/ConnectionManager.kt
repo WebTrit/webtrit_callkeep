@@ -58,7 +58,7 @@ class ConnectionManager {
      * Check if a connection is terminated.
      */
     fun isConnectionDisconnected(callId: String): Boolean {
-        return connections.get(callId)?.state == Connection.STATE_DISCONNECTED
+        return connections[callId]?.state == Connection.STATE_DISCONNECTED
     }
 
     /**
