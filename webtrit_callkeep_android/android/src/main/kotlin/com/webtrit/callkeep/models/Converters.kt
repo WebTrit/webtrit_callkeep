@@ -1,5 +1,6 @@
 package com.webtrit.callkeep.models
 
+import android.telecom.DisconnectCause
 import com.webtrit.callkeep.PCallkeepConnection
 import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PCallkeepDisconnectCause
@@ -17,7 +18,7 @@ fun CallHandle.toPHandle(): PHandle {
 }
 
 fun PhoneConnection.toPConnection(): PCallkeepConnection? {
-    val disconnectCause = disconnectCause ?: return null
+    val disconnectCause = disconnectCause ?: DisconnectCause(DisconnectCause.UNKNOWN)
 
     val callkeepStatus = PCallkeepConnectionState.ofRaw(state)
     val callkeepDisconnectCauseType = PCallkeepDisconnectCauseType.ofRaw(disconnectCause.code)
