@@ -44,7 +44,7 @@ object CallkeepApiProvider {
      * @return The foreground Callkeep API instance.
      */
     fun getForegroundCallkeepApi(
-        activity: Activity,
+        activity: Context,
         api: PDelegateFlutterApi
     ): ForegroundCallkeepApi {
         return if (TelephonyHelper(activity).isAvailableTelephony()) {

@@ -78,7 +78,7 @@ class WebtritCallkeepPluginState(
         PHostSoundApi.setUp(messenger, soundApi)
 
         val flutterDelegateApi = PDelegateFlutterApi(messenger)
-        pigeonActivityApi = PigeonActivityApi(activity, flutterDelegateApi)
+        pigeonActivityApi = PigeonActivityApi(context, flutterDelegateApi)
         PHostApi.setUp(messenger, pigeonActivityApi)
     }
 

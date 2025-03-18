@@ -4,7 +4,6 @@ import android.content.Context
 import android.util.Log
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.StorageDelegate
-import com.webtrit.callkeep.models.ForegroundCallServiceHandles
 import com.webtrit.callkeep.services.callkeep.foreground.ForegroundCallService
 
 class PigeonIsolateApi(
@@ -18,12 +17,9 @@ class PigeonIsolateApi(
         callback: (Result<Unit>) -> Unit
     ) {
         try {
-            val serviceHandles = ForegroundCallServiceHandles(
-                callbackDispatcher = callbackDispatcher,
-                onStartHandler = onStartHandler,
-                onChangedLifecycleHandler = onChangedLifecycleHandler
-            )
-            StorageDelegate.setServiceHandles(context, serviceHandles)
+            StorageDelegate.setCallbackDispatcher(context, callbackDispatcher)
+            StorageDelegate.setOnStartHandler(context, onStartHandler)
+            StorageDelegate.setOnChangedLifecycleHandler(context, onChangedLifecycleHandler)
 
             callback(Result.success(Unit))
         } catch (e: Exception) {
