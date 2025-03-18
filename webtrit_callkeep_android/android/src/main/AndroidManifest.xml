@@ -41,6 +41,11 @@
             android:foregroundServiceType="phoneCall" />
 
         <service
+            android:name=".services.IncomingCallService"
+            android:exported="false"
+            android:foregroundServiceType="phoneCall" />
+
+        <service
             android:name=".services.ActiveCallService"
             android:exported="false"
             android:foregroundServiceType="phoneCall|microphone|camera" />

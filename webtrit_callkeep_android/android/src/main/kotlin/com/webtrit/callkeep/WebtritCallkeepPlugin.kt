@@ -1,5 +1,6 @@
 package com.webtrit.callkeep
 
+import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
@@ -7,6 +8,7 @@ import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.AssetHolder
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.StorageDelegate
+import com.webtrit.callkeep.services.IncomingCallService
 import com.webtrit.callkeep.services.callkeep.foreground.ForegroundCallService
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -21,6 +23,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     private var activityPluginBinding: ActivityPluginBinding? = null
     private var lifeCycle: Lifecycle? = null
     var foregroundSocketService: ForegroundCallService? = null
+    var incomingCallService: IncomingCallService? = null
 
     private lateinit var state: WebtritCallkeepPluginState
 
@@ -61,6 +64,19 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     }
 
     override fun onAttachedToService(binding: ServicePluginBinding) {
+        if (binding.service is IncomingCallService) {
+            incomingCallService = binding.service as? IncomingCallService
+            Log.d(TAG, "onAttachedToService")
+
+            val delegate = PDelegateBackgroundServiceFlutterApi(state?.messenger ?: return)
+            val isolateDelegate = PDelegateBackgroundRegisterFlutterApi(state?.messenger!!);
+
+            incomingCallService?.isolateCalkeepFlutterApi = delegate
+            incomingCallService?.isolatePushNotificationFlutterApi = isolateDelegate;
+
+            PHostBackgroundServiceApi.setUp(state?.messenger!!, incomingCallService)
+        }
+
         if (binding.service is ForegroundCallService) {
             this.foregroundSocketService = binding.service as ForegroundCallService
             this.state.initBackgroundIsolateApi(binding.service.applicationContext)
@@ -78,6 +94,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     override fun onDetachedFromService() {
         PHostBackgroundServiceApi.setUp(state.messenger, null)
         foregroundSocketService = null
+        incomingCallService = null
     }
 
     override fun onDetachedFromActivityForConfigChanges() {

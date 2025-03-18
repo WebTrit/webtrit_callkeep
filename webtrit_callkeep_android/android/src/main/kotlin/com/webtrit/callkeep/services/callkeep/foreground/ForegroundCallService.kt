@@ -175,6 +175,8 @@ class ForegroundCallService : Service(), PHostBackgroundServiceApi {
             ForegroundCallServiceEnums.START.action -> wakeUp(config, data)
             ForegroundCallServiceEnums.STOP.action -> tearDown()
             ForegroundCallServiceEnums.CHANGE_LIFECYCLE.action -> onChangedLifecycleHandler(data)
+            ForegroundCallServiceEnums.DECLINE.action -> connectionService.hungUp(CallMetadata.fromBundle(data!!)) {}
+            ForegroundCallServiceEnums.ANSWER.action -> connectionService.answer(CallMetadata.fromBundle(data!!))
         }
 
         return START_STICKY
@@ -339,6 +341,22 @@ class ForegroundCallService : Service(), PHostBackgroundServiceApi {
                 Bundle().apply { putSerializable(PARAM_CHANGE_LIFECYCLE_EVENT, event) })
         }
 
+        fun endCall(context: Context, callId: String) {
+            communicate(
+                context,
+                ForegroundCallServiceEnums.DECLINE,
+                CallMetadata(callId = callId).toBundle()
+            )
+        }
+
+        fun answerCall(context: Context, callId: String) {
+            communicate(
+                context,
+                ForegroundCallServiceEnums.ANSWER,
+                CallMetadata(callId = callId).toBundle()
+            )
+        }
+
         /**
          * Acquires a partial wake lock to keep the CPU running.
          */
@@ -388,7 +406,7 @@ class ForegroundCallService : Service(), PHostBackgroundServiceApi {
 }
 
 enum class ForegroundCallServiceEnums {
-    INIT, START, STOP, CHANGE_LIFECYCLE;
+    INIT, START, STOP, CHANGE_LIFECYCLE, ANSWER, DECLINE;
 
     val action: String
         get() = ContextHolder.appUniqueKey + name + "_foreground_call_service"

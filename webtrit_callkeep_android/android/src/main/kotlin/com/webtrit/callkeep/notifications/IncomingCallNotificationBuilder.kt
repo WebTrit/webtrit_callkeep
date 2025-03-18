@@ -12,6 +12,7 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.common.ContextHolder.context
 import com.webtrit.callkeep.notifications.NotificationChannelManager.INCOMING_CALL_NOTIFICATION_CHANNEL_ID
+import com.webtrit.callkeep.services.IncomingCallService
 
 class IncomingCallNotificationBuilder() : NotificationBuilder() {
     private var callMetaData: CallMetadata? = null
@@ -30,23 +31,21 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
     }
 
     private fun getAnsweredCallIntent(callMetaData: CallMetadata): PendingIntent {
-        val answerIntent = Intent(NotificationAction.Answer.action).apply {
+        val answerIntent = Intent(context, IncomingCallService::class.java).apply {
+            action = NotificationAction.Answer.action
             putExtras(callMetaData.toBundle())
         }
-
-        return PendingIntent.getBroadcast(
-            context,
-            R.integer.notification_incoming_call_id,
-            answerIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        return PendingIntent.getService(
+            context, 0, answerIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
     }
 
     private fun getHungUpCallIntent(callMetaData: CallMetadata): PendingIntent {
-        val hangUpIntent = Intent(NotificationAction.Hangup.action).apply {
+        val hangUpIntent = Intent(context, IncomingCallService::class.java).apply {
+            action = NotificationAction.Hangup.action
             putExtras(callMetaData.toBundle())
         }
-        return PendingIntent.getBroadcast(
+        return PendingIntent.getService(
             context, 0, hangUpIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
     }
@@ -65,7 +64,7 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
 
         val declineAction: Notification.Action = Notification.Action.Builder(
             Icon.createWithResource(context, R.drawable.ic_call_hungup),
-            context.getString(R.string.hang_up_button_text),
+            context.getString(R.string.decline_button_text),
             declineIntent
         ).build()
 
@@ -95,5 +94,10 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
         val notification = notificationBuilder.build()
         notification.flags = notification.flags or NotificationCompat.FLAG_INSISTENT
         return notification
+    }
+
+    companion object {
+        const val TAG = "INCOMING_CALL_NOTIFICATION"
+        const val INCOMING_CALL_NOTIFICATION_ID = 1 // R.integer.notification_incoming_call_id
     }
 }
