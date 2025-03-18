@@ -9,21 +9,19 @@ import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
 import com.webtrit.callkeep.PCallkeepPushNotificationSyncStatus
-import com.webtrit.callkeep.PCallkeepSignalingStatus
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.PHandle
 import com.webtrit.callkeep.PHostBackgroundServiceApi
 import com.webtrit.callkeep.common.ContextHolder
-import com.webtrit.callkeep.common.SignalingHolder
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.helpers.FlutterEngineHelper
 import com.webtrit.callkeep.common.helpers.PermissionsHelper
 import com.webtrit.callkeep.common.helpers.startForegroundServiceCompat
-import com.webtrit.callkeep.services.dispatchers.IncomingCallEventDispatcher
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
+import com.webtrit.callkeep.services.dispatchers.IncomingCallEventDispatcher
 import com.webtrit.callkeep.services.helpers.IsolateSelector
 import com.webtrit.callkeep.services.helpers.IsolateType
 import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
@@ -43,7 +41,6 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
     private var flutterEngineHelper: FlutterEngineHelper? = null
     private var wakeLock: PowerManager.WakeLock? = null
 
-
     private var _isolateCalkeepFlutterApi: PDelegateBackgroundServiceFlutterApi? = null
     var isolateCalkeepFlutterApi: PDelegateBackgroundServiceFlutterApi?
         get() = _isolateCalkeepFlutterApi
@@ -57,8 +54,6 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
         set(value) {
             _isolatePushNotificationFlutterApi = value
         }
-
-    override fun onBind(intent: Intent?): IBinder? = null
 
     fun acquireWakeLock(context: Context) {
         if (wakeLock == null) {
@@ -126,7 +121,7 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
 
         if (IsolateSelector.getIsolateType() == IsolateType.BACKGROUND) {
             startIncomingCallIsolate()
-            
+
             isolatePushNotificationFlutterApi?.onNotificationSync(
                 StorageDelegate.getOnNotificationSync(applicationContext),
                 PCallkeepPushNotificationSyncStatus.SYNCHRONIZE_CALL_STATUS
@@ -221,7 +216,6 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
         }
     }
 
-
     /**
      * Handles the user decline of an incoming call.
      *
@@ -294,6 +288,8 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
 
     private val isFlutterEngineReady: Boolean
         get() = flutterEngineHelper?.isEngineAttached == true
+
+    override fun onBind(intent: Intent?): IBinder? = null
 
     companion object {
         private const val TAG = "IncomingCallService"

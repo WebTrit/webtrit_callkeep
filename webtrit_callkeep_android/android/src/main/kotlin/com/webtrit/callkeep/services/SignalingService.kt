@@ -296,6 +296,40 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         }
     }
 
+    override fun incomingCall(
+        callId: String, handle: PHandle, displayName: String?, hasVideo: Boolean, callback: (Result<Unit>) -> Unit
+    ) {
+
+        val callPath = StorageDelegate.getIncomingPath(baseContext)
+        val rootPath = StorageDelegate.getRootPath(baseContext)
+        val ringtonePath = StorageDelegate.getRingtonePath(baseContext)
+
+        val callMetaData = CallMetadata(
+            callId = callId,
+            handle = handle.toCallHandle(),
+            displayName = displayName,
+            hasVideo = hasVideo,
+            paths = CallPaths(callPath, rootPath),
+            ringtonePath = ringtonePath,
+            createdTime = System.currentTimeMillis()
+        )
+
+        connectionService.incomingCall(callMetaData, callback)
+    }
+
+    override fun endCall(callId: String, callback: (Result<Unit>) -> Unit) {
+        val callMetaData = CallMetadata(callId = callId)
+        connectionService.hungUp(callMetaData, callback)
+        callback.invoke(Result.success(Unit)) // TODO: Ensure proper cleanup of connections
+    }
+
+    override fun endAllCalls(callback: (Result<Unit>) -> Unit) {
+        connectionService.endAllCalls()
+        callback.invoke(Result.success(Unit)) // TODO: Ensure proper cleanup of connections
+    }
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
     companion object {
         private const val TAG = "ForegroundCallService"
         private const val PARAM_JSON_DATA = "PARAM_JSON_DATA"
@@ -336,7 +370,6 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         fun answerCall(context: Context, callMetadata: CallMetadata) =
             communicate(context, ForegroundCallServiceEnums.ANSWER, callMetadata.toBundle())
 
-
         /**
          * Acquires a partial wake lock to keep the CPU running.
          */
@@ -349,40 +382,6 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
             }
         }
     }
-
-    override fun incomingCall(
-        callId: String, handle: PHandle, displayName: String?, hasVideo: Boolean, callback: (Result<Unit>) -> Unit
-    ) {
-
-        val callPath = StorageDelegate.getIncomingPath(baseContext)
-        val rootPath = StorageDelegate.getRootPath(baseContext)
-        val ringtonePath = StorageDelegate.getRingtonePath(baseContext)
-
-        val callMetaData = CallMetadata(
-            callId = callId,
-            handle = handle.toCallHandle(),
-            displayName = displayName,
-            hasVideo = hasVideo,
-            paths = CallPaths(callPath, rootPath),
-            ringtonePath = ringtonePath,
-            createdTime = System.currentTimeMillis()
-        )
-
-        connectionService.incomingCall(callMetaData, callback)
-    }
-
-    override fun endCall(callId: String, callback: (Result<Unit>) -> Unit) {
-        val callMetaData = CallMetadata(callId = callId)
-        connectionService.hungUp(callMetaData, callback)
-        callback.invoke(Result.success(Unit)) // TODO: Ensure proper cleanup of connections
-    }
-
-    override fun endAllCalls(callback: (Result<Unit>) -> Unit) {
-        connectionService.endAllCalls()
-        callback.invoke(Result.success(Unit)) // TODO: Ensure proper cleanup of connections
-    }
-
-    override fun onBind(intent: Intent?): IBinder? = null
 }
 
 enum class ForegroundCallServiceEnums {
@@ -391,4 +390,3 @@ enum class ForegroundCallServiceEnums {
     val action: String
         get() = ContextHolder.appUniqueKey + name + "_foreground_call_service"
 }
-
