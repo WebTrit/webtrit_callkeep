@@ -16,18 +16,14 @@ import android.util.Log
 import androidx.core.app.ServiceCompat
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.StorageDelegate
+import com.webtrit.callkeep.common.helpers.FlutterEngineHelper
 import com.webtrit.callkeep.models.ForegroundCallServiceConfig
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
-import io.flutter.FlutterInjector
-import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.embedding.engine.dart.DartExecutor.DartCallback
-import io.flutter.view.FlutterCallbackInformation
 import java.util.concurrent.atomic.AtomicBoolean
 
 class ForegroundCallService : Service() {
     private lateinit var notificationBuilder: ForegroundCallNotificationBuilder
-
-    private var isEngineAttached = false
+    private lateinit var flutterEngineHelper: FlutterEngineHelper
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -42,6 +38,9 @@ class ForegroundCallService : Service() {
 
         checkNotificationPermission()
         startForegroundService(config)
+
+        val callbackDispatcher = StorageDelegate.getCallbackDispatcher(applicationContext)
+        flutterEngineHelper = FlutterEngineHelper(applicationContext, callbackDispatcher, this)
     }
 
     /**
@@ -111,12 +110,9 @@ class ForegroundCallService : Service() {
         }
 
         stopForeground(STOP_FOREGROUND_REMOVE)
+        flutterEngineHelper.detachAndDestroyEngine()
 
         isRunning.set(false)
-        isEngineAttached = false
-
-        // Detach FlutterEngine without destroying it
-        backgroundEngine?.serviceControlSurface?.detachFromService()
 
         super.onDestroy()
     }
@@ -173,61 +169,13 @@ class ForegroundCallService : Service() {
 
         Log.v(TAG, "Running service logic")
         getLock(applicationContext)?.acquire(10 * 60 * 1000L /*10 minutes*/)
-        val callbackDispatcher = StorageDelegate.getCallbackDispatcher(applicationContext)
 
-        if (backgroundEngine == null) {
-            Log.v(TAG, "Starting new background isolate")
-            startBackgroundIsolate(this, callbackDispatcher)
-            isEngineAttached = true
-        } else {
-            if (!isEngineAttached) {
-                Log.v(TAG, "Reattaching to existing FlutterEngine")
-                backgroundEngine?.serviceControlSurface?.attachToService(this, null, true)
-                isEngineAttached = true
-            } else {
-                Log.v(TAG, "FlutterEngine is already attached to service")
-
-                // Trigger the isolate callback to synchronize the call status.
-                // This handles scenarios where the service is restarted by the system after being stopped
-                // or initiated during the boot process.
-                ForegroundCallServiceReceiver.wakeUp(applicationContext, data?.getString(PARAM_JSON_DATA))
-            }
-        }
+        flutterEngineHelper.startOrAttachEngine()
 
         isRunning.set(true)
     }
 
-    /**
-     * Starts the Flutter background isolate using the provided callback handle.
-     */
-    private fun startBackgroundIsolate(context: Context, callbackHandle: Long) {
-        try {
-            val flutterLoader = FlutterInjector.instance().flutterLoader()
-            if (!flutterLoader.initialized()) {
-                flutterLoader.startInitialization(context.applicationContext)
-            }
-            flutterLoader.ensureInitializationComplete(context.applicationContext, null)
-
-            backgroundEngine = FlutterEngine(context.applicationContext)
-
-            val callbackInformation = FlutterCallbackInformation.lookupCallbackInformation(callbackHandle)
-            if (callbackInformation != null) {
-                val dartCallback = DartCallback(
-                    context.assets, flutterLoader.findAppBundlePath(), callbackInformation
-                )
-                backgroundEngine?.dartExecutor?.executeDartCallback(dartCallback)
-                backgroundEngine?.serviceControlSurface?.attachToService(this, null, true)
-                isEngineAttached = true
-            } else {
-                Log.e(TAG, "Invalid callback handle: $callbackHandle")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error starting background isolate", e)
-        }
-    }
-
     companion object {
-        private var backgroundEngine: FlutterEngine? = null
         private const val TAG = "ForegroundCallService"
         private const val PARAM_JSON_DATA = "PARAM_JSON_DATA"
 
