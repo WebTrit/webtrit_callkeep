@@ -707,8 +707,8 @@ class PHostIsolateApi {
 
   final String pigeonVar_messageChannelSuffix;
 
-  Future<void> setUpCallback({required int callbackDispatcher, required int onStartHandler, required int onChangedLifecycleHandler,}) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.setUpCallback$pigeonVar_messageChannelSuffix';
+  Future<void> initializeSignalingServiceCallback({required int callbackDispatcher, required int onStartHandler, required int onChangedLifecycleHandler,}) async {
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.initializeSignalingServiceCallback$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,

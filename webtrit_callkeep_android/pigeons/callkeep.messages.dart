@@ -214,7 +214,7 @@ abstract class PHostBackgroundServiceApi {
 @HostApi()
 abstract class PHostIsolateApi {
   @async
-  void setUpCallback({
+  void initializeSignalingServiceCallback({
     required int callbackDispatcher,
     required int onStartHandler,
     required int onChangedLifecycleHandler,

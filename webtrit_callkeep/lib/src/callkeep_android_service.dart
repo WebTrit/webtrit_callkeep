@@ -34,7 +34,7 @@ class CallkeepBackgroundService {
   ///
   /// This method configures and sets up the Android background service using the provided
   /// parameters and handlers.
-  static Future<void> setUpServiceCallback({
+  static Future<void> initializeSignalingServiceCallback({
     required ForegroundStartServiceHandle onStart,
     required ForegroundChangeLifecycleHandle onChangedLifecycle,
   }) {
@@ -46,7 +46,7 @@ class CallkeepBackgroundService {
       return Future.value();
     }
 
-    return platform.setUpServiceCallback(
+    return platform.initializeSignalingServiceCallback(
       onStart: onStart,
       onChangedLifecycle: onChangedLifecycle,
     );

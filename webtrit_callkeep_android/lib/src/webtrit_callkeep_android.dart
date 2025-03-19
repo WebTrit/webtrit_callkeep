@@ -263,7 +263,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<void> setUpServiceCallback(
+  Future<void> initializeSignalingServiceCallback(
       {ForegroundStartServiceHandle? onStart, ForegroundChangeLifecycleHandle? onChangedLifecycle}) async {
     // Initialization callback handle for the isolate plugin only once;
     _isolatePluginCallbackHandle = _isolatePluginCallbackHandle ??
@@ -282,7 +282,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
         )?.toRawHandle();
 
     if (_isolatePluginCallbackHandle != null && _onStartHandle != null && _onChangedLifecycleHandle != null) {
-      await _isolateApi.setUpCallback(
+      await _isolateApi.initializeSignalingServiceCallback(
         callbackDispatcher: _isolatePluginCallbackHandle!,
         onStartHandler: _onStartHandle!,
         onChangedLifecycleHandler: _onChangedLifecycleHandle!,

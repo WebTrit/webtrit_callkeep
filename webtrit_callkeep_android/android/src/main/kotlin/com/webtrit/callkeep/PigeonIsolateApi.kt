@@ -10,7 +10,7 @@ class PigeonIsolateApi(
     private val context: Context
 ) : PHostIsolateApi {
 
-    override fun setUpCallback(
+    override fun initializeSignalingServiceCallback(
         callbackDispatcher: Long,
         onStartHandler: Long,
         onChangedLifecycleHandler: Long,

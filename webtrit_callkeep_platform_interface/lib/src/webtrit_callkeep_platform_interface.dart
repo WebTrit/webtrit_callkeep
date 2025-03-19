@@ -223,7 +223,7 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   /// of the foreground service (e.g., when the service is paused, resumed, or stopped). .
   ///
   /// Throws an [UnimplementedError] if this method is not yet implemented.
-  Future<void> setUpServiceCallback({
+  Future<void> initializeSignalingServiceCallback({
     required ForegroundStartServiceHandle onStart,
     required ForegroundChangeLifecycleHandle onChangedLifecycle,
   }) {

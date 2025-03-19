@@ -786,7 +786,7 @@ interface PHostBackgroundServiceApi {
 }
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface PHostIsolateApi {
-  fun setUpCallback(callbackDispatcher: Long, onStartHandler: Long, onChangedLifecycleHandler: Long, callback: (Result<Unit>) -> Unit)
+  fun initializeSignalingServiceCallback(callbackDispatcher: Long, onStartHandler: Long, onChangedLifecycleHandler: Long, callback: (Result<Unit>) -> Unit)
   fun initializePushNotificationCallback(callbackDispatcher: Long, onNotificationSync: Long, callback: (Result<Unit>) -> Unit)
   fun setUp(autoRestartOnTerminate: Boolean, autoStartOnBoot: Boolean, androidNotificationName: String?, androidNotificationDescription: String?, callback: (Result<Unit>) -> Unit)
   fun startService(jsonData: String?, callback: (Result<Unit>) -> Unit)
@@ -803,14 +803,14 @@ interface PHostIsolateApi {
     fun setUp(binaryMessenger: BinaryMessenger, api: PHostIsolateApi?, messageChannelSuffix: String = "") {
       val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
       run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.setUpCallback$separatedMessageChannelSuffix", codec)
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.initializeSignalingServiceCallback$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
             val callbackDispatcherArg = args[0] as Long
             val onStartHandlerArg = args[1] as Long
             val onChangedLifecycleHandlerArg = args[2] as Long
-            api.setUpCallback(callbackDispatcherArg, onStartHandlerArg, onChangedLifecycleHandlerArg) { result: Result<Unit> ->
+            api.initializeSignalingServiceCallback(callbackDispatcherArg, onStartHandlerArg, onChangedLifecycleHandlerArg) { result: Result<Unit> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(wrapError(error))
