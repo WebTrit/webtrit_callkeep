@@ -1,44 +1,69 @@
 package com.webtrit.callkeep
 
+import android.content.Context
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
+import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.AssetHolder
 import com.webtrit.callkeep.common.ContextHolder
-import com.webtrit.callkeep.services.callkeep.foreground.ForegroundCallService
-
+import com.webtrit.callkeep.common.Log
+import com.webtrit.callkeep.services.IncomingCallService
+import com.webtrit.callkeep.services.SignalingService
 import io.flutter.embedding.engine.plugins.FlutterPlugin
+import io.flutter.embedding.engine.plugins.FlutterPlugin.FlutterAssets
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.embedding.engine.plugins.lifecycle.HiddenLifecycleReference
 import io.flutter.embedding.engine.plugins.service.ServiceAware
 import io.flutter.embedding.engine.plugins.service.ServicePluginBinding
+import io.flutter.plugin.common.BinaryMessenger
 
 /** WebtritCallkeepAndroidPlugin */
 class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, LifecycleEventObserver {
     private var activityPluginBinding: ActivityPluginBinding? = null
     private var lifeCycle: Lifecycle? = null
-    var service: ForegroundCallService? = null
 
-    private lateinit var state: WebtritCallkeepPluginState
+    private lateinit var messenger: BinaryMessenger
+    private lateinit var flutterAssets: FlutterAssets
+    private lateinit var context: Context
+
+    private var foregroundSocketService: SignalingService? = null
+    private var incomingCallService: IncomingCallService? = null
+
+    private var delegateLogsFlutterApi: PDelegateLogsFlutterApi? = null
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         // Store binnyMessenger for later use if instance of the flutter engine belongs to main isolate OR call service isolate
-        val messenger = flutterPluginBinding.binaryMessenger
-        val assets = flutterPluginBinding.flutterAssets
-        val context = flutterPluginBinding.applicationContext
+        messenger = flutterPluginBinding.binaryMessenger
+        flutterAssets = flutterPluginBinding.flutterAssets
+        context = flutterPluginBinding.applicationContext
 
-        ContextHolder.init(context);
-        AssetHolder.init(context, assets)
+        ContextHolder.init(context)
+        AssetHolder.init(context, flutterAssets)
 
-        state = WebtritCallkeepPluginState(context, messenger).apply {
-            initIsolateApi()
-        }
+        PHostPermissionsApi.setUp(messenger, PigeonPermissionsApi(context))
+        PHostSoundApi.setUp(messenger, PigeonSoundApi(context))
+        PHostIsolateApi.setUp(messenger, PigeonIsolateApi(context))
+        PHostConnectionsApi.setUp(messenger, PigeonConnectionsApi())
+
+        delegateLogsFlutterApi = PDelegateLogsFlutterApi(messenger).apply { Log.add(this) }
+
+        val flutterDelegateApi = PDelegateFlutterApi(messenger)
+        PHostApi.setUp(messenger, PigeonActivityApi(context, flutterDelegateApi))
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-        this.state.deAttachLogs()
-        this.state.onDetach()
+        delegateLogsFlutterApi?.let { Log.remove(it) }
+
+        PHostApi.setUp(this.messenger, null)
+
+        ActivityHolder.setActivity(null)
+
+        PHostPermissionsApi.setUp(messenger, null)
+        PHostSoundApi.setUp(messenger, null)
+        PHostIsolateApi.setUp(messenger, null)
+        PHostConnectionsApi.setUp(messenger, null)
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
@@ -47,24 +72,43 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         lifeCycle = (binding.lifecycle as HiddenLifecycleReference).lifecycle
         lifeCycle!!.addObserver(this)
 
-        this.state.initMainIsolateApi(binding.activity)
+        ActivityHolder.setActivity(binding.activity)
     }
 
     override fun onDetachedFromActivity() {
-        state.detachActivity()
         this.lifeCycle?.removeObserver(this)
     }
 
     override fun onAttachedToService(binding: ServicePluginBinding) {
-        if (binding.service !is ForegroundCallService) return
+        if (binding.service is IncomingCallService) {
+            incomingCallService = binding.service as? IncomingCallService
 
-        this.service = binding.service as ForegroundCallService
+            val delegate = PDelegateBackgroundServiceFlutterApi(messenger)
+            val isolateDelegate = PDelegateBackgroundRegisterFlutterApi(messenger)
 
-        this.state.initBackgroundIsolateApi(binding.service.applicationContext)
+            incomingCallService?.isolateCalkeepFlutterApi = delegate
+            incomingCallService?.isolatePushNotificationFlutterApi = isolateDelegate
+
+            PHostBackgroundServiceApi.setUp(messenger, incomingCallService)
+        }
+
+        if (binding.service is SignalingService) {
+            this.foregroundSocketService = binding.service as SignalingService
+
+            val delegate = PDelegateBackgroundServiceFlutterApi(messenger)
+            val isolateDelegate = PDelegateBackgroundRegisterFlutterApi(messenger)
+
+            foregroundSocketService?.isolateCalkeepFlutterApi = delegate
+            foregroundSocketService?.isolatePushNotificationFlutterApi = isolateDelegate
+
+            PHostBackgroundServiceApi.setUp(messenger, foregroundSocketService)
+        }
     }
 
     override fun onDetachedFromService() {
-        this.state.destroyService()
+        PHostBackgroundServiceApi.setUp(messenger, null)
+        foregroundSocketService = null
+        incomingCallService = null
     }
 
     override fun onDetachedFromActivityForConfigChanges() {
@@ -77,7 +121,10 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     }
 
     override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
-        state.onStateChanged(event)
+        Log.d(TAG, "onStateChanged: Lifecycle event received - $event")
+        ActivityHolder.setLifecycle(event)
+
+        if (SignalingService.isRunning.get()) SignalingService.changeLifecycle(context, event)
     }
 
     companion object {

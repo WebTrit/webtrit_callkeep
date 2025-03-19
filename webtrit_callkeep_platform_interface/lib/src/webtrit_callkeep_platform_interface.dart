@@ -254,6 +254,18 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('setUpAndroidBackgroundService() is not implemented');
   }
 
+  /// Initializes the push notification callback.
+  ///
+  /// This method sets up a callback function that gets triggered when there is a change
+  /// in the push notification sync status.
+  ///
+  /// [onNotificationSync] - A callback function that handles the push notification sync status change.
+  ///
+  /// Throws an [UnimplementedError] if this method is not yet implemented.
+  Future<void> initializePushNotificationCallback(CallKeepPushNotificationSyncStatusHandle onNotificationSync) {
+    throw UnimplementedError('initializePushNotificationCallback() is not implemented');
+  }
+
   /// Starts the background service with the provided [data].
   /// Throws an [UnimplementedError] if this method is not yet implemented.
   void startService({

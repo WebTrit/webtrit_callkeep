@@ -89,6 +89,26 @@ class CallkeepBackgroundService {
     );
   }
 
+  /// Initializes the push notification callback.
+  ///
+  /// This method sets up a callback function that gets triggered when there is a change
+  /// in the push notification sync status.
+  ///
+  /// [onNotificationSync] - A callback function that handles the push notification sync status change.
+  ///
+  /// Throws an [UnimplementedError] if this method is not yet implemented.
+  static Future<void> initializePushNotificationCallback(CallKeepPushNotificationSyncStatusHandle onNotificationSync) {
+    if (kIsWeb) {
+      return Future.value();
+    }
+
+    if (!Platform.isAndroid) {
+      return Future.value();
+    }
+
+    return platform.initializePushNotificationCallback(onNotificationSync);
+  }
+
   /// Starts the background service with the given [data].
   ///
   /// [data] - A map containing any additional parameters or configurations required

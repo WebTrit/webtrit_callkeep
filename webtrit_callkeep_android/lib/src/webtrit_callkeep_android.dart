@@ -25,6 +25,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   int? _isolatePluginCallbackHandle;
   int? _onChangedLifecycleHandle;
   int? _onStartHandle;
+  int? _onNotificationSync;
 
   final _permissionsApi = PHostPermissionsApi();
 
@@ -290,6 +291,27 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
+  Future<void> initializePushNotificationCallback(CallKeepPushNotificationSyncStatusHandle onNotificationSync) async {
+    // Initialization callback handle for the isolate plugin only once;
+    _isolatePluginCallbackHandle = _isolatePluginCallbackHandle ??
+        PluginUtilities.getCallbackHandle(
+          _isolatePluginCallbackDispatcher,
+        )?.toRawHandle();
+
+    _onNotificationSync = _onNotificationSync ??
+        PluginUtilities.getCallbackHandle(
+          onNotificationSync,
+        )?.toRawHandle();
+
+    if (_isolatePluginCallbackHandle != null && _onNotificationSync != null) {
+      await _isolateApi.initializePushNotificationCallback(
+        callbackDispatcher: _isolatePluginCallbackHandle!,
+        onNotificationSync: _onNotificationSync!,
+      );
+    }
+  }
+
+  @override
   Future<void> setUpAndroidBackgroundService({
     bool autoRestartOnTerminate = false,
     bool autoStartOnBoot = false,
@@ -518,6 +540,16 @@ class _BackgroundServiceDelegate implements PDelegateBackgroundRegisterFlutterAp
     final handle = CallbackHandle.fromRawHandle(applicationStatusCallbackHandle);
     final closure = PluginUtilities.getCallbackFromHandle(handle)! as ForegroundChangeLifecycleHandle;
 
+    await closure(status.toCallkeep());
+  }
+
+  @override
+  Future<void> onNotificationSync(
+    int pushNotificationSyncStatusHandle,
+    PCallkeepPushNotificationSyncStatus status,
+  ) async {
+    final handle = CallbackHandle.fromRawHandle(pushNotificationSyncStatusHandle);
+    final closure = PluginUtilities.getCallbackFromHandle(handle)! as CallKeepPushNotificationSyncStatusHandle;
     await closure(status.toCallkeep());
   }
 }

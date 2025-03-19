@@ -266,6 +266,17 @@ extension CallkeepSignalingStatusConverter on CallkeepSignalingStatus {
   }
 }
 
+extension PCallkeepPushNotificationSyncStatusConverter on PCallkeepPushNotificationSyncStatus {
+  CallkeepPushNotificationSyncStatus toCallkeep() {
+    switch (this) {
+      case PCallkeepPushNotificationSyncStatus.synchronizeCallStatus:
+        return CallkeepPushNotificationSyncStatus.synchronizeCallStatus;
+      case PCallkeepPushNotificationSyncStatus.releaseResources:
+        return CallkeepPushNotificationSyncStatus.releaseResources;
+    }
+  }
+}
+
 extension PCallkeepLifecycleTypeConverter on PCallkeepLifecycleType {
   CallkeepLifecycleType toCallkeep() {
     switch (this) {

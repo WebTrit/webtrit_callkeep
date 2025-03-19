@@ -36,7 +36,12 @@
         </service>
 
         <service
-            android:name=".services.callkeep.foreground.ForegroundCallService"
+            android:name=".services.SignalingService"
+            android:exported="false"
+            android:foregroundServiceType="phoneCall" />
+
+        <service
+            android:name=".services.IncomingCallService"
             android:exported="false"
             android:foregroundServiceType="phoneCall" />
 
@@ -46,7 +51,7 @@
             android:foregroundServiceType="phoneCall|microphone|camera" />
 
         <receiver
-            android:name=".services.callkeep.foreground.ForegroundCallBootReceiver"
+            android:name=".receivers.ForegroundCallBootReceiver"
             android:enabled="true"
             android:exported="true">
             <intent-filter>
