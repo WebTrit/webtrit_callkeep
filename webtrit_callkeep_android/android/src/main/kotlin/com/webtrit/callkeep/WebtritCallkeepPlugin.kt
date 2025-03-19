@@ -123,9 +123,8 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
         Log.d(TAG, "onStateChanged: Lifecycle event received - $event")
         ActivityHolder.setLifecycle(event)
-        if (foregroundSocketService != null) {
-            SignalingService.changeLifecycle(foregroundSocketService!!, event)
-        }
+
+        if (SignalingService.isRunning.get()) SignalingService.changeLifecycle(context, event)
     }
 
     companion object {

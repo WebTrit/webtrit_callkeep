@@ -143,7 +143,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
             ForegroundCallServiceEnums.INIT.action -> runService(config)
             ForegroundCallServiceEnums.START.action -> wakeUp(config, data)
             ForegroundCallServiceEnums.STOP.action -> tearDown()
-            ForegroundCallServiceEnums.CHANGE_LIFECYCLE.action -> onChangedLifecycleHandler(data)
+            ForegroundCallServiceEnums.CHANGE_LIFECYCLE.action -> changedLifecycleHandler(data)
             ForegroundCallServiceEnums.DECLINE.action -> connectionService.hungUp(CallMetadata.fromBundle(data!!)) {}
             ForegroundCallServiceEnums.ANSWER.action -> connectionService.answer(CallMetadata.fromBundle(data!!))
         }
@@ -192,9 +192,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         isRunning.set(true)
 
         connectionService = CallkeepApiProvider.getBackgroundCallkeepApi(baseContext, _isolateCalkeepFlutterApi!!)
-
     }
-
 
     private fun wakeUpBackgroundHandler(
         extras: Bundle?
@@ -230,9 +228,11 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
 
 
     @Suppress("DEPRECATION")
-    private fun onChangedLifecycleHandler(bundle: Bundle?) {
+    private fun changedLifecycleHandler(bundle: Bundle?) {
         val lockScreen = Platform.isLockScreen(baseContext)
         val event = bundle?.getSerializable(PARAM_CHANGE_LIFECYCLE_EVENT) as Lifecycle.Event?
+
+        Log.d(TAG, "changedLifecycleHandler event: $event")
 
         val lifecycle = (event ?: Lifecycle.Event.ON_ANY).toPCallkeepLifecycleType()
         val onChangedLifecycleHandler = StorageDelegate.getOnChangedLifecycleHandler(baseContext)
@@ -243,7 +243,9 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
                 lockScreen,
                 // TODO: Remove activityReady from the status
                 false,
-                PhoneConnectionService.connectionManager.isExistsActiveConnection(), "{}",
+                // TODO: Remove isExistsActiveConnection from the status
+                PhoneConnectionService.connectionManager.isExistsActiveConnection(),
+                "{}",
             )
         ) { response ->
             response.onSuccess {
