@@ -239,7 +239,7 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   /// for Android..
   ///
   /// Throws an [UnimplementedError] if this method is not yet implemented.
-  Future<void> setUpAndroidBackgroundService({
+  Future<void> configureSignalingService({
     String? androidNotificationName,
     String? androidNotificationDescription,
   }) {

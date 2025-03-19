@@ -227,7 +227,7 @@ abstract class PHostIsolateApi {
   });
 
   @async
-  void setUp({
+  void configureSignalingService({
     String? androidNotificationName,
     String? androidNotificationDescription,
   });

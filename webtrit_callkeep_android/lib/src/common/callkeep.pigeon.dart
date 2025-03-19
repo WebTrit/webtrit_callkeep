@@ -751,8 +751,8 @@ class PHostIsolateApi {
     }
   }
 
-  Future<void> setUp({String? androidNotificationName, String? androidNotificationDescription}) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.setUp$pigeonVar_messageChannelSuffix';
+  Future<void> configureSignalingService({String? androidNotificationName, String? androidNotificationDescription}) async {
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.configureSignalingService$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,

@@ -314,11 +314,11 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<void> setUpAndroidBackgroundService({
+  Future<void> configureSignalingService({
     String? androidNotificationName,
     String? androidNotificationDescription,
   }) async {
-    await _isolateApi.setUp(
+    await _isolateApi.configureSignalingService(
       androidNotificationName: androidNotificationName,
       androidNotificationDescription: androidNotificationDescription,
     );

@@ -73,7 +73,7 @@ class CallkeepBackgroundService {
       return Future.value();
     }
 
-    return platform.setUpAndroidBackgroundService(
+    return platform.configureSignalingService(
       androidNotificationName: androidNotificationName,
       androidNotificationDescription: androidNotificationDescription,
     );

@@ -27,7 +27,7 @@ class PigeonIsolateApi(
         }
     }
 
-    override fun setUp(
+    override fun configureSignalingService(
         androidNotificationName: String?,
         androidNotificationDescription: String?,
         callback: (Result<Unit>) -> Unit

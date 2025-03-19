@@ -788,7 +788,7 @@ interface PHostBackgroundServiceApi {
 interface PHostIsolateApi {
   fun initializeSignalingServiceCallback(callbackDispatcher: Long, onStartHandler: Long, onChangedLifecycleHandler: Long, callback: (Result<Unit>) -> Unit)
   fun initializePushNotificationCallback(callbackDispatcher: Long, onNotificationSync: Long, callback: (Result<Unit>) -> Unit)
-  fun setUp(androidNotificationName: String?, androidNotificationDescription: String?, callback: (Result<Unit>) -> Unit)
+  fun configureSignalingService(androidNotificationName: String?, androidNotificationDescription: String?, callback: (Result<Unit>) -> Unit)
   fun startService(jsonData: String?, callback: (Result<Unit>) -> Unit)
   fun stopService(callback: (Result<Unit>) -> Unit)
   fun finishActivity(callback: (Result<Unit>) -> Unit)
@@ -844,13 +844,13 @@ interface PHostIsolateApi {
         }
       }
       run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.setUp$separatedMessageChannelSuffix", codec)
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.configureSignalingService$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
             val androidNotificationNameArg = args[0] as String?
             val androidNotificationDescriptionArg = args[1] as String?
-            api.setUp(androidNotificationNameArg, androidNotificationDescriptionArg) { result: Result<Unit> ->
+            api.configureSignalingService(androidNotificationNameArg, androidNotificationDescriptionArg) { result: Result<Unit> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(wrapError(error))
