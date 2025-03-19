@@ -24,11 +24,6 @@ Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
     onChangedLifecycle: isolate.onChangedLifecycle,
   );
 
-  CallkeepBackgroundService().setUp(
-    autoStartOnBoot: true,
-    autoRestartOnTerminate: true,
-  );
-
   WebtritCallkeepLogs().setLogsDelegate(CallkeepLogs());
 
   await runZonedGuarded(

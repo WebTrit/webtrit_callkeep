@@ -232,12 +232,6 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
 
   /// Sets up the Android background service with optional handlers and configurations.
   ///
-  /// [autoRestartOnTerminate] - If true, the service will automatically restart if it is
-  /// unexpectedly terminated by the system or the user. Default is false.
-  ///
-  /// [autoStartOnBoot] - If true, the service will automatically start after the device reboots.
-  /// Default is false.
-  ///
   /// [androidNotificationName] - Specifies the name of the notification channel for Android
   /// when the service runs in the background.
   ///
@@ -246,8 +240,6 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   ///
   /// Throws an [UnimplementedError] if this method is not yet implemented.
   Future<void> setUpAndroidBackgroundService({
-    bool autoRestartOnTerminate = false,
-    bool autoStartOnBoot = false,
     String? androidNotificationName,
     String? androidNotificationDescription,
   }) {

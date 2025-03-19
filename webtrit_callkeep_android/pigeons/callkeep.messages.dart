@@ -228,8 +228,6 @@ abstract class PHostIsolateApi {
 
   @async
   void setUp({
-    bool autoRestartOnTerminate = false,
-    bool autoStartOnBoot = false,
     String? androidNotificationName,
     String? androidNotificationDescription,
   });

@@ -28,16 +28,12 @@ class PigeonIsolateApi(
     }
 
     override fun setUp(
-        autoRestartOnTerminate: Boolean,
-        autoStartOnBoot: Boolean,
         androidNotificationName: String?,
         androidNotificationDescription: String?,
         callback: (Result<Unit>) -> Unit
     ) {
         try {
             val config = StorageDelegate.getForegroundCallServiceConfiguration(context).copy(
-                autoStartOnBoot = autoStartOnBoot,
-                autoRestartOnTerminate = autoRestartOnTerminate,
                 androidNotificationName = androidNotificationName,
                 androidNotificationDescription = androidNotificationDescription
             )

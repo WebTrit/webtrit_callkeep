@@ -53,12 +53,6 @@ class CallkeepBackgroundService {
   }
 
   /// Configures the background service with optional lifecycle and startup handlers.
-  /// [autoRestartOnTerminate] - If true, the service will automatically restart if it is
-  /// unexpectedly terminated. Default is false.
-  ///
-  /// [autoStartOnBoot] - If true, the service will automatically start after the device
-  /// reboots. Default is false.
-  ///
   /// [androidNotificationName] - The name of the Android notification channel used when
   /// running the service in the background. Defaults to 'WebTrit Inbound Calls'.
   ///
@@ -68,8 +62,6 @@ class CallkeepBackgroundService {
   /// This method configures and sets up the Android background service using the provided
   /// parameters and handlers.
   Future<void> setUp({
-    bool autoRestartOnTerminate = false,
-    bool autoStartOnBoot = false,
     String androidNotificationName = 'WebTrit Inbound Calls',
     String androidNotificationDescription = 'This is required to receive incoming calls',
   }) {
@@ -82,8 +74,6 @@ class CallkeepBackgroundService {
     }
 
     return platform.setUpAndroidBackgroundService(
-      autoRestartOnTerminate: autoRestartOnTerminate,
-      autoStartOnBoot: autoStartOnBoot,
       androidNotificationName: androidNotificationName,
       androidNotificationDescription: androidNotificationDescription,
     );

@@ -5,31 +5,27 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.content.ContextCompat
 import com.webtrit.callkeep.common.Log
-import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.services.SignalingService
 
 class ForegroundCallBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action
         if (action == Intent.ACTION_MY_PACKAGE_REPLACED || action == Intent.ACTION_BOOT_COMPLETED || action == ACTION_QUICKBOOT_POWERON) {
-
-            val config = StorageDelegate.getForegroundCallServiceConfiguration(context)
-            if (config.autoStartOnBoot) {
-                val wakeLock = SignalingService.Companion.getLock(context)
-                wakeLock?.let {
-                    if (!it.isHeld) {
-                        it.acquire(10 * 60 * 1000L /*10 minutes*/)
-                    }
-                }
-
-                try {
-                    ContextCompat.startForegroundService(
-                        context, Intent(context, SignalingService::class.java)
-                    )
-                } catch (e: Exception) {
-                    e.printStackTrace()
+            val wakeLock = SignalingService.Companion.getLock(context)
+            wakeLock?.let {
+                if (!it.isHeld) {
+                    it.acquire(10 * 60 * 1000L /*10 minutes*/)
                 }
             }
+
+            try {
+                ContextCompat.startForegroundService(
+                    context, Intent(context, SignalingService::class.java)
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
         } else {
             Log.w(TAG, "Received unexpected action: $action")
         }

@@ -7,7 +7,5 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ForegroundCallServiceConfig(
     val androidNotificationName: String?,
-    val androidNotificationDescription: String?,
-    val autoRestartOnTerminate: Boolean,
-    val autoStartOnBoot: Boolean,
+    val androidNotificationDescription: String?
 )

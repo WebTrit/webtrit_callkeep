@@ -788,7 +788,7 @@ interface PHostBackgroundServiceApi {
 interface PHostIsolateApi {
   fun initializeSignalingServiceCallback(callbackDispatcher: Long, onStartHandler: Long, onChangedLifecycleHandler: Long, callback: (Result<Unit>) -> Unit)
   fun initializePushNotificationCallback(callbackDispatcher: Long, onNotificationSync: Long, callback: (Result<Unit>) -> Unit)
-  fun setUp(autoRestartOnTerminate: Boolean, autoStartOnBoot: Boolean, androidNotificationName: String?, androidNotificationDescription: String?, callback: (Result<Unit>) -> Unit)
+  fun setUp(androidNotificationName: String?, androidNotificationDescription: String?, callback: (Result<Unit>) -> Unit)
   fun startService(jsonData: String?, callback: (Result<Unit>) -> Unit)
   fun stopService(callback: (Result<Unit>) -> Unit)
   fun finishActivity(callback: (Result<Unit>) -> Unit)
@@ -848,11 +848,9 @@ interface PHostIsolateApi {
         if (api != null) {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
-            val autoRestartOnTerminateArg = args[0] as Boolean
-            val autoStartOnBootArg = args[1] as Boolean
-            val androidNotificationNameArg = args[2] as String?
-            val androidNotificationDescriptionArg = args[3] as String?
-            api.setUp(autoRestartOnTerminateArg, autoStartOnBootArg, androidNotificationNameArg, androidNotificationDescriptionArg) { result: Result<Unit> ->
+            val androidNotificationNameArg = args[0] as String?
+            val androidNotificationDescriptionArg = args[1] as String?
+            api.setUp(androidNotificationNameArg, androidNotificationDescriptionArg) { result: Result<Unit> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(wrapError(error))

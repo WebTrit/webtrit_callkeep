@@ -751,7 +751,7 @@ class PHostIsolateApi {
     }
   }
 
-  Future<void> setUp({bool autoRestartOnTerminate = false, bool autoStartOnBoot = false, String? androidNotificationName, String? androidNotificationDescription,}) async {
+  Future<void> setUp({String? androidNotificationName, String? androidNotificationDescription}) async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.setUp$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
@@ -759,7 +759,7 @@ class PHostIsolateApi {
       binaryMessenger: pigeonVar_binaryMessenger,
     );
     final List<Object?>? pigeonVar_replyList =
-        await pigeonVar_channel.send(<Object?>[autoRestartOnTerminate, autoStartOnBoot, androidNotificationName, androidNotificationDescription]) as List<Object?>?;
+        await pigeonVar_channel.send(<Object?>[androidNotificationName, androidNotificationDescription]) as List<Object?>?;
     if (pigeonVar_replyList == null) {
       throw _createConnectionError(pigeonVar_channelName);
     } else if (pigeonVar_replyList.length > 1) {

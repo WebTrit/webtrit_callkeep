@@ -126,9 +126,7 @@ object StorageDelegate {
         val jsonString = getSharedPreferences(context)?.getString(SERVICE_CONFIGURATION_KEY, null)
         return jsonString?.let {
             JsonHelper.json.decodeFromString<ForegroundCallServiceConfig>(it)
-        } ?: ForegroundCallServiceConfig(
-            null, null, autoRestartOnTerminate = false, autoStartOnBoot = false
-        )
+        } ?: ForegroundCallServiceConfig(null, null)
     }
 
     fun setCallbackDispatcher(context: Context, value: Long) {
