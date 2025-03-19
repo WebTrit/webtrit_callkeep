@@ -23,9 +23,9 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   final _connectionsApi = PHostConnectionsApi();
 
   int? _isolatePluginCallbackHandle;
-  int? _onChangedLifecycleHandle;
-  int? _onStartHandle;
-  int? _onNotificationSync;
+  int? _onSignalingServiceChangedLifecycleHandle;
+  int? _onSignalingServiceStartHandle;
+  int? _onPushNotificationNotificationSync;
 
   final _permissionsApi = PHostPermissionsApi();
 
@@ -271,21 +271,23 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
           _isolatePluginCallbackDispatcher,
         )?.toRawHandle();
 
-    _onStartHandle = _onStartHandle ??
+    _onSignalingServiceStartHandle = _onSignalingServiceStartHandle ??
         PluginUtilities.getCallbackHandle(
           onStart!,
         )?.toRawHandle();
 
-    _onChangedLifecycleHandle = _onChangedLifecycleHandle ??
+    _onSignalingServiceChangedLifecycleHandle = _onSignalingServiceChangedLifecycleHandle ??
         PluginUtilities.getCallbackHandle(
           onChangedLifecycle!,
         )?.toRawHandle();
 
-    if (_isolatePluginCallbackHandle != null && _onStartHandle != null && _onChangedLifecycleHandle != null) {
+    if (_isolatePluginCallbackHandle != null &&
+        _onSignalingServiceStartHandle != null &&
+        _onSignalingServiceChangedLifecycleHandle != null) {
       await _isolateApi.initializeSignalingServiceCallback(
         callbackDispatcher: _isolatePluginCallbackHandle!,
-        onStartHandler: _onStartHandle!,
-        onChangedLifecycleHandler: _onChangedLifecycleHandle!,
+        onStartHandler: _onSignalingServiceStartHandle!,
+        onChangedLifecycleHandler: _onSignalingServiceChangedLifecycleHandle!,
       );
     }
   }
@@ -298,15 +300,15 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
           _isolatePluginCallbackDispatcher,
         )?.toRawHandle();
 
-    _onNotificationSync = _onNotificationSync ??
+    _onPushNotificationNotificationSync = _onPushNotificationNotificationSync ??
         PluginUtilities.getCallbackHandle(
           onNotificationSync,
         )?.toRawHandle();
 
-    if (_isolatePluginCallbackHandle != null && _onNotificationSync != null) {
+    if (_isolatePluginCallbackHandle != null && _onPushNotificationNotificationSync != null) {
       await _isolateApi.initializePushNotificationCallback(
         callbackDispatcher: _isolatePluginCallbackHandle!,
-        onNotificationSync: _onNotificationSync!,
+        onNotificationSync: _onPushNotificationNotificationSync!,
       );
     }
   }
