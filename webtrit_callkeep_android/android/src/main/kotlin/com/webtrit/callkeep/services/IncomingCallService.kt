@@ -119,7 +119,8 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
             incomingCallNotificationBuilder.apply { setCallMetaData(metadata) }.build()
         )
 
-        if (IsolateSelector.getIsolateType() == IsolateType.BACKGROUND) {
+        // Launch push notifications callbacks and handling only if signaling service is not running
+        if (IsolateSelector.getIsolateType() == IsolateType.BACKGROUND && SignalingService.isRunning.get().not()) {
             startIncomingCallIsolate()
 
             isolatePushNotificationFlutterApi?.onNotificationSync(
@@ -172,7 +173,7 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
         ) { response ->
             response.onSuccess {
                 com.webtrit.callkeep.common.Log.d(TAG, "onWakeUpBackgroundHandler: $it")
-                PhoneConnectionService.tearDown(baseContext);
+                PhoneConnectionService.tearDown(baseContext)
             }
             response.onFailure {
                 com.webtrit.callkeep.common.Log.e(TAG, "onWakeUpBackgroundHandler: $it")
@@ -204,13 +205,13 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
     private fun answerCall(metadata: CallMetadata) {
         when (IsolateSelector.getIsolateType()) {
             // If the signaling status is CONNECT or CONNECTING, handle the call hang-up in the main isolate (Activity)
-            IsolateType.MAIN -> PhoneConnectionService.startAnswerCall(baseContext, metadata);
+            IsolateType.MAIN -> PhoneConnectionService.startAnswerCall(baseContext, metadata)
             IsolateType.BACKGROUND -> _isolateCalkeepFlutterApi?.performAnswerCall(metadata.callId) { response ->
                 response.onSuccess {
-                    PhoneConnectionService.startAnswerCall(baseContext, metadata);
+                    PhoneConnectionService.startAnswerCall(baseContext, metadata)
                 }
                 response.onFailure {
-                    PhoneConnectionService.tearDown(baseContext);
+                    PhoneConnectionService.tearDown(baseContext)
                 }
             }
         }

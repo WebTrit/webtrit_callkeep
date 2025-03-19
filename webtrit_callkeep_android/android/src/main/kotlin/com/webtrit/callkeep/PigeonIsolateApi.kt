@@ -63,6 +63,8 @@ class PigeonIsolateApi(
     }
 
     override fun startService(jsonData: String?, callback: (Result<Unit>) -> Unit) {
+        StorageDelegate.SignalingService.setRunning(context, true)
+
         Log.i(TAG, "startService, data: $jsonData")
         try {
             SignalingService.start(context, jsonData)
@@ -74,11 +76,11 @@ class PigeonIsolateApi(
     }
 
     override fun stopService(callback: (Result<Unit>) -> Unit) {
+        StorageDelegate.SignalingService.setRunning(context, false)
+
         Log.i(TAG, "stopService")
         try {
-            if (SignalingService.isRunning.get()) {
-                SignalingService.stop(context)
-            }
+            SignalingService.stop(context)
             callback(Result.success(Unit))
         } catch (e: Exception) {
             callback(Result.failure(e))

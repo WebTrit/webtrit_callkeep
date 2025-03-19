@@ -21,6 +21,7 @@ object StorageDelegate {
     private const val ON_START_HANDLER_KEY = "onStartHandler"
     private const val ON_CHANGED_LIFECYCLE_HANDLER_KEY = "onChangedLifecycleHandler"
     private const val ON_NOTIFICATION_SYNC_KEY = "onNotificationSync"
+    private const val SIGNALING_SERVICE_RUNNING = "SIGNALING_SERVICE_RUNNING"
 
     private var sharedPreferences: SharedPreferences? = null
 
@@ -176,5 +177,18 @@ object StorageDelegate {
     fun getOnNotificationSync(context: Context): Long {
         return getSharedPreferences(context)?.getLong(ON_NOTIFICATION_SYNC_KEY, -1)
             ?: throw Exception("OnNotificationSync not found")
+    }
+
+    object SignalingService {
+        fun setRunning(context: Context, value: Boolean) {
+            getSharedPreferences(context)?.edit()?.apply {
+                putBoolean(SIGNALING_SERVICE_RUNNING, value)
+                apply()
+            }
+        }
+
+        fun isRunning(context: Context): Boolean {
+            return getSharedPreferences(context)?.getBoolean(SIGNALING_SERVICE_RUNNING, false) == true
+        }
     }
 }

@@ -112,9 +112,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
     }
 
     override fun onDestroy() {
-        val config = StorageDelegate.getForegroundCallServiceConfiguration(applicationContext)
-
-        if (config.autoRestartOnTerminate) {
+        if (StorageDelegate.SignalingService.isRunning(context = applicationContext)) {
             ForegroundCallWorker.Companion.enqueue(this)
         }
 
@@ -140,7 +138,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         ensureNotification(config)
 
         when (action) {
-            ForegroundCallServiceEnums.INIT.action -> runService(config)
+            ForegroundCallServiceEnums.INIT.action -> runService()
             ForegroundCallServiceEnums.START.action -> wakeUp(config, data)
             ForegroundCallServiceEnums.STOP.action -> tearDown()
             ForegroundCallServiceEnums.CHANGE_LIFECYCLE.action -> changedLifecycleHandler(data)
@@ -152,8 +150,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        Log.d(TAG, "onTaskRemoved")
-        if (isRunning.get()) {
+        if (StorageDelegate.SignalingService.isRunning(context = applicationContext)) {
             ForegroundCallWorker.Companion.enqueue(applicationContext, 1000)
         }
     }
@@ -162,7 +159,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
      * Wakes up the service and sends a broadcast to synchronize call status.
      */
     private fun wakeUp(config: ForegroundCallServiceConfig, data: Bundle?) {
-        runService(config)
+        runService()
         wakeUpBackgroundHandler(data)
     }
 
@@ -179,11 +176,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
      * Runs the service and starts the Flutter background isolate.
      */
     @SuppressLint("WakelockTimeout")
-    private fun runService(config: ForegroundCallServiceConfig) {
-        if (config.autoRestartOnTerminate) {
-            ForegroundCallWorker.Companion.enqueue(applicationContext)
-        }
-
+    private fun runService() {
         Log.v(TAG, "Running service logic")
         getLock(applicationContext)?.acquire(10 * 60 * 1000L /*10 minutes*/)
 
@@ -323,7 +316,8 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
             ForegroundCallServiceEnums.CHANGE_LIFECYCLE,
             Bundle().apply { putSerializable(PARAM_CHANGE_LIFECYCLE_EVENT, event) })
 
-        fun stop(context: Context) = communicate(context, ForegroundCallServiceEnums.STOP, null)
+        @SuppressLint("ImplicitSamInstance")
+        fun stop(context: Context) = context.stopService(Intent(context, SignalingService::class.java))
 
         fun endCall(context: Context, callMetadata: CallMetadata) =
             communicate(context, ForegroundCallServiceEnums.DECLINE, callMetadata.toBundle())
