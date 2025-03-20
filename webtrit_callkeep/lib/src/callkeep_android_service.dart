@@ -134,22 +134,6 @@ class CallkeepBackgroundService {
     platform.stopService();
   }
 
-  /// Finishes the current activity.
-  ///
-  /// This method triggers the platform-specific implementation to finish or close the
-  /// current activity associated with the background service.
-  Future<void> finishActivity() async {
-    if (kIsWeb) {
-      return Future.value();
-    }
-
-    if (!Platform.isAndroid) {
-      return Future.value();
-    }
-
-    return platform.finishActivity();
-  }
-
   /// Sets the android service delegate.
   /// [CallkeepBackgroundServiceDelegate] needs to be implemented to receive events.
   void setBackgroundServiceDelegate(CallkeepBackgroundServiceDelegate? delegate) {
