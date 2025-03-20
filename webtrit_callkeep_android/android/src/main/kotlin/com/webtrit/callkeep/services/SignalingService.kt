@@ -291,7 +291,10 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
             Bundle().apply { putSerializable(PARAM_CHANGE_LIFECYCLE_EVENT, event) })
 
         @SuppressLint("ImplicitSamInstance")
-        fun stop(context: Context) = context.stopService(Intent(context, SignalingService::class.java))
+        fun stop(context: Context) {
+            ForegroundCallWorker.Companion.remove(context)
+            context.stopService(Intent(context, SignalingService::class.java))
+        }
 
         fun endCall(context: Context, callMetadata: CallMetadata) =
             communicate(context, ForegroundCallServiceEnums.DECLINE, callMetadata.toBundle())

@@ -16,15 +16,11 @@ class PigeonIsolateApi(
         onChangedLifecycleHandler: Long,
         callback: (Result<Unit>) -> Unit
     ) {
-        try {
-            StorageDelegate.setCallbackDispatcher(context, callbackDispatcher)
-            StorageDelegate.setOnStartHandler(context, onStartHandler)
-            StorageDelegate.setOnChangedLifecycleHandler(context, onChangedLifecycleHandler)
+        StorageDelegate.setCallbackDispatcher(context, callbackDispatcher)
+        StorageDelegate.setOnStartHandler(context, onStartHandler)
+        StorageDelegate.setOnChangedLifecycleHandler(context, onChangedLifecycleHandler)
 
-            callback(Result.success(Unit))
-        } catch (e: Exception) {
-            callback(Result.failure(e))
-        }
+        callback(Result.success(Unit))
     }
 
     override fun configureSignalingService(
@@ -32,7 +28,6 @@ class PigeonIsolateApi(
         androidNotificationDescription: String?,
         callback: (Result<Unit>) -> Unit
     ) {
-
         StorageDelegate.SignalingService.setNotificationTitle(context, androidNotificationName)
         StorageDelegate.SignalingService.setNotificationDescription(context, androidNotificationDescription)
 
@@ -42,39 +37,28 @@ class PigeonIsolateApi(
     override fun initializePushNotificationCallback(
         callbackDispatcher: Long, onNotificationSync: Long, callback: (Result<Unit>) -> Unit
     ) {
-        try {
-            StorageDelegate.setCallbackDispatcher(context, callbackDispatcher)
-            StorageDelegate.setOnNotificationSync(context, onNotificationSync)
+        StorageDelegate.setCallbackDispatcher(context, callbackDispatcher)
+        StorageDelegate.setOnNotificationSync(context, onNotificationSync)
 
-            callback(Result.success(Unit))
-        } catch (e: Exception) {
-            callback(Result.failure(e))
-        }
+        callback(Result.success(Unit))
     }
 
     override fun startService(jsonData: String?, callback: (Result<Unit>) -> Unit) {
+        Log.i(TAG, "startService, data: $jsonData")
+
         StorageDelegate.SignalingService.setSignalingServiceEnabled(context, true)
 
-        Log.i(TAG, "startService, data: $jsonData")
-        try {
-            SignalingService.start(context, jsonData)
-
-            callback(Result.success(Unit))
-        } catch (e: Exception) {
-            callback(Result.failure(e))
-        }
+        SignalingService.start(context, jsonData)
+        callback(Result.success(Unit))
     }
 
     override fun stopService(callback: (Result<Unit>) -> Unit) {
+        Log.i(TAG, "stopService")
+
         StorageDelegate.SignalingService.setSignalingServiceEnabled(context, false)
 
-        Log.i(TAG, "stopService")
-        try {
-            SignalingService.stop(context)
-            callback(Result.success(Unit))
-        } catch (e: Exception) {
-            callback(Result.failure(e))
-        }
+        SignalingService.stop(context)
+        callback(Result.success(Unit))
     }
 
     override fun finishActivity(callback: (Result<Unit>) -> Unit) {
