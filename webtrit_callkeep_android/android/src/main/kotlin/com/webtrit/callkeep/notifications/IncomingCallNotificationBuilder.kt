@@ -77,7 +77,7 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
             setContentTitle(context.getString(R.string.incoming_call_title))
             setContentText("You have an incoming call from ${callMetaData.name}")
             setAutoCancel(true)
-            setFullScreenIntent(buildOpenAppIntent(context, callMetaData.getCallUri()), true)
+            setFullScreenIntent(buildOpenAppIntent(context), true)
         }
 
         notificationBuilder.apply {

@@ -28,7 +28,6 @@ import com.webtrit.callkeep.common.helpers.PermissionsHelper
 import com.webtrit.callkeep.common.helpers.startForegroundServiceCompat
 import com.webtrit.callkeep.common.helpers.toPCallkeepLifecycleType
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.models.CallPaths
 import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
 import com.webtrit.callkeep.workers.ForegroundCallWorker
@@ -229,8 +228,6 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
     override fun incomingCall(
         callId: String, handle: PHandle, displayName: String?, hasVideo: Boolean, callback: (Result<Unit>) -> Unit
     ) {
-        val callPath = StorageDelegate.getIncomingPath(baseContext)
-        val rootPath = StorageDelegate.getRootPath(baseContext)
         val ringtonePath = StorageDelegate.getRingtonePath(baseContext)
 
         val callMetaData = CallMetadata(
@@ -238,7 +235,6 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
             handle = handle.toCallHandle(),
             displayName = displayName,
             hasVideo = hasVideo,
-            paths = CallPaths(callPath, rootPath),
             ringtonePath = ringtonePath,
             createdTime = System.currentTimeMillis()
         )

@@ -128,7 +128,7 @@ class PhoneConnection internal constructor(
         TelephonyBackgroundCallkeepApi.notifyAnswer(context, metadata)
 
         // Start the activity for the answered call if the app is in the background
-        ActivityHolder.start(metadata, context)
+        ActivityHolder.start(context)
     }
 
     /**
