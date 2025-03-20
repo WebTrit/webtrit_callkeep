@@ -3,9 +3,6 @@ package com.webtrit.callkeep.common
 import android.content.Context
 import android.content.SharedPreferences
 import com.webtrit.callkeep.R
-import com.webtrit.callkeep.common.helpers.JsonHelper
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 
 /**
  * A delegate for managing SharedPreferences related to incoming and root routes.
@@ -171,14 +168,14 @@ object StorageDelegate {
         private const val SS_NOTIFICATION_TITLE_KEY = "SS_NOTIFICATION_TITLE_KEY"
         private const val SS_NOTIFICATION_DESCRIPTION_KEY = "SS_NOTIFICATION_DESCRIPTION_KEY"
 
-        fun setRunning(context: Context, value: Boolean) {
+        fun setSignalingServiceEnabled(context: Context, value: Boolean) {
             getSharedPreferences(context)?.edit()?.apply {
                 putBoolean(SIGNALING_SERVICE_RUNNING, value)
                 apply()
             }
         }
 
-        fun isRunning(context: Context): Boolean {
+        fun isSignalingServiceEnabled(context: Context): Boolean {
             return getSharedPreferences(context)?.getBoolean(SIGNALING_SERVICE_RUNNING, false) == true
         }
 

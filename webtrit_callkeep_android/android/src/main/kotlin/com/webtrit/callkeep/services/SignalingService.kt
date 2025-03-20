@@ -59,7 +59,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         ContextHolder.init(applicationContext)
 
         notificationBuilder = ForegroundCallNotificationBuilder()
-        
+
         startForegroundService()
 
         val callbackDispatcher = StorageDelegate.getCallbackDispatcher(applicationContext)
@@ -107,7 +107,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
     }
 
     override fun onDestroy() {
-        if (StorageDelegate.SignalingService.isRunning(context = applicationContext)) {
+        if (StorageDelegate.SignalingService.isSignalingServiceEnabled(context = applicationContext)) {
             ForegroundCallWorker.Companion.enqueue(this)
         }
 
@@ -143,7 +143,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        if (StorageDelegate.SignalingService.isRunning(context = applicationContext)) {
+        if (StorageDelegate.SignalingService.isSignalingServiceEnabled(context = applicationContext)) {
             ForegroundCallWorker.Companion.enqueue(applicationContext, 1000)
         }
     }

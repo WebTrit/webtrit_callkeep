@@ -37,7 +37,6 @@ class PigeonIsolateApi(
         StorageDelegate.SignalingService.setNotificationDescription(context, androidNotificationDescription)
 
         callback(Result.success(Unit))
-
     }
 
     override fun initializePushNotificationCallback(
@@ -54,7 +53,7 @@ class PigeonIsolateApi(
     }
 
     override fun startService(jsonData: String?, callback: (Result<Unit>) -> Unit) {
-        StorageDelegate.SignalingService.setRunning(context, true)
+        StorageDelegate.SignalingService.setSignalingServiceEnabled(context, true)
 
         Log.i(TAG, "startService, data: $jsonData")
         try {
@@ -67,7 +66,7 @@ class PigeonIsolateApi(
     }
 
     override fun stopService(callback: (Result<Unit>) -> Unit) {
-        StorageDelegate.SignalingService.setRunning(context, false)
+        StorageDelegate.SignalingService.setSignalingServiceEnabled(context, false)
 
         Log.i(TAG, "stopService")
         try {
