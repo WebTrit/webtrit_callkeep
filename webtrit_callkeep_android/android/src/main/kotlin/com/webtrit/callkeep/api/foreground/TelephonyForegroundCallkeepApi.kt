@@ -34,8 +34,8 @@ class TelephonyForegroundCallkeepApi(
         if (!isSetup) {
             flutterDelegate.registerReceiver(context)
             Telecom.registerPhoneAccount(context)
-            StorageDelegate.initRingtonePath(context, options.android.ringtoneSound)
-            StorageDelegate.initRingbackPath(context, options.android.ringbackSound)
+            StorageDelegate.Sound.initRingtonePath(context, options.android.ringtoneSound)
+            StorageDelegate.Sound.initRingbackPath(context, options.android.ringbackSound)
 
             // If an incoming call was answered in the background, retrieve the current new or ringing connection.
             // Extract its metadata and sync the call state with the Flutter side by emitting it as a bundle.

@@ -61,7 +61,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
 
         startForegroundService()
 
-        val callbackDispatcher = StorageDelegate.getCallbackDispatcher(applicationContext)
+        val callbackDispatcher = StorageDelegate.BackgroundIsolate.getCallbackDispatcher(applicationContext)
         flutterEngineHelper = FlutterEngineHelper(applicationContext, callbackDispatcher, this)
     }
 
@@ -185,7 +185,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         val lifecycle = ActivityHolder.getActivityState()
         val pLifecycle = lifecycle.toPCallkeepLifecycleType()
 
-        val wakeUpHandler = StorageDelegate.getOnStartHandler(baseContext)
+        val wakeUpHandler = StorageDelegate.SignalingService.getOnStartHandler(baseContext)
 
         _isolatePushNotificationFlutterApi?.onWakeUpBackgroundHandler(
             wakeUpHandler, PCallkeepServiceStatus(
@@ -209,7 +209,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         Log.d(TAG, "changedLifecycleHandler event: $event")
 
         val lifecycle = (event ?: Lifecycle.Event.ON_ANY).toPCallkeepLifecycleType()
-        val onChangedLifecycleHandler = StorageDelegate.getOnChangedLifecycleHandler(baseContext)
+        val onChangedLifecycleHandler = StorageDelegate.SignalingService.getOnChangedLifecycleHandler(baseContext)
 
         _isolatePushNotificationFlutterApi?.onApplicationStatusChanged(
             onChangedLifecycleHandler, PCallkeepServiceStatus(
@@ -228,7 +228,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
     override fun incomingCall(
         callId: String, handle: PHandle, displayName: String?, hasVideo: Boolean, callback: (Result<Unit>) -> Unit
     ) {
-        val ringtonePath = StorageDelegate.getRingtonePath(baseContext)
+        val ringtonePath = StorageDelegate.Sound.getRingtonePath(baseContext)
 
         val callMetaData = CallMetadata(
             callId = callId,

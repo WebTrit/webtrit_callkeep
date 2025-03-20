@@ -15,9 +15,10 @@ class PigeonIsolateApi(
         onChangedLifecycleHandler: Long,
         callback: (Result<Unit>) -> Unit
     ) {
-        StorageDelegate.setCallbackDispatcher(context, callbackDispatcher)
-        StorageDelegate.setOnStartHandler(context, onStartHandler)
-        StorageDelegate.setOnChangedLifecycleHandler(context, onChangedLifecycleHandler)
+        StorageDelegate.BackgroundIsolate.setCallbackDispatcher(context, callbackDispatcher)
+
+        StorageDelegate.SignalingService.setOnStartHandler(context, onStartHandler)
+        StorageDelegate.SignalingService.setOnChangedLifecycleHandler(context, onChangedLifecycleHandler)
 
         callback(Result.success(Unit))
     }
@@ -36,8 +37,8 @@ class PigeonIsolateApi(
     override fun initializePushNotificationCallback(
         callbackDispatcher: Long, onNotificationSync: Long, callback: (Result<Unit>) -> Unit
     ) {
-        StorageDelegate.setCallbackDispatcher(context, callbackDispatcher)
-        StorageDelegate.setOnNotificationSync(context, onNotificationSync)
+        StorageDelegate.BackgroundIsolate.setCallbackDispatcher(context, callbackDispatcher)
+        StorageDelegate.IncomingCallService.setOnNotificationSync(context, onNotificationSync)
 
         callback(Result.success(Unit))
     }

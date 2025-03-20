@@ -45,7 +45,7 @@ class PigeonActivityApi(
         hasVideo: Boolean,
         callback: (Result<PIncomingCallError?>) -> Unit
     ) {
-        val ringtonePath = StorageDelegate.getRingtonePath(context)
+        val ringtonePath = StorageDelegate.Sound.getRingtonePath(context)
 
         val callMetaData = CallMetadata(
             callId = callId,
