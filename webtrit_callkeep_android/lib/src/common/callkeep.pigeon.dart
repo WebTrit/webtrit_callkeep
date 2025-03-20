@@ -217,15 +217,9 @@ class PIOSOptions {
 
 class PAndroidOptions {
   PAndroidOptions({
-    required this.incomingPath,
-    required this.rootPath,
     this.ringtoneSound,
     this.ringbackSound,
   });
-
-  String incomingPath;
-
-  String rootPath;
 
   String? ringtoneSound;
 
@@ -233,8 +227,6 @@ class PAndroidOptions {
 
   Object encode() {
     return <Object?>[
-      incomingPath,
-      rootPath,
       ringtoneSound,
       ringbackSound,
     ];
@@ -243,10 +235,8 @@ class PAndroidOptions {
   static PAndroidOptions decode(Object result) {
     result as List<Object?>;
     return PAndroidOptions(
-      incomingPath: result[0]! as String,
-      rootPath: result[1]! as String,
-      ringtoneSound: result[2] as String?,
-      ringbackSound: result[3] as String?,
+      ringtoneSound: result[0] as String?,
+      ringbackSound: result[1] as String?,
     );
   }
 }
@@ -369,29 +359,13 @@ class PCallRequestError {
 class PCallkeepServiceStatus {
   PCallkeepServiceStatus({
     required this.lifecycle,
-    required this.lockScreen,
-    required this.activityReady,
-    required this.activeCalls,
-    required this.jsonData,
   });
 
   PCallkeepLifecycleType lifecycle;
 
-  bool lockScreen;
-
-  bool activityReady;
-
-  bool activeCalls;
-
-  String jsonData;
-
   Object encode() {
     return <Object?>[
       lifecycle,
-      lockScreen,
-      activityReady,
-      activeCalls,
-      jsonData,
     ];
   }
 
@@ -399,10 +373,6 @@ class PCallkeepServiceStatus {
     result as List<Object?>;
     return PCallkeepServiceStatus(
       lifecycle: result[0]! as PCallkeepLifecycleType,
-      lockScreen: result[1]! as bool,
-      activityReady: result[2]! as bool,
-      activeCalls: result[3]! as bool,
-      jsonData: result[4]! as String,
     );
   }
 }
@@ -707,8 +677,8 @@ class PHostIsolateApi {
 
   final String pigeonVar_messageChannelSuffix;
 
-  Future<void> setUpCallback({required int callbackDispatcher, required int onStartHandler, required int onChangedLifecycleHandler,}) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.setUpCallback$pigeonVar_messageChannelSuffix';
+  Future<void> initializeSignalingServiceCallback({required int callbackDispatcher, required int onStartHandler, required int onChangedLifecycleHandler,}) async {
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.initializeSignalingServiceCallback$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -751,15 +721,15 @@ class PHostIsolateApi {
     }
   }
 
-  Future<void> setUp({bool autoRestartOnTerminate = false, bool autoStartOnBoot = false, String? androidNotificationName, String? androidNotificationDescription,}) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.setUp$pigeonVar_messageChannelSuffix';
+  Future<void> configureSignalingService({String? androidNotificationName, String? androidNotificationDescription}) async {
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.configureSignalingService$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
     final List<Object?>? pigeonVar_replyList =
-        await pigeonVar_channel.send(<Object?>[autoRestartOnTerminate, autoStartOnBoot, androidNotificationName, androidNotificationDescription]) as List<Object?>?;
+        await pigeonVar_channel.send(<Object?>[androidNotificationName, androidNotificationDescription]) as List<Object?>?;
     if (pigeonVar_replyList == null) {
       throw _createConnectionError(pigeonVar_channelName);
     } else if (pigeonVar_replyList.length > 1) {
@@ -797,28 +767,6 @@ class PHostIsolateApi {
 
   Future<void> stopService() async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.stopService$pigeonVar_messageChannelSuffix';
-    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
-    );
-    final List<Object?>? pigeonVar_replyList =
-        await pigeonVar_channel.send(null) as List<Object?>?;
-    if (pigeonVar_replyList == null) {
-      throw _createConnectionError(pigeonVar_channelName);
-    } else if (pigeonVar_replyList.length > 1) {
-      throw PlatformException(
-        code: pigeonVar_replyList[0]! as String,
-        message: pigeonVar_replyList[1] as String?,
-        details: pigeonVar_replyList[2],
-      );
-    } else {
-      return;
-    }
-  }
-
-  Future<void> finishActivity() async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.finishActivity$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,

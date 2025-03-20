@@ -1,7 +1,5 @@
 // ignore_for_file: public_member_api_docs, always_use_package_imports
 
-import 'dart:convert';
-
 import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
 
 import 'callkeep.pigeon.dart';
@@ -177,8 +175,6 @@ extension CallkeepIOSOptionsConverter on CallkeepIOSOptions {
 extension CallkeepAndroidOptionsConverter on CallkeepAndroidOptions {
   PAndroidOptions toPigeon() {
     return PAndroidOptions(
-      incomingPath: incomingPath,
-      rootPath: rootPath,
       ringtoneSound: ringtoneSound,
       ringbackSound: ringbackSound,
     );
@@ -302,10 +298,6 @@ extension PCallkeepServiceStatusConverter on PCallkeepServiceStatus {
   CallkeepServiceStatus toCallkeep() {
     return CallkeepServiceStatus(
       lifecycle: lifecycle.toCallkeep(),
-      lockScreen: lockScreen,
-      activityReady: activityReady,
-      activeCalls: activeCalls,
-      data: jsonDecode(jsonData) as Map<String, dynamic>,
     );
   }
 }
@@ -314,10 +306,6 @@ extension CallkeepServiceStatusConverter on CallkeepServiceStatus {
   PCallkeepServiceStatus toPigeon() {
     return PCallkeepServiceStatus(
       lifecycle: lifecycle.toPigeon(),
-      lockScreen: lockScreen,
-      activityReady: activityReady,
-      activeCalls: activeCalls,
-      jsonData: jsonEncode(data),
     );
   }
 }

@@ -85,7 +85,7 @@ class _MainScreenState extends State<MainScreen> {
               onPressed: () {
                 Permission.notification.request().then((value) {
                   if (value.isGranted) {
-                    widget.callkeepBackgroundService.setUp(autoRestartOnTerminate: true);
+                    widget.callkeepBackgroundService.setUp();
                     widget.callkeepBackgroundService.startService();
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -100,10 +100,7 @@ class _MainScreenState extends State<MainScreen> {
             SizedBox(height: 8),
             ElevatedButton(
               child: Text("Stop call service"),
-              onPressed: () {
-                widget.callkeepBackgroundService.setUp(autoRestartOnTerminate: false);
-                widget.callkeepBackgroundService.stopService();
-              },
+              onPressed: () => widget.callkeepBackgroundService.stopService(),
             ),
             ElevatedButton(
               child: Text("Update notification call service"),

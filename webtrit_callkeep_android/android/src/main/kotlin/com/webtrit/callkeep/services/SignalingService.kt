@@ -25,15 +25,11 @@ import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.helpers.FlutterEngineHelper
 import com.webtrit.callkeep.common.helpers.PermissionsHelper
-import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.common.helpers.startForegroundServiceCompat
 import com.webtrit.callkeep.common.helpers.toPCallkeepLifecycleType
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.models.CallPaths
-import com.webtrit.callkeep.models.ForegroundCallServiceConfig
 import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
-import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 import com.webtrit.callkeep.workers.ForegroundCallWorker
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -63,21 +59,19 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
 
         notificationBuilder = ForegroundCallNotificationBuilder()
 
-        val config = StorageDelegate.getForegroundCallServiceConfiguration(applicationContext)
+        startForegroundService()
 
-        startForegroundService(config)
-
-        val callbackDispatcher = StorageDelegate.getCallbackDispatcher(applicationContext)
+        val callbackDispatcher = StorageDelegate.BackgroundIsolate.getCallbackDispatcher(applicationContext)
         flutterEngineHelper = FlutterEngineHelper(applicationContext, callbackDispatcher, this)
     }
 
     /**
      * Starts the service in the foreground with a notification.
      */
-    private fun startForegroundService(config: ForegroundCallServiceConfig) {
+    private fun startForegroundService() {
         Log.d(TAG, "Starting foreground service")
-        notificationBuilder.setTitle(config.androidNotificationName!!)
-        notificationBuilder.setContent(config.androidNotificationDescription!!)
+        notificationBuilder.setTitle(StorageDelegate.SignalingService.getNotificationTitle(applicationContext))
+        notificationBuilder.setContent(StorageDelegate.SignalingService.getNotificationDescription(applicationContext))
         val notification = notificationBuilder.build()
 
         if (PermissionsHelper(baseContext).hasNotificationPermission()) {
@@ -95,10 +89,10 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
     /**
      * Ensures that the notification is visible. If not, it restarts the foreground service.
      */
-    private fun ensureNotification(config: ForegroundCallServiceConfig) {
+    private fun ensureNotification() {
         if (!isNotificationVisible()) {
             Log.d(TAG, "Notification not visible, restarting foreground service")
-            startForegroundService(config)
+            startForegroundService()
         }
     }
 
@@ -112,7 +106,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
     }
 
     override fun onDestroy() {
-        if (StorageDelegate.SignalingService.isRunning(context = applicationContext)) {
+        if (StorageDelegate.SignalingService.isSignalingServiceEnabled(context = applicationContext)) {
             ForegroundCallWorker.Companion.enqueue(this)
         }
 
@@ -133,13 +127,11 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         val action = intent?.action ?: ForegroundCallServiceEnums.INIT.action
         val data = intent?.extras
 
-        val config = StorageDelegate.getForegroundCallServiceConfiguration(applicationContext)
-
-        ensureNotification(config)
+        ensureNotification()
 
         when (action) {
             ForegroundCallServiceEnums.INIT.action -> runService()
-            ForegroundCallServiceEnums.START.action -> wakeUp(config, data)
+            ForegroundCallServiceEnums.START.action -> wakeUp()
             ForegroundCallServiceEnums.STOP.action -> tearDown()
             ForegroundCallServiceEnums.CHANGE_LIFECYCLE.action -> changedLifecycleHandler(data)
             ForegroundCallServiceEnums.DECLINE.action -> connectionService.hungUp(CallMetadata.fromBundle(data!!)) {}
@@ -150,7 +142,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        if (StorageDelegate.SignalingService.isRunning(context = applicationContext)) {
+        if (StorageDelegate.SignalingService.isSignalingServiceEnabled(context = applicationContext)) {
             ForegroundCallWorker.Companion.enqueue(applicationContext, 1000)
         }
     }
@@ -158,9 +150,9 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
     /**
      * Wakes up the service and sends a broadcast to synchronize call status.
      */
-    private fun wakeUp(config: ForegroundCallServiceConfig, data: Bundle?) {
+    private fun wakeUp() {
         runService()
-        wakeUpBackgroundHandler(data)
+        wakeUpBackgroundHandler()
     }
 
     /**
@@ -187,27 +179,17 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         connectionService = CallkeepApiProvider.getBackgroundCallkeepApi(baseContext, _isolateCalkeepFlutterApi!!)
     }
 
-    private fun wakeUpBackgroundHandler(
-        extras: Bundle?
-    ) {
+    private fun wakeUpBackgroundHandler() {
         Log.d(TAG, "onWakeUpBackgroundHandler")
 
         val lifecycle = ActivityHolder.getActivityState()
-        val lockScreen = Platform.isLockScreen(baseContext)
         val pLifecycle = lifecycle.toPCallkeepLifecycleType()
 
-        val wakeUpHandler = StorageDelegate.getOnStartHandler(baseContext)
-
-        val jsonData = extras?.getString(PARAM_JSON_DATA) ?: "{}"
+        val wakeUpHandler = StorageDelegate.SignalingService.getOnStartHandler(baseContext)
 
         _isolatePushNotificationFlutterApi?.onWakeUpBackgroundHandler(
             wakeUpHandler, PCallkeepServiceStatus(
                 pLifecycle,
-                lockScreen,
-                // TODO: Remove activityReady from the status
-                false,
-                PhoneConnectionService.connectionManager.isExistsActiveConnection(),
-                jsonData
             )
         ) { response ->
             response.onSuccess {
@@ -222,23 +204,16 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
 
     @Suppress("DEPRECATION")
     private fun changedLifecycleHandler(bundle: Bundle?) {
-        val lockScreen = Platform.isLockScreen(baseContext)
         val event = bundle?.getSerializable(PARAM_CHANGE_LIFECYCLE_EVENT) as Lifecycle.Event?
 
         Log.d(TAG, "changedLifecycleHandler event: $event")
 
         val lifecycle = (event ?: Lifecycle.Event.ON_ANY).toPCallkeepLifecycleType()
-        val onChangedLifecycleHandler = StorageDelegate.getOnChangedLifecycleHandler(baseContext)
+        val onChangedLifecycleHandler = StorageDelegate.SignalingService.getOnChangedLifecycleHandler(baseContext)
 
         _isolatePushNotificationFlutterApi?.onApplicationStatusChanged(
             onChangedLifecycleHandler, PCallkeepServiceStatus(
                 lifecycle,
-                lockScreen,
-                // TODO: Remove activityReady from the status
-                false,
-                // TODO: Remove isExistsActiveConnection from the status
-                PhoneConnectionService.connectionManager.isExistsActiveConnection(),
-                "{}",
             )
         ) { response ->
             response.onSuccess {
@@ -253,16 +228,13 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
     override fun incomingCall(
         callId: String, handle: PHandle, displayName: String?, hasVideo: Boolean, callback: (Result<Unit>) -> Unit
     ) {
-        val callPath = StorageDelegate.getIncomingPath(baseContext)
-        val rootPath = StorageDelegate.getRootPath(baseContext)
-        val ringtonePath = StorageDelegate.getRingtonePath(baseContext)
+        val ringtonePath = StorageDelegate.Sound.getRingtonePath(baseContext)
 
         val callMetaData = CallMetadata(
             callId = callId,
             handle = handle.toCallHandle(),
             displayName = displayName,
             hasVideo = hasVideo,
-            paths = CallPaths(callPath, rootPath),
             ringtonePath = ringtonePath,
             createdTime = System.currentTimeMillis()
         )
@@ -307,9 +279,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         }
 
         fun start(context: Context, data: String? = null) = communicate(
-            context,
-            ForegroundCallServiceEnums.START,
-            data?.let { Bundle().apply { putString(PARAM_JSON_DATA, it) } })
+            context, ForegroundCallServiceEnums.START, data?.let { Bundle().apply { putString(PARAM_JSON_DATA, it) } })
 
         fun changeLifecycle(context: Context, event: Lifecycle.Event) = communicate(
             context,
@@ -317,7 +287,10 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
             Bundle().apply { putSerializable(PARAM_CHANGE_LIFECYCLE_EVENT, event) })
 
         @SuppressLint("ImplicitSamInstance")
-        fun stop(context: Context) = context.stopService(Intent(context, SignalingService::class.java))
+        fun stop(context: Context) {
+            ForegroundCallWorker.Companion.remove(context)
+            context.stopService(Intent(context, SignalingService::class.java))
+        }
 
         fun endCall(context: Context, callMetadata: CallMetadata) =
             communicate(context, ForegroundCallServiceEnums.DECLINE, callMetadata.toBundle())

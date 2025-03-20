@@ -292,25 +292,19 @@ data class PIOSOptions (
 
 /** Generated class from Pigeon that represents data sent in messages. */
 data class PAndroidOptions (
-  val incomingPath: String,
-  val rootPath: String,
   val ringtoneSound: String? = null,
   val ringbackSound: String? = null
 )
  {
   companion object {
     fun fromList(pigeonVar_list: List<Any?>): PAndroidOptions {
-      val incomingPath = pigeonVar_list[0] as String
-      val rootPath = pigeonVar_list[1] as String
-      val ringtoneSound = pigeonVar_list[2] as String?
-      val ringbackSound = pigeonVar_list[3] as String?
-      return PAndroidOptions(incomingPath, rootPath, ringtoneSound, ringbackSound)
+      val ringtoneSound = pigeonVar_list[0] as String?
+      val ringbackSound = pigeonVar_list[1] as String?
+      return PAndroidOptions(ringtoneSound, ringbackSound)
     }
   }
   fun toList(): List<Any?> {
     return listOf(
-      incomingPath,
-      rootPath,
       ringtoneSound,
       ringbackSound,
     )
@@ -415,30 +409,18 @@ data class PCallRequestError (
 
 /** Generated class from Pigeon that represents data sent in messages. */
 data class PCallkeepServiceStatus (
-  val lifecycle: PCallkeepLifecycleType,
-  val lockScreen: Boolean,
-  val activityReady: Boolean,
-  val activeCalls: Boolean,
-  val jsonData: String
+  val lifecycle: PCallkeepLifecycleType
 )
  {
   companion object {
     fun fromList(pigeonVar_list: List<Any?>): PCallkeepServiceStatus {
       val lifecycle = pigeonVar_list[0] as PCallkeepLifecycleType
-      val lockScreen = pigeonVar_list[1] as Boolean
-      val activityReady = pigeonVar_list[2] as Boolean
-      val activeCalls = pigeonVar_list[3] as Boolean
-      val jsonData = pigeonVar_list[4] as String
-      return PCallkeepServiceStatus(lifecycle, lockScreen, activityReady, activeCalls, jsonData)
+      return PCallkeepServiceStatus(lifecycle)
     }
   }
   fun toList(): List<Any?> {
     return listOf(
       lifecycle,
-      lockScreen,
-      activityReady,
-      activeCalls,
-      jsonData,
     )
   }
 }
@@ -786,12 +768,11 @@ interface PHostBackgroundServiceApi {
 }
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface PHostIsolateApi {
-  fun setUpCallback(callbackDispatcher: Long, onStartHandler: Long, onChangedLifecycleHandler: Long, callback: (Result<Unit>) -> Unit)
+  fun initializeSignalingServiceCallback(callbackDispatcher: Long, onStartHandler: Long, onChangedLifecycleHandler: Long, callback: (Result<Unit>) -> Unit)
   fun initializePushNotificationCallback(callbackDispatcher: Long, onNotificationSync: Long, callback: (Result<Unit>) -> Unit)
-  fun setUp(autoRestartOnTerminate: Boolean, autoStartOnBoot: Boolean, androidNotificationName: String?, androidNotificationDescription: String?, callback: (Result<Unit>) -> Unit)
+  fun configureSignalingService(androidNotificationName: String?, androidNotificationDescription: String?, callback: (Result<Unit>) -> Unit)
   fun startService(jsonData: String?, callback: (Result<Unit>) -> Unit)
   fun stopService(callback: (Result<Unit>) -> Unit)
-  fun finishActivity(callback: (Result<Unit>) -> Unit)
 
   companion object {
     /** The codec used by PHostIsolateApi. */
@@ -803,14 +784,14 @@ interface PHostIsolateApi {
     fun setUp(binaryMessenger: BinaryMessenger, api: PHostIsolateApi?, messageChannelSuffix: String = "") {
       val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
       run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.setUpCallback$separatedMessageChannelSuffix", codec)
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.initializeSignalingServiceCallback$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
             val callbackDispatcherArg = args[0] as Long
             val onStartHandlerArg = args[1] as Long
             val onChangedLifecycleHandlerArg = args[2] as Long
-            api.setUpCallback(callbackDispatcherArg, onStartHandlerArg, onChangedLifecycleHandlerArg) { result: Result<Unit> ->
+            api.initializeSignalingServiceCallback(callbackDispatcherArg, onStartHandlerArg, onChangedLifecycleHandlerArg) { result: Result<Unit> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(wrapError(error))
@@ -844,15 +825,13 @@ interface PHostIsolateApi {
         }
       }
       run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.setUp$separatedMessageChannelSuffix", codec)
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.configureSignalingService$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
-            val autoRestartOnTerminateArg = args[0] as Boolean
-            val autoStartOnBootArg = args[1] as Boolean
-            val androidNotificationNameArg = args[2] as String?
-            val androidNotificationDescriptionArg = args[3] as String?
-            api.setUp(autoRestartOnTerminateArg, autoStartOnBootArg, androidNotificationNameArg, androidNotificationDescriptionArg) { result: Result<Unit> ->
+            val androidNotificationNameArg = args[0] as String?
+            val androidNotificationDescriptionArg = args[1] as String?
+            api.configureSignalingService(androidNotificationNameArg, androidNotificationDescriptionArg) { result: Result<Unit> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(wrapError(error))
@@ -889,23 +868,6 @@ interface PHostIsolateApi {
         if (api != null) {
           channel.setMessageHandler { _, reply ->
             api.stopService{ result: Result<Unit> ->
-              val error = result.exceptionOrNull()
-              if (error != null) {
-                reply.reply(wrapError(error))
-              } else {
-                reply.reply(wrapResult(null))
-              }
-            }
-          }
-        } else {
-          channel.setMessageHandler(null)
-        }
-      }
-      run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.finishActivity$separatedMessageChannelSuffix", codec)
-        if (api != null) {
-          channel.setMessageHandler { _, reply ->
-            api.finishActivity{ result: Result<Unit> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(wrapError(error))

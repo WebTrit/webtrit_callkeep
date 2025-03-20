@@ -28,8 +28,6 @@ class PIOSOptions {
 }
 
 class PAndroidOptions {
-  late String incomingPath;
-  late String rootPath;
   late String? ringtoneSound;
   late String? ringbackSound;
 }
@@ -140,10 +138,6 @@ enum PCallkeepPushNotificationSyncStatus {
 
 class PCallkeepServiceStatus {
   late PCallkeepLifecycleType lifecycle;
-  late bool lockScreen;
-  late bool activityReady;
-  late bool activeCalls;
-  late String jsonData;
 }
 
 enum PCallkeepConnectionState {
@@ -214,7 +208,7 @@ abstract class PHostBackgroundServiceApi {
 @HostApi()
 abstract class PHostIsolateApi {
   @async
-  void setUpCallback({
+  void initializeSignalingServiceCallback({
     required int callbackDispatcher,
     required int onStartHandler,
     required int onChangedLifecycleHandler,
@@ -227,9 +221,7 @@ abstract class PHostIsolateApi {
   });
 
   @async
-  void setUp({
-    bool autoRestartOnTerminate = false,
-    bool autoStartOnBoot = false,
+  void configureSignalingService({
     String? androidNotificationName,
     String? androidNotificationDescription,
   });
@@ -241,9 +233,6 @@ abstract class PHostIsolateApi {
 
   @async
   void stopService();
-
-  @async
-  void finishActivity();
 }
 
 @HostApi()

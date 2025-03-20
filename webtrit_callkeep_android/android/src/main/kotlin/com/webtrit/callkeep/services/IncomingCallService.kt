@@ -124,7 +124,7 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
             startIncomingCallIsolate()
 
             isolatePushNotificationFlutterApi?.onNotificationSync(
-                StorageDelegate.getOnNotificationSync(applicationContext),
+                StorageDelegate.IncomingCallService.getOnNotificationSync(applicationContext),
                 PCallkeepPushNotificationSyncStatus.SYNCHRONIZE_CALL_STATUS
             ) { response ->
                 response.onSuccess {
@@ -142,7 +142,7 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
      */
     @SuppressLint("WakelockTimeout")
     private fun startIncomingCallIsolate() {
-        val callbackDispatcher = StorageDelegate.getCallbackDispatcher(applicationContext)
+        val callbackDispatcher = StorageDelegate.BackgroundIsolate.getCallbackDispatcher(applicationContext)
 
         acquireWakeLock(baseContext)
 
@@ -168,7 +168,7 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
 
     override fun endAllCalls(callback: (Result<Unit>) -> Unit) {
         isolatePushNotificationFlutterApi?.onNotificationSync(
-            StorageDelegate.getOnNotificationSync(applicationContext),
+            StorageDelegate.IncomingCallService.getOnNotificationSync(applicationContext),
             PCallkeepPushNotificationSyncStatus.RELEASE_RESOURCES
         ) { response ->
             response.onSuccess {
@@ -247,7 +247,7 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
             // If the incoming call started from the main isolate and the user minimized the app, launch the isolate
             // and send an end-call event.
             isolatePushNotificationFlutterApi?.onNotificationSync(
-                StorageDelegate.getOnNotificationSync(applicationContext),
+                StorageDelegate.IncomingCallService.getOnNotificationSync(applicationContext),
                 PCallkeepPushNotificationSyncStatus.SYNCHRONIZE_CALL_STATUS
             ) { response ->
                 response.onSuccess {
@@ -280,7 +280,7 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
     private fun handleServerDecline(metadata: CallMetadata) {
         // Send event to clean up background isolate resources and close signaling connection
         isolatePushNotificationFlutterApi?.onNotificationSync(
-            StorageDelegate.getOnNotificationSync(applicationContext),
+            StorageDelegate.IncomingCallService.getOnNotificationSync(applicationContext),
             PCallkeepPushNotificationSyncStatus.RELEASE_RESOURCES
         ) { response ->
             PhoneConnectionService.startHungUpCall(baseContext, metadata)

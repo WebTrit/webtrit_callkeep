@@ -30,9 +30,7 @@ class MissedCallNotificationBuilder() : NotificationBuilder() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 setCategory(Notification.CATEGORY_MISSED_CALL)
             }
-            setFullScreenIntent(
-                buildOpenAppIntent(context, callMetaData.getCallUri()), true
-            )
+            setFullScreenIntent(buildOpenAppIntent(context), true)
         }
         val notification = notificationBuilder.build()
         notification.flags = notification.flags or NotificationCompat.FLAG_INSISTENT

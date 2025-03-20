@@ -119,14 +119,8 @@ typedef NS_ENUM(NSUInteger, WTPCallRequestErrorEnum) {
 @end
 
 @interface WTPAndroidOptions : NSObject
-/// `init` unavailable to enforce nonnull fields, see the `make` class method.
-- (instancetype)init NS_UNAVAILABLE;
-+ (instancetype)makeWithIncomingPath:(NSString *)incomingPath
-    rootPath:(NSString *)rootPath
-    ringtoneSound:(nullable NSString *)ringtoneSound
++ (instancetype)makeWithRingtoneSound:(nullable NSString *)ringtoneSound
     ringbackSound:(nullable NSString *)ringbackSound;
-@property(nonatomic, copy) NSString * incomingPath;
-@property(nonatomic, copy) NSString * rootPath;
 @property(nonatomic, copy, nullable) NSString * ringtoneSound;
 @property(nonatomic, copy, nullable) NSString * ringbackSound;
 @end

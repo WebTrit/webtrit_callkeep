@@ -63,9 +63,7 @@ class ProxyBackgroundCallkeepApi(
      */
     override fun answer(metadata: CallMetadata) {
         if (!ActivityHolder.isActivityVisible()) {
-            context.startActivity(Platform.getLaunchActivity(context)?.apply {
-                data = metadata.getCallUri()
-            })
+            context.startActivity(Platform.getLaunchActivity(context))
         }
     }
 

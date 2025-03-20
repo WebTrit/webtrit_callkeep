@@ -23,9 +23,9 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   final _connectionsApi = PHostConnectionsApi();
 
   int? _isolatePluginCallbackHandle;
-  int? _onChangedLifecycleHandle;
-  int? _onStartHandle;
-  int? _onNotificationSync;
+  int? _onSignalingServiceChangedLifecycleHandle;
+  int? _onSignalingServiceStartHandle;
+  int? _onPushNotificationNotificationSync;
 
   final _permissionsApi = PHostPermissionsApi();
 
@@ -256,14 +256,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<dynamic> finishActivity({
-    bool forceCloseActivity = false,
-  }) {
-    return _isolateApi.finishActivity();
-  }
-
-  @override
-  Future<void> setUpServiceCallback(
+  Future<void> initializeSignalingServiceCallback(
       {ForegroundStartServiceHandle? onStart, ForegroundChangeLifecycleHandle? onChangedLifecycle}) async {
     // Initialization callback handle for the isolate plugin only once;
     _isolatePluginCallbackHandle = _isolatePluginCallbackHandle ??
@@ -271,21 +264,23 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
           _isolatePluginCallbackDispatcher,
         )?.toRawHandle();
 
-    _onStartHandle = _onStartHandle ??
+    _onSignalingServiceStartHandle = _onSignalingServiceStartHandle ??
         PluginUtilities.getCallbackHandle(
           onStart!,
         )?.toRawHandle();
 
-    _onChangedLifecycleHandle = _onChangedLifecycleHandle ??
+    _onSignalingServiceChangedLifecycleHandle = _onSignalingServiceChangedLifecycleHandle ??
         PluginUtilities.getCallbackHandle(
           onChangedLifecycle!,
         )?.toRawHandle();
 
-    if (_isolatePluginCallbackHandle != null && _onStartHandle != null && _onChangedLifecycleHandle != null) {
-      await _isolateApi.setUpCallback(
+    if (_isolatePluginCallbackHandle != null &&
+        _onSignalingServiceStartHandle != null &&
+        _onSignalingServiceChangedLifecycleHandle != null) {
+      await _isolateApi.initializeSignalingServiceCallback(
         callbackDispatcher: _isolatePluginCallbackHandle!,
-        onStartHandler: _onStartHandle!,
-        onChangedLifecycleHandler: _onChangedLifecycleHandle!,
+        onStartHandler: _onSignalingServiceStartHandle!,
+        onChangedLifecycleHandler: _onSignalingServiceChangedLifecycleHandle!,
       );
     }
   }
@@ -298,29 +293,25 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
           _isolatePluginCallbackDispatcher,
         )?.toRawHandle();
 
-    _onNotificationSync = _onNotificationSync ??
+    _onPushNotificationNotificationSync = _onPushNotificationNotificationSync ??
         PluginUtilities.getCallbackHandle(
           onNotificationSync,
         )?.toRawHandle();
 
-    if (_isolatePluginCallbackHandle != null && _onNotificationSync != null) {
+    if (_isolatePluginCallbackHandle != null && _onPushNotificationNotificationSync != null) {
       await _isolateApi.initializePushNotificationCallback(
         callbackDispatcher: _isolatePluginCallbackHandle!,
-        onNotificationSync: _onNotificationSync!,
+        onNotificationSync: _onPushNotificationNotificationSync!,
       );
     }
   }
 
   @override
-  Future<void> setUpAndroidBackgroundService({
-    bool autoRestartOnTerminate = false,
-    bool autoStartOnBoot = false,
+  Future<void> configureSignalingService({
     String? androidNotificationName,
     String? androidNotificationDescription,
   }) async {
-    await _isolateApi.setUp(
-      autoStartOnBoot: autoStartOnBoot,
-      autoRestartOnTerminate: autoRestartOnTerminate,
+    await _isolateApi.configureSignalingService(
       androidNotificationName: androidNotificationName,
       androidNotificationDescription: androidNotificationDescription,
     );

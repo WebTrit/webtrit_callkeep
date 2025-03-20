@@ -1,8 +1,7 @@
 package com.webtrit.callkeep.models
 
-import android.net.Uri
 import android.os.Bundle
-import com.webtrit.callkeep_android.generated.lib.src.consts.CallDataConst
+import com.webtrit.callkeep.consts.CallDataConst
 
 data class CallMetadata(
     val callId: String,
@@ -14,17 +13,12 @@ data class CallMetadata(
     val hasMute: Boolean = false,
     val hasHold: Boolean = false,
     val dualToneMultiFrequency: Char? = null,
-    val paths: CallPaths? = null,
     val ringtonePath: String? = null,
     val createdTime: Long? = null,
     val acceptedTime: Long? = null,
 ) {
     val number: String get() = handle?.number ?: "Undefined"
     val name: String get() = displayName?.takeIf { it.isNotEmpty() } ?: number
-
-    private fun toQueries(): String = bundleToQueries()
-
-    fun getCallUri(): Uri = Uri.parse("${paths?.callPath ?: "/"}?${toQueries()}")
 
     fun toBundle(): Bundle = Bundle().apply {
         putString(CallDataConst.CALL_ID, callId)
@@ -34,7 +28,6 @@ data class CallMetadata(
         putBoolean(CallDataConst.HAS_MUTE, hasMute)
         putBoolean(CallDataConst.HAS_HOLD, hasHold)
         ringtonePath?.let { putString(CALL_RINGTONE_PATH, it) }
-        paths?.let { putBundle(CALL_NAVIGATION_PATHS, it.toBundle()) }
         displayName?.let { putString(CallDataConst.DISPLAY_NAME, it) }
         handle?.let { putBundle(CallDataConst.NUMBER, it.toBundle()) }
         dualToneMultiFrequency?.let { putChar(CallDataConst.DTMF, it) }
@@ -69,7 +62,6 @@ data class CallMetadata(
             hasMute = other?.hasMute ?: hasMute,
             hasHold = other?.hasHold ?: hasHold,
             dualToneMultiFrequency = other?.dualToneMultiFrequency ?: dualToneMultiFrequency,
-            paths = other?.paths ?: paths,
             ringtonePath = other?.ringtonePath ?: ringtonePath,
             createdTime = other?.createdTime ?: createdTime,
             acceptedTime = other?.acceptedTime ?: acceptedTime
@@ -77,7 +69,7 @@ data class CallMetadata(
     }
 
     override fun toString(): String {
-        return "CallMetadata(callId=$callId, displayName=$displayName, handle=$handle, hasVideo=$hasVideo, hasSpeaker=$hasSpeaker, hasMute=$hasMute, hasHold=$hasHold, dualToneMultiFrequency=$dualToneMultiFrequency, paths=$paths)"
+        return "CallMetadata(callId=$callId, displayName=$displayName, handle=$handle, hasVideo=$hasVideo, hasSpeaker=$hasSpeaker, hasMute=$hasMute, hasHold=$hasHold, dualToneMultiFrequency=$dualToneMultiFrequency)"
     }
 
     companion object {
@@ -100,7 +92,6 @@ data class CallMetadata(
                 hasMute = bundle.getBoolean(CallDataConst.HAS_MUTE, false),
                 hasHold = bundle.getBoolean(CallDataConst.HAS_HOLD, false),
                 dualToneMultiFrequency = bundle.getChar(CallDataConst.DTMF),
-                paths = bundle.getBundle(CALL_NAVIGATION_PATHS)?.let { CallPaths.fromBundle(it) },
                 ringtonePath = bundle.getString(CALL_RINGTONE_PATH),
                 createdTime = bundle.getLong(CALL_METADATA_CREATED_TIME),
                 acceptedTime = bundle.getLong(CALL_METADATA_ACCEPTED_TIME)

@@ -34,7 +34,7 @@ class CallkeepBackgroundService {
   ///
   /// This method configures and sets up the Android background service using the provided
   /// parameters and handlers.
-  static Future<void> setUpServiceCallback({
+  static Future<void> initializeSignalingServiceCallback({
     required ForegroundStartServiceHandle onStart,
     required ForegroundChangeLifecycleHandle onChangedLifecycle,
   }) {
@@ -46,19 +46,13 @@ class CallkeepBackgroundService {
       return Future.value();
     }
 
-    return platform.setUpServiceCallback(
+    return platform.initializeSignalingServiceCallback(
       onStart: onStart,
       onChangedLifecycle: onChangedLifecycle,
     );
   }
 
   /// Configures the background service with optional lifecycle and startup handlers.
-  /// [autoRestartOnTerminate] - If true, the service will automatically restart if it is
-  /// unexpectedly terminated. Default is false.
-  ///
-  /// [autoStartOnBoot] - If true, the service will automatically start after the device
-  /// reboots. Default is false.
-  ///
   /// [androidNotificationName] - The name of the Android notification channel used when
   /// running the service in the background. Defaults to 'WebTrit Inbound Calls'.
   ///
@@ -68,8 +62,6 @@ class CallkeepBackgroundService {
   /// This method configures and sets up the Android background service using the provided
   /// parameters and handlers.
   Future<void> setUp({
-    bool autoRestartOnTerminate = false,
-    bool autoStartOnBoot = false,
     String androidNotificationName = 'WebTrit Inbound Calls',
     String androidNotificationDescription = 'This is required to receive incoming calls',
   }) {
@@ -81,9 +73,7 @@ class CallkeepBackgroundService {
       return Future.value();
     }
 
-    return platform.setUpAndroidBackgroundService(
-      autoRestartOnTerminate: autoRestartOnTerminate,
-      autoStartOnBoot: autoStartOnBoot,
+    return platform.configureSignalingService(
       androidNotificationName: androidNotificationName,
       androidNotificationDescription: androidNotificationDescription,
     );
@@ -142,22 +132,6 @@ class CallkeepBackgroundService {
       return Future.value();
     }
     platform.stopService();
-  }
-
-  /// Finishes the current activity.
-  ///
-  /// This method triggers the platform-specific implementation to finish or close the
-  /// current activity associated with the background service.
-  Future<void> finishActivity() async {
-    if (kIsWeb) {
-      return Future.value();
-    }
-
-    if (!Platform.isAndroid) {
-      return Future.value();
-    }
-
-    return platform.finishActivity();
   }
 
   /// Sets the android service delegate.

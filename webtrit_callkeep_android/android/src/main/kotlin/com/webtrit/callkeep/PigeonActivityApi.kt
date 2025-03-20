@@ -6,7 +6,6 @@ import com.webtrit.callkeep.api.CallkeepApiProvider
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.api.foreground.ForegroundCallkeepApi
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.models.CallPaths
 import com.webtrit.callkeep.models.toCallHandle
 
 class PigeonActivityApi(
@@ -46,16 +45,13 @@ class PigeonActivityApi(
         hasVideo: Boolean,
         callback: (Result<PIncomingCallError?>) -> Unit
     ) {
-        val callPath = StorageDelegate.getIncomingPath(context)
-        val rootPath = StorageDelegate.getRootPath(context)
-        val ringtonePath = StorageDelegate.getRingtonePath(context)
+        val ringtonePath = StorageDelegate.Sound.getRingtonePath(context)
 
         val callMetaData = CallMetadata(
             callId = callId,
             handle = handle.toCallHandle(),
             displayName = displayName,
             hasVideo = hasVideo,
-            paths = CallPaths(callPath, rootPath),
             ringtonePath = ringtonePath
         )
         foregroundCallkeepApi.reportNewIncomingCall(callMetaData, callback)

@@ -40,9 +40,8 @@ object ActivityHolder : ActivityProvider {
         return lifecycle == Lifecycle.Event.ON_RESUME && activity != null
     }
 
-    fun start(metadata: CallMetadata?, context: Context) {
+    fun start(context: Context) {
         val hostAppActivity = Platform.getLaunchActivity(context)?.apply {
-            data = metadata?.getCallUri()
             // Ensures the activity is started in a new task if needed (required when launching from a service)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                     // Prevents recreating the activity if it's already at the top of the task

@@ -16,17 +16,11 @@ import com.webtrit.callkeep.common.helpers.Telecom
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.notifications.NotificationChannelManager
-import com.webtrit.callkeep.receivers.IncomingCallNotificationReceiver
 
 class TelephonyForegroundCallkeepApi(
     private val context: Context, flutterDelegateApi: PDelegateFlutterApi
 ) : ForegroundCallkeepApi {
     private val flutterDelegate = TelephonyForegroundCallkeepReceiver(context, flutterDelegateApi)
-    private val incomingCallReceiver = IncomingCallNotificationReceiver(
-        context,
-        endCall = { callMetaData -> endCall(callMetaData) {} },
-        answerCall = { callMetaData -> answerCall(callMetaData) {} },
-    )
 
     private var isSetup = false
 
@@ -39,12 +33,9 @@ class TelephonyForegroundCallkeepApi(
 
         if (!isSetup) {
             flutterDelegate.registerReceiver(context)
-            incomingCallReceiver.registerReceiver()
             Telecom.registerPhoneAccount(context)
-            StorageDelegate.initIncomingPath(context, options.android.incomingPath)
-            StorageDelegate.initRootPath(context, options.android.rootPath)
-            StorageDelegate.initRingtonePath(context, options.android.ringtoneSound)
-            StorageDelegate.initRingbackPath(context, options.android.ringbackSound)
+            StorageDelegate.Sound.initRingtonePath(context, options.android.ringtoneSound)
+            StorageDelegate.Sound.initRingbackPath(context, options.android.ringbackSound)
 
             // If an incoming call was answered in the background, retrieve the current new or ringing connection.
             // Extract its metadata and sync the call state with the Flutter side by emitting it as a bundle.
@@ -165,13 +156,11 @@ class TelephonyForegroundCallkeepApi(
 
     override fun tearDown(callback: (Result<Unit>) -> Unit) {
         PhoneConnectionService.tearDown(context)
-        incomingCallReceiver.unregisterReceiver()
         callback.invoke(Result.success(Unit))
     }
 
     override fun detachActivity() {
         Log.i(TAG, "detachActivity")
-        incomingCallReceiver.unregisterReceiver()
 
         try {
             flutterDelegate.clearOutgoingCallback()

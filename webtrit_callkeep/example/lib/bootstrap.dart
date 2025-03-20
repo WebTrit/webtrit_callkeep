@@ -19,14 +19,9 @@ Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
 
   await Permission.notification.request();
 
-  CallkeepBackgroundService.setUpServiceCallback(
+  CallkeepBackgroundService.initializeSignalingServiceCallback(
     onStart: isolate.onStartForegroundService,
     onChangedLifecycle: isolate.onChangedLifecycle,
-  );
-
-  CallkeepBackgroundService().setUp(
-    autoStartOnBoot: true,
-    autoRestartOnTerminate: true,
   );
 
   WebtritCallkeepLogs().setLogsDelegate(CallkeepLogs());
