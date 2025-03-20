@@ -26,8 +26,6 @@ class ProxyForegroundCallkeepApi(
 
     override fun setUp(options: POptions, callback: (Result<Unit>) -> Unit) {
         if (!isSetup) {
-            StorageDelegate.initIncomingPath(context, options.android.incomingPath)
-            StorageDelegate.initRootPath(context, options.android.rootPath)
             StorageDelegate.initRingtonePath(context, options.android.ringtoneSound)
             StorageDelegate.initRingbackPath(context, options.android.ringbackSound)
             isSetup = true

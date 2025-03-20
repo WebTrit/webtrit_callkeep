@@ -292,25 +292,19 @@ data class PIOSOptions (
 
 /** Generated class from Pigeon that represents data sent in messages. */
 data class PAndroidOptions (
-  val incomingPath: String,
-  val rootPath: String,
   val ringtoneSound: String? = null,
   val ringbackSound: String? = null
 )
  {
   companion object {
     fun fromList(pigeonVar_list: List<Any?>): PAndroidOptions {
-      val incomingPath = pigeonVar_list[0] as String
-      val rootPath = pigeonVar_list[1] as String
-      val ringtoneSound = pigeonVar_list[2] as String?
-      val ringbackSound = pigeonVar_list[3] as String?
-      return PAndroidOptions(incomingPath, rootPath, ringtoneSound, ringbackSound)
+      val ringtoneSound = pigeonVar_list[0] as String?
+      val ringbackSound = pigeonVar_list[1] as String?
+      return PAndroidOptions(ringtoneSound, ringbackSound)
     }
   }
   fun toList(): List<Any?> {
     return listOf(
-      incomingPath,
-      rootPath,
       ringtoneSound,
       ringbackSound,
     )

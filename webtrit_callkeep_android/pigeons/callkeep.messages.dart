@@ -28,8 +28,6 @@ class PIOSOptions {
 }
 
 class PAndroidOptions {
-  late String incomingPath;
-  late String rootPath;
   late String? ringtoneSound;
   late String? ringbackSound;
 }

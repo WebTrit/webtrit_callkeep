@@ -34,8 +34,6 @@ class TelephonyForegroundCallkeepApi(
         if (!isSetup) {
             flutterDelegate.registerReceiver(context)
             Telecom.registerPhoneAccount(context)
-            StorageDelegate.initIncomingPath(context, options.android.incomingPath)
-            StorageDelegate.initRootPath(context, options.android.rootPath)
             StorageDelegate.initRingtonePath(context, options.android.ringtoneSound)
             StorageDelegate.initRingbackPath(context, options.android.ringbackSound)
 

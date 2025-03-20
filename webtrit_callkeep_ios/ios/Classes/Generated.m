@@ -189,23 +189,17 @@ static id GetNullableObjectAtIndex(NSArray *array, NSInteger key) {
 @end
 
 @implementation WTPAndroidOptions
-+ (instancetype)makeWithIncomingPath:(NSString *)incomingPath
-    rootPath:(NSString *)rootPath
-    ringtoneSound:(nullable NSString *)ringtoneSound
++ (instancetype)makeWithRingtoneSound:(nullable NSString *)ringtoneSound
     ringbackSound:(nullable NSString *)ringbackSound {
   WTPAndroidOptions* pigeonResult = [[WTPAndroidOptions alloc] init];
-  pigeonResult.incomingPath = incomingPath;
-  pigeonResult.rootPath = rootPath;
   pigeonResult.ringtoneSound = ringtoneSound;
   pigeonResult.ringbackSound = ringbackSound;
   return pigeonResult;
 }
 + (WTPAndroidOptions *)fromList:(NSArray *)list {
   WTPAndroidOptions *pigeonResult = [[WTPAndroidOptions alloc] init];
-  pigeonResult.incomingPath = GetNullableObjectAtIndex(list, 0);
-  pigeonResult.rootPath = GetNullableObjectAtIndex(list, 1);
-  pigeonResult.ringtoneSound = GetNullableObjectAtIndex(list, 2);
-  pigeonResult.ringbackSound = GetNullableObjectAtIndex(list, 3);
+  pigeonResult.ringtoneSound = GetNullableObjectAtIndex(list, 0);
+  pigeonResult.ringbackSound = GetNullableObjectAtIndex(list, 1);
   return pigeonResult;
 }
 + (nullable WTPAndroidOptions *)nullableFromList:(NSArray *)list {
@@ -213,8 +207,6 @@ static id GetNullableObjectAtIndex(NSArray *array, NSInteger key) {
 }
 - (NSArray *)toList {
   return @[
-    self.incomingPath ?: [NSNull null],
-    self.rootPath ?: [NSNull null],
     self.ringtoneSound ?: [NSNull null],
     self.ringbackSound ?: [NSNull null],
   ];

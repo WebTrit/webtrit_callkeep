@@ -56,10 +56,7 @@ class TestsCubit extends Cubit<TestsState> implements CallkeepDelegate, Callkeep
           maximumCallsPerCallGroup: 1,
           supportedHandleTypes: {CallkeepHandleType.number},
         ),
-        android: CallkeepAndroidOptions(
-          incomingPath: initialCallRout,
-          rootPath: initialMainRout,
-        ),
+        android: CallkeepAndroidOptions(),
       ));
       emit(state.update.addAction(action: "Setup success"));
     } catch (error) {

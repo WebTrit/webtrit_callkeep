@@ -217,15 +217,9 @@ class PIOSOptions {
 
 class PAndroidOptions {
   PAndroidOptions({
-    required this.incomingPath,
-    required this.rootPath,
     this.ringtoneSound,
     this.ringbackSound,
   });
-
-  String incomingPath;
-
-  String rootPath;
 
   String? ringtoneSound;
 
@@ -233,8 +227,6 @@ class PAndroidOptions {
 
   Object encode() {
     return <Object?>[
-      incomingPath,
-      rootPath,
       ringtoneSound,
       ringbackSound,
     ];
@@ -243,10 +235,8 @@ class PAndroidOptions {
   static PAndroidOptions decode(Object result) {
     result as List<Object?>;
     return PAndroidOptions(
-      incomingPath: result[0]! as String,
-      rootPath: result[1]! as String,
-      ringtoneSound: result[2] as String?,
-      ringbackSound: result[3] as String?,
+      ringtoneSound: result[0] as String?,
+      ringbackSound: result[1] as String?,
     );
   }
 }
