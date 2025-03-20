@@ -7,15 +7,6 @@ import com.webtrit.callkeep.models.CallMetadata
  * Implementations of this interface handle incoming calls, call answers, hang-ups, and call termination.
  */
 interface BackgroundCallkeepApi {
-//    /**
-//     * Registers a broadcast receiver to listen for events.
-//     */
-//    fun register()
-//
-//    /**
-//     * Registers a broadcast receiver to listen for events.
-//     */
-//    fun unregister()
 
     /**
      * Create an incoming call.

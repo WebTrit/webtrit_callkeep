@@ -10,7 +10,6 @@ import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 import com.webtrit.callkeep.models.CallMetadata
 
 import com.webtrit.callkeep.common.Log
-import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 
 /**
  * This class provides an API for handling telephony-related operations in the background.
