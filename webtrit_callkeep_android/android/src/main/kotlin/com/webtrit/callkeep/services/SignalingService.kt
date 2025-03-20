@@ -25,14 +25,12 @@ import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.helpers.FlutterEngineHelper
 import com.webtrit.callkeep.common.helpers.PermissionsHelper
-import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.common.helpers.startForegroundServiceCompat
 import com.webtrit.callkeep.common.helpers.toPCallkeepLifecycleType
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.CallPaths
 import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
-import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 import com.webtrit.callkeep.workers.ForegroundCallWorker
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -61,8 +59,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         ContextHolder.init(applicationContext)
 
         notificationBuilder = ForegroundCallNotificationBuilder()
-
-
+        
         startForegroundService()
 
         val callbackDispatcher = StorageDelegate.getCallbackDispatcher(applicationContext)
@@ -135,7 +132,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
 
         when (action) {
             ForegroundCallServiceEnums.INIT.action -> runService()
-            ForegroundCallServiceEnums.START.action -> wakeUp(data)
+            ForegroundCallServiceEnums.START.action -> wakeUp()
             ForegroundCallServiceEnums.STOP.action -> tearDown()
             ForegroundCallServiceEnums.CHANGE_LIFECYCLE.action -> changedLifecycleHandler(data)
             ForegroundCallServiceEnums.DECLINE.action -> connectionService.hungUp(CallMetadata.fromBundle(data!!)) {}
@@ -154,9 +151,9 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
     /**
      * Wakes up the service and sends a broadcast to synchronize call status.
      */
-    private fun wakeUp(data: Bundle?) {
+    private fun wakeUp() {
         runService()
-        wakeUpBackgroundHandler(data)
+        wakeUpBackgroundHandler()
     }
 
     /**
@@ -183,9 +180,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         connectionService = CallkeepApiProvider.getBackgroundCallkeepApi(baseContext, _isolateCalkeepFlutterApi!!)
     }
 
-    private fun wakeUpBackgroundHandler(
-        extras: Bundle?
-    ) {
+    private fun wakeUpBackgroundHandler() {
         Log.d(TAG, "onWakeUpBackgroundHandler")
 
         val lifecycle = ActivityHolder.getActivityState()
@@ -210,7 +205,6 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
 
     @Suppress("DEPRECATION")
     private fun changedLifecycleHandler(bundle: Bundle?) {
-        val lockScreen = Platform.isLockScreen(baseContext)
         val event = bundle?.getSerializable(PARAM_CHANGE_LIFECYCLE_EVENT) as Lifecycle.Event?
 
         Log.d(TAG, "changedLifecycleHandler event: $event")
