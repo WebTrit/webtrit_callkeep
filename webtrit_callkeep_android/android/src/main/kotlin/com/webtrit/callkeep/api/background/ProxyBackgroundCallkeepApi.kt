@@ -3,7 +3,6 @@ package com.webtrit.callkeep.api.background
 import android.content.Context
 
 import com.webtrit.callkeep.common.Log
-import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.models.CallMetadata
@@ -19,24 +18,9 @@ import com.webtrit.callkeep.managers.AudioManager
  */
 class ProxyBackgroundCallkeepApi(
     private val context: Context,
-    private val api: PDelegateBackgroundServiceFlutterApi,
 ) : BackgroundCallkeepApi {
     private val notificationManager = NotificationManager()
     private val audioManager = AudioManager(context)
-
-    /**
-     * Registers a broadcast receiver to listen for events.
-     */
-    override fun register() {
-        Log.d(TAG, "ProxyBackgroundCallkeepApi:register")
-    }
-
-    /**
-     * Unregisters a broadcast receiver to listen for events.
-     */
-    override fun unregister() {
-        Log.d(TAG, "ProxyBackgroundCallkeepApi:unregister")
-    }
 
     /**
      * Initiates an incoming call notification for the specified call metadata.

@@ -9,7 +9,6 @@ import android.os.Looper
 import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 import com.webtrit.callkeep.models.CallMetadata
 
-import TelephonyBackgroundCallkeepReceiver
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 
@@ -22,24 +21,7 @@ import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
  */
 class TelephonyBackgroundCallkeepApi(
     private val context: Context,
-    private val delegate: PDelegateBackgroundServiceFlutterApi,
 ) : BackgroundCallkeepApi {
-    private val flutterDelegate = TelephonyBackgroundCallkeepReceiver(delegate, context)
-
-    /**
-     * Initializes the TelephonyBackgroundCallkeepApi by registering the FlutterDelegate receiver.
-     */
-    override fun register() {
-        flutterDelegate.registerReceiver()
-    }
-
-    /**
-     * Unregisters a broadcast receiver to listen for events.
-     */
-    override fun unregister() {
-        Log.d(TAG, "TelephonyBackgroundCallkeepApi:unregister")
-        flutterDelegate.unregisterReceiver()
-    }
 
     /**
      * Initiates an incoming call with the specified call metadata.

@@ -1,9 +1,7 @@
 package com.webtrit.callkeep.api
 
-import android.app.Activity
 import android.content.Context
 
-import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.PDelegateFlutterApi
 import com.webtrit.callkeep.api.background.BackgroundCallkeepApi
 import com.webtrit.callkeep.api.background.ProxyBackgroundCallkeepApi
@@ -26,13 +24,12 @@ object CallkeepApiProvider {
      * @return The background Callkeep API instance.
      */
     fun getBackgroundCallkeepApi(
-        activity: Context,
-        api: PDelegateBackgroundServiceFlutterApi
+        activity: Context
     ): BackgroundCallkeepApi {
         return if (TelephonyHelper(activity).isAvailableTelephony()) {
-            TelephonyBackgroundCallkeepApi(activity, api)
+            TelephonyBackgroundCallkeepApi(activity)
         } else {
-            ProxyBackgroundCallkeepApi(activity, api)
+            ProxyBackgroundCallkeepApi(activity)
         }
     }
 

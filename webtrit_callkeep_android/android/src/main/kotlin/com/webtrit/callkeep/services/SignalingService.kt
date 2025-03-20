@@ -175,7 +175,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
 
         isRunning = true
 
-        connectionService = CallkeepApiProvider.getBackgroundCallkeepApi(baseContext, _isolateCalkeepFlutterApi!!)
+        connectionService = CallkeepApiProvider.getBackgroundCallkeepApi(baseContext)
     }
 
     private fun wakeUpBackgroundHandler() {
