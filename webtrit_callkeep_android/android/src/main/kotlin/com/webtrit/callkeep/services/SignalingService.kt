@@ -31,7 +31,6 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
 import com.webtrit.callkeep.workers.ForegroundCallWorker
-import java.util.concurrent.atomic.AtomicBoolean
 
 class SignalingService : Service(), PHostBackgroundServiceApi {
     private lateinit var notificationBuilder: ForegroundCallNotificationBuilder
@@ -119,7 +118,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         stopForeground(STOP_FOREGROUND_REMOVE)
         flutterEngineHelper.detachAndDestroyEngine()
 
-        isRunning.set(false)
+        isRunning = false
         super.onDestroy()
     }
 
@@ -174,7 +173,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
 
         flutterEngineHelper.startOrAttachEngine()
 
-        isRunning.set(true)
+        isRunning = true
 
         connectionService = CallkeepApiProvider.getBackgroundCallkeepApi(baseContext, _isolateCalkeepFlutterApi!!)
     }
@@ -260,8 +259,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         private const val PARAM_JSON_DATA = "PARAM_JSON_DATA"
         private const val PARAM_CHANGE_LIFECYCLE_EVENT = "PARAM_CHANGE_LIFECYCLE_EVENT"
 
-        @JvmStatic
-        val isRunning = AtomicBoolean(false)
+        var isRunning = false
 
         /**
          * Communicates with the service by starting it with the specified action and metadata.

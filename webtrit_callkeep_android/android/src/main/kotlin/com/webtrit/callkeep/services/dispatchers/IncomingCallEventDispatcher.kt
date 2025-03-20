@@ -22,7 +22,7 @@ object ForegroundCallAdapter : IncomingCallServiceContract {
 
 object IncomingCallAdapter : IncomingCallServiceContract {
     override fun answerIncomingCall(context: Context, metadata: CallMetadata) {
-        if (SignalingService.isRunning.get()) {
+        if (SignalingService.isRunning) {
             SignalingService.answerCall(context, metadata)
         } else {
             IncomingCallService.answer(context, metadata)
@@ -30,7 +30,7 @@ object IncomingCallAdapter : IncomingCallServiceContract {
     }
 
     override fun declineIncomingCall(context: Context, metadata: CallMetadata) {
-        if (SignalingService.isRunning.get()) {
+        if (SignalingService.isRunning) {
             SignalingService.endCall(context, metadata)
         } else {
             IncomingCallService.hangup(context, metadata)
@@ -40,7 +40,7 @@ object IncomingCallAdapter : IncomingCallServiceContract {
 
 object IncomingCallEventDispatcher {
     private fun getActiveService(): IncomingCallServiceContract {
-        return if (SignalingService.isRunning.get()) {
+        return if (SignalingService.isRunning) {
             ForegroundCallAdapter
         } else {
             IncomingCallAdapter

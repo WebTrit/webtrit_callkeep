@@ -119,8 +119,18 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
             incomingCallNotificationBuilder.apply { setCallMetaData(metadata) }.build()
         )
 
+
+        val isolate = IsolateSelector.getIsolateType();
+        val signalingServiceRunning = SignalingService.isRunning
+
+        Log.d(
+            TAG,
+            "Incoming call launched: $metadata in $isolate with signaling service running: $signalingServiceRunning"
+        )
         // Launch push notifications callbacks and handling only if signaling service is not running
-        if (IsolateSelector.getIsolateType() == IsolateType.BACKGROUND && SignalingService.isRunning.get().not()) {
+        if (isolate == IsolateType.BACKGROUND && !signalingServiceRunning) {
+            Log.d(TAG, "Launching isolate: $metadata")
+
             startIncomingCallIsolate()
 
             isolatePushNotificationFlutterApi?.onNotificationSync(
@@ -134,6 +144,9 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
                     Log.e(TAG, "Failed to synchronize background call status")
                 }
             }
+        } else {
+            Log.d(TAG, "Skipped launching isolate: $metadata")
+
         }
     }
 

@@ -124,7 +124,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         Log.d(TAG, "onStateChanged: Lifecycle event received - $event")
         ActivityHolder.setLifecycle(event)
 
-        if (SignalingService.isRunning.get()) SignalingService.changeLifecycle(context, event)
+        if (SignalingService.isRunning) SignalingService.changeLifecycle(context, event)
     }
 
     companion object {
