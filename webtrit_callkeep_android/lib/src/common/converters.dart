@@ -302,10 +302,6 @@ extension PCallkeepServiceStatusConverter on PCallkeepServiceStatus {
   CallkeepServiceStatus toCallkeep() {
     return CallkeepServiceStatus(
       lifecycle: lifecycle.toCallkeep(),
-      lockScreen: lockScreen,
-      activityReady: activityReady,
-      activeCalls: activeCalls,
-      data: jsonDecode(jsonData) as Map<String, dynamic>,
     );
   }
 }
@@ -314,10 +310,6 @@ extension CallkeepServiceStatusConverter on CallkeepServiceStatus {
   PCallkeepServiceStatus toPigeon() {
     return PCallkeepServiceStatus(
       lifecycle: lifecycle.toPigeon(),
-      lockScreen: lockScreen,
-      activityReady: activityReady,
-      activeCalls: activeCalls,
-      jsonData: jsonEncode(data),
     );
   }
 }

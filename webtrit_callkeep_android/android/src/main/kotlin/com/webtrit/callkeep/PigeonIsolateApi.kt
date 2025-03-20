@@ -32,17 +32,12 @@ class PigeonIsolateApi(
         androidNotificationDescription: String?,
         callback: (Result<Unit>) -> Unit
     ) {
-        try {
-            val config = StorageDelegate.getForegroundCallServiceConfiguration(context).copy(
-                androidNotificationName = androidNotificationName,
-                androidNotificationDescription = androidNotificationDescription
-            )
-            StorageDelegate.setServiceConfiguration(context, config)
 
-            callback(Result.success(Unit))
-        } catch (e: Exception) {
-            callback(Result.failure(e))
-        }
+        StorageDelegate.SignalingService.setNotificationTitle(context, androidNotificationName)
+        StorageDelegate.SignalingService.setNotificationDescription(context, androidNotificationDescription)
+
+        callback(Result.success(Unit))
+
     }
 
     override fun initializePushNotificationCallback(

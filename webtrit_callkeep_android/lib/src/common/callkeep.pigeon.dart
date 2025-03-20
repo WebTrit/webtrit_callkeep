@@ -369,29 +369,13 @@ class PCallRequestError {
 class PCallkeepServiceStatus {
   PCallkeepServiceStatus({
     required this.lifecycle,
-    required this.lockScreen,
-    required this.activityReady,
-    required this.activeCalls,
-    required this.jsonData,
   });
 
   PCallkeepLifecycleType lifecycle;
 
-  bool lockScreen;
-
-  bool activityReady;
-
-  bool activeCalls;
-
-  String jsonData;
-
   Object encode() {
     return <Object?>[
       lifecycle,
-      lockScreen,
-      activityReady,
-      activeCalls,
-      jsonData,
     ];
   }
 
@@ -399,10 +383,6 @@ class PCallkeepServiceStatus {
     result as List<Object?>;
     return PCallkeepServiceStatus(
       lifecycle: result[0]! as PCallkeepLifecycleType,
-      lockScreen: result[1]! as bool,
-      activityReady: result[2]! as bool,
-      activeCalls: result[3]! as bool,
-      jsonData: result[4]! as String,
     );
   }
 }

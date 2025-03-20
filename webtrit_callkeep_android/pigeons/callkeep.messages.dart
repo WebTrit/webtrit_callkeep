@@ -140,10 +140,6 @@ enum PCallkeepPushNotificationSyncStatus {
 
 class PCallkeepServiceStatus {
   late PCallkeepLifecycleType lifecycle;
-  late bool lockScreen;
-  late bool activityReady;
-  late bool activeCalls;
-  late String jsonData;
 }
 
 enum PCallkeepConnectionState {

@@ -415,30 +415,18 @@ data class PCallRequestError (
 
 /** Generated class from Pigeon that represents data sent in messages. */
 data class PCallkeepServiceStatus (
-  val lifecycle: PCallkeepLifecycleType,
-  val lockScreen: Boolean,
-  val activityReady: Boolean,
-  val activeCalls: Boolean,
-  val jsonData: String
+  val lifecycle: PCallkeepLifecycleType
 )
  {
   companion object {
     fun fromList(pigeonVar_list: List<Any?>): PCallkeepServiceStatus {
       val lifecycle = pigeonVar_list[0] as PCallkeepLifecycleType
-      val lockScreen = pigeonVar_list[1] as Boolean
-      val activityReady = pigeonVar_list[2] as Boolean
-      val activeCalls = pigeonVar_list[3] as Boolean
-      val jsonData = pigeonVar_list[4] as String
-      return PCallkeepServiceStatus(lifecycle, lockScreen, activityReady, activeCalls, jsonData)
+      return PCallkeepServiceStatus(lifecycle)
     }
   }
   fun toList(): List<Any?> {
     return listOf(
       lifecycle,
-      lockScreen,
-      activityReady,
-      activeCalls,
-      jsonData,
     )
   }
 }

@@ -40,7 +40,6 @@ class ForegroundCallNotificationBuilder() : NotificationBuilder() {
         return notification
     }
 
-
     companion object {
         const val FOREGROUND_CALL_NOTIFICATION_ID = 3 // R.integer.notification_incoming_call_id
     }

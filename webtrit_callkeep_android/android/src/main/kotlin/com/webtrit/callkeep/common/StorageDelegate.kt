@@ -2,8 +2,8 @@ package com.webtrit.callkeep.common
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.helpers.JsonHelper
-import com.webtrit.callkeep.models.ForegroundCallServiceConfig
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -16,7 +16,6 @@ object StorageDelegate {
     private const val FLUTTER_ROOT_INITIAL_ROUTE = "FLUTTER_ROOT_INITIAL_ROUTE"
     private const val RINGTONE_PATH_KEY = "RINGTONE_PATH_KEY"
     private const val RINGBACK_PATH_KEY = "RINGBACK_PATH_KEY"
-    private const val SERVICE_CONFIGURATION_KEY = "SERVICE_CONFIGURATION_KEY"
     private const val CALLBACK_DISPATCHER_KEY = "callbackDispatcher"
     private const val ON_START_HANDLER_KEY = "onStartHandler"
     private const val ON_CHANGED_LIFECYCLE_HANDLER_KEY = "onChangedLifecycleHandler"
@@ -114,20 +113,6 @@ object StorageDelegate {
         return sharedPreferences
     }
 
-    fun setServiceConfiguration(context: Context, config: ForegroundCallServiceConfig) {
-        val jsonString = Json.encodeToString(config)
-        getSharedPreferences(context)?.edit()?.apply {
-            putString(SERVICE_CONFIGURATION_KEY, jsonString)
-            apply()
-        }
-    }
-
-    fun getForegroundCallServiceConfiguration(context: Context): ForegroundCallServiceConfig {
-        val jsonString = getSharedPreferences(context)?.getString(SERVICE_CONFIGURATION_KEY, null)
-        return jsonString?.let {
-            JsonHelper.json.decodeFromString<ForegroundCallServiceConfig>(it)
-        } ?: ForegroundCallServiceConfig(null, null)
-    }
 
     fun setCallbackDispatcher(context: Context, value: Long) {
         getSharedPreferences(context)?.edit()?.apply {
@@ -177,7 +162,15 @@ object StorageDelegate {
             ?: throw Exception("OnNotificationSync not found")
     }
 
+
+//    data class ForegroundCallServiceConfig(
+//        val androidNotificationName: String?,
+//        val androidNotificationDescription: String?
+
     object SignalingService {
+        private const val SS_NOTIFICATION_TITLE_KEY = "SS_NOTIFICATION_TITLE_KEY"
+        private const val SS_NOTIFICATION_DESCRIPTION_KEY = "SS_NOTIFICATION_DESCRIPTION_KEY"
+
         fun setRunning(context: Context, value: Boolean) {
             getSharedPreferences(context)?.edit()?.apply {
                 putBoolean(SIGNALING_SERVICE_RUNNING, value)
@@ -187,6 +180,32 @@ object StorageDelegate {
 
         fun isRunning(context: Context): Boolean {
             return getSharedPreferences(context)?.getBoolean(SIGNALING_SERVICE_RUNNING, false) == true
+        }
+
+        fun setNotificationTitle(context: Context, value: String?) {
+            getSharedPreferences(context)?.edit()?.apply {
+                putString(SS_NOTIFICATION_TITLE_KEY, value)
+                apply()
+            }
+        }
+
+        fun setNotificationDescription(context: Context, value: String?) {
+            getSharedPreferences(context)?.edit()?.apply {
+                putString(SS_NOTIFICATION_DESCRIPTION_KEY, value)
+                apply()
+            }
+        }
+
+        fun getNotificationTitle(context: Context): String {
+            val default = context.getString(R.string.signaling_service_notification_name)
+            return getSharedPreferences(context)?.getString(SS_NOTIFICATION_TITLE_KEY, default) ?: default
+        }
+
+        fun getNotificationDescription(context: Context): String {
+            val default = context.getString(R.string.signaling_service_notification_description)
+            return getSharedPreferences(context)?.getString(
+                SS_NOTIFICATION_DESCRIPTION_KEY, default
+            ) ?: default
         }
     }
 }

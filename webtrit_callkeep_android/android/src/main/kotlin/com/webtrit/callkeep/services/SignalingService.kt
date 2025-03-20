@@ -30,7 +30,6 @@ import com.webtrit.callkeep.common.helpers.startForegroundServiceCompat
 import com.webtrit.callkeep.common.helpers.toPCallkeepLifecycleType
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.CallPaths
-import com.webtrit.callkeep.models.ForegroundCallServiceConfig
 import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
 import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
@@ -63,9 +62,8 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
 
         notificationBuilder = ForegroundCallNotificationBuilder()
 
-        val config = StorageDelegate.getForegroundCallServiceConfiguration(applicationContext)
 
-        startForegroundService(config)
+        startForegroundService()
 
         val callbackDispatcher = StorageDelegate.getCallbackDispatcher(applicationContext)
         flutterEngineHelper = FlutterEngineHelper(applicationContext, callbackDispatcher, this)
@@ -74,10 +72,10 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
     /**
      * Starts the service in the foreground with a notification.
      */
-    private fun startForegroundService(config: ForegroundCallServiceConfig) {
+    private fun startForegroundService() {
         Log.d(TAG, "Starting foreground service")
-        notificationBuilder.setTitle(config.androidNotificationName!!)
-        notificationBuilder.setContent(config.androidNotificationDescription!!)
+        notificationBuilder.setTitle(StorageDelegate.SignalingService.getNotificationTitle(applicationContext))
+        notificationBuilder.setContent(StorageDelegate.SignalingService.getNotificationDescription(applicationContext))
         val notification = notificationBuilder.build()
 
         if (PermissionsHelper(baseContext).hasNotificationPermission()) {
@@ -95,10 +93,10 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
     /**
      * Ensures that the notification is visible. If not, it restarts the foreground service.
      */
-    private fun ensureNotification(config: ForegroundCallServiceConfig) {
+    private fun ensureNotification() {
         if (!isNotificationVisible()) {
             Log.d(TAG, "Notification not visible, restarting foreground service")
-            startForegroundService(config)
+            startForegroundService()
         }
     }
 
@@ -133,13 +131,11 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         val action = intent?.action ?: ForegroundCallServiceEnums.INIT.action
         val data = intent?.extras
 
-        val config = StorageDelegate.getForegroundCallServiceConfiguration(applicationContext)
-
-        ensureNotification(config)
+        ensureNotification()
 
         when (action) {
             ForegroundCallServiceEnums.INIT.action -> runService()
-            ForegroundCallServiceEnums.START.action -> wakeUp(config, data)
+            ForegroundCallServiceEnums.START.action -> wakeUp(data)
             ForegroundCallServiceEnums.STOP.action -> tearDown()
             ForegroundCallServiceEnums.CHANGE_LIFECYCLE.action -> changedLifecycleHandler(data)
             ForegroundCallServiceEnums.DECLINE.action -> connectionService.hungUp(CallMetadata.fromBundle(data!!)) {}
@@ -158,7 +154,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
     /**
      * Wakes up the service and sends a broadcast to synchronize call status.
      */
-    private fun wakeUp(config: ForegroundCallServiceConfig, data: Bundle?) {
+    private fun wakeUp(data: Bundle?) {
         runService()
         wakeUpBackgroundHandler(data)
     }
@@ -193,21 +189,13 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         Log.d(TAG, "onWakeUpBackgroundHandler")
 
         val lifecycle = ActivityHolder.getActivityState()
-        val lockScreen = Platform.isLockScreen(baseContext)
         val pLifecycle = lifecycle.toPCallkeepLifecycleType()
 
         val wakeUpHandler = StorageDelegate.getOnStartHandler(baseContext)
 
-        val jsonData = extras?.getString(PARAM_JSON_DATA) ?: "{}"
-
         _isolatePushNotificationFlutterApi?.onWakeUpBackgroundHandler(
             wakeUpHandler, PCallkeepServiceStatus(
                 pLifecycle,
-                lockScreen,
-                // TODO: Remove activityReady from the status
-                false,
-                PhoneConnectionService.connectionManager.isExistsActiveConnection(),
-                jsonData
             )
         ) { response ->
             response.onSuccess {
@@ -233,12 +221,6 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         _isolatePushNotificationFlutterApi?.onApplicationStatusChanged(
             onChangedLifecycleHandler, PCallkeepServiceStatus(
                 lifecycle,
-                lockScreen,
-                // TODO: Remove activityReady from the status
-                false,
-                // TODO: Remove isExistsActiveConnection from the status
-                PhoneConnectionService.connectionManager.isExistsActiveConnection(),
-                "{}",
             )
         ) { response ->
             response.onSuccess {
@@ -307,9 +289,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         }
 
         fun start(context: Context, data: String? = null) = communicate(
-            context,
-            ForegroundCallServiceEnums.START,
-            data?.let { Bundle().apply { putString(PARAM_JSON_DATA, it) } })
+            context, ForegroundCallServiceEnums.START, data?.let { Bundle().apply { putString(PARAM_JSON_DATA, it) } })
 
         fun changeLifecycle(context: Context, event: Lifecycle.Event) = communicate(
             context,

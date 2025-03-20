@@ -13,4 +13,6 @@
     <string name="push_notification_missed_call_channel_description">Notification of missed calls</string>
     <string name="push_notification_foreground_call_service_title">Ongoing call</string>
     <string name="push_notification_foreground_call_service_description">This service keeps the call active in the background</string>
+    <string name="signaling_service_notification_name">Inbound Calls</string>
+    <string name="signaling_service_notification_description">This is required to receive incoming calls</string>
 </resources>
