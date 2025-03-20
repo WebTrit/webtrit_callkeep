@@ -2,7 +2,6 @@ package com.webtrit.callkeep
 
 import android.content.Context
 import android.util.Log
-import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.services.SignalingService
 
@@ -59,17 +58,6 @@ class PigeonIsolateApi(
 
         SignalingService.stop(context)
         callback(Result.success(Unit))
-    }
-
-    override fun finishActivity(callback: (Result<Unit>) -> Unit) {
-        Log.i(TAG, "finishActivity")
-        try {
-            ActivityHolder.finish()
-
-            callback(Result.success(Unit))
-        } catch (e: Exception) {
-            callback(Result.failure(e))
-        }
     }
 
     companion object {

@@ -256,13 +256,6 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<dynamic> finishActivity({
-    bool forceCloseActivity = false,
-  }) {
-    return _isolateApi.finishActivity();
-  }
-
-  @override
   Future<void> initializeSignalingServiceCallback(
       {ForegroundStartServiceHandle? onStart, ForegroundChangeLifecycleHandle? onChangedLifecycle}) async {
     // Initialization callback handle for the isolate plugin only once;

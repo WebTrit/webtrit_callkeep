@@ -235,9 +235,6 @@ abstract class PHostIsolateApi {
 
   @async
   void stopService();
-
-  @async
-  void finishActivity();
 }
 
 @HostApi()

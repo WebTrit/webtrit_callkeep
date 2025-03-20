@@ -276,17 +276,6 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('stopService() is not implemented');
   }
 
-  /// Finishes the current activity.
-  ///
-  /// This method is used to terminate or finish the current activity associated
-  /// with the service. Typically used when the activity is no longer needed or should
-  /// be cleaned up.
-  ///
-  /// Throws an [UnimplementedError] if this method is not yet implemented.
-  void finishActivity() {
-    throw UnimplementedError('finishActivity() is not implemented');
-  }
-
   /// Play the ringback sound.
   /// Returns [Future] that resolves on sound was successfully played.
   Future<void> playRingbackSound() {
