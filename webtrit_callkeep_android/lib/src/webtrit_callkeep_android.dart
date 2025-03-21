@@ -18,10 +18,13 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   final _backgroundSignalingIsolateBootstrapApi = PHostBackgroundSignalingIsolateBootstrapApi();
   final _backgroundPushNotificationIsolateBootstrapApi = PHostBackgroundPushNotificationIsolateBootstrapApi();
 
+  // APIs for working with the background service isolates.
+  final _backgroundSignalingIsolateApi = PHostBackgroundSignalingIsolateApi();
+  final _backgroundPushNotificationIsolateApi = PHostBackgroundPushNotificationIsolateApi();
+
   final _pushRegistryApi = PPushRegistryHostApi();
   final _api = PHostApi();
 
-  final _backgroundServiceApi = PHostBackgroundServiceApi();
   final _soundApi = PHostSoundApi();
   final _connectionsApi = PHostConnectionsApi();
 
@@ -204,33 +207,6 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<dynamic> endAllBackgroundCalls() {
-    return _backgroundServiceApi.endAllCalls();
-  }
-
-  @override
-  Future<dynamic> endBackgroundCall(
-    String callId,
-  ) {
-    return _backgroundServiceApi.endCall(callId);
-  }
-
-  @override
-  Future<dynamic> incomingCall(
-    String callId,
-    CallkeepHandle handle,
-    String? displayName,
-    bool hasVideo,
-  ) {
-    return _backgroundServiceApi.incomingCall(
-      callId,
-      handle.toPigeon(),
-      displayName,
-      hasVideo,
-    );
-  }
-
-  @override
   Future<CallkeepSpecialPermissionStatus> getFullScreenIntentPermissionStatus() {
     return _permissionsApi.getFullScreenIntentPermissionStatus().then((value) => value.toCallkeep());
   }
@@ -246,20 +222,35 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<dynamic> startService({
-    Map<String, dynamic> data = const {},
-  }) {
-    final jsonData = jsonEncode(data);
-    return _backgroundSignalingIsolateBootstrapApi.startService(jsonData: jsonData);
+  Future<void> playRingbackSound() {
+    return _soundApi.playRingbackSound();
   }
 
   @override
-  Future<dynamic> stopService() {
-    return _backgroundSignalingIsolateBootstrapApi.stopService();
+  Future<void> stopRingbackSound() {
+    return _soundApi.stopRingbackSound();
   }
 
   @override
-  Future<void> initializeSignalingServiceCallback(
+  Future<CallkeepConnection?> getConnection(String callId) async {
+    return _connectionsApi.getConnection(callId).then((value) => value?.toCallkeep());
+  }
+
+  @override
+  Future<List<CallkeepConnection>> getConnections() async {
+    return _connectionsApi.getConnections().then((value) => value.map((it) => it.toCallkeep()).toList());
+  }
+
+  @override
+  Future<void> updateActivitySignalingStatus(CallkeepSignalingStatus status) {
+    return _connectionsApi.updateActivitySignalingStatus(status.toPigeon());
+  }
+
+// Android background signaling service
+// ------------------------------------------------------------------------------------------------
+
+  @override
+  Future<void> initializeBackgroundSignalingServiceCallback(
       {ForegroundStartServiceHandle? onStart, ForegroundChangeLifecycleHandle? onChangedLifecycle}) async {
     // Initialization callback handle for the isolate plugin only once;
     _isolatePluginCallbackHandle = _isolatePluginCallbackHandle ??
@@ -289,17 +280,61 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<CallkeepIncomingCallError?> reportNewPushNotificationIncomingCall(
+  Future<void> configureBackgroundSignalingService({
+    String? androidNotificationName,
+    String? androidNotificationDescription,
+  }) async {
+    await _backgroundSignalingIsolateBootstrapApi.configureSignalingService(
+      androidNotificationName: androidNotificationName,
+      androidNotificationDescription: androidNotificationDescription,
+    );
+  }
+
+  @override
+  Future<dynamic> startBackgroundSignalingService({
+    Map<String, dynamic> data = const {},
+  }) {
+    final jsonData = jsonEncode(data);
+    return _backgroundSignalingIsolateBootstrapApi.startService(jsonData: jsonData);
+  }
+
+  @override
+  Future<dynamic> stopBackgroundSignalingService() {
+    return _backgroundSignalingIsolateBootstrapApi.stopService();
+  }
+
+  @override
+  Future<dynamic> incomingCallBackgroundSignalingService(
     String callId,
     CallkeepHandle handle,
     String? displayName,
     bool hasVideo,
   ) {
-    return _backgroundPushNotificationIsolateBootstrapApi
-        .reportNewIncomingCall(callId, handle.toPigeon(), displayName, hasVideo)
-        .then((value) => value?.value.toCallkeep());
+    return _backgroundSignalingIsolateApi.incomingCall(
+      callId,
+      handle.toPigeon(),
+      displayName,
+      hasVideo,
+    );
   }
 
+  @override
+  Future<dynamic> endCallsBackgroundSignalingService() {
+    return _backgroundSignalingIsolateApi.endAllCalls();
+  }
+
+  @override
+  Future<dynamic> endCallBackgroundSignalingService(
+    String callId,
+  ) {
+    return _backgroundSignalingIsolateApi.endCall(callId);
+  }
+
+// ------------------------------------------------------------------------------------------------
+// Android background signaling service
+
+// Android background push notification service
+// ------------------------------------------------------------------------------------------------
   @override
   Future<void> initializePushNotificationCallback(CallKeepPushNotificationSyncStatusHandle onNotificationSync) async {
     // Initialization callback handle for the isolate plugin only once;
@@ -322,40 +357,29 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<void> configureSignalingService({
-    String? androidNotificationName,
-    String? androidNotificationDescription,
-  }) async {
-    await _backgroundSignalingIsolateBootstrapApi.configureSignalingService(
-      androidNotificationName: androidNotificationName,
-      androidNotificationDescription: androidNotificationDescription,
-    );
+  Future<CallkeepIncomingCallError?> incomingCallPushNotificationService(
+    String callId,
+    CallkeepHandle handle,
+    String? displayName,
+    bool hasVideo,
+  ) {
+    return _backgroundPushNotificationIsolateBootstrapApi
+        .reportNewIncomingCall(callId, handle.toPigeon(), displayName, hasVideo)
+        .then((value) => value?.value.toCallkeep());
   }
 
   @override
-  Future<void> playRingbackSound() {
-    return _soundApi.playRingbackSound();
+  Future<dynamic> endCallsBackgroundPushNotificationService() {
+    return _backgroundPushNotificationIsolateApi.endAllCalls();
   }
 
   @override
-  Future<void> stopRingbackSound() {
-    return _soundApi.stopRingbackSound();
+  Future<dynamic> endCallBackgroundPushNotificationService(String callId) {
+    return _backgroundPushNotificationIsolateApi.endCall(callId);
   }
 
-  @override
-  Future<CallkeepConnection?> getConnection(String callId) async {
-    return _connectionsApi.getConnection(callId).then((value) => value?.toCallkeep());
-  }
-
-  @override
-  Future<List<CallkeepConnection>> getConnections() async {
-    return _connectionsApi.getConnections().then((value) => value.map((it) => it.toCallkeep()).toList());
-  }
-
-  @override
-  Future<void> updateActivitySignalingStatus(CallkeepSignalingStatus status) {
-    return _connectionsApi.updateActivitySignalingStatus(status.toPigeon());
-  }
+// ------------------------------------------------------------------------------------------------
+// Android background push notification service
 }
 
 class _CallkeepDelegateRelay implements PDelegateFlutterApi {

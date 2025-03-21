@@ -46,7 +46,7 @@ class CallkeepBackgroundService {
       return Future.value();
     }
 
-    return platform.initializeSignalingServiceCallback(
+    return platform.initializeBackgroundSignalingServiceCallback(
       onStart: onStart,
       onChangedLifecycle: onChangedLifecycle,
     );
@@ -73,7 +73,7 @@ class CallkeepBackgroundService {
       return Future.value();
     }
 
-    return platform.configureSignalingService(
+    return platform.configureBackgroundSignalingService(
       androidNotificationName: androidNotificationName,
       androidNotificationDescription: androidNotificationDescription,
     );
@@ -96,7 +96,7 @@ class CallkeepBackgroundService {
     if (!Platform.isAndroid) {
       return Future.value();
     }
-    return platform.startService(data: data);
+    return platform.startBackgroundSignalingService(data: data);
   }
 
   /// Stops the running background service.
@@ -111,7 +111,7 @@ class CallkeepBackgroundService {
     if (!Platform.isAndroid) {
       return Future.value();
     }
-    platform.stopService();
+    platform.stopBackgroundSignalingService();
   }
 
   /// Sets the android service delegate.
@@ -141,7 +141,7 @@ class CallkeepBackgroundService {
       return Future.value();
     }
 
-    return platform.endBackgroundCall(callId);
+    return platform.endCallBackgroundSignalingService(callId);
   }
 
   /// Ends all ongoing calls and cancels all active notifications.
@@ -156,7 +156,7 @@ class CallkeepBackgroundService {
       return Future.value();
     }
 
-    return platform.endAllBackgroundCalls();
+    return platform.endCallsBackgroundSignalingService();
   }
 
   /// Initiates an incoming call notification
@@ -177,7 +177,7 @@ class CallkeepBackgroundService {
       return Future.value();
     }
 
-    return platform.incomingCall(callId, handle, displayName, hasVideo);
+    return platform.incomingCallBackgroundSignalingService(callId, handle, displayName, hasVideo);
   }
 }
 

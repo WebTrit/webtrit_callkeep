@@ -51,7 +51,10 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
 
         // Bootstrap isolate APIs
         PHostBackgroundSignalingIsolateBootstrapApi.setUp(messenger, BackgroundSignalingIsolateApi(context))
-        PHostBackgroundPushNotificationIsolateBootstrapApi.setUp(messenger, BackgroundPushNotificationIsolateApi(context))
+        PHostBackgroundPushNotificationIsolateBootstrapApi.setUp(
+            messenger,
+            BackgroundPushNotificationIsolateApi(context)
+        )
 
         PHostPermissionsApi.setUp(messenger, PermissionsApi(context))
         PHostSoundApi.setUp(messenger, SoundApi(context))
@@ -133,7 +136,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
             incomingCallService?.isolateCalkeepFlutterApi = delegate
             incomingCallService?.isolatePushNotificationFlutterApi = isolateDelegate
 
-            PHostBackgroundServiceApi.setUp(messenger, incomingCallService)
+            PHostBackgroundPushNotificationIsolateApi.setUp(messenger, incomingCallService)
         }
 
         if (binding.service is SignalingService) {
@@ -145,12 +148,12 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
             foregroundSocketService?.isolateCalkeepFlutterApi = delegate
             foregroundSocketService?.isolatePushNotificationFlutterApi = isolateDelegate
 
-            PHostBackgroundServiceApi.setUp(messenger, foregroundSocketService)
+            PHostBackgroundSignalingIsolateApi.setUp(messenger, foregroundSocketService)
         }
     }
 
     override fun onDetachedFromService() {
-        PHostBackgroundServiceApi.setUp(messenger, null)
+        PHostBackgroundSignalingIsolateApi.setUp(messenger, null)
         foregroundSocketService = null
         incomingCallService = null
 

@@ -19,18 +19,18 @@ class MockWebtritCallkeepPlatformInterfacePlatform with MockPlatformInterfaceMix
   }
 
   @override
-  Future<dynamic> endBackgroundCall(String callId) {
+  Future<dynamic> endCallBackgroundSignalingService(String callId) {
     _androidServiceDelegate?.performServiceEndCall(callId);
     return Future.value();
   }
 
   @override
-  Future<dynamic> endAllBackgroundCalls() {
+  Future<dynamic> endCallsBackgroundSignalingService() {
     return Future.value();
   }
 
   @override
-  Future<dynamic> incomingCall(
+  Future<dynamic> incomingCallBackgroundSignalingService(
     String callId,
     CallkeepHandle handle,
     String? displayName,

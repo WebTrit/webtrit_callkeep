@@ -76,10 +76,12 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
 
   /// Report a new incoming call with the given [callId], [handle], [displayName] and [hasVideo] flag.
   /// Returns [CallkeepIncomingCallError] if there is an error.
-  Future<CallkeepIncomingCallError?> reportNewIncomingCall(String callId,
-      CallkeepHandle handle,
-      String? displayName,
-      bool hasVideo,) {
+  Future<CallkeepIncomingCallError?> reportNewIncomingCall(
+    String callId,
+    CallkeepHandle handle,
+    String? displayName,
+    bool hasVideo,
+  ) {
     throw UnimplementedError('reportNewIncomingCall() has not been implemented.');
   }
 
@@ -98,11 +100,13 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   /// Report an update to the call metadata.
   /// The [displayName] of the call is required for reporting miseed call metadata.
   /// Returns [Future] that completes when the operation is done.
-  Future<void> reportUpdateCall(String callId,
-      CallkeepHandle? handle,
-      String? displayName,
-      bool? hasVideo,
-      bool? proximityEnabled,) {
+  Future<void> reportUpdateCall(
+    String callId,
+    CallkeepHandle? handle,
+    String? displayName,
+    bool? hasVideo,
+    bool? proximityEnabled,
+  ) {
     throw UnimplementedError('reportUpdateCall() has not been implemented.');
   }
 
@@ -116,11 +120,13 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
 
   /// Start a call with the given [callId], [handle], [displayNameOrContactIdentifier] and [video] flag.
   /// Returns [CallkeepCallRequestError] if there is an error.
-  Future<CallkeepCallRequestError?> startCall(String callId,
-      CallkeepHandle handle,
-      String? displayNameOrContactIdentifier,
-      bool video,
-      bool proximityEnabled,) {
+  Future<CallkeepCallRequestError?> startCall(
+    String callId,
+    CallkeepHandle handle,
+    String? displayNameOrContactIdentifier,
+    bool video,
+    bool proximityEnabled,
+  ) {
     throw UnimplementedError('startCall() has not been implemented.');
   }
 
@@ -160,34 +166,6 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('setSpeaker() has not been implemented.');
   }
 
-  /// Ends up an ongoing call and cancels the active notification if any
-  /// with the given [callId].
-  ///
-  /// Returns a [Future] that resolves after completition with unsafe result and may cause error in production.
-  // TODO: specify the return type
-  Future<dynamic> endBackgroundCall(String callId) {
-    throw UnimplementedError('hungUpAndroidService() has not been implemented.');
-  }
-
-  /// Ends all ongoing calls and cancels all active notifications.
-  /// Returns a [Future] that resolves after completition with unsafe result and may cause error in production.
-  /// This method is used to end all calls and cancel all active notifications.
-  Future<dynamic> endAllBackgroundCalls() {
-    throw UnimplementedError('endAllCalls() has not been implemented.');
-  }
-
-  /// Hangs up an ongoing call and cancels the active notification if any
-  /// with the given [callId].
-  ///
-  /// Returns a [Future] that resolves after completition with unsafe result and may cause error in production.
-  // TODO: specify the return type
-  Future<dynamic> incomingCall(String callId,
-      CallkeepHandle handle,
-      String? displayName,
-      bool hasVideo,) {
-    throw UnimplementedError('incomingCallAndroidService() has not been implemented.');
-  }
-
   // Permissions section
 
   /// Check if the permission for full screen intent is available.
@@ -204,77 +182,6 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   /// Check if the permission for battery optimization is available.
   Future<CallkeepAndroidBatteryMode> getBatteryMode() {
     throw UnimplementedError('getBatteryMode() has not been implemented.');
-  }
-
-  /// Sets up the  service callback with optional handlers and configurations.
-  ///
-  /// [onStart] - A callback triggered when the service starts in the foreground. It provides
-  /// the current service status and additional data..
-  ///
-  /// [onChangedLifecycle] - A callback triggered when there is a change in the lifecycle
-  /// of the foreground service (e.g., when the service is paused, resumed, or stopped). .
-  ///
-  /// Throws an [UnimplementedError] if this method is not yet implemented.
-  Future<void> initializeSignalingServiceCallback({
-    required ForegroundStartServiceHandle onStart,
-    required ForegroundChangeLifecycleHandle onChangedLifecycle,
-  }) {
-    throw UnimplementedError('setUpServiceCallback() is not implemented');
-  }
-
-  /// Sets up the Android background service with optional handlers and configurations.
-  ///
-  /// [androidNotificationName] - Specifies the name of the notification channel for Android
-  /// when the service runs in the background.
-  ///
-  /// [androidNotificationDescription] - Specifies the description of the notification channel
-  /// for Android..
-  ///
-  /// Throws an [UnimplementedError] if this method is not yet implemented.
-  Future<void> configureSignalingService({
-    String? androidNotificationName,
-    String? androidNotificationDescription,
-  }) {
-    throw UnimplementedError('setUpAndroidBackgroundService() is not implemented');
-  }
-
-  /// Initializes the push notification callback.
-  ///
-  /// This method sets up a callback function that gets triggered when there is a change
-  /// in the push notification sync status.
-  ///
-  /// [onNotificationSync] - A callback function that handles the push notification sync status change.
-  ///
-  /// Throws an [UnimplementedError] if this method is not yet implemented.
-  Future<void> initializePushNotificationCallback(CallKeepPushNotificationSyncStatusHandle onNotificationSync) {
-    throw UnimplementedError('initializePushNotificationCallback() is not implemented');
-  }
-
-  /// Report a new incoming call with the given [callId], [handle], [displayName] and [hasVideo] flag.
-  /// Returns [CallkeepIncomingCallError] if there is an error.
-  Future<CallkeepIncomingCallError?> reportNewPushNotificationIncomingCall(String callId,
-      CallkeepHandle handle,
-      String? displayName,
-      bool hasVideo,) {
-    throw UnimplementedError('reportNewIncomingCall() has not been implemented.');
-  }
-
-  /// Starts the background service with the provided [data].
-  /// Throws an [UnimplementedError] if this method is not yet implemented.
-  void startService({
-    Map<String, dynamic> data = const {},
-  }) {
-    throw UnimplementedError('startService() is not implemented');
-  }
-
-  /// Stops the background service.
-  ///
-  /// This method will stop the currently running background service. Once stopped,
-  /// the service will no longer be running until explicitly started again.
-  ///
-  /// Throws an [UnimplementedError] if this method is not yet implemented.
-  void stopService() {
-    throw UnimplementedError('stopService() is not implemented');
   }
 
   /// Play the ringback sound.
@@ -311,4 +218,113 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   Future<void> updateActivitySignalingStatus(CallkeepSignalingStatus status) {
     throw UnimplementedError('getConnection() has not been implemented.');
   }
+
+// Android background signaling service
+// ------------------------------------------------------------------------------------------------
+
+  /// Sets up the  service callback with optional handlers and configurations.
+  ///
+  /// [onStart] - A callback triggered when the service starts in the foreground. It provides
+  /// the current service status and additional data..
+  ///
+  /// [onChangedLifecycle] - A callback triggered when there is a change in the lifecycle
+  /// of the foreground service (e.g., when the service is paused, resumed, or stopped). .
+  ///
+  /// Throws an [UnimplementedError] if this method is not yet implemented.
+  Future<void> initializeBackgroundSignalingServiceCallback({
+    required ForegroundStartServiceHandle onStart,
+    required ForegroundChangeLifecycleHandle onChangedLifecycle,
+  }) {
+    throw UnimplementedError('setUpServiceCallback() is not implemented');
+  }
+
+  /// Sets up the Android background service with optional handlers and configurations.
+  ///
+  /// [androidNotificationName] - Specifies the name of the notification channel for Android
+  /// when the service runs in the background.
+  ///
+  /// [androidNotificationDescription] - Specifies the description of the notification channel
+  /// for Android..
+  ///
+  /// Throws an [UnimplementedError] if this method is not yet implemented.
+  Future<void> configureBackgroundSignalingService({
+    String? androidNotificationName,
+    String? androidNotificationDescription,
+  }) {
+    throw UnimplementedError('setUpAndroidBackgroundService() is not implemented');
+  }
+
+  /// Starts the background service with the provided [data].
+  /// Throws an [UnimplementedError] if this method is not yet implemented.
+  void startBackgroundSignalingService({
+    Map<String, dynamic> data = const {},
+  }) {
+    throw UnimplementedError('startService() is not implemented');
+  }
+
+  /// Stops the background service.
+  ///
+  /// This method will stop the currently running background service. Once stopped,
+  /// the service will no longer be running until explicitly started again.
+  ///
+  /// Throws an [UnimplementedError] if this method is not yet implemented.
+  void stopBackgroundSignalingService() {
+    throw UnimplementedError('stopService() is not implemented');
+  }
+
+  Future<dynamic> endCallsBackgroundSignalingService() {
+    throw UnimplementedError('endAllCalls() has not been implemented.');
+  }
+
+  Future<dynamic> endCallBackgroundSignalingService(String callId) {
+    throw UnimplementedError('hungUpAndroidService() has not been implemented.');
+  }
+
+  Future<dynamic> incomingCallBackgroundSignalingService(
+    String callId,
+    CallkeepHandle handle,
+    String? displayName,
+    bool hasVideo,
+  ) {
+    throw UnimplementedError('incomingCallAndroidService() has not been implemented.');
+  }
+
+// ------------------------------------------------------------------------------------------------
+// Android background signaling service
+
+// Android background push notification service
+// ------------------------------------------------------------------------------------------------
+  /// Initializes the push notification callback.
+  ///
+  /// This method sets up a callback function that gets triggered when there is a change
+  /// in the push notification sync status.
+  ///
+  /// [onNotificationSync] - A callback function that handles the push notification sync status change.
+  ///
+  /// Throws an [UnimplementedError] if this method is not yet implemented.
+  Future<void> initializePushNotificationCallback(CallKeepPushNotificationSyncStatusHandle onNotificationSync) {
+    throw UnimplementedError('initializePushNotificationCallback() is not implemented');
+  }
+
+  /// Report a new incoming call with the given [callId], [handle], [displayName] and [hasVideo] flag.
+  /// Returns [CallkeepIncomingCallError] if there is an error.
+  Future<CallkeepIncomingCallError?> incomingCallPushNotificationService(
+    String callId,
+    CallkeepHandle handle,
+    String? displayName,
+    bool hasVideo,
+  ) {
+    throw UnimplementedError('reportNewIncomingCall() has not been implemented.');
+  }
+
+  Future<dynamic> endCallsBackgroundPushNotificationService() {
+    throw UnimplementedError('endAllCalls() has not been implemented.');
+  }
+
+  Future<dynamic> endCallBackgroundPushNotificationService(String callId) {
+    throw UnimplementedError('hungUpAndroidService() has not been implemented.');
+  }
+
+// ------------------------------------------------------------------------------------------------
+// Android background push notification service
 }

@@ -12,7 +12,8 @@ import com.webtrit.callkeep.PCallkeepPushNotificationSyncStatus
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.PHandle
-import com.webtrit.callkeep.PHostBackgroundServiceApi
+import com.webtrit.callkeep.PHostBackgroundPushNotificationIsolateApi
+import com.webtrit.callkeep.PHostBackgroundSignalingIsolateApi
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.helpers.FlutterEngineHelper
@@ -35,7 +36,7 @@ enum class IncomingCallServiceEnums {
     LAUNCH, ANSWER, HANGUP;
 }
 
-class IncomingCallService : Service(), PHostBackgroundServiceApi {
+class IncomingCallService : Service(), PHostBackgroundPushNotificationIsolateApi {
     private val incomingCallNotificationBuilder by lazy { IncomingCallNotificationBuilder() }
 
     private var flutterEngineHelper: FlutterEngineHelper? = null
@@ -166,12 +167,6 @@ class IncomingCallService : Service(), PHostBackgroundServiceApi {
         flutterEngineHelper?.startOrAttachEngine()
 
         isRunning.set(true)
-    }
-
-    override fun incomingCall(
-        callId: String, handle: PHandle, displayName: String?, hasVideo: Boolean, callback: (Result<Unit>) -> Unit
-    ) {
-        Log.d(TAG, "Incoming call: $callId")
     }
 
     override fun endCall(callId: String, callback: (Result<Unit>) -> Unit) {

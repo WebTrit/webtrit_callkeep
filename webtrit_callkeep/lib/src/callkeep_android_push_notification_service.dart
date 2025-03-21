@@ -52,6 +52,6 @@ class CallkeepAndroidPushNotificationService {
     String? displayName,
     bool hasVideo = false,
   }) {
-    return platform.reportNewPushNotificationIncomingCall(callId, handle, displayName, hasVideo);
+    return platform.incomingCallPushNotificationService(callId, handle, displayName, hasVideo);
   }
 }

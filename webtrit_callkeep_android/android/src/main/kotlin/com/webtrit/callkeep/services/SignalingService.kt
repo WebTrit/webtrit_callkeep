@@ -17,7 +17,7 @@ import com.webtrit.callkeep.PCallkeepServiceStatus
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.PHandle
-import com.webtrit.callkeep.PHostBackgroundServiceApi
+import com.webtrit.callkeep.PHostBackgroundSignalingIsolateApi
 import com.webtrit.callkeep.api.CallkeepApiProvider
 import com.webtrit.callkeep.api.background.BackgroundCallkeepApi
 import com.webtrit.callkeep.common.ActivityHolder
@@ -32,7 +32,7 @@ import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
 import com.webtrit.callkeep.workers.ForegroundCallWorker
 
-class SignalingService : Service(), PHostBackgroundServiceApi {
+class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
     private lateinit var notificationBuilder: ForegroundCallNotificationBuilder
     private lateinit var flutterEngineHelper: FlutterEngineHelper
 

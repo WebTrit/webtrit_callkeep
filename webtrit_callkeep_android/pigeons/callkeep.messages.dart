@@ -187,25 +187,6 @@ class PCallkeepConnection {
 }
 
 @HostApi()
-abstract class PHostBackgroundServiceApi {
-  @async
-  void incomingCall(
-    String callId,
-    PHandle handle,
-    String? displayName,
-    bool hasVideo,
-  );
-
-  @async
-  void endCall(
-    String callId,
-  );
-
-  @async
-  void endAllCalls();
-}
-
-@HostApi()
 abstract class PHostBackgroundSignalingIsolateBootstrapApi {
   @async
   void initializeSignalingServiceCallback({
@@ -230,6 +211,25 @@ abstract class PHostBackgroundSignalingIsolateBootstrapApi {
 }
 
 @HostApi()
+abstract class PHostBackgroundSignalingIsolateApi {
+  @async
+  void incomingCall(
+    String callId,
+    PHandle handle,
+    String? displayName,
+    bool hasVideo,
+  );
+
+  @async
+  void endCall(
+    String callId,
+  );
+
+  @async
+  void endAllCalls();
+}
+
+@HostApi()
 abstract class PHostBackgroundPushNotificationIsolateBootstrapApi {
   @async
   void initializePushNotificationCallback({
@@ -244,6 +244,17 @@ abstract class PHostBackgroundPushNotificationIsolateBootstrapApi {
     String? displayName,
     bool hasVideo,
   );
+}
+
+@HostApi()
+abstract class PHostBackgroundPushNotificationIsolateApi {
+  @async
+  void endCall(
+    String callId,
+  );
+
+  @async
+  void endAllCalls();
 }
 
 @HostApi()
