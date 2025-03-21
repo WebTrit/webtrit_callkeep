@@ -7,8 +7,7 @@ import com.webtrit.callkeep.services.SignalingService
 
 class BackgroundSignalingIsolateApi(
     private val context: Context
-) : PHostIsolateApi {
-
+) : PHostBackgroundSignalingIsolateBootstrapApi {
     override fun initializeSignalingServiceCallback(
         callbackDispatcher: Long,
         onStartHandler: Long,

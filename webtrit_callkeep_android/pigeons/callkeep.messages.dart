@@ -206,7 +206,7 @@ abstract class PHostBackgroundServiceApi {
 }
 
 @HostApi()
-abstract class PHostIsolateApi {
+abstract class PHostBackgroundSignalingIsolateBootstrapApi {
   @async
   void initializeSignalingServiceCallback({
     required int callbackDispatcher,
@@ -230,7 +230,7 @@ abstract class PHostIsolateApi {
 }
 
 @HostApi()
-abstract class PHostPushNotificationIsolateApi {
+abstract class PHostBackgroundPushNotificationIsolateBootstrapApi {
   @async
   void initializePushNotificationCallback({
     required int callbackDispatcher,
@@ -238,7 +238,7 @@ abstract class PHostPushNotificationIsolateApi {
   });
 
   @async
-  PIncomingCallError? incomingCall(
+  PIncomingCallError? reportNewIncomingCall(
     String callId,
     PHandle handle,
     String? displayName,

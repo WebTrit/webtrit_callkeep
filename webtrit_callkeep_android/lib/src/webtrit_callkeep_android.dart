@@ -14,12 +14,14 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     WebtritCallkeepPlatform.instance = WebtritCallkeepAndroid();
   }
 
+  // APIs for initializing the background service isolates to be used in the main isolate.
+  final _backgroundSignalingIsolateBootstrapApi = PHostBackgroundSignalingIsolateBootstrapApi();
+  final _backgroundPushNotificationIsolateBootstrapApi = PHostBackgroundPushNotificationIsolateBootstrapApi();
+
   final _pushRegistryApi = PPushRegistryHostApi();
   final _api = PHostApi();
 
   final _backgroundServiceApi = PHostBackgroundServiceApi();
-  final _isolateApi = PHostIsolateApi();
-  final _pushNotificationIsolateApi = PHostPushNotificationIsolateApi();
   final _soundApi = PHostSoundApi();
   final _connectionsApi = PHostConnectionsApi();
 
@@ -248,12 +250,12 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     Map<String, dynamic> data = const {},
   }) {
     final jsonData = jsonEncode(data);
-    return _isolateApi.startService(jsonData: jsonData);
+    return _backgroundSignalingIsolateBootstrapApi.startService(jsonData: jsonData);
   }
 
   @override
   Future<dynamic> stopService() {
-    return _isolateApi.stopService();
+    return _backgroundSignalingIsolateBootstrapApi.stopService();
   }
 
   @override
@@ -278,7 +280,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     if (_isolatePluginCallbackHandle != null &&
         _onSignalingServiceStartHandle != null &&
         _onSignalingServiceChangedLifecycleHandle != null) {
-      await _isolateApi.initializeSignalingServiceCallback(
+      await _backgroundSignalingIsolateBootstrapApi.initializeSignalingServiceCallback(
         callbackDispatcher: _isolatePluginCallbackHandle!,
         onStartHandler: _onSignalingServiceStartHandle!,
         onChangedLifecycleHandler: _onSignalingServiceChangedLifecycleHandle!,
@@ -293,7 +295,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     String? displayName,
     bool hasVideo,
   ) {
-    return _pushNotificationIsolateApi
+    return _backgroundPushNotificationIsolateBootstrapApi
         .reportNewIncomingCall(callId, handle.toPigeon(), displayName, hasVideo)
         .then((value) => value?.value.toCallkeep());
   }
@@ -312,7 +314,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
         )?.toRawHandle();
 
     if (_isolatePluginCallbackHandle != null && _onPushNotificationNotificationSync != null) {
-      await _pushNotificationIsolateApi.initializePushNotificationCallback(
+      await _backgroundPushNotificationIsolateBootstrapApi.initializePushNotificationCallback(
         callbackDispatcher: _isolatePluginCallbackHandle!,
         onNotificationSync: _onPushNotificationNotificationSync!,
       );
@@ -324,7 +326,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     String? androidNotificationName,
     String? androidNotificationDescription,
   }) async {
-    await _isolateApi.configureSignalingService(
+    await _backgroundSignalingIsolateBootstrapApi.configureSignalingService(
       androidNotificationName: androidNotificationName,
       androidNotificationDescription: androidNotificationDescription,
     );

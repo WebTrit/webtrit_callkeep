@@ -664,11 +664,11 @@ class PHostBackgroundServiceApi {
   }
 }
 
-class PHostIsolateApi {
-  /// Constructor for [PHostIsolateApi].  The [binaryMessenger] named argument is
+class PHostBackgroundSignalingIsolateBootstrapApi {
+  /// Constructor for [PHostBackgroundSignalingIsolateBootstrapApi].  The [binaryMessenger] named argument is
   /// available for dependency injection.  If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
-  PHostIsolateApi({BinaryMessenger? binaryMessenger, String messageChannelSuffix = ''})
+  PHostBackgroundSignalingIsolateBootstrapApi({BinaryMessenger? binaryMessenger, String messageChannelSuffix = ''})
       : pigeonVar_binaryMessenger = binaryMessenger,
         pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
   final BinaryMessenger? pigeonVar_binaryMessenger;
@@ -678,7 +678,7 @@ class PHostIsolateApi {
   final String pigeonVar_messageChannelSuffix;
 
   Future<void> initializeSignalingServiceCallback({required int callbackDispatcher, required int onStartHandler, required int onChangedLifecycleHandler,}) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.initializeSignalingServiceCallback$pigeonVar_messageChannelSuffix';
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateBootstrapApi.initializeSignalingServiceCallback$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -700,7 +700,7 @@ class PHostIsolateApi {
   }
 
   Future<void> configureSignalingService({String? androidNotificationName, String? androidNotificationDescription}) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.configureSignalingService$pigeonVar_messageChannelSuffix';
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateBootstrapApi.configureSignalingService$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -722,7 +722,7 @@ class PHostIsolateApi {
   }
 
   Future<void> startService({String? jsonData}) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.startService$pigeonVar_messageChannelSuffix';
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateBootstrapApi.startService$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -744,7 +744,7 @@ class PHostIsolateApi {
   }
 
   Future<void> stopService() async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.stopService$pigeonVar_messageChannelSuffix';
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateBootstrapApi.stopService$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -766,11 +766,11 @@ class PHostIsolateApi {
   }
 }
 
-class PHostPushNotificationIsolateApi {
-  /// Constructor for [PHostPushNotificationIsolateApi].  The [binaryMessenger] named argument is
+class PHostBackgroundPushNotificationIsolateBootstrapApi {
+  /// Constructor for [PHostBackgroundPushNotificationIsolateBootstrapApi].  The [binaryMessenger] named argument is
   /// available for dependency injection.  If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
-  PHostPushNotificationIsolateApi({BinaryMessenger? binaryMessenger, String messageChannelSuffix = ''})
+  PHostBackgroundPushNotificationIsolateBootstrapApi({BinaryMessenger? binaryMessenger, String messageChannelSuffix = ''})
       : pigeonVar_binaryMessenger = binaryMessenger,
         pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
   final BinaryMessenger? pigeonVar_binaryMessenger;
@@ -780,7 +780,7 @@ class PHostPushNotificationIsolateApi {
   final String pigeonVar_messageChannelSuffix;
 
   Future<void> initializePushNotificationCallback({required int callbackDispatcher, required int onNotificationSync}) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostPushNotificationIsolateApi.initializePushNotificationCallback$pigeonVar_messageChannelSuffix';
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundPushNotificationIsolateBootstrapApi.initializePushNotificationCallback$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -802,7 +802,7 @@ class PHostPushNotificationIsolateApi {
   }
 
   Future<PIncomingCallError?> reportNewIncomingCall(String callId, PHandle handle, String? displayName, bool hasVideo) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostPushNotificationIsolateApi.reportNewIncomingCall$pigeonVar_messageChannelSuffix';
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundPushNotificationIsolateBootstrapApi.reportNewIncomingCall$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,

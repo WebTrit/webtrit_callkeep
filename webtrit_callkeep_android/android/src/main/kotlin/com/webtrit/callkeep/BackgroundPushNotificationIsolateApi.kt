@@ -8,8 +8,7 @@ import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 
 class BackgroundPushNotificationIsolateApi(
     private val context: Context
-) : PHostPushNotificationIsolateApi {
-
+) : PHostBackgroundPushNotificationIsolateBootstrapApi {
     override fun initializePushNotificationCallback(
         callbackDispatcher: Long, onNotificationSync: Long, callback: (Result<Unit>) -> Unit
     ) {

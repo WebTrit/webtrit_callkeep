@@ -49,10 +49,12 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         ContextHolder.init(context)
         AssetHolder.init(context, flutterAssets)
 
+        // Bootstrap isolate APIs
+        PHostBackgroundSignalingIsolateBootstrapApi.setUp(messenger, BackgroundSignalingIsolateApi(context))
+        PHostBackgroundPushNotificationIsolateBootstrapApi.setUp(messenger, BackgroundPushNotificationIsolateApi(context))
+
         PHostPermissionsApi.setUp(messenger, PermissionsApi(context))
         PHostSoundApi.setUp(messenger, SoundApi(context))
-        PHostIsolateApi.setUp(messenger, BackgroundSignalingIsolateApi(context))
-        PHostPushNotificationIsolateApi.setUp(messenger, BackgroundPushNotificationIsolateApi(context))
         PHostConnectionsApi.setUp(messenger, ConnectionsApi())
 
         delegateLogsFlutterApi = PDelegateLogsFlutterApi(messenger).apply { Log.add(this) }
@@ -65,11 +67,12 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
 
         ActivityHolder.setActivity(null)
 
+        PHostBackgroundSignalingIsolateBootstrapApi.setUp(messenger, null)
+        PHostBackgroundPushNotificationIsolateBootstrapApi.setUp(messenger, null)
+
         PHostPermissionsApi.setUp(messenger, null)
         PHostSoundApi.setUp(messenger, null)
-        PHostIsolateApi.setUp(messenger, null)
         PHostConnectionsApi.setUp(messenger, null)
-        PHostPushNotificationIsolateApi.setUp(messenger, null)
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
