@@ -1,18 +1,39 @@
-package com.webtrit.callkeep
+package com.webtrit.callkeep.services
 
 import android.annotation.SuppressLint
-import android.content.Context
+import android.app.Service
+import android.content.Intent
+import android.os.Binder
+import android.os.IBinder
+import com.webtrit.callkeep.PCallRequestError
+import com.webtrit.callkeep.PDelegateFlutterApi
+import com.webtrit.callkeep.PEndCallReason
+import com.webtrit.callkeep.PHandle
+import com.webtrit.callkeep.PHostApi
+import com.webtrit.callkeep.PIncomingCallError
+import com.webtrit.callkeep.POptions
 import com.webtrit.callkeep.api.CallkeepApiProvider
-import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.api.foreground.ForegroundCallkeepApi
+import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.toCallHandle
 
-class PigeonActivityApi(
-    private val context: Context, flutterDelegateApi: PDelegateFlutterApi,
-) : PHostApi {
-    private val foregroundCallkeepApi: ForegroundCallkeepApi =
-        CallkeepApiProvider.getForegroundCallkeepApi(context, flutterDelegateApi)
+class ForegroundService : Service(), PHostApi {
+    private val binder = LocalBinder()
+
+    private lateinit var foregroundCallkeepApi: ForegroundCallkeepApi;
+
+    private var _flutterDelegateApi: PDelegateFlutterApi? = null
+    var flutterDelegateApi: PDelegateFlutterApi?
+        get() = _flutterDelegateApi
+        set(value) {
+            _flutterDelegateApi = value
+            foregroundCallkeepApi = CallkeepApiProvider.getForegroundCallkeepApi(baseContext, flutterDelegateApi!!)
+        }
+
+    override fun onBind(intent: Intent?): IBinder {
+        return binder
+    }
 
     override fun setUp(options: POptions, callback: (Result<Unit>) -> Unit) {
         foregroundCallkeepApi.setUp(options, callback)
@@ -45,7 +66,7 @@ class PigeonActivityApi(
         hasVideo: Boolean,
         callback: (Result<PIncomingCallError?>) -> Unit
     ) {
-        val ringtonePath = StorageDelegate.Sound.getRingtonePath(context)
+        val ringtonePath = StorageDelegate.Sound.getRingtonePath(baseContext)
 
         val callMetaData = CallMetadata(
             callId = callId,
@@ -165,7 +186,20 @@ class PigeonActivityApi(
         foregroundCallkeepApi.setSpeaker(callMetaData, callback)
     }
 
-    fun detachActivity() {
-        foregroundCallkeepApi.detachActivity()
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        return super.onUnbind(intent)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+    }
+
+    inner class LocalBinder : Binder() {
+        fun getService(): ForegroundService = this@ForegroundService
+    }
+
+    companion object {
+        private const val TAG = "MyBoundService"
     }
 }

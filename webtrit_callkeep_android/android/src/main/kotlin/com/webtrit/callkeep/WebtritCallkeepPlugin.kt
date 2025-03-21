@@ -1,6 +1,10 @@
 package com.webtrit.callkeep
 
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
+import android.os.IBinder
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
@@ -9,6 +13,7 @@ import com.webtrit.callkeep.common.AssetHolder
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.services.IncomingCallService
+import com.webtrit.callkeep.services.ForegroundService
 import com.webtrit.callkeep.services.SignalingService
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.FlutterPlugin.FlutterAssets
@@ -30,6 +35,8 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
 
     private var foregroundSocketService: SignalingService? = null
     private var incomingCallService: IncomingCallService? = null
+    private var boundService: ForegroundService? = null
+    private var serviceConnection: ServiceConnection? = null
 
     private var delegateLogsFlutterApi: PDelegateLogsFlutterApi? = null
 
@@ -49,8 +56,8 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
 
         delegateLogsFlutterApi = PDelegateLogsFlutterApi(messenger).apply { Log.add(this) }
 
-        val flutterDelegateApi = PDelegateFlutterApi(messenger)
-        PHostApi.setUp(messenger, PigeonActivityApi(context, flutterDelegateApi))
+//        val flutterDelegateApi = PDelegateFlutterApi(messenger)
+//        PHostApi.setUp(messenger, PigeonActivityApi(context, flutterDelegateApi))
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -69,14 +76,49 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         this.activityPluginBinding = binding
 
+        Log.d(TAG, "onAttachedToActivity: Activity attached")
+
         lifeCycle = (binding.lifecycle as HiddenLifecycleReference).lifecycle
         lifeCycle!!.addObserver(this)
 
         ActivityHolder.setActivity(binding.activity)
+
+
+        Log.d(TAG, "onAttachedToActivity: Trying to bind service")
+        val intent = Intent(binding.activity, ForegroundService::class.java)
+        serviceConnection = object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                val binder = service as ForegroundService.LocalBinder
+                boundService = binder.getService()
+                boundService?.flutterDelegateApi = PDelegateFlutterApi(messenger)
+                PHostApi.setUp(messenger, boundService)
+
+                Log.d(TAG, "onAttachedToActivity: Service connected")
+            }
+
+            override fun onServiceDisconnected(name: ComponentName?) {
+                boundService = null
+                Log.d(TAG, "onAttachedToActivity: Service disconnected")
+            }
+        }
+        binding.activity.bindService(intent, serviceConnection!!, Context.BIND_AUTO_CREATE)
     }
 
     override fun onDetachedFromActivity() {
         this.lifeCycle?.removeObserver(this)
+        activityPluginBinding?.activity?.let {
+            serviceConnection?.let { conn ->
+                it.unbindService(conn)
+                Log.d(TAG, "Service unbound")
+            }
+        }
+
+        PHostApi.setUp(messenger, null)
+
+        boundService = null
+        serviceConnection = null
+        ActivityHolder.setActivity(null)
+
     }
 
     override fun onAttachedToService(binding: ServicePluginBinding) {
@@ -109,6 +151,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         PHostBackgroundServiceApi.setUp(messenger, null)
         foregroundSocketService = null
         incomingCallService = null
+
     }
 
     override fun onDetachedFromActivityForConfigChanges() {
