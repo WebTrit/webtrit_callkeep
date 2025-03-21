@@ -50,10 +50,10 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         AssetHolder.init(context, flutterAssets)
 
         // Bootstrap isolate APIs
-        PHostBackgroundSignalingIsolateBootstrapApi.setUp(messenger, BackgroundSignalingIsolateApi(context))
+        PHostBackgroundSignalingIsolateBootstrapApi.setUp(messenger, BackgroundSignalingIsolateBootstrapApi(context))
         PHostBackgroundPushNotificationIsolateBootstrapApi.setUp(
             messenger,
-            BackgroundPushNotificationIsolateApi(context)
+            BackgroundPushNotificationIsolateBootstrapApi(context)
         )
 
         PHostPermissionsApi.setUp(messenger, PermissionsApi(context))
@@ -87,7 +87,6 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         lifeCycle!!.addObserver(this)
 
         ActivityHolder.setActivity(binding.activity)
-
 
         Log.d(TAG, "onAttachedToActivity: Trying to bind service")
         val intent = Intent(binding.activity, ForegroundService::class.java)

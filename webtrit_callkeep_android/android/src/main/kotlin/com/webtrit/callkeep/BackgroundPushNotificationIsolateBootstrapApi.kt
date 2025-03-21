@@ -6,7 +6,7 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 
-class BackgroundPushNotificationIsolateApi(
+class BackgroundPushNotificationIsolateBootstrapApi(
     private val context: Context
 ) : PHostBackgroundPushNotificationIsolateBootstrapApi {
     override fun initializePushNotificationCallback(
