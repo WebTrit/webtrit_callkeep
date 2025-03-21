@@ -5,7 +5,7 @@ import android.util.Log
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.services.SignalingService
 
-class SignalingIsolateApi(
+class BackgroundSignalingIsolateApi(
     private val context: Context
 ) : PHostIsolateApi {
 
