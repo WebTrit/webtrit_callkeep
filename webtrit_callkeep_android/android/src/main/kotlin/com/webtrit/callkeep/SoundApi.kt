@@ -4,7 +4,7 @@ import android.content.Context
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.managers.AudioManager
 
-class PigeonSoundApi(
+class SoundApi(
     private val context: Context
 ) : PHostSoundApi {
 

@@ -49,11 +49,11 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         ContextHolder.init(context)
         AssetHolder.init(context, flutterAssets)
 
-        PHostPermissionsApi.setUp(messenger, PigeonPermissionsApi(context))
-        PHostSoundApi.setUp(messenger, PigeonSoundApi(context))
-        PHostIsolateApi.setUp(messenger, PigeonIsolateApi(context))
-        PHostPushNotificationIsolateApi.setUp(messenger, PigeonPushNotificationIsolateApi(context))
-        PHostConnectionsApi.setUp(messenger, PigeonConnectionsApi())
+        PHostPermissionsApi.setUp(messenger, PermissionsApi(context))
+        PHostSoundApi.setUp(messenger, SoundApi(context))
+        PHostIsolateApi.setUp(messenger, SignalingIsolateApi(context))
+        PHostPushNotificationIsolateApi.setUp(messenger, PushNotificationIsolateApi(context))
+        PHostConnectionsApi.setUp(messenger, ConnectionsApi())
 
         delegateLogsFlutterApi = PDelegateLogsFlutterApi(messenger).apply { Log.add(this) }
     }

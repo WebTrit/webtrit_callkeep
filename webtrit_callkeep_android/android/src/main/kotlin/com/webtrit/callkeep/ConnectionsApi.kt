@@ -4,7 +4,7 @@ import com.webtrit.callkeep.common.SignalingHolder
 import com.webtrit.callkeep.models.toPConnection
 import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 
-class PigeonConnectionsApi() : PHostConnectionsApi {
+class ConnectionsApi() : PHostConnectionsApi {
     override fun getConnection(
         callId: String, callback: (Result<PCallkeepConnection?>) -> Unit
     ) {
@@ -14,7 +14,7 @@ class PigeonConnectionsApi() : PHostConnectionsApi {
 
     override fun getConnections(callback: (Result<List<PCallkeepConnection>>) -> Unit) {
         val connections = PhoneConnectionService.connectionManager.getConnections()
-        callback.invoke(Result.success(connections.mapNotNull { it.toPConnection() }));
+        callback.invoke(Result.success(connections.mapNotNull { it.toPConnection() }))
     }
 
     override fun updateActivitySignalingStatus(

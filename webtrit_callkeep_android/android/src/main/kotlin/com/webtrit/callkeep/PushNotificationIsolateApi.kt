@@ -6,10 +6,9 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 
-class PigeonPushNotificationIsolateApi(
+class PushNotificationIsolateApi(
     private val context: Context
 ) : PHostPushNotificationIsolateApi {
-
 
     override fun initializePushNotificationCallback(
         callbackDispatcher: Long, onNotificationSync: Long, callback: (Result<Unit>) -> Unit

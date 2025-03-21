@@ -4,7 +4,7 @@ import android.content.Context
 import com.webtrit.callkeep.common.helpers.BatteryModeHelper
 import com.webtrit.callkeep.common.helpers.PermissionsHelper
 
-class PigeonPermissionsApi(
+class PermissionsApi(
     private val context: Context,
 ) : PHostPermissionsApi {
     override fun getFullScreenIntentPermissionStatus(callback: (Result<PSpecialPermissionStatusTypeEnum>) -> Unit) {
