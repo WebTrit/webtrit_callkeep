@@ -19,7 +19,7 @@ Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
 
   await Permission.notification.request();
 
-  CallkeepBackgroundService.initializeSignalingServiceCallback(
+  CallkeepBackgroundService.initializeCallback(
     onStart: isolate.onStartForegroundService,
     onChangedLifecycle: isolate.onChangedLifecycle,
   );
