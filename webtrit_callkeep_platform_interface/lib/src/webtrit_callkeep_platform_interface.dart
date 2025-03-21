@@ -76,12 +76,10 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
 
   /// Report a new incoming call with the given [callId], [handle], [displayName] and [hasVideo] flag.
   /// Returns [CallkeepIncomingCallError] if there is an error.
-  Future<CallkeepIncomingCallError?> reportNewIncomingCall(
-    String callId,
-    CallkeepHandle handle,
-    String? displayName,
-    bool hasVideo,
-  ) {
+  Future<CallkeepIncomingCallError?> reportNewIncomingCall(String callId,
+      CallkeepHandle handle,
+      String? displayName,
+      bool hasVideo,) {
     throw UnimplementedError('reportNewIncomingCall() has not been implemented.');
   }
 
@@ -100,13 +98,11 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   /// Report an update to the call metadata.
   /// The [displayName] of the call is required for reporting miseed call metadata.
   /// Returns [Future] that completes when the operation is done.
-  Future<void> reportUpdateCall(
-    String callId,
-    CallkeepHandle? handle,
-    String? displayName,
-    bool? hasVideo,
-    bool? proximityEnabled,
-  ) {
+  Future<void> reportUpdateCall(String callId,
+      CallkeepHandle? handle,
+      String? displayName,
+      bool? hasVideo,
+      bool? proximityEnabled,) {
     throw UnimplementedError('reportUpdateCall() has not been implemented.');
   }
 
@@ -120,13 +116,11 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
 
   /// Start a call with the given [callId], [handle], [displayNameOrContactIdentifier] and [video] flag.
   /// Returns [CallkeepCallRequestError] if there is an error.
-  Future<CallkeepCallRequestError?> startCall(
-    String callId,
-    CallkeepHandle handle,
-    String? displayNameOrContactIdentifier,
-    bool video,
-    bool proximityEnabled,
-  ) {
+  Future<CallkeepCallRequestError?> startCall(String callId,
+      CallkeepHandle handle,
+      String? displayNameOrContactIdentifier,
+      bool video,
+      bool proximityEnabled,) {
     throw UnimplementedError('startCall() has not been implemented.');
   }
 
@@ -187,12 +181,10 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   ///
   /// Returns a [Future] that resolves after completition with unsafe result and may cause error in production.
   // TODO: specify the return type
-  Future<dynamic> incomingCall(
-    String callId,
-    CallkeepHandle handle,
-    String? displayName,
-    bool hasVideo,
-  ) {
+  Future<dynamic> incomingCall(String callId,
+      CallkeepHandle handle,
+      String? displayName,
+      bool hasVideo,) {
     throw UnimplementedError('incomingCallAndroidService() has not been implemented.');
   }
 
@@ -256,6 +248,15 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   /// Throws an [UnimplementedError] if this method is not yet implemented.
   Future<void> initializePushNotificationCallback(CallKeepPushNotificationSyncStatusHandle onNotificationSync) {
     throw UnimplementedError('initializePushNotificationCallback() is not implemented');
+  }
+
+  /// Report a new incoming call with the given [callId], [handle], [displayName] and [hasVideo] flag.
+  /// Returns [CallkeepIncomingCallError] if there is an error.
+  Future<CallkeepIncomingCallError?> reportNewPushNotificationIncomingCall(String callId,
+      CallkeepHandle handle,
+      String? displayName,
+      bool hasVideo,) {
+    throw UnimplementedError('reportNewIncomingCall() has not been implemented.');
   }
 
   /// Starts the background service with the provided [data].

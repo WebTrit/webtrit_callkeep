@@ -19,6 +19,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
 
   final _backgroundServiceApi = PHostBackgroundServiceApi();
   final _isolateApi = PHostIsolateApi();
+  final _pushNotificationIsolateApi = PHostPushNotificationIsolateApi();
   final _soundApi = PHostSoundApi();
   final _connectionsApi = PHostConnectionsApi();
 
@@ -286,6 +287,18 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
+  Future<CallkeepIncomingCallError?> reportNewPushNotificationIncomingCall(
+    String callId,
+    CallkeepHandle handle,
+    String? displayName,
+    bool hasVideo,
+  ) {
+    return _pushNotificationIsolateApi
+        .reportNewIncomingCall(callId, handle.toPigeon(), displayName, hasVideo)
+        .then((value) => value?.value.toCallkeep());
+  }
+
+  @override
   Future<void> initializePushNotificationCallback(CallKeepPushNotificationSyncStatusHandle onNotificationSync) async {
     // Initialization callback handle for the isolate plugin only once;
     _isolatePluginCallbackHandle = _isolatePluginCallbackHandle ??
@@ -299,7 +312,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
         )?.toRawHandle();
 
     if (_isolatePluginCallbackHandle != null && _onPushNotificationNotificationSync != null) {
-      await _isolateApi.initializePushNotificationCallback(
+      await _pushNotificationIsolateApi.initializePushNotificationCallback(
         callbackDispatcher: _isolatePluginCallbackHandle!,
         onNotificationSync: _onPushNotificationNotificationSync!,
       );

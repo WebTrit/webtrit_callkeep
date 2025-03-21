@@ -769,7 +769,6 @@ interface PHostBackgroundServiceApi {
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface PHostIsolateApi {
   fun initializeSignalingServiceCallback(callbackDispatcher: Long, onStartHandler: Long, onChangedLifecycleHandler: Long, callback: (Result<Unit>) -> Unit)
-  fun initializePushNotificationCallback(callbackDispatcher: Long, onNotificationSync: Long, callback: (Result<Unit>) -> Unit)
   fun configureSignalingService(androidNotificationName: String?, androidNotificationDescription: String?, callback: (Result<Unit>) -> Unit)
   fun startService(jsonData: String?, callback: (Result<Unit>) -> Unit)
   fun stopService(callback: (Result<Unit>) -> Unit)
@@ -792,26 +791,6 @@ interface PHostIsolateApi {
             val onStartHandlerArg = args[1] as Long
             val onChangedLifecycleHandlerArg = args[2] as Long
             api.initializeSignalingServiceCallback(callbackDispatcherArg, onStartHandlerArg, onChangedLifecycleHandlerArg) { result: Result<Unit> ->
-              val error = result.exceptionOrNull()
-              if (error != null) {
-                reply.reply(wrapError(error))
-              } else {
-                reply.reply(wrapResult(null))
-              }
-            }
-          }
-        } else {
-          channel.setMessageHandler(null)
-        }
-      }
-      run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostIsolateApi.initializePushNotificationCallback$separatedMessageChannelSuffix", codec)
-        if (api != null) {
-          channel.setMessageHandler { message, reply ->
-            val args = message as List<Any?>
-            val callbackDispatcherArg = args[0] as Long
-            val onNotificationSyncArg = args[1] as Long
-            api.initializePushNotificationCallback(callbackDispatcherArg, onNotificationSyncArg) { result: Result<Unit> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(wrapError(error))
@@ -873,6 +852,66 @@ interface PHostIsolateApi {
                 reply.reply(wrapError(error))
               } else {
                 reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+    }
+  }
+}
+/** Generated interface from Pigeon that represents a handler of messages from Flutter. */
+interface PHostPushNotificationIsolateApi {
+  fun initializePushNotificationCallback(callbackDispatcher: Long, onNotificationSync: Long, callback: (Result<Unit>) -> Unit)
+  fun reportNewIncomingCall(callId: String, handle: PHandle, displayName: String?, hasVideo: Boolean, callback: (Result<PIncomingCallError?>) -> Unit)
+
+  companion object {
+    /** The codec used by PHostPushNotificationIsolateApi. */
+    val codec: MessageCodec<Any?> by lazy {
+      GeneratedPigeonCodec()
+    }
+    /** Sets up an instance of `PHostPushNotificationIsolateApi` to handle messages through the `binaryMessenger`. */
+    @JvmOverloads
+    fun setUp(binaryMessenger: BinaryMessenger, api: PHostPushNotificationIsolateApi?, messageChannelSuffix: String = "") {
+      val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostPushNotificationIsolateApi.initializePushNotificationCallback$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val callbackDispatcherArg = args[0] as Long
+            val onNotificationSyncArg = args[1] as Long
+            api.initializePushNotificationCallback(callbackDispatcherArg, onNotificationSyncArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostPushNotificationIsolateApi.reportNewIncomingCall$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val callIdArg = args[0] as String
+            val handleArg = args[1] as PHandle
+            val displayNameArg = args[2] as String?
+            val hasVideoArg = args[3] as Boolean
+            api.reportNewIncomingCall(callIdArg, handleArg, displayNameArg, hasVideoArg) { result: Result<PIncomingCallError?> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
               }
             }
           }

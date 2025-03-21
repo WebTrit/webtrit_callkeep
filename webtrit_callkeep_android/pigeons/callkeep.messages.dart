@@ -215,12 +215,6 @@ abstract class PHostIsolateApi {
   });
 
   @async
-  void initializePushNotificationCallback({
-    required int callbackDispatcher,
-    required int onNotificationSync,
-  });
-
-  @async
   void configureSignalingService({
     String? androidNotificationName,
     String? androidNotificationDescription,
@@ -233,6 +227,23 @@ abstract class PHostIsolateApi {
 
   @async
   void stopService();
+}
+
+@HostApi()
+abstract class PHostPushNotificationIsolateApi {
+  @async
+  void initializePushNotificationCallback({
+    required int callbackDispatcher,
+    required int onNotificationSync,
+  });
+
+  @async
+  PIncomingCallError? incomingCall(
+    String callId,
+    PHandle handle,
+    String? displayName,
+    bool hasVideo,
+  );
 }
 
 @HostApi()

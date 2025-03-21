@@ -52,12 +52,10 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         PHostPermissionsApi.setUp(messenger, PigeonPermissionsApi(context))
         PHostSoundApi.setUp(messenger, PigeonSoundApi(context))
         PHostIsolateApi.setUp(messenger, PigeonIsolateApi(context))
+        PHostPushNotificationIsolateApi.setUp(messenger, PigeonPushNotificationIsolateApi(context))
         PHostConnectionsApi.setUp(messenger, PigeonConnectionsApi())
 
         delegateLogsFlutterApi = PDelegateLogsFlutterApi(messenger).apply { Log.add(this) }
-
-//        val flutterDelegateApi = PDelegateFlutterApi(messenger)
-//        PHostApi.setUp(messenger, PigeonActivityApi(context, flutterDelegateApi))
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -71,6 +69,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         PHostSoundApi.setUp(messenger, null)
         PHostIsolateApi.setUp(messenger, null)
         PHostConnectionsApi.setUp(messenger, null)
+        PHostPushNotificationIsolateApi.setUp(messenger, null)
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
