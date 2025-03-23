@@ -22,7 +22,7 @@ import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.PigeonCallback
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.helpers.Platform
-import com.webtrit.callkeep.common.helpers.Telecom
+import com.webtrit.callkeep.common.helpers.TelephonyUtils
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.models.OutgoingFailureType
@@ -93,12 +93,12 @@ class ForegroundService : Service(), PHostApi {
         // This includes channels for active calls, incoming calls, missed calls, and foreground calls.
         NotificationChannelManager.registerNotificationChannels(baseContext)
 
-        Telecom.registerPhoneAccount(baseContext)
+        TelephonyUtils(baseContext).registerPhoneAccount()
+
         StorageDelegate.Sound.initRingtonePath(baseContext, options.android.ringtoneSound)
         StorageDelegate.Sound.initRingbackPath(baseContext, options.android.ringbackSound)
 
         callback.invoke(Result.success(Unit))
-
     }
 
     @SuppressLint("MissingPermission")

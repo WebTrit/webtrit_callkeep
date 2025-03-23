@@ -9,8 +9,7 @@ import android.telecom.*
 import com.webtrit.callkeep.models.ConnectionReport
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.ActivityHolder
-import com.webtrit.callkeep.common.helpers.Telecom
-import com.webtrit.callkeep.common.helpers.TelephonyHelper
+import com.webtrit.callkeep.common.helpers.TelephonyUtils
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.services.ForegroundService
@@ -29,6 +28,7 @@ class PhoneConnectionService : ConnectionService() {
     private lateinit var sensorManager: ProximitySensorManager
     private lateinit var activityWakelockManager: ActivityWakelockManager
     private lateinit var phoneConnectionServiceDispatcher: PhoneConnectionServiceDispatcher
+    private lateinit var telephonyUtils: TelephonyUtils
 
     private val dispatcher: CommunicateServiceDispatcher.DispatchHandle = CommunicateServiceDispatcher.handle
 
@@ -39,6 +39,7 @@ class PhoneConnectionService : ConnectionService() {
         sensorManager = ProximitySensorManager(applicationContext, PhoneConnectionConsts())
         activityWakelockManager = ActivityWakelockManager(ActivityHolder)
         phoneConnectionServiceDispatcher = PhoneConnectionServiceDispatcher(connectionManager, sensorManager)
+        telephonyUtils = TelephonyUtils(applicationContext)
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
@@ -286,13 +287,13 @@ class PhoneConnectionService : ConnectionService() {
             Log.i(TAG, "onOutgoingCall, callId: ${metadata.callId}")
 
             val uri: Uri = Uri.fromParts(PhoneAccount.SCHEME_TEL, metadata.number, null)
-            val account = Telecom.getPhoneAccountHandle(context)
+            val telephonyUtils = TelephonyUtils(context)
 
             val extras = Bundle().apply {
-                putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, account)
+                putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, telephonyUtils.getPhoneAccountHandle())
                 putParcelable(TelecomManager.EXTRA_OUTGOING_CALL_EXTRAS, metadata.toBundle())
             }
-            if (TelephonyHelper(context).isEmergencyNumber(metadata.number)) {
+            if (telephonyUtils.isEmergencyNumber(metadata.number)) {
                 // TODO: Implement emergency number handling
                 Log.i(TAG, "onOutgoingCall, trying to call on emergency number: ${metadata.number}")
 //                TelephonyForegroundCallkeepApi.notifyOutgoingFailure(
@@ -311,7 +312,7 @@ class PhoneConnectionService : ConnectionService() {
                     it.hungUp()
                 }
 
-                Telecom.getTelecomManager(context).placeCall(uri, extras)
+                telephonyUtils.getTelecomManager().placeCall(uri, extras)
             }
         }
 
@@ -325,8 +326,8 @@ class PhoneConnectionService : ConnectionService() {
         private fun incomingCall(context: Context, metadata: CallMetadata) {
             Log.i(TAG, "onIncomingCall, callId: ${metadata.callId}")
 
-            val telecomManager = Telecom.getTelecomManager(context)
-            val account = Telecom.getPhoneAccountHandle(context)
+            val telephonyUtils = TelephonyUtils(context)
+            val account = telephonyUtils.getPhoneAccountHandle()
 
             val extras = Bundle().apply {
                 putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, account)
@@ -334,7 +335,7 @@ class PhoneConnectionService : ConnectionService() {
                 putAll(metadata.toBundle())
             }
 
-            telecomManager.addNewIncomingCall(account, extras)
+            telephonyUtils.getTelecomManager().addNewIncomingCall(account, extras)
         }
 
         private fun communicate(context: Context, action: ServiceAction, metadata: CallMetadata?) {
