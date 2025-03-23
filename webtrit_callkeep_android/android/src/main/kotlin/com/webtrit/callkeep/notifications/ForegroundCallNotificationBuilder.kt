@@ -17,7 +17,6 @@ class ForegroundCallNotificationBuilder() : NotificationBuilder() {
         this.content = content
     }
 
-
     override fun build(): Notification {
         if (title.isEmpty() || content.isEmpty()) throw IllegalStateException("Title and content must be set")
 
@@ -41,6 +40,6 @@ class ForegroundCallNotificationBuilder() : NotificationBuilder() {
     }
 
     companion object {
-        const val FOREGROUND_CALL_NOTIFICATION_ID = 3 // R.integer.notification_incoming_call_id
+        const val NOTIFICATION_ID = 3
     }
 }

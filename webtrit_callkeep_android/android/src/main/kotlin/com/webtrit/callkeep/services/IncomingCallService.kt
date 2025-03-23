@@ -66,7 +66,7 @@ class IncomingCallService : Service() {
 
         startForegroundServiceCompat(
             this,
-            IncomingCallNotificationBuilder.INCOMING_CALL_NOTIFICATION_ID,
+            IncomingCallNotificationBuilder.NOTIFICATION_ID,
             incomingCallNotificationBuilder.apply { setCallMetaData(metadata!!) }.build()
         )
 

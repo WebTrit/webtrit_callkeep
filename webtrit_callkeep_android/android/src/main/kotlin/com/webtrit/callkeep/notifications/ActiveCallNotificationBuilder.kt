@@ -64,6 +64,6 @@ class ActiveCallNotificationBuilder() : NotificationBuilder() {
 
     companion object {
         const val TAG = "ACTIVE_CALL_NOTIFICATION"
-        const val ACTIVE_CALL_NOTIFICATION_ID = 1 //  R.integer.notification_active_call_id
+        const val NOTIFICATION_ID = 1
     }
 }
