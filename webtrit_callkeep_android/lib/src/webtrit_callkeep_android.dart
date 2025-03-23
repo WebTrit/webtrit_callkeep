@@ -28,7 +28,9 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   final _soundApi = PHostSoundApi();
   final _connectionsApi = PHostConnectionsApi();
 
-  int? _isolatePluginCallbackHandle;
+  int? _signalingIsolatePluginCallbackHandle;
+  int? _pushNotificationIsolatePluginCallbackHandle;
+
   int? _onSignalingServiceChangedLifecycleHandle;
   int? _onSignalingServiceStartHandle;
   int? _onPushNotificationNotificationSync;
@@ -253,7 +255,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   Future<void> initializeBackgroundSignalingServiceCallback(
       {ForegroundStartServiceHandle? onStart, ForegroundChangeLifecycleHandle? onChangedLifecycle}) async {
     // Initialization callback handle for the isolate plugin only once;
-    _isolatePluginCallbackHandle = _isolatePluginCallbackHandle ??
+    _signalingIsolatePluginCallbackHandle = _signalingIsolatePluginCallbackHandle ??
         PluginUtilities.getCallbackHandle(
           _isolatePluginCallbackDispatcher,
         )?.toRawHandle();
@@ -268,11 +270,11 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
           onChangedLifecycle!,
         )?.toRawHandle();
 
-    if (_isolatePluginCallbackHandle != null &&
+    if (_signalingIsolatePluginCallbackHandle != null &&
         _onSignalingServiceStartHandle != null &&
         _onSignalingServiceChangedLifecycleHandle != null) {
       await _backgroundSignalingIsolateBootstrapApi.initializeSignalingServiceCallback(
-        callbackDispatcher: _isolatePluginCallbackHandle!,
+        callbackDispatcher: _signalingIsolatePluginCallbackHandle!,
         onStartHandler: _onSignalingServiceStartHandle!,
         onChangedLifecycleHandler: _onSignalingServiceChangedLifecycleHandle!,
       );
@@ -338,7 +340,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   @override
   Future<void> initializePushNotificationCallback(CallKeepPushNotificationSyncStatusHandle onNotificationSync) async {
     // Initialization callback handle for the isolate plugin only once;
-    _isolatePluginCallbackHandle = _isolatePluginCallbackHandle ??
+    _pushNotificationIsolatePluginCallbackHandle = _pushNotificationIsolatePluginCallbackHandle ??
         PluginUtilities.getCallbackHandle(
           _isolatePluginCallbackDispatcher,
         )?.toRawHandle();
@@ -348,9 +350,9 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
           onNotificationSync,
         )?.toRawHandle();
 
-    if (_isolatePluginCallbackHandle != null && _onPushNotificationNotificationSync != null) {
+    if (_pushNotificationIsolatePluginCallbackHandle != null && _onPushNotificationNotificationSync != null) {
       await _backgroundPushNotificationIsolateBootstrapApi.initializePushNotificationCallback(
-        callbackDispatcher: _isolatePluginCallbackHandle!,
+        callbackDispatcher: _pushNotificationIsolatePluginCallbackHandle!,
         onNotificationSync: _onPushNotificationNotificationSync!,
       );
     }

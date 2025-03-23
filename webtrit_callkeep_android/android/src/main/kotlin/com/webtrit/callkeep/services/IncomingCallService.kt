@@ -164,7 +164,7 @@ class IncomingCallService : Service(), PHostBackgroundPushNotificationIsolateApi
      */
     @SuppressLint("WakelockTimeout")
     private fun startIncomingCallIsolate() {
-        val callbackDispatcher = StorageDelegate.BackgroundIsolate.getCallbackDispatcher(applicationContext)
+        val callbackDispatcher = StorageDelegate.IncomingCallService.getCallbackDispatcher(applicationContext)
 
         acquireWakeLock(baseContext)
 

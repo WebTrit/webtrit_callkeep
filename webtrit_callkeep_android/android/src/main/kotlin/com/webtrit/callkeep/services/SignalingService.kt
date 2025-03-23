@@ -56,7 +56,7 @@ class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
 
         startForegroundService()
 
-        val callbackDispatcher = StorageDelegate.BackgroundIsolate.getCallbackDispatcher(applicationContext)
+        val callbackDispatcher = StorageDelegate.SignalingService.getCallbackDispatcher(applicationContext)
         flutterEngineHelper = FlutterEngineHelper(applicationContext, callbackDispatcher, this)
     }
 

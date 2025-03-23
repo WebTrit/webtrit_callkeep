@@ -3,6 +3,7 @@ package com.webtrit.callkeep.common
 import android.content.Context
 import android.content.SharedPreferences
 import com.webtrit.callkeep.R
+import com.webtrit.callkeep.common.StorageDelegate.SignalingService.ON_START_HANDLER
 
 /**
  * A delegate for managing SharedPreferences related to incoming and root routes.
@@ -42,24 +43,9 @@ object StorageDelegate {
         }
     }
 
-    object BackgroundIsolate {
-        private const val CALLBACK_DISPATCHER = "CALLBACK_DISPATCHER"
-
-        fun getCallbackDispatcher(context: Context): Long {
-            return getSharedPreferences(context)?.getLong(CALLBACK_DISPATCHER, -1)
-                ?: throw Exception("CallbackDispatcher not found")
-        }
-
-        fun setCallbackDispatcher(context: Context, value: Long) {
-            getSharedPreferences(context)?.edit()?.apply {
-                putLong(CALLBACK_DISPATCHER, value)
-                apply()
-            }
-        }
-    }
-
     object IncomingCallService {
         private const val ON_NOTIFICATION_SYNC = "ON_NOTIFICATION_SYNC"
+        private const val INCOMING_CALL_HANDLER = "INCOMING_CALL_HANDLER"
 
         fun setOnNotificationSync(context: Context, value: Long) {
             getSharedPreferences(context)?.edit()?.apply {
@@ -72,6 +58,18 @@ object StorageDelegate {
             return getSharedPreferences(context)?.getLong(ON_NOTIFICATION_SYNC, -1)
                 ?: throw Exception("OnNotificationSync not found")
         }
+
+        fun setCallbackDispatcher(context: Context, value: Long) {
+            getSharedPreferences(context)?.edit()?.apply {
+                putLong(INCOMING_CALL_HANDLER, value)
+                apply()
+            }
+        }
+
+        fun getCallbackDispatcher(context: Context): Long {
+            return getSharedPreferences(context)?.getLong(INCOMING_CALL_HANDLER, -1)
+                ?: throw Exception("INCOMING_CALL_HANDLER not found")
+        }
     }
 
     object SignalingService {
@@ -82,6 +80,8 @@ object StorageDelegate {
 
         private const val ON_START_HANDLER = "ON_START_HANDLER"
         private const val ON_LIFECYCLE_CHANGE_HANDLER = "ON_LIFECYCLE_CHANGE_HANDLER"
+
+        private const val CALLBACK_DISPATCHER = "CALLBACK_DISPATCHER"
 
         fun setSignalingServiceEnabled(context: Context, value: Boolean) {
             getSharedPreferences(context)?.edit()?.apply {
@@ -142,6 +142,18 @@ object StorageDelegate {
         fun getOnChangedLifecycleHandler(context: Context): Long {
             return getSharedPreferences(context)?.getLong(ON_LIFECYCLE_CHANGE_HANDLER, -1)
                 ?: throw Exception("OnChangedLifecycleHandler not found")
+        }
+
+        fun getCallbackDispatcher(context: Context): Long {
+            return getSharedPreferences(context)?.getLong(CALLBACK_DISPATCHER, -1)
+                ?: throw Exception("CallbackDispatcher not found")
+        }
+
+        fun setCallbackDispatcher(context: Context, value: Long) {
+            getSharedPreferences(context)?.edit()?.apply {
+                putLong(CALLBACK_DISPATCHER, value)
+                apply()
+            }
         }
     }
 }

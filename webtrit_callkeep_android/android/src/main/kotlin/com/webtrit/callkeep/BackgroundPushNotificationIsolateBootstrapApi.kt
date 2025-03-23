@@ -12,7 +12,7 @@ class BackgroundPushNotificationIsolateBootstrapApi(
     override fun initializePushNotificationCallback(
         callbackDispatcher: Long, onNotificationSync: Long, callback: (Result<Unit>) -> Unit
     ) {
-        StorageDelegate.BackgroundIsolate.setCallbackDispatcher(context, callbackDispatcher)
+        StorageDelegate.IncomingCallService.setCallbackDispatcher(context, callbackDispatcher)
         StorageDelegate.IncomingCallService.setOnNotificationSync(context, onNotificationSync)
 
         callback(Result.success(Unit))

@@ -14,7 +14,7 @@ class BackgroundSignalingIsolateBootstrapApi(
         onChangedLifecycleHandler: Long,
         callback: (Result<Unit>) -> Unit
     ) {
-        StorageDelegate.BackgroundIsolate.setCallbackDispatcher(context, callbackDispatcher)
+        StorageDelegate.SignalingService.setCallbackDispatcher(context, callbackDispatcher)
 
         StorageDelegate.SignalingService.setOnStartHandler(context, onStartHandler)
         StorageDelegate.SignalingService.setOnChangedLifecycleHandler(context, onChangedLifecycleHandler)
