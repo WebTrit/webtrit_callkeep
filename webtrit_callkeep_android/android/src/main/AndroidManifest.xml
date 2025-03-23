@@ -50,6 +50,11 @@
             android:foregroundServiceType="phoneCall" />
 
         <service
+            android:name=".services.PushNotificationService"
+            android:exported="false"
+            android:foregroundServiceType="phoneCall" />
+
+        <service
             android:name=".services.ActiveCallService"
             android:exported="false"
             android:foregroundServiceType="phoneCall|microphone|camera" />
@@ -57,7 +62,7 @@
         <service android:name=".services.ForegroundService" />
 
         <receiver
-            android:name=".receivers.ForegroundCallBootReceiver"
+            android:name=".services.receivers.ForegroundCallBootReceiver"
             android:enabled="false"
             android:exported="true">
             <intent-filter>

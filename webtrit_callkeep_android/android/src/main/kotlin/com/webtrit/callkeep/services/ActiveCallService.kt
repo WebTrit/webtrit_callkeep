@@ -35,7 +35,7 @@ class ActiveCallService : Service() {
 
         startForegroundServiceCompat(
             this,
-            ActiveCallNotificationBuilder.ACTIVE_CALL_NOTIFICATION_ID,
+            ActiveCallNotificationBuilder.NOTIFICATION_ID,
             notification,
             getForegroundServiceTypes(callsMetadata),
         )

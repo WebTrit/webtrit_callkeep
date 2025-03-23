@@ -98,6 +98,6 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
 
     companion object {
         const val TAG = "INCOMING_CALL_NOTIFICATION"
-        const val INCOMING_CALL_NOTIFICATION_ID = 1 // R.integer.notification_incoming_call_id
+        const val NOTIFICATION_ID = 2
     }
 }

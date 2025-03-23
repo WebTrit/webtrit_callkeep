@@ -20,6 +20,5 @@ abstract class NotificationBuilder() {
         )
     }
 
-    abstract fun build(): Notification;
-
+    abstract fun build(): Notification
 }

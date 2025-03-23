@@ -71,7 +71,7 @@ class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
         if (PermissionsHelper(baseContext).hasNotificationPermission()) {
             startForegroundServiceCompat(
                 this,
-                ForegroundCallNotificationBuilder.FOREGROUND_CALL_NOTIFICATION_ID,
+                ForegroundCallNotificationBuilder.NOTIFICATION_ID,
                 notification,
                 if (SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL else null
             )
@@ -96,7 +96,7 @@ class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
     private fun isNotificationVisible(): Boolean {
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         val activeNotifications = notificationManager.activeNotifications
-        return activeNotifications.any { it.id == ForegroundCallNotificationBuilder.FOREGROUND_CALL_NOTIFICATION_ID }
+        return activeNotifications.any { it.id == ForegroundCallNotificationBuilder.NOTIFICATION_ID }
     }
 
     override fun onDestroy() {
