@@ -51,6 +51,7 @@ class ForegroundService : Service(), PHostApi {
 
     override fun onCreate() {
         super.onCreate()
+        Log.i(TAG, "onCreate")
         EventDispatcher.registerService(this::class.java)
         isRunning = true
     }
@@ -96,6 +97,7 @@ class ForegroundService : Service(), PHostApi {
         proximityEnabled: Boolean,
         callback: (Result<PCallRequestError?>) -> Unit
     ) {
+        Log.i(TAG, "startCall $callId.")
         val metadata = CallMetadata(
             callId = callId,
             handle = handle.toCallHandle(),
@@ -104,7 +106,7 @@ class ForegroundService : Service(), PHostApi {
             proximityEnabled = proximityEnabled,
         )
         PhoneConnectionService.Companion.startOutgoingCall(baseContext, metadata)
-
+        callback.invoke(Result.success(null))
     }
 
     override fun reportNewIncomingCall(
@@ -136,6 +138,8 @@ class ForegroundService : Service(), PHostApi {
             PhoneConnectionService.Companion.startIncomingCall(baseContext, metadata)
             callback.invoke(Result.success(null))
         }
+
+        callback.invoke(Result.success(null))
     }
 
     override fun isSetUp(): Boolean = true
@@ -182,6 +186,7 @@ class ForegroundService : Service(), PHostApi {
     override fun reportEndCall(
         callId: String, displayName: String, reason: PEndCallReason, callback: (Result<Unit>) -> Unit
     ) {
+        Log.i(TAG, "reportEndCall $callId.")
         val callMetaData = CallMetadata(
             callId = callId, displayName = displayName
         )
@@ -369,11 +374,13 @@ class ForegroundService : Service(), PHostApi {
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
+        Log.i(TAG, "onUnbind")
         return super.onUnbind(intent)
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        Log.i(TAG, "onDestroy")
         isRunning = false
         EventDispatcher.unregisterService(this::class.java)
     }
