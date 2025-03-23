@@ -24,6 +24,12 @@ import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
 import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 import com.webtrit.callkeep.services.workers.SignalingServiceBootWorker
 
+/**
+ * A foreground service that manages the call state and Flutter background isolate.
+ *
+ * Maintains an open socket connection with the server to receive incoming calls and communicate with the Flutter background isolate.
+ * Triggers incoming calls, ends calls, ends all calls, and handles lifecycle events.
+ */
 class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
     private lateinit var notificationBuilder: ForegroundCallNotificationBuilder
     private lateinit var flutterEngineHelper: FlutterEngineHelper

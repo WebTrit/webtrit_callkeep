@@ -35,6 +35,14 @@ enum class IncomingCallServiceEnums {
     LAUNCH, ANSWER, HANGUP;
 }
 
+/**
+ * Service that handles incoming calls.
+ *
+ * This service is started by the incoming call notification and manages the incoming call lifecycle.
+ * It starts the Flutter background isolate and communicates with the main isolate (Activity) or notification incoming isolate to handle the call.
+ *
+ * If the app is in the background, closed, or minimized, the service starts the Flutter background isolate and communicates with the notification incoming isolate to handle the call. If signaling is connected, it is provided by the main isolate or app resumed using the main isolate.
+ */
 @Keep
 class IncomingCallService : Service(), PHostBackgroundPushNotificationIsolateApi {
     private val incomingCallNotificationBuilder by lazy { IncomingCallNotificationBuilder() }
