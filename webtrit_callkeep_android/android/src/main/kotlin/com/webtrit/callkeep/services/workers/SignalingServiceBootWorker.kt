@@ -5,18 +5,17 @@ import android.content.Intent
 import androidx.core.content.ContextCompat
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
-import androidx.work.WorkerParameters
+import androidx.work.*
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.services.SignalingService
 import java.util.concurrent.TimeUnit
 
-class SignalingServiceBootWorker(context: Context, workerParams: WorkerParameters) :
-    androidx.work.Worker(context, workerParams) {
+class SignalingServiceBootWorker(context: Context, workerParams: WorkerParameters) : Worker(context, workerParams) {
     override fun doWork(): Result {
         return try {
             ContextCompat.startForegroundService(
-                applicationContext, Intent(applicationContext, SignalingService::class.java)
+                applicationContext,
+                Intent(applicationContext, SignalingService::class.java)
             )
             Result.success()
         } catch (e: Exception) {

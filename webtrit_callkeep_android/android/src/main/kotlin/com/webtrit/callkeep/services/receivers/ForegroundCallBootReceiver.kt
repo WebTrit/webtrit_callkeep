@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.receivers
+package com.webtrit.callkeep.services.receivers
 
 import android.content.BroadcastReceiver
 import android.content.Context
