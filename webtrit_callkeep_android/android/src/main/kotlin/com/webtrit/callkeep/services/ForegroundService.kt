@@ -375,6 +375,7 @@ class ForegroundService : Service(), PHostApi {
 
     override fun onUnbind(intent: Intent?): Boolean {
         Log.i(TAG, "onUnbind")
+        stopSelf()
         return super.onUnbind(intent)
     }
 

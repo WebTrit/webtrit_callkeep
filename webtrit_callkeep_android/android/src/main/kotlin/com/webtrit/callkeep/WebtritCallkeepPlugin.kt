@@ -88,33 +88,13 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
 
         ActivityHolder.setActivity(binding.activity)
 
-        Log.d(TAG, "onAttachedToActivity: Trying to bind service")
-        val intent = Intent(binding.activity, ForegroundService::class.java)
-        serviceConnection = object : ServiceConnection {
-            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-                val binder = service as ForegroundService.LocalBinder
-                boundService = binder.getService()
-                boundService?.flutterDelegateApi = PDelegateFlutterApi(messenger)
-                PHostApi.setUp(messenger, boundService)
-
-                Log.d(TAG, "onAttachedToActivity: Service connected")
-            }
-
-            override fun onServiceDisconnected(name: ComponentName?) {
-                boundService = null
-                Log.d(TAG, "onAttachedToActivity: Service disconnected")
-            }
-        }
-        binding.activity.bindService(intent, serviceConnection!!, Context.BIND_AUTO_CREATE)
+        bindForegroundService(binding.activity)
     }
 
     override fun onDetachedFromActivity() {
         this.lifeCycle?.removeObserver(this)
         activityPluginBinding?.activity?.let {
-            serviceConnection?.let { conn ->
-                it.unbindService(conn)
-                Log.d(TAG, "Service unbound")
-            }
+            unbindAndStopForegroundService(it)
         }
 
         PHostApi.setUp(messenger, null)
@@ -171,7 +151,63 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         Log.d(TAG, "onStateChanged: Lifecycle event received - $event")
         ActivityHolder.setLifecycle(event)
 
-        if (SignalingService.isRunning) SignalingService.changeLifecycle(context, event)
+        if (SignalingService.isRunning) {
+            SignalingService.changeLifecycle(context, event)
+        }
+
+        when (event) {
+            Lifecycle.Event.ON_STOP -> {
+                activityPluginBinding?.activity?.let { unbindAndStopForegroundService(it) }
+            }
+
+            Lifecycle.Event.ON_START -> {
+                if (serviceConnection == null) {
+                    activityPluginBinding?.activity?.let { bindForegroundService(it) }
+                }
+            }
+
+            else -> Unit
+        }
+    }
+
+    private fun bindForegroundService(activity: Context) {
+        val intent = Intent(activity, ForegroundService::class.java)
+        serviceConnection = object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                val binder = service as ForegroundService.LocalBinder
+                boundService = binder.getService()
+                boundService?.flutterDelegateApi = PDelegateFlutterApi(messenger)
+                PHostApi.setUp(messenger, boundService)
+
+                Log.d(TAG, "bindForegroundService: Service connected")
+            }
+
+            override fun onServiceDisconnected(name: ComponentName?) {
+                boundService = null
+                Log.d(TAG, "bindForegroundService: Service disconnected")
+            }
+        }
+        activity.bindService(intent, serviceConnection!!, Context.BIND_AUTO_CREATE)
+        Log.d(TAG, "bindForegroundService: Service binding started")
+    }
+
+    private fun unbindAndStopForegroundService(activity: Context) {
+        serviceConnection?.let { conn ->
+            try {
+                activity.unbindService(conn)
+                Log.d(TAG, "unbindAndStopForegroundService: Service unbound")
+
+                val stopIntent = Intent(activity, ForegroundService::class.java)
+                activity.stopService(stopIntent)
+                Log.d(TAG, "unbindAndStopForegroundService: Service stopped")
+            } catch (e: IllegalArgumentException) {
+                Log.e(TAG, "unbindAndStopForegroundService: Service not registered - ${e.message}")
+            }
+        }
+
+        serviceConnection = null
+        boundService = null
+        PHostApi.setUp(messenger, null)
     }
 
     companion object {
