@@ -6,14 +6,15 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.telecom.*
+import com.webtrit.callkeep.models.ConnectionReport
 import com.webtrit.callkeep.common.Log
-import com.webtrit.callkeep.api.foreground.TelephonyForegroundCallkeepApi
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.helpers.Telecom
 import com.webtrit.callkeep.common.helpers.TelephonyHelper
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.FailureMetadata
-import com.webtrit.callkeep.models.OutgoingFailureType
+import com.webtrit.callkeep.services.ForegroundService
+import com.webtrit.callkeep.services.dispatchers.EventDispatcher
 import com.webtrit.callkeep.services.dispatchers.PhoneConnectionServiceDispatcher
 
 /**
@@ -28,6 +29,8 @@ class PhoneConnectionService : ConnectionService() {
     private lateinit var sensorManager: ProximitySensorManager
     private lateinit var activityWakelockManager: ActivityWakelockManager
     private lateinit var phoneConnectionServiceDispatcher: PhoneConnectionServiceDispatcher
+
+    private val dispatcher: EventDispatcher.DispatchHandle = EventDispatcher.handle
 
     override fun onCreate() {
         super.onCreate()
@@ -47,6 +50,7 @@ class PhoneConnectionService : ConnectionService() {
         } catch (e: Exception) {
             Log.e(TAG, "Exception $e with service action: ${intent.action},")
         }
+
 
         return START_NOT_STICKY
     }
@@ -71,7 +75,12 @@ class PhoneConnectionService : ConnectionService() {
         }
 
         val connection =
-            PhoneConnection.createOutgoingPhoneConnection(applicationContext, metadata, ::disconnectConnection)
+            PhoneConnection.createOutgoingPhoneConnection(
+                applicationContext,
+                dispatcher,
+                metadata,
+                ::disconnectConnection
+            )
         sensorManager.setShouldListenProximity(metadata.proximityEnabled)
         connectionManager.addConnection(metadata.callId, connection)
 
@@ -98,9 +107,9 @@ class PhoneConnectionService : ConnectionService() {
             TAG, "onCreateOutgoingConnectionFailed: $connectionManagerPhoneAccount  $request"
         )
 
-        TelephonyForegroundCallkeepApi.notifyOutgoingFailure(
-            applicationContext,
-            FailureMetadata("onCreateOutgoingConnectionFailed: $connectionManagerPhoneAccount  $request")
+        dispatcher.dispatch(
+            ConnectionReport.OutgoingFailure,
+            FailureMetadata("onCreateOutgoingConnectionFailed: $connectionManagerPhoneAccount  $request").toBundle()
         )
 
         if (!connectionManager.hasVideoConnections()) {
@@ -139,7 +148,12 @@ class PhoneConnectionService : ConnectionService() {
         }
 
         val connection =
-            PhoneConnection.createIncomingPhoneConnection(applicationContext, metadata, ::disconnectConnection)
+            PhoneConnection.createIncomingPhoneConnection(
+                applicationContext,
+                dispatcher,
+                metadata,
+                ::disconnectConnection
+            )
         sensorManager.setShouldListenProximity(true)
         connectionManager.addConnection(metadata.callId, connection)
 
@@ -147,6 +161,7 @@ class PhoneConnectionService : ConnectionService() {
             activityWakelockManager.acquireScreenWakeLock()
         }
 
+        startService(Intent(applicationContext, ForegroundService::class.java).apply { action = "test" })
         return connection
     }
 
@@ -164,8 +179,9 @@ class PhoneConnectionService : ConnectionService() {
         Log.e(
             TAG, "onCreateIncomingConnectionFailed:: $connectionManagerPhoneAccount  $connectionManager "
         )
-        TelephonyForegroundCallkeepApi.notifyIncomingFailure(
-            applicationContext, FailureMetadata("On create incoming connection failed")
+        dispatcher.dispatch(
+            ConnectionReport.IncomingFailure,
+            FailureMetadata("onCreateOutgoingConnectionFailed: $connectionManagerPhoneAccount  $request").toBundle()
         )
 
         if (!connectionManager.hasVideoConnections()) {
@@ -277,13 +293,16 @@ class PhoneConnectionService : ConnectionService() {
                 putParcelable(TelecomManager.EXTRA_OUTGOING_CALL_EXTRAS, metadata.toBundle())
             }
             if (TelephonyHelper(context).isEmergencyNumber(metadata.number)) {
+                // TODO: Implement emergency number handling
                 Log.i(TAG, "onOutgoingCall, trying to call on emergency number: ${metadata.number}")
-                TelephonyForegroundCallkeepApi.notifyOutgoingFailure(
-                    context, FailureMetadata(
-                        "Failed to establish outgoing connection: Emergency number",
-                        outgoingFailureType = OutgoingFailureType.EMERGENCY_NUMBER
-                    )
-                )
+//                TelephonyForegroundCallkeepApi.notifyOutgoingFailure(
+//                    context, FailureMetadata(
+//                        "Failed to establish outgoing connection: Emergency number",
+//                        outgoingFailureType = OutgoingFailureType.EMERGENCY_NUMBER
+//                    )
+//                )
+
+
             } else {
                 // If there is already an active call not on hold, we terminate it and start a new one,
                 // otherwise, we would encounter an exception when placing the outgoing call.

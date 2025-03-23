@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
+import androidx.annotation.Keep
 import com.webtrit.callkeep.PCallkeepPushNotificationSyncStatus
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
@@ -36,6 +37,7 @@ enum class IncomingCallServiceEnums {
     LAUNCH, ANSWER, HANGUP;
 }
 
+@Keep
 class IncomingCallService : Service(), PHostBackgroundPushNotificationIsolateApi {
     private val incomingCallNotificationBuilder by lazy { IncomingCallNotificationBuilder() }
 

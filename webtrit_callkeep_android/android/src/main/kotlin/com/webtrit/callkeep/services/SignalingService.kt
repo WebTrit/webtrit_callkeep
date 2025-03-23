@@ -18,8 +18,6 @@ import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.PHandle
 import com.webtrit.callkeep.PHostBackgroundSignalingIsolateApi
-import com.webtrit.callkeep.api.CallkeepApiProvider
-import com.webtrit.callkeep.api.background.BackgroundCallkeepApi
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.StorageDelegate
@@ -30,6 +28,7 @@ import com.webtrit.callkeep.common.helpers.toPCallkeepLifecycleType
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
+import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 import com.webtrit.callkeep.workers.ForegroundCallWorker
 
 class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
@@ -50,8 +49,6 @@ class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
             _isolateCalkeepFlutterApi = value
         }
 
-    private lateinit var connectionService: BackgroundCallkeepApi
-
     override fun onCreate() {
         super.onCreate()
         ContextHolder.init(applicationContext)
@@ -63,6 +60,7 @@ class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
         val callbackDispatcher = StorageDelegate.BackgroundIsolate.getCallbackDispatcher(applicationContext)
         flutterEngineHelper = FlutterEngineHelper(applicationContext, callbackDispatcher, this)
     }
+
 
     /**
      * Starts the service in the foreground with a notification.
@@ -133,8 +131,15 @@ class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
             ForegroundCallServiceEnums.START.action -> wakeUp()
             ForegroundCallServiceEnums.STOP.action -> tearDown()
             ForegroundCallServiceEnums.CHANGE_LIFECYCLE.action -> changedLifecycleHandler(data)
-            ForegroundCallServiceEnums.DECLINE.action -> connectionService.hungUp(CallMetadata.fromBundle(data!!)) {}
-            ForegroundCallServiceEnums.ANSWER.action -> connectionService.answer(CallMetadata.fromBundle(data!!))
+            ForegroundCallServiceEnums.DECLINE.action -> PhoneConnectionService.startHungUpCall(
+                baseContext,
+                CallMetadata.fromBundle(data!!)
+            )
+
+            ForegroundCallServiceEnums.ANSWER.action -> PhoneConnectionService.startAnswerCall(
+                baseContext,
+                CallMetadata.fromBundle(data!!)
+            )
         }
 
         return START_STICKY
@@ -174,8 +179,6 @@ class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
         flutterEngineHelper.startOrAttachEngine()
 
         isRunning = true
-
-        connectionService = CallkeepApiProvider.getBackgroundCallkeepApi(baseContext)
     }
 
     private fun wakeUpBackgroundHandler() {
@@ -229,7 +232,7 @@ class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
     ) {
         val ringtonePath = StorageDelegate.Sound.getRingtonePath(baseContext)
 
-        val callMetaData = CallMetadata(
+        val metadata = CallMetadata(
             callId = callId,
             handle = handle.toCallHandle(),
             displayName = displayName,
@@ -237,18 +240,18 @@ class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
             ringtonePath = ringtonePath,
             createdTime = System.currentTimeMillis()
         )
+        PhoneConnectionService.startIncomingCall(baseContext, metadata)
 
-        connectionService.incomingCall(callMetaData, callback)
     }
 
     override fun endCall(callId: String, callback: (Result<Unit>) -> Unit) {
-        val callMetaData = CallMetadata(callId = callId)
-        connectionService.hungUp(callMetaData, callback)
+        val metadata = CallMetadata(callId = callId)
+        PhoneConnectionService.startHungUpCall(baseContext, metadata)
         callback.invoke(Result.success(Unit)) // TODO: Ensure proper cleanup of connections
     }
 
     override fun endAllCalls(callback: (Result<Unit>) -> Unit) {
-        connectionService.endAllCalls()
+        PhoneConnectionService.tearDown(baseContext)
         callback.invoke(Result.success(Unit)) // TODO: Ensure proper cleanup of connections
     }
 
