@@ -18,18 +18,11 @@ import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.PHandle
 import com.webtrit.callkeep.PHostBackgroundSignalingIsolateApi
-import com.webtrit.callkeep.common.ActivityHolder
-import com.webtrit.callkeep.common.ContextHolder
-import com.webtrit.callkeep.common.StorageDelegate
-import com.webtrit.callkeep.common.FlutterEngineHelper
-import com.webtrit.callkeep.common.PermissionsHelper
-import com.webtrit.callkeep.common.startForegroundServiceCompat
-import com.webtrit.callkeep.common.toPCallkeepLifecycleType
-import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.models.toCallHandle
+import com.webtrit.callkeep.common.*
+import com.webtrit.callkeep.models.*
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
 import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
-import com.webtrit.callkeep.workers.ForegroundCallWorker
+import com.webtrit.callkeep.services.workers.SignalingServiceBootWorker
 
 class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
     private lateinit var notificationBuilder: ForegroundCallNotificationBuilder
@@ -103,7 +96,7 @@ class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
 
     override fun onDestroy() {
         if (StorageDelegate.SignalingService.isSignalingServiceEnabled(context = applicationContext)) {
-            ForegroundCallWorker.Companion.enqueue(this)
+            SignalingServiceBootWorker.Companion.enqueue(this)
         }
 
         getLock(applicationContext)?.let { lock ->
@@ -146,7 +139,7 @@ class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         if (StorageDelegate.SignalingService.isSignalingServiceEnabled(context = applicationContext)) {
-            ForegroundCallWorker.Companion.enqueue(applicationContext, 1000)
+            SignalingServiceBootWorker.Companion.enqueue(applicationContext, 1000)
         }
     }
 
@@ -162,7 +155,7 @@ class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
      * Tears down the service gracefully.
      */
     private fun tearDown() {
-        ForegroundCallWorker.Companion.remove(this)
+        SignalingServiceBootWorker.Companion.remove(this)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -288,7 +281,7 @@ class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
 
         @SuppressLint("ImplicitSamInstance")
         fun stop(context: Context) {
-            ForegroundCallWorker.Companion.remove(context)
+            SignalingServiceBootWorker.Companion.remove(context)
             context.stopService(Intent(context, SignalingService::class.java))
         }
 

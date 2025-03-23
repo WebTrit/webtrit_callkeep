@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.workers
+package com.webtrit.callkeep.services.workers
 
 import android.content.Context
 import android.content.Intent
@@ -6,13 +6,13 @@ import androidx.core.content.ContextCompat
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
-import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.services.SignalingService
 import java.util.concurrent.TimeUnit
 
-class ForegroundCallWorker(context: Context, workerParams: WorkerParameters) : Worker(context, workerParams) {
+class SignalingServiceBootWorker(context: Context, workerParams: WorkerParameters) :
+    androidx.work.Worker(context, workerParams) {
     override fun doWork(): Result {
         return try {
             ContextCompat.startForegroundService(
@@ -32,7 +32,7 @@ class ForegroundCallWorker(context: Context, workerParams: WorkerParameters) : W
 
         fun enqueue(context: Context, delayInMillis: Long = 15000) {
             val workRequest =
-                OneTimeWorkRequestBuilder<ForegroundCallWorker>().addTag(ACTION_RESTART_FOREGROUND_SERVICE)
+                OneTimeWorkRequestBuilder<SignalingServiceBootWorker>().addTag(ACTION_RESTART_FOREGROUND_SERVICE)
                     .setInitialDelay(delayInMillis, TimeUnit.MILLISECONDS).build()
 
             WorkManager.getInstance(context).enqueueUniqueWork(

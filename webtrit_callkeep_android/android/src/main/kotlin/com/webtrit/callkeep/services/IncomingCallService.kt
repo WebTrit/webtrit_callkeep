@@ -12,9 +12,7 @@ import androidx.annotation.Keep
 import com.webtrit.callkeep.PCallkeepPushNotificationSyncStatus
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
-import com.webtrit.callkeep.PHandle
 import com.webtrit.callkeep.PHostBackgroundPushNotificationIsolateApi
-import com.webtrit.callkeep.PHostBackgroundSignalingIsolateApi
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.FlutterEngineHelper
