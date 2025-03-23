@@ -49,6 +49,9 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         ContextHolder.init(context)
         AssetHolder.init(context, flutterAssets)
 
+        delegateLogsFlutterApi = PDelegateLogsFlutterApi(messenger)
+        delegateLogsFlutterApi?.let { Log.add(it) }
+
         // Bootstrap isolate APIs
         PHostBackgroundSignalingIsolateBootstrapApi.setUp(messenger, BackgroundSignalingIsolateBootstrapApi(context))
         PHostBackgroundPushNotificationIsolateBootstrapApi.setUp(
@@ -59,12 +62,11 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         PHostPermissionsApi.setUp(messenger, PermissionsApi(context))
         PHostSoundApi.setUp(messenger, SoundApi(context))
         PHostConnectionsApi.setUp(messenger, ConnectionsApi())
-
-        delegateLogsFlutterApi = PDelegateLogsFlutterApi(messenger).apply { Log.add(this) }
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         delegateLogsFlutterApi?.let { Log.remove(it) }
+        delegateLogsFlutterApi = null
 
         PHostApi.setUp(this.messenger, null)
 

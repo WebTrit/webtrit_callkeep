@@ -11,7 +11,6 @@ import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
 import android.os.IBinder
 import android.os.PowerManager
-import android.util.Log
 import androidx.lifecycle.Lifecycle
 import com.webtrit.callkeep.PCallkeepServiceStatus
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
@@ -171,7 +170,7 @@ class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
      */
     @SuppressLint("WakelockTimeout")
     private fun runService() {
-        Log.v(TAG, "Running service logic")
+        Log.i(TAG, "Running service logic")
         getLock(applicationContext)?.acquire(10 * 60 * 1000L /*10 minutes*/)
 
         flutterEngineHelper.startOrAttachEngine()
@@ -273,7 +272,7 @@ class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
             try {
                 context.startForegroundService(intent)
             } catch (e: IllegalStateException) {
-                Log.e(TAG, "Cannot start service: ${e.message}", e)
+                Log.e(TAG, "Cannot start service: ${e.message}")
             }
         }
 
