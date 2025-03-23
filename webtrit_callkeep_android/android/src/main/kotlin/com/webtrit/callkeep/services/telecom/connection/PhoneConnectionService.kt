@@ -9,7 +9,7 @@ import android.telecom.*
 import com.webtrit.callkeep.models.ConnectionReport
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.ActivityHolder
-import com.webtrit.callkeep.common.helpers.TelephonyUtils
+import com.webtrit.callkeep.common.TelephonyUtils
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.services.ForegroundService

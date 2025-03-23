@@ -1,7 +1,7 @@
 package com.webtrit.callkeep.models
 
 import android.os.Bundle
-import com.webtrit.callkeep.consts.CallDataConst
+import com.webtrit.callkeep.common.CallDataConst
 
 data class CallMetadata(
     val callId: String,

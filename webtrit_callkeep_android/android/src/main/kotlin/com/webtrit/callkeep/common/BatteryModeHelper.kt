@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.common.helpers
+package com.webtrit.callkeep.common
 
 import android.content.Context
 import android.os.PowerManager

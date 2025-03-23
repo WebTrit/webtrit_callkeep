@@ -1,8 +1,8 @@
 package com.webtrit.callkeep
 
 import android.content.Context
-import com.webtrit.callkeep.common.helpers.BatteryModeHelper
-import com.webtrit.callkeep.common.helpers.PermissionsHelper
+import com.webtrit.callkeep.common.BatteryModeHelper
+import com.webtrit.callkeep.common.PermissionsHelper
 
 class PermissionsApi(
     private val context: Context,

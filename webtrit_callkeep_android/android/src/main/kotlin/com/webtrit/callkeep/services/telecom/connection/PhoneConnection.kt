@@ -12,8 +12,7 @@ import android.telecom.VideoProfile
 import androidx.core.net.toUri
 import com.webtrit.callkeep.models.ConnectionReport
 import com.webtrit.callkeep.common.ActivityHolder
-import com.webtrit.callkeep.common.Log
-import com.webtrit.callkeep.common.helpers.Platform
+import com.webtrit.callkeep.common.*
 import com.webtrit.callkeep.managers.AudioManager
 import com.webtrit.callkeep.managers.NotificationManager
 import com.webtrit.callkeep.models.CallMetadata

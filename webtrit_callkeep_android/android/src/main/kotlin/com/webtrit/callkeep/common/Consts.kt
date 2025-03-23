@@ -1,5 +1,4 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
-package com.webtrit.callkeep.consts
+package com.webtrit.callkeep.common
 
 object CallDataConst {
     const val DISPLAY_NAME = "displayName"
