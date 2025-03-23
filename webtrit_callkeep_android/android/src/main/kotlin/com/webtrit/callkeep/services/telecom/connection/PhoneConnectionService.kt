@@ -14,7 +14,7 @@ import com.webtrit.callkeep.common.helpers.TelephonyHelper
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.services.ForegroundService
-import com.webtrit.callkeep.services.dispatchers.EventDispatcher
+import com.webtrit.callkeep.services.dispatchers.CommunicateServiceDispatcher
 import com.webtrit.callkeep.services.dispatchers.PhoneConnectionServiceDispatcher
 
 /**
@@ -30,7 +30,7 @@ class PhoneConnectionService : ConnectionService() {
     private lateinit var activityWakelockManager: ActivityWakelockManager
     private lateinit var phoneConnectionServiceDispatcher: PhoneConnectionServiceDispatcher
 
-    private val dispatcher: EventDispatcher.DispatchHandle = EventDispatcher.handle
+    private val dispatcher: CommunicateServiceDispatcher.DispatchHandle = CommunicateServiceDispatcher.handle
 
     override fun onCreate() {
         super.onCreate()

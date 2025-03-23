@@ -17,7 +17,7 @@ import com.webtrit.callkeep.common.helpers.Platform
 import com.webtrit.callkeep.managers.AudioManager
 import com.webtrit.callkeep.managers.NotificationManager
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.services.dispatchers.EventDispatcher.DispatchHandle
+import com.webtrit.callkeep.services.dispatchers.CommunicateServiceDispatcher.DispatchHandle
 
 /**
  * Represents a phone connection for handling telephony calls.

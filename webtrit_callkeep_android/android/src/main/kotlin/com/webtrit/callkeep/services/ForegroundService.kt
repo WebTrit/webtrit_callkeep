@@ -29,7 +29,7 @@ import com.webtrit.callkeep.models.OutgoingFailureType
 import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.models.toPHandle
 import com.webtrit.callkeep.notifications.NotificationChannelManager
-import com.webtrit.callkeep.services.dispatchers.EventDispatcher
+import com.webtrit.callkeep.services.dispatchers.CommunicateServiceDispatcher
 import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 
 @Keep
@@ -52,7 +52,7 @@ class ForegroundService : Service(), PHostApi {
     override fun onCreate() {
         super.onCreate()
         Log.i(TAG, "onCreate")
-        EventDispatcher.registerService(this::class.java)
+        CommunicateServiceDispatcher.registerService(this::class.java)
         isRunning = true
     }
 
@@ -383,7 +383,7 @@ class ForegroundService : Service(), PHostApi {
         super.onDestroy()
         Log.i(TAG, "onDestroy")
         isRunning = false
-        EventDispatcher.unregisterService(this::class.java)
+        CommunicateServiceDispatcher.unregisterService(this::class.java)
     }
 
     inner class LocalBinder : Binder() {
