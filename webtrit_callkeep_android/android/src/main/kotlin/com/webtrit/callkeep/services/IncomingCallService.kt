@@ -58,33 +58,33 @@ class IncomingCallService : Service() {
         val metadata = intent?.extras?.let { CallMetadata.fromBundle(it) }
 
         when (intent?.action) {
-            // Notification actions
             NotificationAction.Answer.action -> IncomingCallEventDispatcher.answer(baseContext, metadata!!)
             NotificationAction.Hangup.action -> IncomingCallEventDispatcher.hungUp(baseContext, metadata!!)
-            else -> Log.e(TAG, "Missing or unknown intent action")
+            else -> showIncomingCallNotification(metadata!!);
         }
 
+
+        return START_STICKY
+    }
+
+    fun showIncomingCallNotification(metadata: CallMetadata) {
         startForegroundServiceCompat(
             this,
             IncomingCallNotificationBuilder.NOTIFICATION_ID,
-            incomingCallNotificationBuilder.apply { setCallMetaData(metadata!!) }.build()
+            incomingCallNotificationBuilder.apply { setCallMetaData(metadata) }.build()
         )
-
 
         val isolate = IsolateSelector.getIsolateType()
         val signalingServiceRunning = SignalingService.isRunning
 
         // Launch push notifications callbacks and handling only if signaling service is not running
         if (isolate == IsolateType.BACKGROUND && !signalingServiceRunning) {
-            Log.d(TAG, "Launching isolate: $metadata")
             PushNotificationService.start(applicationContext, metadata!!)
         } else {
             Log.d(TAG, "Skipped launching isolate: $metadata")
         }
 
-        return START_STICKY
     }
-
 
     override fun onBind(intent: Intent?): IBinder? = null
 
