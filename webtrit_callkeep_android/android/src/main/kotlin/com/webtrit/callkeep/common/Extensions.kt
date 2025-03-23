@@ -38,18 +38,6 @@ inline fun <reified T : Parcelable> Bundle.parcelableArrayList(key: String): Arr
     else -> @Suppress("DEPRECATION") getParcelableArrayList(key)
 }
 
-@SuppressLint("UnspecifiedRegisterReceiverFlag")
-fun Context.registerCustomReceiver(receiver: BroadcastReceiver, intentFilter: IntentFilter) {
-    if (SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        // TODO: Serdun - Address the Android 14 issue with receiving actions from the connection service with the flag RECEIVER_NOT_EXPORTED.
-        // Investigate alternative methods for communication that do not require opening the API to another app.
-        // As a temporary solution, use RECEIVER_EXPORTED.        registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED)
-        registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED)
-    } else {
-        registerReceiver(receiver, intentFilter)
-    }
-}
-
 fun Ringtone.setLoopingCompat(looping: Boolean) {
     if (SDK_INT >= Build.VERSION_CODES.P) {
         isLooping = looping

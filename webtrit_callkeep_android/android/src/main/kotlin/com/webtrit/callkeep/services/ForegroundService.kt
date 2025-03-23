@@ -28,7 +28,7 @@ import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.models.OutgoingFailureType
 import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.models.toPHandle
-import com.webtrit.callkeep.notifications.NotificationChannelManager
+import com.webtrit.callkeep.managers.NotificationChannelManager
 import com.webtrit.callkeep.services.dispatchers.CommunicateServiceDispatcher
 import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 

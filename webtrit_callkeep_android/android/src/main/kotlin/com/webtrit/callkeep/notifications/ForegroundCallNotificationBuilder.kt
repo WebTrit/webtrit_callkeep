@@ -3,7 +3,7 @@ package com.webtrit.callkeep.notifications
 import android.app.Notification
 import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.ContextHolder.context
-import com.webtrit.callkeep.notifications.NotificationChannelManager.FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID
+import com.webtrit.callkeep.managers.NotificationChannelManager.FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID
 
 class ForegroundCallNotificationBuilder() : NotificationBuilder() {
     private var title = ""

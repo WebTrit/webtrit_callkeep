@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.notifications
+package com.webtrit.callkeep.managers
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -6,7 +6,7 @@ import android.app.NotificationManager
 import android.content.Context
 import androidx.core.app.NotificationManagerCompat
 import com.webtrit.callkeep.R
-import com.webtrit.callkeep.common.ContextHolder.context
+import com.webtrit.callkeep.common.ContextHolder
 
 /**
  * Singleton that manages the creation and registration of notification channels.
@@ -130,6 +130,6 @@ object NotificationChannelManager {
             setShowBadge(showBadge)
             if (customSound) setSound(null, null)
         }
-        NotificationManagerCompat.from(context).createNotificationChannel(notificationChannel)
+        NotificationManagerCompat.from(ContextHolder.context).createNotificationChannel(notificationChannel)
     }
 }

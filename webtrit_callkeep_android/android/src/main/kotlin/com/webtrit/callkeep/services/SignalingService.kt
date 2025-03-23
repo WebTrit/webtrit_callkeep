@@ -61,7 +61,6 @@ class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
         flutterEngineHelper = FlutterEngineHelper(applicationContext, callbackDispatcher, this)
     }
 
-
     /**
      * Starts the service in the foreground with a notification.
      */

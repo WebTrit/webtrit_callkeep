@@ -6,7 +6,7 @@ import androidx.core.app.NotificationCompat
 import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.ContextHolder.context
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.notifications.NotificationChannelManager.MISSED_CALL_NOTIFICATION_CHANNEL_ID
+import com.webtrit.callkeep.managers.NotificationChannelManager.MISSED_CALL_NOTIFICATION_CHANNEL_ID
 
 class MissedCallNotificationBuilder() : NotificationBuilder() {
     private var callMetaData: CallMetadata? = null

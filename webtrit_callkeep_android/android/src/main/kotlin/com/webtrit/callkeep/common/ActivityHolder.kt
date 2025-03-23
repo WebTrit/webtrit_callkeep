@@ -6,6 +6,12 @@ import android.content.Context
 import android.content.Intent
 import androidx.lifecycle.Lifecycle
 
+interface ActivityProvider {
+    fun getActivity(): Activity?
+    fun addActivityChangeListener(listener: (Activity?) -> Unit)
+    fun removeActivityChangeListener(listener: (Activity?) -> Unit)
+}
+
 @SuppressLint("StaticFieldLeak")
 object ActivityHolder : ActivityProvider {
     private var lifecycle: Lifecycle.Event? = null
