@@ -18,19 +18,11 @@ import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.PIncomingCallErrorEnum
 import com.webtrit.callkeep.POptions
 import com.webtrit.callkeep.models.ConnectionReport
-import com.webtrit.callkeep.common.ActivityHolder
-import com.webtrit.callkeep.common.PigeonCallback
-import com.webtrit.callkeep.common.StorageDelegate
-import com.webtrit.callkeep.common.Platform
-import com.webtrit.callkeep.common.TelephonyUtils
-import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.models.FailureMetadata
-import com.webtrit.callkeep.models.OutgoingFailureType
-import com.webtrit.callkeep.models.toCallHandle
-import com.webtrit.callkeep.models.toPHandle
 import com.webtrit.callkeep.managers.NotificationChannelManager
-import com.webtrit.callkeep.services.dispatchers.CommunicateServiceDispatcher
 import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
+import com.webtrit.callkeep.services.dispatchers.CommunicateServiceDispatcher
+import com.webtrit.callkeep.common.*
+import com.webtrit.callkeep.models.*
 
 /**
  * ForegroundService is an Android bound Service that maintains a connection with the main Flutter isolate
@@ -116,7 +108,7 @@ class ForegroundService : Service(), PHostApi {
             handle = handle.toCallHandle(),
             displayName = displayNameOrContactIdentifier,
             hasVideo = video,
-            proximityEnabled = proximityEnabled,
+            proximityEnabled = proximityEnabled
         )
         PhoneConnectionService.Companion.startOutgoingCall(baseContext, metadata)
         callback.invoke(Result.success(null))
@@ -177,9 +169,7 @@ class ForegroundService : Service(), PHostApi {
         callback.invoke(Result.success(Unit))
     }
 
-    override fun reportConnectedOutgoingCall(
-        callId: String, callback: (Result<Unit>) -> Unit
-    ) {
+    override fun reportConnectedOutgoingCall(callId: String, callback: (Result<Unit>) -> Unit) {
         val metadata = CallMetadata(callId = callId)
         PhoneConnectionService.Companion.startEstablishCall(baseContext, metadata)
         callback.invoke(Result.success(Unit))
@@ -207,20 +197,13 @@ class ForegroundService : Service(), PHostApi {
     override fun reportEndCall(
         callId: String, displayName: String, reason: PEndCallReason, callback: (Result<Unit>) -> Unit
     ) {
-        Log.i(TAG, "reportEndCall $callId.")
-        val callMetaData = CallMetadata(
-            callId = callId, displayName = displayName
-        )
+        val callMetaData = CallMetadata(callId = callId, displayName = displayName)
         PhoneConnectionService.Companion.startDeclineCall(baseContext, callMetaData)
         callback.invoke(Result.success(Unit))
     }
 
-    override fun answerCall(
-        callId: String, callback: (Result<PCallRequestError?>) -> Unit
-    ) {
-        val metadata = CallMetadata(
-            callId = callId
-        )
+    override fun answerCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit) {
+        val metadata = CallMetadata(callId = callId)
         if (PhoneConnectionService.Companion.connectionManager.isConnectionAlreadyExists(metadata.callId)) {
             Log.i(TAG, "answerCall ${metadata.callId}.")
             PhoneConnectionService.Companion.startAnswerCall(baseContext, metadata)
@@ -233,62 +216,41 @@ class ForegroundService : Service(), PHostApi {
         }
     }
 
-    override fun endCall(
-        callId: String, callback: (Result<PCallRequestError?>) -> Unit
-    ) {
+    override fun endCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit) {
         Log.i(TAG, "endCall $callId.")
         val metadata = CallMetadata(callId = callId)
         PhoneConnectionService.Companion.startHungUpCall(baseContext, metadata)
         callback.invoke(Result.success(null))
     }
 
-    override fun sendDTMF(
-        callId: String, key: String, callback: (Result<PCallRequestError?>) -> Unit
-    ) {
-        val metadata = CallMetadata(
-            callId = callId,
-            dualToneMultiFrequency = key.getOrNull(0),
-        )
+    override fun sendDTMF(callId: String, key: String, callback: (Result<PCallRequestError?>) -> Unit) {
+        val metadata = CallMetadata(callId = callId, dualToneMultiFrequency = key.getOrNull(0))
         PhoneConnectionService.Companion.startSendDtmfCall(baseContext, metadata)
         callback.invoke(Result.success(null))
     }
 
-    override fun setMuted(
-        callId: String, muted: Boolean, callback: (Result<PCallRequestError?>) -> Unit
-    ) {
-        val metadata = CallMetadata(
-            callId = callId,
-            hasMute = muted,
-        )
+    override fun setMuted(callId: String, muted: Boolean, callback: (Result<PCallRequestError?>) -> Unit) {
+        val metadata = CallMetadata(callId = callId, hasMute = muted)
         PhoneConnectionService.Companion.startMutingCall(baseContext, metadata)
         callback.invoke(Result.success(null))
     }
 
-    override fun setHeld(
-        callId: String, onHold: Boolean, callback: (Result<PCallRequestError?>) -> Unit
-    ) {
-        val metadata = CallMetadata(
-            callId = callId,
-            hasHold = onHold,
-        )
+    override fun setHeld(callId: String, onHold: Boolean, callback: (Result<PCallRequestError?>) -> Unit) {
+        val metadata = CallMetadata(callId = callId, hasHold = onHold)
         PhoneConnectionService.Companion.startHoldingCall(baseContext, metadata)
         callback.invoke(Result.success(null))
     }
 
-    override fun setSpeaker(
-        callId: String, enabled: Boolean, callback: (Result<PCallRequestError?>) -> Unit
-    ) {
-        val metadata = CallMetadata(
-            callId = callId,
-            hasSpeaker = enabled,
-        )
+    override fun setSpeaker(callId: String, enabled: Boolean, callback: (Result<PCallRequestError?>) -> Unit) {
+        val metadata = CallMetadata(callId = callId, hasSpeaker = enabled)
         PhoneConnectionService.Companion.startSpeaker(baseContext, metadata)
         callback.invoke(Result.success(null))
     }
 
-
-    // ConnectionService report handlers
     // --------------------------------
+    // Handlers for ConnectionService reports to communicate with the Flutter side
+    // --------------------------------
+    //
 
     private fun handleCSReportDidPushIncomingCall(extras: Bundle?) {
         extras?.let {
@@ -397,8 +359,10 @@ class ForegroundService : Service(), PHostApi {
         }
     }
 
+    //
     // --------------------------------
-    // ConnectionService report handlers
+    // Handlers for ConnectionService reports to communicate with the Flutter side
+    // --------------------------------
 
     override fun onUnbind(intent: Intent?): Boolean {
         Log.i(TAG, "onUnbind")
