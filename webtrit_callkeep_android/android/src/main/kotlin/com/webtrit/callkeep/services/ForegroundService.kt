@@ -131,27 +131,11 @@ class ForegroundService : Service(), PHostApi {
             ringtonePath = ringtonePath
         )
 
-        val connectionManager = PhoneConnectionService.Companion.connectionManager
-
-        when {
-            connectionManager.isConnectionDisconnected(metadata.callId) -> {
-                callback.invoke(Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED)))
-            }
-
-            connectionManager.isConnectionAlreadyExists(metadata.callId) -> {
-                val error = if (connectionManager.isConnectionAnswered(metadata.callId)) {
-                    PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED)
-                } else {
-                    PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS)
-                }
-                callback.invoke(Result.success(error))
-            }
-
-            else -> {
-                PhoneConnectionService.startIncomingCall(baseContext, metadata)
-                callback.invoke(Result.success(null))
-            }
-        }
+        PhoneConnectionService.startIncomingCall(
+            context = baseContext,
+            metadata = metadata,
+            onSuccess = { callback(Result.success(null)) },
+            onError = { error -> callback(Result.success(error)) })
     }
 
     override fun isSetUp(): Boolean = true

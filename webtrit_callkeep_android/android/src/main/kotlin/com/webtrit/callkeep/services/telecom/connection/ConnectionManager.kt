@@ -2,6 +2,10 @@ package com.webtrit.callkeep.services.telecom.connection
 
 import android.telecom.Connection
 import java.util.concurrent.ConcurrentHashMap
+import com.webtrit.callkeep.PIncomingCallError
+import com.webtrit.callkeep.PIncomingCallErrorEnum
+import com.webtrit.callkeep.models.CallMetadata
+
 
 class ConnectionManager {
     private val connections: ConcurrentHashMap<String, PhoneConnection> = ConcurrentHashMap()
@@ -124,6 +128,33 @@ class ConnectionManager {
                 $connectionsInfo
             }
         """.trimIndent()
+        }
+    }
+
+    companion object {
+        fun validateConnectionAddition(
+            metadata: CallMetadata, onSuccess: () -> Unit, onError: (PIncomingCallError) -> Unit
+        ) {
+            val manager = PhoneConnectionService.connectionManager
+
+            when {
+                manager.isConnectionDisconnected(metadata.callId) -> {
+                    onError(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED))
+                }
+
+                manager.isConnectionAlreadyExists(metadata.callId) -> {
+                    val errorEnum = if (manager.isConnectionAnswered(metadata.callId)) {
+                        PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED
+                    } else {
+                        PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS
+                    }
+                    onError(PIncomingCallError(errorEnum))
+                }
+
+                else -> {
+                    onSuccess()
+                }
+            }
         }
     }
 }

@@ -6,6 +6,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.telecom.*
+import com.webtrit.callkeep.PIncomingCallError
+import com.webtrit.callkeep.PIncomingCallErrorEnum
 import com.webtrit.callkeep.models.ConnectionReport
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.ActivityHolder
@@ -227,14 +229,6 @@ class PhoneConnectionService : ConnectionService() {
 
         var connectionManager: ConnectionManager = ConnectionManager()
 
-        fun startIncomingCall(context: Context, metadata: CallMetadata) {
-            communicate(context, ServiceAction.IncomingCall, metadata)
-        }
-
-        fun startOutgoingCall(context: Context, metadata: CallMetadata) {
-            communicate(context, ServiceAction.OutgoingCall, metadata)
-        }
-
         fun startAnswerCall(context: Context, metadata: CallMetadata) {
             communicate(context, ServiceAction.AnswerCall, metadata)
         }
@@ -283,16 +277,12 @@ class PhoneConnectionService : ConnectionService() {
          * @param metadata The [CallMetadata] for the incoming call.
          */
         @SuppressLint("MissingPermission")
-        private fun outgoingCall(context: Context, metadata: CallMetadata) {
+        fun startOutgoingCall(context: Context, metadata: CallMetadata) {
             Log.i(TAG, "onOutgoingCall, callId: ${metadata.callId}")
 
             val uri: Uri = Uri.fromParts(PhoneAccount.SCHEME_TEL, metadata.number, null)
             val telephonyUtils = TelephonyUtils(context)
 
-            val extras = Bundle().apply {
-                putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, telephonyUtils.getPhoneAccountHandle())
-                putParcelable(TelecomManager.EXTRA_OUTGOING_CALL_EXTRAS, metadata.toBundle())
-            }
             if (telephonyUtils.isEmergencyNumber(metadata.number)) {
                 // TODO: Implement emergency number handling
                 Log.i(TAG, "onOutgoingCall, trying to call on emergency number: ${metadata.number}")
@@ -312,7 +302,7 @@ class PhoneConnectionService : ConnectionService() {
                     it.hungUp()
                 }
 
-                telephonyUtils.getTelecomManager().placeCall(uri, extras)
+                telephonyUtils.getTelecomManager().placeCall(uri, telephonyUtils.buildOutgoingCallExtras(metadata))
             }
         }
 
@@ -323,41 +313,45 @@ class PhoneConnectionService : ConnectionService() {
          *
          * @param metadata The [CallMetadata] for the incoming call.
          */
-        private fun incomingCall(context: Context, metadata: CallMetadata) {
-            Log.i(TAG, "onIncomingCall, callId: ${metadata.callId}")
+        fun startIncomingCall(
+            context: Context,
+            metadata: CallMetadata,
+            onSuccess: () -> Unit,
+            onError: (PIncomingCallError?) -> Unit
+        ) {
+            Log.i(TAG, "startIncomingCall: callId=${metadata.callId}")
 
             val telephonyUtils = TelephonyUtils(context)
-            val account = telephonyUtils.getPhoneAccountHandle()
 
-            val extras = Bundle().apply {
-                putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, account)
-                putBoolean(TelecomManager.METADATA_IN_CALL_SERVICE_RINGING, true)
-                putAll(metadata.toBundle())
-            }
-
-            telephonyUtils.getTelecomManager().addNewIncomingCall(account, extras)
+            ConnectionManager.validateConnectionAddition(
+                metadata = metadata,
+                onSuccess = {
+                    try {
+                        telephonyUtils.getTelecomManager().addNewIncomingCall(
+                            telephonyUtils.getPhoneAccountHandle(),
+                            telephonyUtils.buildIncomingCallExtras(metadata)
+                        )
+                        onSuccess()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to start incoming call ${metadata.callId}: ${e.message}")
+                        onError(PIncomingCallError(PIncomingCallErrorEnum.UNKNOWN))
+                    }
+                },
+                onError = { incomingCallError ->
+                    Log.w(TAG, "Incoming call rejected: ${incomingCallError.value}")
+                    onError(incomingCallError)
+                }
+            )
         }
 
         private fun communicate(context: Context, action: ServiceAction, metadata: CallMetadata?) {
-            when (action) {
-                ServiceAction.IncomingCall -> {
-                    incomingCall(context, metadata!!)
-                }
-
-                ServiceAction.OutgoingCall -> {
-                    outgoingCall(context, metadata!!)
-                }
-
-                else -> {
-                    if (isRunning) {
-                        val intent = Intent(context, PhoneConnectionService::class.java)
-                        intent.action = action.action
-                        metadata?.toBundle()?.let { intent.putExtras(it) }
-                        context.startService(intent)
-                    } else {
-                        Log.i(TAG, "Unable to send command to connection service as it is not running")
-                    }
-                }
+            if (isRunning) {
+                val intent = Intent(context, PhoneConnectionService::class.java)
+                intent.action = action.action
+                metadata?.toBundle()?.let { intent.putExtras(it) }
+                context.startService(intent)
+            } else {
+                Log.i(TAG, "Unable to send command to connection service as it is not running")
             }
         }
     }

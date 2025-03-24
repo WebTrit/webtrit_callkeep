@@ -1,6 +1,7 @@
 package com.webtrit.callkeep
 
 import android.content.Context
+import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.toCallHandle
@@ -37,8 +38,8 @@ class BackgroundPushNotificationIsolateBootstrapApi(
         hasVideo: Boolean,
         callback: (Result<PIncomingCallError?>) -> Unit
     ) {
+        Log.d(TAG, "reportNewIncomingCall: $callId, $handle, $displayName, $hasVideo")
         val ringtonePath = StorageDelegate.Sound.getRingtonePath(context)
-
 
         val metadata = CallMetadata(
             callId = callId,
@@ -47,20 +48,12 @@ class BackgroundPushNotificationIsolateBootstrapApi(
             hasVideo = hasVideo,
             ringtonePath = ringtonePath
         )
-        // User press hangup or decline call
-        if (PhoneConnectionService.connectionManager.isConnectionDisconnected(metadata.callId)) {
-            callback.invoke(Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED)))
-        } else if (PhoneConnectionService.connectionManager.isConnectionAlreadyExists(metadata.callId)) {
-            if (PhoneConnectionService.connectionManager.isConnectionAnswered(metadata.callId)) {
-                callback.invoke(Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED)))
-            } else {
-                callback.invoke(Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS)))
-            }
-        } else {
-            PhoneConnectionService.startIncomingCall(context, metadata)
-            callback.invoke(Result.success(null))
-        }
 
+        PhoneConnectionService.startIncomingCall(
+            context = context,
+            metadata = metadata,
+            onSuccess = { callback(Result.success(null)) },
+            onError = { error -> callback(Result.success(error)) })
     }
 
     companion object {

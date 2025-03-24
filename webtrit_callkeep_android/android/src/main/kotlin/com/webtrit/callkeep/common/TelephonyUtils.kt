@@ -3,12 +3,13 @@ package com.webtrit.callkeep.common
 import android.content.ComponentName
 import android.content.Context
 import android.os.Build
+import android.os.Bundle
 import android.telecom.PhoneAccount
 import android.telecom.PhoneAccountHandle
 import android.telecom.TelecomManager
 import android.telephony.PhoneNumberUtils
 import android.telephony.TelephonyManager
-
+import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 
 class TelephonyUtils(private val context: Context) {
@@ -52,5 +53,20 @@ class TelephonyUtils(private val context: Context) {
 
     private fun getConnectionServiceId(): String {
         return context.packageName + ".connectionService"
+    }
+
+    fun buildIncomingCallExtras(metadata: CallMetadata): Bundle {
+        return Bundle().apply {
+            putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, getPhoneAccountHandle())
+            putBoolean(TelecomManager.METADATA_IN_CALL_SERVICE_RINGING, true)
+            putAll(metadata.toBundle())
+        }
+    }
+
+    fun buildOutgoingCallExtras(metadata: CallMetadata): Bundle {
+        return Bundle().apply {
+            putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, getPhoneAccountHandle())
+            putParcelable(TelecomManager.EXTRA_OUTGOING_CALL_EXTRAS, metadata.toBundle())
+        }
     }
 }
