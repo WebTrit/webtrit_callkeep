@@ -1,10 +1,12 @@
 package com.webtrit.callkeep.services.dispatchers
 
+import android.app.BackgroundServiceStartNotAllowedException
 import android.app.Service
 import android.content.Intent
 import android.os.Bundle
 import com.webtrit.callkeep.models.ConnectionReport
 import com.webtrit.callkeep.common.ContextHolder
+import com.webtrit.callkeep.common.Log
 
 /**
  * A helper object that dispatches [ConnectionReport] events from
@@ -30,19 +32,26 @@ import com.webtrit.callkeep.common.ContextHolder
  * Ensure your Proguard or R8 configuration keeps these service classes and their constructors.
  */
 internal object CommunicateServiceDispatcher {
+    private const val TAG = "CommunicateServiceDispatcher"
+
     internal interface DispatchHandle {
         fun dispatch(report: ConnectionReport, data: Bundle?)
     }
 
     internal val handle = object : DispatchHandle {
         override fun dispatch(report: ConnectionReport, data: Bundle?) {
-            ContextHolder.context.let { ctx ->
+            ContextHolder.context.let { context ->
                 activeServices.forEach { service ->
-                    val intent = Intent(ctx, service).apply {
+                    val intent = Intent(context, service).apply {
                         this.action = report.name
                         data?.let { putExtras(it) }
                     }
-                    ctx.startService(intent)
+
+                    try {
+                        context.startService(intent)
+                    } catch (e: Exception) {
+                        Log.i(TAG, "Failed to start service: $e service: $service")
+                    }
                 }
             }
         }

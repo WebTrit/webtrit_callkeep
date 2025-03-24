@@ -131,13 +131,11 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
             ForegroundCallServiceEnums.STOP.action -> tearDown()
             ForegroundCallServiceEnums.CHANGE_LIFECYCLE.action -> changedLifecycleHandler(data)
             ForegroundCallServiceEnums.DECLINE.action -> PhoneConnectionService.startHungUpCall(
-                baseContext,
-                CallMetadata.fromBundle(data!!)
+                baseContext, CallMetadata.fromBundle(data!!)
             )
 
             ForegroundCallServiceEnums.ANSWER.action -> PhoneConnectionService.startAnswerCall(
-                baseContext,
-                CallMetadata.fromBundle(data!!)
+                baseContext, CallMetadata.fromBundle(data!!)
             )
         }
 
