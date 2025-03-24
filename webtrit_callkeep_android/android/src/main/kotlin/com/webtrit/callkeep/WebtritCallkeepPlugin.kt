@@ -13,8 +13,8 @@ import com.webtrit.callkeep.common.AssetHolder
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.services.ForegroundService
-import com.webtrit.callkeep.services.PushNotificationService
-import com.webtrit.callkeep.services.SignalingService
+import com.webtrit.callkeep.services.PushNotificationIsolateService
+import com.webtrit.callkeep.services.SignalingIsolateService
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.FlutterPlugin.FlutterAssets
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -30,12 +30,13 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     private var lifeCycle: Lifecycle? = null
 
     private lateinit var messenger: BinaryMessenger
-    private lateinit var flutterAssets: FlutterAssets
+    private lateinit var assets: FlutterAssets
     private lateinit var context: Context
 
-    private var foregroundSocketService: SignalingService? = null
-    private var pushNotificationService: PushNotificationService? = null
-    private var boundService: ForegroundService? = null
+    private var signalingIsolateService: SignalingIsolateService? = null
+    private var pushNotificationIsolateService: PushNotificationIsolateService? = null
+
+    private var foregroundService: ForegroundService? = null
     private var serviceConnection: ServiceConnection? = null
 
     private var delegateLogsFlutterApi: PDelegateLogsFlutterApi? = null
@@ -43,11 +44,11 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         // Store binnyMessenger for later use if instance of the flutter engine belongs to main isolate OR call service isolate
         messenger = flutterPluginBinding.binaryMessenger
-        flutterAssets = flutterPluginBinding.flutterAssets
+        assets = flutterPluginBinding.flutterAssets
         context = flutterPluginBinding.applicationContext
 
         ContextHolder.init(context)
-        AssetHolder.init(context, flutterAssets)
+        AssetHolder.init(context, assets)
 
         delegateLogsFlutterApi = PDelegateLogsFlutterApi(messenger)
         delegateLogsFlutterApi?.let { Log.add(it) }
@@ -101,42 +102,42 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
 
         PHostApi.setUp(messenger, null)
 
-        boundService = null
+        foregroundService = null
         serviceConnection = null
         ActivityHolder.setActivity(null)
 
     }
 
     override fun onAttachedToService(binding: ServicePluginBinding) {
-        if (binding.service is PushNotificationService) {
-            pushNotificationService = binding.service as? PushNotificationService
+        if (binding.service is PushNotificationIsolateService) {
+            pushNotificationIsolateService = binding.service as? PushNotificationIsolateService
 
             val delegate = PDelegateBackgroundServiceFlutterApi(messenger)
             val isolateDelegate = PDelegateBackgroundRegisterFlutterApi(messenger)
 
-            pushNotificationService?.isolateCalkeepFlutterApi = delegate
-            pushNotificationService?.isolatePushNotificationFlutterApi = isolateDelegate
+            pushNotificationIsolateService?.isolateCalkeepFlutterApi = delegate
+            pushNotificationIsolateService?.isolatePushNotificationFlutterApi = isolateDelegate
 
-            PHostBackgroundPushNotificationIsolateApi.setUp(messenger, pushNotificationService)
+            PHostBackgroundPushNotificationIsolateApi.setUp(messenger, pushNotificationIsolateService)
         }
 
-        if (binding.service is SignalingService) {
-            this.foregroundSocketService = binding.service as SignalingService
+        if (binding.service is SignalingIsolateService) {
+            this.signalingIsolateService = binding.service as SignalingIsolateService
 
             val delegate = PDelegateBackgroundServiceFlutterApi(messenger)
             val isolateDelegate = PDelegateBackgroundRegisterFlutterApi(messenger)
 
-            foregroundSocketService?.isolateCalkeepFlutterApi = delegate
-            foregroundSocketService?.isolatePushNotificationFlutterApi = isolateDelegate
+            signalingIsolateService?.isolateCalkeepFlutterApi = delegate
+            signalingIsolateService?.isolatePushNotificationFlutterApi = isolateDelegate
 
-            PHostBackgroundSignalingIsolateApi.setUp(messenger, foregroundSocketService)
+            PHostBackgroundSignalingIsolateApi.setUp(messenger, signalingIsolateService)
         }
     }
 
     override fun onDetachedFromService() {
         PHostBackgroundSignalingIsolateApi.setUp(messenger, null)
-        foregroundSocketService = null
-        pushNotificationService = null
+        signalingIsolateService = null
+        pushNotificationIsolateService = null
 
     }
 
@@ -153,8 +154,8 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         Log.d(TAG, "onStateChanged: Lifecycle event received - $event")
         ActivityHolder.setLifecycle(event)
 
-        if (SignalingService.isRunning) {
-            SignalingService.changeLifecycle(context, event)
+        if (SignalingIsolateService.isRunning) {
+            SignalingIsolateService.changeLifecycle(context, event)
         }
 
         when (event) {
@@ -177,15 +178,15 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         serviceConnection = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
                 val binder = service as ForegroundService.LocalBinder
-                boundService = binder.getService()
-                boundService?.flutterDelegateApi = PDelegateFlutterApi(messenger)
-                PHostApi.setUp(messenger, boundService)
+                foregroundService = binder.getService()
+                foregroundService?.flutterDelegateApi = PDelegateFlutterApi(messenger)
+                PHostApi.setUp(messenger, foregroundService)
 
                 Log.d(TAG, "bindForegroundService: Service connected")
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
-                boundService = null
+                foregroundService = null
                 Log.d(TAG, "bindForegroundService: Service disconnected")
             }
         }
@@ -208,7 +209,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         }
 
         serviceConnection = null
-        boundService = null
+        foregroundService = null
         PHostApi.setUp(messenger, null)
     }
 

@@ -11,6 +11,7 @@ import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
 import android.os.IBinder
 import android.os.PowerManager
+import androidx.annotation.Keep
 import androidx.lifecycle.Lifecycle
 import com.webtrit.callkeep.PCallkeepServiceStatus
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
@@ -29,7 +30,8 @@ import com.webtrit.callkeep.services.workers.SignalingServiceBootWorker
  * Maintains an open socket connection with the server to receive incoming calls and communicate with the Flutter background isolate.
  * Triggers incoming calls, ends calls, ends all calls, and handles lifecycle events.
  */
-class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
+@Keep
+class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
     private lateinit var notificationBuilder: ForegroundCallNotificationBuilder
     private lateinit var flutterEngineHelper: FlutterEngineHelper
 
@@ -265,7 +267,7 @@ class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
          * Communicates with the service by starting it with the specified action and metadata.
          */
         private fun communicate(context: Context, action: ForegroundCallServiceEnums, metadata: Bundle?) {
-            val intent = Intent(context, SignalingService::class.java).apply {
+            val intent = Intent(context, SignalingIsolateService::class.java).apply {
                 this.action = action.action
                 metadata?.let { putExtras(it) }
             }
@@ -287,7 +289,7 @@ class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
         @SuppressLint("ImplicitSamInstance")
         fun stop(context: Context) {
             SignalingServiceBootWorker.Companion.remove(context)
-            context.stopService(Intent(context, SignalingService::class.java))
+            context.stopService(Intent(context, SignalingIsolateService::class.java))
         }
 
         fun endCall(context: Context, callMetadata: CallMetadata) =

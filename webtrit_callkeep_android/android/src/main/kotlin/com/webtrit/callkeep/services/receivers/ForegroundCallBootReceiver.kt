@@ -5,13 +5,13 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.content.ContextCompat
 import com.webtrit.callkeep.common.Log
-import com.webtrit.callkeep.services.SignalingService
+import com.webtrit.callkeep.services.SignalingIsolateService
 
 class ForegroundCallBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action
         if (action == Intent.ACTION_MY_PACKAGE_REPLACED || action == Intent.ACTION_BOOT_COMPLETED || action == ACTION_QUICKBOOT_POWERON) {
-            val wakeLock = SignalingService.Companion.getLock(context)
+            val wakeLock = SignalingIsolateService.Companion.getLock(context)
             wakeLock?.let {
                 if (!it.isHeld) {
                     it.acquire(10 * 60 * 1000L /*10 minutes*/)
@@ -20,7 +20,7 @@ class ForegroundCallBootReceiver : BroadcastReceiver() {
 
             try {
                 ContextCompat.startForegroundService(
-                    context, Intent(context, SignalingService::class.java)
+                    context, Intent(context, SignalingIsolateService::class.java)
                 )
             } catch (e: Exception) {
                 e.printStackTrace()

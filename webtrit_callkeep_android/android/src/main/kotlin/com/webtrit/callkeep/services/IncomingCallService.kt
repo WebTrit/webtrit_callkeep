@@ -47,7 +47,7 @@ class IncomingCallService : Service() {
         wakeLock?.let { if (it.isHeld) it.release() }
         wakeLock = null
 
-        PushNotificationService.stop(applicationContext)
+        PushNotificationIsolateService.stop(applicationContext)
 
         stopForeground(STOP_FOREGROUND_REMOVE)
 
@@ -75,11 +75,11 @@ class IncomingCallService : Service() {
         )
 
         val isolate = IsolateSelector.getIsolateType()
-        val signalingServiceRunning = SignalingService.isRunning
+        val signalingIsolateServiceRunning = SignalingIsolateService.isRunning
 
         // Launch push notifications callbacks and handling only if signaling service is not running
-        if (isolate == IsolateType.BACKGROUND && !signalingServiceRunning) {
-            PushNotificationService.start(applicationContext, metadata!!)
+        if (isolate == IsolateType.BACKGROUND && !signalingIsolateServiceRunning) {
+            PushNotificationIsolateService.start(applicationContext, metadata!!)
         } else {
             Log.d(TAG, "Skipped launching isolate: $metadata")
         }

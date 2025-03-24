@@ -38,7 +38,7 @@ enum class DeclineSource {
  * If the app is in the background, closed, or minimized, the service starts the Flutter background isolate and communicates with the notification incoming isolate to handle the call. If signaling is connected, it is provided by the main isolate or app resumed using the main isolate.
  */
 @Keep
-class PushNotificationService : Service(), PHostBackgroundPushNotificationIsolateApi {
+class PushNotificationIsolateService : Service(), PHostBackgroundPushNotificationIsolateApi {
     private var flutterEngineHelper: FlutterEngineHelper? = null
     private var wakeLock: PowerManager.WakeLock? = null
 
@@ -108,14 +108,14 @@ class PushNotificationService : Service(), PHostBackgroundPushNotificationIsolat
     private fun handleIncomingCallLaunch(metadata: CallMetadata) {
         Log.d(TAG, "handleIncomingCallLaunch: $metadata")
         val isolate = IsolateSelector.getIsolateType()
-        val signalingServiceRunning = SignalingService.isRunning
+        val signalingIsolateServiceRunning = SignalingIsolateService.isRunning
 
         Log.d(
             TAG,
-            "Incoming call launched: $metadata in $isolate with signaling service running: $signalingServiceRunning"
+            "Incoming call launched: $metadata in $isolate with signaling service running: $signalingIsolateServiceRunning"
         )
         // Launch push notifications callbacks and handling only if signaling service is not running
-        if (isolate == IsolateType.BACKGROUND && !signalingServiceRunning) {
+        if (isolate == IsolateType.BACKGROUND && !signalingIsolateServiceRunning) {
             Log.d(TAG, "Launching isolate: $metadata")
 
             startIncomingCallIsolate()
@@ -298,7 +298,7 @@ class PushNotificationService : Service(), PHostBackgroundPushNotificationIsolat
          */
         private fun communicate(context: Context, action: PushNotificationServiceEnums, metadata: Bundle?) {
             Log.d(TAG, "Communicating with service: $action")
-            val intent = Intent(context, PushNotificationService::class.java).apply {
+            val intent = Intent(context, PushNotificationIsolateService::class.java).apply {
                 this.action = action.name
                 metadata?.let { putExtras(it) }
 
@@ -310,7 +310,7 @@ class PushNotificationService : Service(), PHostBackgroundPushNotificationIsolat
             communicate(context, PushNotificationServiceEnums.LAUNCH, metadata.toBundle())
 
         @SuppressLint("ImplicitSamInstance")
-        fun stop(context: Context) = context.stopService(Intent(context, PushNotificationService::class.java))
+        fun stop(context: Context) = context.stopService(Intent(context, PushNotificationIsolateService::class.java))
 
         fun answer(context: Context, metadata: CallMetadata) =
             communicate(context, PushNotificationServiceEnums.ANSWER, metadata.toBundle())

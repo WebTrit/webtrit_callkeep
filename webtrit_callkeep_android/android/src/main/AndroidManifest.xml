@@ -40,7 +40,7 @@
         </service>
 
         <service
-            android:name=".services.SignalingService"
+            android:name=".services.SignalingIsolateService"
             android:exported="false"
             android:foregroundServiceType="phoneCall" />
 
@@ -50,7 +50,7 @@
             android:foregroundServiceType="phoneCall" />
 
         <service
-            android:name=".services.PushNotificationService"
+            android:name=".services.PushNotificationIsolateService"
             android:exported="false"
             android:foregroundServiceType="phoneCall" />
 

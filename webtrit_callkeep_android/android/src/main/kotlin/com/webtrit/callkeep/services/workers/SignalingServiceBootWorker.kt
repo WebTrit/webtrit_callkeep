@@ -7,7 +7,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.*
 import com.webtrit.callkeep.common.Log
-import com.webtrit.callkeep.services.SignalingService
+import com.webtrit.callkeep.services.SignalingIsolateService
 import java.util.concurrent.TimeUnit
 
 class SignalingServiceBootWorker(context: Context, workerParams: WorkerParameters) : Worker(context, workerParams) {
@@ -15,7 +15,7 @@ class SignalingServiceBootWorker(context: Context, workerParams: WorkerParameter
         return try {
             ContextCompat.startForegroundService(
                 applicationContext,
-                Intent(applicationContext, SignalingService::class.java)
+                Intent(applicationContext, SignalingIsolateService::class.java)
             )
             Result.success()
         } catch (e: Exception) {

@@ -3,7 +3,7 @@ package com.webtrit.callkeep
 import android.content.Context
 import android.util.Log
 import com.webtrit.callkeep.common.StorageDelegate
-import com.webtrit.callkeep.services.SignalingService
+import com.webtrit.callkeep.services.SignalingIsolateService
 
 class BackgroundSignalingIsolateBootstrapApi(
     private val context: Context
@@ -38,7 +38,7 @@ class BackgroundSignalingIsolateBootstrapApi(
 
         StorageDelegate.SignalingService.setSignalingServiceEnabled(context, true)
 
-        SignalingService.start(context, jsonData)
+        SignalingIsolateService.start(context, jsonData)
         callback(Result.success(Unit))
     }
 
@@ -47,7 +47,7 @@ class BackgroundSignalingIsolateBootstrapApi(
 
         StorageDelegate.SignalingService.setSignalingServiceEnabled(context, false)
 
-        SignalingService.stop(context)
+        SignalingIsolateService.stop(context)
         callback(Result.success(Unit))
     }
 

@@ -3,8 +3,8 @@ package com.webtrit.callkeep.services.dispatchers
 import android.content.Context
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.services.PushNotificationService
-import com.webtrit.callkeep.services.SignalingService
+import com.webtrit.callkeep.services.PushNotificationIsolateService
+import com.webtrit.callkeep.services.SignalingIsolateService
 
 interface IncomingCallServiceContract {
     fun answerIncomingCall(context: Context, metadata: CallMetadata)
@@ -13,28 +13,28 @@ interface IncomingCallServiceContract {
 
 object ForegroundCallAdapter : IncomingCallServiceContract {
     override fun answerIncomingCall(context: Context, metadata: CallMetadata) {
-        SignalingService.answerCall(context, metadata)
+        SignalingIsolateService.answerCall(context, metadata)
     }
 
     override fun declineIncomingCall(context: Context, metadata: CallMetadata) {
-        SignalingService.endCall(context, metadata)
+        SignalingIsolateService.endCall(context, metadata)
     }
 }
 
 object IncomingCallAdapter : IncomingCallServiceContract {
     override fun answerIncomingCall(context: Context, metadata: CallMetadata) {
-        if (SignalingService.isRunning) {
-            SignalingService.answerCall(context, metadata)
+        if (SignalingIsolateService.isRunning) {
+            SignalingIsolateService.answerCall(context, metadata)
         } else {
-            PushNotificationService.answer(context, metadata)
+            PushNotificationIsolateService.answer(context, metadata)
         }
     }
 
     override fun declineIncomingCall(context: Context, metadata: CallMetadata) {
-        if (SignalingService.isRunning) {
-            SignalingService.endCall(context, metadata)
+        if (SignalingIsolateService.isRunning) {
+            SignalingIsolateService.endCall(context, metadata)
         } else {
-            PushNotificationService.hangup(context, metadata)
+            PushNotificationIsolateService.hangup(context, metadata)
         }
     }
 }
@@ -43,7 +43,7 @@ object IncomingCallEventDispatcher {
     const val TAG = "IncomingCallEventDispatcher"
 
     private fun getActiveService(): IncomingCallServiceContract {
-        return if (SignalingService.isRunning) {
+        return if (SignalingIsolateService.isRunning) {
             ForegroundCallAdapter
         } else {
             IncomingCallAdapter
