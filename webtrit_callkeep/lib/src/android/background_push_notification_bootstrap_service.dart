@@ -23,6 +23,16 @@ class BackgroundPushNotificationBootstrapService {
     return platform.initializePushNotificationCallback(onNotificationSync);
   }
 
+  /// Configures the push notification signaling service (Android only).
+  Future<void> configurePushNotificationSignalingService({
+    bool launchBackgroundIsolateEvenIfAppIsOpen = false,
+  }) async {
+    if (kIsWeb || !Platform.isAndroid) return Future.value();
+    return platform.configurePushNotificationSignalingService(
+      launchBackgroundIsolateEvenIfAppIsOpen: launchBackgroundIsolateEvenIfAppIsOpen,
+    );
+  }
+
   /// Reports a new incoming call triggered by a push notification.
   ///
   /// Returns a [CallkeepIncomingCallError] if reporting fails.

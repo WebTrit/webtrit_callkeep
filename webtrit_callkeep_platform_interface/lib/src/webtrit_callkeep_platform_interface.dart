@@ -304,6 +304,20 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('initializePushNotificationCallback() is not implemented');
   }
 
+  /// Configures the push notification signaling service.
+  ///
+  /// This method sets up the push notification signaling service with the provided options.
+  ///
+  /// \param launchBackgroundIsolateEvenIfAppIsOpen - A boolean flag indicating whether to launch
+  /// the background isolate even if the app is open. Defaults to false.
+  ///
+  /// Throws an [UnimplementedError] if this method is not yet implemented.
+  Future<void> configurePushNotificationSignalingService({
+    bool launchBackgroundIsolateEvenIfAppIsOpen = false,
+  }) {
+    throw UnimplementedError('configurePushNotificationSignalingService() is not implemented');
+  }
+
   /// Report a new incoming call with the given [callId], [handle], [displayName] and [hasVideo] flag.
   /// Returns [CallkeepIncomingCallError] if there is an error.
   Future<CallkeepIncomingCallError?> incomingCallPushNotificationService(

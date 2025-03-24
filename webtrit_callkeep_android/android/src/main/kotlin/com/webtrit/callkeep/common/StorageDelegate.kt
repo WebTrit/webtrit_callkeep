@@ -46,6 +46,21 @@ object StorageDelegate {
     object IncomingCallService {
         private const val ON_NOTIFICATION_SYNC = "ON_NOTIFICATION_SYNC"
         private const val INCOMING_CALL_HANDLER = "INCOMING_CALL_HANDLER"
+        private const val LAUNCH_BACKGROUND_ISOLATE_EVEN_IF_APP_IS_OPEN =
+            "LAUNCH_BACKGROUND_ISOLATE_EVEN_IF_APP_IS_OPEN"
+
+        fun setLaunchBackgroundIsolateEvenIfAppIsOpen(context: Context, value: Boolean) {
+            getSharedPreferences(context)?.edit()?.apply {
+                putBoolean(LAUNCH_BACKGROUND_ISOLATE_EVEN_IF_APP_IS_OPEN, value)
+                apply()
+            }
+        }
+
+        fun isLaunchBackgroundIsolateEvenIfAppIsOpen(context: Context): Boolean {
+            return getSharedPreferences(context)?.getBoolean(
+                LAUNCH_BACKGROUND_ISOLATE_EVEN_IF_APP_IS_OPEN, false
+            ) == true
+        }
 
         fun setOnNotificationSync(context: Context, value: Long) {
             getSharedPreferences(context)?.edit()?.apply {

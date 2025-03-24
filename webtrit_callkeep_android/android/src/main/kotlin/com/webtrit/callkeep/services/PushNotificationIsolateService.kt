@@ -107,15 +107,18 @@ class PushNotificationIsolateService : Service(), PHostBackgroundPushNotificatio
      */
     private fun handleIncomingCallLaunch(metadata: CallMetadata) {
         Log.d(TAG, "handleIncomingCallLaunch: $metadata")
+
         val isolate = IsolateSelector.getIsolateType()
         val signalingIsolateServiceRunning = SignalingIsolateService.isRunning
+        val launchBackgroundIsolateEvenIfAppIsOpen =
+            StorageDelegate.IncomingCallService.isLaunchBackgroundIsolateEvenIfAppIsOpen(baseContext)
 
         Log.d(
             TAG,
             "Incoming call launched: $metadata in $isolate with signaling service running: $signalingIsolateServiceRunning"
         )
         // Launch push notifications callbacks and handling only if signaling service is not running
-        if (isolate == IsolateType.BACKGROUND && !signalingIsolateServiceRunning) {
+        if (launchBackgroundIsolateEvenIfAppIsOpen || (isolate == IsolateType.BACKGROUND && !signalingIsolateServiceRunning)) {
             Log.d(TAG, "Launching isolate: $metadata")
 
             startIncomingCallIsolate()
@@ -133,7 +136,7 @@ class PushNotificationIsolateService : Service(), PHostBackgroundPushNotificatio
             }
         } else {
             Log.d(TAG, "Skipped launching isolate: $metadata")
-
+            stopSelf();
         }
     }
 

@@ -18,6 +18,18 @@ class BackgroundPushNotificationIsolateBootstrapApi(
         callback(Result.success(Unit))
     }
 
+    override fun configureSignalingService(
+        launchBackgroundIsolateEvenIfAppIsOpen: Boolean,
+        callback: (Result<Unit>) -> Unit
+    ) {
+        StorageDelegate.IncomingCallService.setLaunchBackgroundIsolateEvenIfAppIsOpen(
+            context,
+            launchBackgroundIsolateEvenIfAppIsOpen
+        )
+
+        callback(Result.success(Unit))
+    }
+
     override fun reportNewIncomingCall(
         callId: String,
         handle: PHandle,

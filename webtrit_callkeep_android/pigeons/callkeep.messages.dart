@@ -236,6 +236,11 @@ abstract class PHostBackgroundPushNotificationIsolateBootstrapApi {
   });
 
   @async
+  void configureSignalingService({
+    bool launchBackgroundIsolateEvenIfAppIsOpen = false,
+  });
+
+  @async
   PIncomingCallError? reportNewIncomingCall(
     String callId,
     PHandle handle,

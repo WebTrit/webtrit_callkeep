@@ -863,6 +863,7 @@ interface PHostBackgroundSignalingIsolateApi {
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface PHostBackgroundPushNotificationIsolateBootstrapApi {
   fun initializePushNotificationCallback(callbackDispatcher: Long, onNotificationSync: Long, callback: (Result<Unit>) -> Unit)
+  fun configureSignalingService(launchBackgroundIsolateEvenIfAppIsOpen: Boolean, callback: (Result<Unit>) -> Unit)
   fun reportNewIncomingCall(callId: String, handle: PHandle, displayName: String?, hasVideo: Boolean, callback: (Result<PIncomingCallError?>) -> Unit)
 
   companion object {
@@ -882,6 +883,25 @@ interface PHostBackgroundPushNotificationIsolateBootstrapApi {
             val callbackDispatcherArg = args[0] as Long
             val onNotificationSyncArg = args[1] as Long
             api.initializePushNotificationCallback(callbackDispatcherArg, onNotificationSyncArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundPushNotificationIsolateBootstrapApi.configureSignalingService$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val launchBackgroundIsolateEvenIfAppIsOpenArg = args[0] as Boolean
+            api.configureSignalingService(launchBackgroundIsolateEvenIfAppIsOpenArg) { result: Result<Unit> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(wrapError(error))

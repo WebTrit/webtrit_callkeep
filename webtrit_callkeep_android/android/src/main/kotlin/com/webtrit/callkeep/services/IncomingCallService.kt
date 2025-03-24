@@ -16,8 +16,6 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
 import com.webtrit.callkeep.services.dispatchers.IncomingCallEventDispatcher
-import com.webtrit.callkeep.services.helpers.IsolateSelector
-import com.webtrit.callkeep.services.helpers.IsolateType
 
 /**
  * Service that handles incoming calls.
@@ -63,7 +61,6 @@ class IncomingCallService : Service() {
             else -> showIncomingCallNotification(metadata!!);
         }
 
-
         return START_STICKY
     }
 
@@ -74,15 +71,7 @@ class IncomingCallService : Service() {
             incomingCallNotificationBuilder.apply { setCallMetaData(metadata) }.build()
         )
 
-        val isolate = IsolateSelector.getIsolateType()
-        val signalingIsolateServiceRunning = SignalingIsolateService.isRunning
-
-        // Launch push notifications callbacks and handling only if signaling service is not running
-        if (isolate == IsolateType.BACKGROUND && !signalingIsolateServiceRunning) {
-            PushNotificationIsolateService.start(applicationContext, metadata!!)
-        } else {
-            Log.d(TAG, "Skipped launching isolate: $metadata")
-        }
+        PushNotificationIsolateService.start(applicationContext, metadata)
 
     }
 
