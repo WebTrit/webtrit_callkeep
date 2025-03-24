@@ -237,8 +237,12 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
             ringtonePath = ringtonePath,
             createdTime = System.currentTimeMillis()
         )
-        PhoneConnectionService.startIncomingCall(baseContext, metadata)
 
+        PhoneConnectionService.startIncomingCall(
+            context = baseContext,
+            metadata = metadata,
+            onSuccess = { callback(Result.success(Unit)) },
+            onError = { error -> callback(Result.failure(Exception("Incoming call failed with error: $error"))) })
     }
 
     override fun endCall(callId: String, callback: (Result<Unit>) -> Unit) {
