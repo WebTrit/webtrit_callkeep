@@ -75,15 +75,6 @@ class ConnectionManager {
     }
 
     /**
-     * Return active connection.
-     */
-    fun isExistsActiveConnection(): Boolean {
-        synchronized(connectionResourceLock) {
-            return getActiveConnection() != null
-        }
-    }
-
-    /**
      * Checks whether there is an incoming connection.
      *
      * Incoming connections are in the `STATE_NEW` or `STATE_RINGING` state.
@@ -96,13 +87,12 @@ class ConnectionManager {
         }
     }
 
-    /**
-     * Returns the connection that is either active, new, or ringing.
-     *
-     * @return the matching [PhoneConnection] or `null` if none exist.
-     */
-    fun getActiveOrPendingConnection(): PhoneConnection? {
-        return connections.values.find { it.state == Connection.STATE_NEW || it.state == Connection.STATE_RINGING || it.state == Connection.STATE_ACTIVE }
+
+    fun cleanConnections() {
+        synchronized(connectionResourceLock) {
+            connections.values.forEach { it.destroy() }
+            connections.clear()
+        }
     }
 
     /**

@@ -239,6 +239,11 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
+  Future<void> cleanConnections() {
+    return _connectionsApi.cleanConnections();
+  }
+
+  @override
   Future<List<CallkeepConnection>> getConnections() async {
     return _connectionsApi.getConnections().then((value) => value.map((it) => it.toCallkeep()).toList());
   }

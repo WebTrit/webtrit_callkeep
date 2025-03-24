@@ -23,4 +23,9 @@ class ConnectionsApi() : PHostConnectionsApi {
         SignalingHolder.setStatus(status)
         callback(Result.success(Unit))
     }
+
+    override fun cleanConnections(callback: (Result<Unit>) -> Unit) {
+        PhoneConnectionService.connectionManager.cleanConnections()
+        callback(Result.success(Unit))
+    }
 }

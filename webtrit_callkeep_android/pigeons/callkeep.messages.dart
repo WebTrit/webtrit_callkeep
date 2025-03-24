@@ -382,6 +382,9 @@ abstract class PHostConnectionsApi {
   List<PCallkeepConnection> getConnections();
 
   @async
+  void cleanConnections();
+
+  @async
   void updateActivitySignalingStatus(PCallkeepSignalingStatus status);
 }
 

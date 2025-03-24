@@ -211,6 +211,15 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('getConnections() has not been implemented.');
   }
 
+  /// Cleans up  and end all active connections.
+  ///
+  /// This method is used to remove all active connections managed by Callkeep.
+  ///
+  /// Throws an [UnimplementedError] if this method is not yet implemented.
+  Future<void> cleanConnections() {
+    throw UnimplementedError('cleanConnections() has not been implemented.');
+  }
+
   /// Updates the signaling status of the activity connection.
   ///
   /// Set the signaling status for the current activity connection,

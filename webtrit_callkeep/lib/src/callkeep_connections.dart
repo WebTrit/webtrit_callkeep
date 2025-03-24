@@ -27,6 +27,18 @@ class CallkeepConnections {
     return platform.getConnection(callId);
   }
 
+  /// Cleans up all Callkeep connections.
+  ///
+  /// If the platform is web or not Android, it returns immediately.
+  /// Otherwise, it performs the platform-specific cleanup of connections.
+  Future<void> cleanConnections() {
+    if (kIsWeb || !Platform.isAndroid) {
+      return Future.value();
+    }
+
+    return platform.cleanConnections();
+  }
+
   /// Retrieves a list of all active Callkeep connections.
   ///
   /// Returns a [Future] that resolves to a list of [CallkeepConnection] objects representing
