@@ -15,7 +15,6 @@ import androidx.annotation.Keep
 import androidx.lifecycle.Lifecycle
 import com.webtrit.callkeep.PCallkeepServiceStatus
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
-import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.PHandle
 import com.webtrit.callkeep.PHostBackgroundSignalingIsolateApi
 import com.webtrit.callkeep.common.*
@@ -35,18 +34,11 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
     private lateinit var notificationBuilder: ForegroundCallNotificationBuilder
     private lateinit var flutterEngineHelper: FlutterEngineHelper
 
-    private var _isolatePushNotificationFlutterApi: PDelegateBackgroundRegisterFlutterApi? = null
-    var isolatePushNotificationFlutterApi: PDelegateBackgroundRegisterFlutterApi?
-        get() = _isolatePushNotificationFlutterApi
+    private var _isolateSignalingFlutterApi: PDelegateBackgroundRegisterFlutterApi? = null
+    var isolateSignalingFlutterApi: PDelegateBackgroundRegisterFlutterApi?
+        get() = _isolateSignalingFlutterApi
         set(value) {
-            _isolatePushNotificationFlutterApi = value
-        }
-
-    private var _isolateCalkeepFlutterApi: PDelegateBackgroundServiceFlutterApi? = null
-    var isolateCalkeepFlutterApi: PDelegateBackgroundServiceFlutterApi?
-        get() = _isolateCalkeepFlutterApi
-        set(value) {
-            _isolateCalkeepFlutterApi = value
+            _isolateSignalingFlutterApi = value
         }
 
     override fun onCreate() {
@@ -186,18 +178,11 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
         val wakeUpHandler = StorageDelegate.SignalingService.getOnStartHandler(baseContext)
 
-        _isolatePushNotificationFlutterApi?.onWakeUpBackgroundHandler(
+        _isolateSignalingFlutterApi?.onWakeUpBackgroundHandler(
             wakeUpHandler, PCallkeepServiceStatus(
                 pLifecycle,
             )
-        ) { response ->
-            response.onSuccess {
-                Log.d(TAG, "onWakeUpBackgroundHandler: $it")
-            }
-            response.onFailure {
-                Log.e(TAG, "onWakeUpBackgroundHandler: $it")
-            }
-        }
+        ) { response -> }
     }
 
 
@@ -210,7 +195,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         val lifecycle = (event ?: Lifecycle.Event.ON_ANY).toPCallkeepLifecycleType()
         val onChangedLifecycleHandler = StorageDelegate.SignalingService.getOnChangedLifecycleHandler(baseContext)
 
-        _isolatePushNotificationFlutterApi?.onApplicationStatusChanged(
+        _isolateSignalingFlutterApi?.onApplicationStatusChanged(
             onChangedLifecycleHandler, PCallkeepServiceStatus(
                 lifecycle,
             )

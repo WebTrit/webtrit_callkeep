@@ -130,11 +130,8 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         if (binding.service is SignalingIsolateService) {
             this.signalingIsolateService = binding.service as SignalingIsolateService
 
-            PDelegateBackgroundServiceFlutterApi(messenger).let {
-                signalingIsolateService?.isolateCalkeepFlutterApi = it
-            }
             PDelegateBackgroundRegisterFlutterApi(messenger).let {
-                signalingIsolateService?.isolatePushNotificationFlutterApi = it
+                signalingIsolateService?.isolateSignalingFlutterApi = it
             }
 
             PHostBackgroundSignalingIsolateApi.setUp(messenger, signalingIsolateService)
