@@ -202,9 +202,7 @@ abstract class PHostBackgroundSignalingIsolateBootstrapApi {
   });
 
   @async
-  void startService({
-    String? jsonData,
-  });
+  void startService();
 
   @async
   void stopService();

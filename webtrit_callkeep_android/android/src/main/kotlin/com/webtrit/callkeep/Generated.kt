@@ -694,7 +694,7 @@ private open class GeneratedPigeonCodec : StandardMessageCodec() {
 interface PHostBackgroundSignalingIsolateBootstrapApi {
   fun initializeSignalingServiceCallback(callbackDispatcher: Long, onStartHandler: Long, onChangedLifecycleHandler: Long, callback: (Result<Unit>) -> Unit)
   fun configureSignalingService(androidNotificationName: String?, androidNotificationDescription: String?, callback: (Result<Unit>) -> Unit)
-  fun startService(jsonData: String?, callback: (Result<Unit>) -> Unit)
+  fun startService(callback: (Result<Unit>) -> Unit)
   fun stopService(callback: (Result<Unit>) -> Unit)
 
   companion object {
@@ -750,10 +750,8 @@ interface PHostBackgroundSignalingIsolateBootstrapApi {
       run {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateBootstrapApi.startService$separatedMessageChannelSuffix", codec)
         if (api != null) {
-          channel.setMessageHandler { message, reply ->
-            val args = message as List<Any?>
-            val jsonDataArg = args[0] as String?
-            api.startService(jsonDataArg) { result: Result<Unit> ->
+          channel.setMessageHandler { _, reply ->
+            api.startService{ result: Result<Unit> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(wrapError(error))

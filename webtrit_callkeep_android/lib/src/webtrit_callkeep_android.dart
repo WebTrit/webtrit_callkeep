@@ -293,11 +293,8 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<dynamic> startBackgroundSignalingService({
-    Map<String, dynamic> data = const {},
-  }) {
-    final jsonData = jsonEncode(data);
-    return _backgroundSignalingIsolateBootstrapApi.startService(jsonData: jsonData);
+  Future<dynamic> startBackgroundSignalingService() {
+    return _backgroundSignalingIsolateBootstrapApi.startService();
   }
 
   @override

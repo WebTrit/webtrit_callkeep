@@ -33,12 +33,12 @@ class BackgroundSignalingIsolateBootstrapApi(
         callback(Result.success(Unit))
     }
 
-    override fun startService(jsonData: String?, callback: (Result<Unit>) -> Unit) {
-        Log.i(TAG, "startService, data: $jsonData")
+    override fun startService(callback: (Result<Unit>) -> Unit) {
+        Log.i(TAG, "startService")
 
         StorageDelegate.SignalingService.setSignalingServiceEnabled(context, true)
 
-        SignalingIsolateService.start(context, jsonData)
+        SignalingIsolateService.start(context)
         callback(Result.success(Unit))
     }
 

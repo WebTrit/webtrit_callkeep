@@ -256,7 +256,6 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
     companion object {
         private const val TAG = "ForegroundCallService"
-        private const val PARAM_JSON_DATA = "PARAM_JSON_DATA"
         private const val PARAM_CHANGE_LIFECYCLE_EVENT = "PARAM_CHANGE_LIFECYCLE_EVENT"
 
         var isRunning = false
@@ -276,8 +275,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
             }
         }
 
-        fun start(context: Context, data: String? = null) = communicate(
-            context, ForegroundCallServiceEnums.START, data?.let { Bundle().apply { putString(PARAM_JSON_DATA, it) } })
+        fun start(context: Context) = communicate(context, ForegroundCallServiceEnums.START, null)
 
         fun changeLifecycle(context: Context, event: Lifecycle.Event) = communicate(
             context,

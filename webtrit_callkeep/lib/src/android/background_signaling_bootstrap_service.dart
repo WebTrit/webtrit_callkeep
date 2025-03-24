@@ -45,11 +45,9 @@ class BackgroundSignalingBootstrapService {
   }
 
   /// Starts the background signaling service (Android only).
-  Future<void> startService({
-    Map<String, dynamic> data = const {},
-  }) async {
+  Future<void> startService() async {
     if (kIsWeb || !Platform.isAndroid) return Future.value();
-    return platform.startBackgroundSignalingService(data: data);
+    return platform.startBackgroundSignalingService();
   }
 
   /// Stops the background signaling service (Android only).
