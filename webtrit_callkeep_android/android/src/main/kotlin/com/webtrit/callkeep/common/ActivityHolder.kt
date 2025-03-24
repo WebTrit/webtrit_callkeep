@@ -5,8 +5,12 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import androidx.lifecycle.Lifecycle
-import com.webtrit.callkeep.common.helpers.Platform
-import com.webtrit.callkeep.models.CallMetadata
+
+interface ActivityProvider {
+    fun getActivity(): Activity?
+    fun addActivityChangeListener(listener: (Activity?) -> Unit)
+    fun removeActivityChangeListener(listener: (Activity?) -> Unit)
+}
 
 @SuppressLint("StaticFieldLeak")
 object ActivityHolder : ActivityProvider {
@@ -34,10 +38,6 @@ object ActivityHolder : ActivityProvider {
 
     fun setLifecycle(event: Lifecycle.Event) {
         lifecycle = event
-    }
-
-    fun isActivityVisible(): Boolean {
-        return lifecycle == Lifecycle.Event.ON_RESUME && activity != null
     }
 
     fun start(context: Context) {

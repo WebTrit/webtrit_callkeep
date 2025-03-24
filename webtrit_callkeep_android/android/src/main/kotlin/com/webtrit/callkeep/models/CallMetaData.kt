@@ -1,7 +1,7 @@
 package com.webtrit.callkeep.models
 
 import android.os.Bundle
-import com.webtrit.callkeep.consts.CallDataConst
+import com.webtrit.callkeep.common.CallDataConst
 
 data class CallMetadata(
     val callId: String,
@@ -76,7 +76,6 @@ data class CallMetadata(
         private const val CALL_METADATA_CREATED_TIME = "CALL_METADATA_CREATED_TIME"
         private const val CALL_METADATA_ACCEPTED_TIME = "CALL_METADATA_ACCEPTED_TIME"
         private const val CALL_RINGTONE_PATH = "CALL_RINGTONE_PATH"
-        private const val CALL_NAVIGATION_PATHS = "CALL_NAVIGATION_PATHS"
 
         fun fromBundle(bundle: Bundle): CallMetadata {
             val callId = bundle.getString(CallDataConst.CALL_ID)

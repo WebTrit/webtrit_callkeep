@@ -3,7 +3,7 @@ package com.webtrit.callkeep.notifications
 import android.app.Notification
 import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.ContextHolder.context
-import com.webtrit.callkeep.notifications.NotificationChannelManager.FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID
+import com.webtrit.callkeep.managers.NotificationChannelManager.FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID
 
 class ForegroundCallNotificationBuilder() : NotificationBuilder() {
     private var title = ""
@@ -16,7 +16,6 @@ class ForegroundCallNotificationBuilder() : NotificationBuilder() {
     fun setContent(content: String) {
         this.content = content
     }
-
 
     override fun build(): Notification {
         if (title.isEmpty() || content.isEmpty()) throw IllegalStateException("Title and content must be set")
@@ -41,6 +40,6 @@ class ForegroundCallNotificationBuilder() : NotificationBuilder() {
     }
 
     companion object {
-        const val FOREGROUND_CALL_NOTIFICATION_ID = 3 // R.integer.notification_incoming_call_id
+        const val NOTIFICATION_ID = 3
     }
 }

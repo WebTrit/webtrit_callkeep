@@ -187,7 +187,31 @@ class PCallkeepConnection {
 }
 
 @HostApi()
-abstract class PHostBackgroundServiceApi {
+abstract class PHostBackgroundSignalingIsolateBootstrapApi {
+  @async
+  void initializeSignalingServiceCallback({
+    required int callbackDispatcher,
+    required int onStartHandler,
+    required int onChangedLifecycleHandler,
+  });
+
+  @async
+  void configureSignalingService({
+    String? androidNotificationName,
+    String? androidNotificationDescription,
+  });
+
+  @async
+  void startService({
+    String? jsonData,
+  });
+
+  @async
+  void stopService();
+}
+
+@HostApi()
+abstract class PHostBackgroundSignalingIsolateApi {
   @async
   void incomingCall(
     String callId,
@@ -206,14 +230,7 @@ abstract class PHostBackgroundServiceApi {
 }
 
 @HostApi()
-abstract class PHostIsolateApi {
-  @async
-  void initializeSignalingServiceCallback({
-    required int callbackDispatcher,
-    required int onStartHandler,
-    required int onChangedLifecycleHandler,
-  });
-
+abstract class PHostBackgroundPushNotificationIsolateBootstrapApi {
   @async
   void initializePushNotificationCallback({
     required int callbackDispatcher,
@@ -221,18 +238,23 @@ abstract class PHostIsolateApi {
   });
 
   @async
-  void configureSignalingService({
-    String? androidNotificationName,
-    String? androidNotificationDescription,
-  });
+  PIncomingCallError? reportNewIncomingCall(
+    String callId,
+    PHandle handle,
+    String? displayName,
+    bool hasVideo,
+  );
+}
+
+@HostApi()
+abstract class PHostBackgroundPushNotificationIsolateApi {
+  @async
+  void endCall(
+    String callId,
+  );
 
   @async
-  void startService({
-    String? jsonData,
-  });
-
-  @async
-  void stopService();
+  void endAllCalls();
 }
 
 @HostApi()

@@ -9,7 +9,7 @@ import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.ContextHolder.context
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.NotificationAction
-import com.webtrit.callkeep.notifications.NotificationChannelManager.NOTIFICATION_ACTIVE_CALL_CHANNEL_ID
+import com.webtrit.callkeep.managers.NotificationChannelManager.NOTIFICATION_ACTIVE_CALL_CHANNEL_ID
 import com.webtrit.callkeep.services.ActiveCallService
 
 class ActiveCallNotificationBuilder() : NotificationBuilder() {
@@ -64,6 +64,6 @@ class ActiveCallNotificationBuilder() : NotificationBuilder() {
 
     companion object {
         const val TAG = "ACTIVE_CALL_NOTIFICATION"
-        const val ACTIVE_CALL_NOTIFICATION_ID = 1 //  R.integer.notification_active_call_id
+        const val NOTIFICATION_ID = 1
     }
 }

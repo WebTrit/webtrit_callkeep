@@ -1,6 +1,10 @@
 package com.webtrit.callkeep
 
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
+import android.os.IBinder
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
@@ -8,7 +12,8 @@ import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.AssetHolder
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
-import com.webtrit.callkeep.services.IncomingCallService
+import com.webtrit.callkeep.services.ForegroundService
+import com.webtrit.callkeep.services.PushNotificationService
 import com.webtrit.callkeep.services.SignalingService
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.FlutterPlugin.FlutterAssets
@@ -29,7 +34,9 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     private lateinit var context: Context
 
     private var foregroundSocketService: SignalingService? = null
-    private var incomingCallService: IncomingCallService? = null
+    private var pushNotificationService: PushNotificationService? = null
+    private var boundService: ForegroundService? = null
+    private var serviceConnection: ServiceConnection? = null
 
     private var delegateLogsFlutterApi: PDelegateLogsFlutterApi? = null
 
@@ -42,54 +49,75 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         ContextHolder.init(context)
         AssetHolder.init(context, flutterAssets)
 
-        PHostPermissionsApi.setUp(messenger, PigeonPermissionsApi(context))
-        PHostSoundApi.setUp(messenger, PigeonSoundApi(context))
-        PHostIsolateApi.setUp(messenger, PigeonIsolateApi(context))
-        PHostConnectionsApi.setUp(messenger, PigeonConnectionsApi())
+        delegateLogsFlutterApi = PDelegateLogsFlutterApi(messenger)
+        delegateLogsFlutterApi?.let { Log.add(it) }
 
-        delegateLogsFlutterApi = PDelegateLogsFlutterApi(messenger).apply { Log.add(this) }
+        // Bootstrap isolate APIs
+        PHostBackgroundSignalingIsolateBootstrapApi.setUp(messenger, BackgroundSignalingIsolateBootstrapApi(context))
+        PHostBackgroundPushNotificationIsolateBootstrapApi.setUp(
+            messenger,
+            BackgroundPushNotificationIsolateBootstrapApi(context)
+        )
 
-        val flutterDelegateApi = PDelegateFlutterApi(messenger)
-        PHostApi.setUp(messenger, PigeonActivityApi(context, flutterDelegateApi))
+        PHostPermissionsApi.setUp(messenger, PermissionsApi(context))
+        PHostSoundApi.setUp(messenger, SoundApi(context))
+        PHostConnectionsApi.setUp(messenger, ConnectionsApi())
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         delegateLogsFlutterApi?.let { Log.remove(it) }
+        delegateLogsFlutterApi = null
 
         PHostApi.setUp(this.messenger, null)
 
         ActivityHolder.setActivity(null)
 
+        PHostBackgroundSignalingIsolateBootstrapApi.setUp(messenger, null)
+        PHostBackgroundPushNotificationIsolateBootstrapApi.setUp(messenger, null)
+
         PHostPermissionsApi.setUp(messenger, null)
         PHostSoundApi.setUp(messenger, null)
-        PHostIsolateApi.setUp(messenger, null)
         PHostConnectionsApi.setUp(messenger, null)
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         this.activityPluginBinding = binding
 
+        Log.d(TAG, "onAttachedToActivity: Activity attached")
+
         lifeCycle = (binding.lifecycle as HiddenLifecycleReference).lifecycle
         lifeCycle!!.addObserver(this)
 
         ActivityHolder.setActivity(binding.activity)
+
+        bindForegroundService(binding.activity)
     }
 
     override fun onDetachedFromActivity() {
         this.lifeCycle?.removeObserver(this)
+        activityPluginBinding?.activity?.let {
+            unbindAndStopForegroundService(it)
+        }
+
+        PHostApi.setUp(messenger, null)
+
+        boundService = null
+        serviceConnection = null
+        ActivityHolder.setActivity(null)
+
     }
 
     override fun onAttachedToService(binding: ServicePluginBinding) {
-        if (binding.service is IncomingCallService) {
-            incomingCallService = binding.service as? IncomingCallService
+        if (binding.service is PushNotificationService) {
+            pushNotificationService = binding.service as? PushNotificationService
 
             val delegate = PDelegateBackgroundServiceFlutterApi(messenger)
             val isolateDelegate = PDelegateBackgroundRegisterFlutterApi(messenger)
 
-            incomingCallService?.isolateCalkeepFlutterApi = delegate
-            incomingCallService?.isolatePushNotificationFlutterApi = isolateDelegate
+            pushNotificationService?.isolateCalkeepFlutterApi = delegate
+            pushNotificationService?.isolatePushNotificationFlutterApi = isolateDelegate
 
-            PHostBackgroundServiceApi.setUp(messenger, incomingCallService)
+            PHostBackgroundPushNotificationIsolateApi.setUp(messenger, pushNotificationService)
         }
 
         if (binding.service is SignalingService) {
@@ -101,14 +129,15 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
             foregroundSocketService?.isolateCalkeepFlutterApi = delegate
             foregroundSocketService?.isolatePushNotificationFlutterApi = isolateDelegate
 
-            PHostBackgroundServiceApi.setUp(messenger, foregroundSocketService)
+            PHostBackgroundSignalingIsolateApi.setUp(messenger, foregroundSocketService)
         }
     }
 
     override fun onDetachedFromService() {
-        PHostBackgroundServiceApi.setUp(messenger, null)
+        PHostBackgroundSignalingIsolateApi.setUp(messenger, null)
         foregroundSocketService = null
-        incomingCallService = null
+        pushNotificationService = null
+
     }
 
     override fun onDetachedFromActivityForConfigChanges() {
@@ -124,7 +153,63 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         Log.d(TAG, "onStateChanged: Lifecycle event received - $event")
         ActivityHolder.setLifecycle(event)
 
-        if (SignalingService.isRunning.get()) SignalingService.changeLifecycle(context, event)
+        if (SignalingService.isRunning) {
+            SignalingService.changeLifecycle(context, event)
+        }
+
+        when (event) {
+            Lifecycle.Event.ON_STOP -> {
+                activityPluginBinding?.activity?.let { unbindAndStopForegroundService(it) }
+            }
+
+            Lifecycle.Event.ON_START -> {
+                if (serviceConnection == null) {
+                    activityPluginBinding?.activity?.let { bindForegroundService(it) }
+                }
+            }
+
+            else -> Unit
+        }
+    }
+
+    private fun bindForegroundService(activity: Context) {
+        val intent = Intent(activity, ForegroundService::class.java)
+        serviceConnection = object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                val binder = service as ForegroundService.LocalBinder
+                boundService = binder.getService()
+                boundService?.flutterDelegateApi = PDelegateFlutterApi(messenger)
+                PHostApi.setUp(messenger, boundService)
+
+                Log.d(TAG, "bindForegroundService: Service connected")
+            }
+
+            override fun onServiceDisconnected(name: ComponentName?) {
+                boundService = null
+                Log.d(TAG, "bindForegroundService: Service disconnected")
+            }
+        }
+        activity.bindService(intent, serviceConnection!!, Context.BIND_AUTO_CREATE)
+        Log.d(TAG, "bindForegroundService: Service binding started")
+    }
+
+    private fun unbindAndStopForegroundService(activity: Context) {
+        serviceConnection?.let { conn ->
+            try {
+                activity.unbindService(conn)
+                Log.d(TAG, "unbindAndStopForegroundService: Service unbound")
+
+                val stopIntent = Intent(activity, ForegroundService::class.java)
+                activity.stopService(stopIntent)
+                Log.d(TAG, "unbindAndStopForegroundService: Service stopped")
+            } catch (e: IllegalArgumentException) {
+                Log.e(TAG, "unbindAndStopForegroundService: Service not registered - ${e.message}")
+            }
+        }
+
+        serviceConnection = null
+        boundService = null
+        PHostApi.setUp(messenger, null)
     }
 
     companion object {

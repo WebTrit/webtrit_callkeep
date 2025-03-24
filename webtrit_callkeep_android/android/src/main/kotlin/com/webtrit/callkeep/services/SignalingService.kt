@@ -11,29 +11,25 @@ import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
 import android.os.IBinder
 import android.os.PowerManager
-import android.util.Log
 import androidx.lifecycle.Lifecycle
 import com.webtrit.callkeep.PCallkeepServiceStatus
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.PHandle
-import com.webtrit.callkeep.PHostBackgroundServiceApi
-import com.webtrit.callkeep.api.CallkeepApiProvider
-import com.webtrit.callkeep.api.background.BackgroundCallkeepApi
-import com.webtrit.callkeep.common.ActivityHolder
-import com.webtrit.callkeep.common.ContextHolder
-import com.webtrit.callkeep.common.StorageDelegate
-import com.webtrit.callkeep.common.helpers.FlutterEngineHelper
-import com.webtrit.callkeep.common.helpers.PermissionsHelper
-import com.webtrit.callkeep.common.helpers.startForegroundServiceCompat
-import com.webtrit.callkeep.common.helpers.toPCallkeepLifecycleType
-import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.models.toCallHandle
+import com.webtrit.callkeep.PHostBackgroundSignalingIsolateApi
+import com.webtrit.callkeep.common.*
+import com.webtrit.callkeep.models.*
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
-import com.webtrit.callkeep.workers.ForegroundCallWorker
-import java.util.concurrent.atomic.AtomicBoolean
+import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
+import com.webtrit.callkeep.services.workers.SignalingServiceBootWorker
 
-class SignalingService : Service(), PHostBackgroundServiceApi {
+/**
+ * A foreground service that manages the call state and Flutter background isolate.
+ *
+ * Maintains an open socket connection with the server to receive incoming calls and communicate with the Flutter background isolate.
+ * Triggers incoming calls, ends calls, ends all calls, and handles lifecycle events.
+ */
+class SignalingService : Service(), PHostBackgroundSignalingIsolateApi {
     private lateinit var notificationBuilder: ForegroundCallNotificationBuilder
     private lateinit var flutterEngineHelper: FlutterEngineHelper
 
@@ -51,8 +47,6 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
             _isolateCalkeepFlutterApi = value
         }
 
-    private lateinit var connectionService: BackgroundCallkeepApi
-
     override fun onCreate() {
         super.onCreate()
         ContextHolder.init(applicationContext)
@@ -61,7 +55,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
 
         startForegroundService()
 
-        val callbackDispatcher = StorageDelegate.BackgroundIsolate.getCallbackDispatcher(applicationContext)
+        val callbackDispatcher = StorageDelegate.SignalingService.getCallbackDispatcher(applicationContext)
         flutterEngineHelper = FlutterEngineHelper(applicationContext, callbackDispatcher, this)
     }
 
@@ -77,7 +71,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         if (PermissionsHelper(baseContext).hasNotificationPermission()) {
             startForegroundServiceCompat(
                 this,
-                ForegroundCallNotificationBuilder.FOREGROUND_CALL_NOTIFICATION_ID,
+                ForegroundCallNotificationBuilder.NOTIFICATION_ID,
                 notification,
                 if (SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL else null
             )
@@ -102,12 +96,12 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
     private fun isNotificationVisible(): Boolean {
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         val activeNotifications = notificationManager.activeNotifications
-        return activeNotifications.any { it.id == ForegroundCallNotificationBuilder.FOREGROUND_CALL_NOTIFICATION_ID }
+        return activeNotifications.any { it.id == ForegroundCallNotificationBuilder.NOTIFICATION_ID }
     }
 
     override fun onDestroy() {
         if (StorageDelegate.SignalingService.isSignalingServiceEnabled(context = applicationContext)) {
-            ForegroundCallWorker.Companion.enqueue(this)
+            SignalingServiceBootWorker.Companion.enqueue(this)
         }
 
         getLock(applicationContext)?.let { lock ->
@@ -119,7 +113,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         stopForeground(STOP_FOREGROUND_REMOVE)
         flutterEngineHelper.detachAndDestroyEngine()
 
-        isRunning.set(false)
+        isRunning = false
         super.onDestroy()
     }
 
@@ -134,8 +128,15 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
             ForegroundCallServiceEnums.START.action -> wakeUp()
             ForegroundCallServiceEnums.STOP.action -> tearDown()
             ForegroundCallServiceEnums.CHANGE_LIFECYCLE.action -> changedLifecycleHandler(data)
-            ForegroundCallServiceEnums.DECLINE.action -> connectionService.hungUp(CallMetadata.fromBundle(data!!)) {}
-            ForegroundCallServiceEnums.ANSWER.action -> connectionService.answer(CallMetadata.fromBundle(data!!))
+            ForegroundCallServiceEnums.DECLINE.action -> PhoneConnectionService.startHungUpCall(
+                baseContext,
+                CallMetadata.fromBundle(data!!)
+            )
+
+            ForegroundCallServiceEnums.ANSWER.action -> PhoneConnectionService.startAnswerCall(
+                baseContext,
+                CallMetadata.fromBundle(data!!)
+            )
         }
 
         return START_STICKY
@@ -143,7 +144,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         if (StorageDelegate.SignalingService.isSignalingServiceEnabled(context = applicationContext)) {
-            ForegroundCallWorker.Companion.enqueue(applicationContext, 1000)
+            SignalingServiceBootWorker.Companion.enqueue(applicationContext, 1000)
         }
     }
 
@@ -159,7 +160,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
      * Tears down the service gracefully.
      */
     private fun tearDown() {
-        ForegroundCallWorker.Companion.remove(this)
+        SignalingServiceBootWorker.Companion.remove(this)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -169,14 +170,12 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
      */
     @SuppressLint("WakelockTimeout")
     private fun runService() {
-        Log.v(TAG, "Running service logic")
+        Log.i(TAG, "Running service logic")
         getLock(applicationContext)?.acquire(10 * 60 * 1000L /*10 minutes*/)
 
         flutterEngineHelper.startOrAttachEngine()
 
-        isRunning.set(true)
-
-        connectionService = CallkeepApiProvider.getBackgroundCallkeepApi(baseContext, _isolateCalkeepFlutterApi!!)
+        isRunning = true
     }
 
     private fun wakeUpBackgroundHandler() {
@@ -230,7 +229,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
     ) {
         val ringtonePath = StorageDelegate.Sound.getRingtonePath(baseContext)
 
-        val callMetaData = CallMetadata(
+        val metadata = CallMetadata(
             callId = callId,
             handle = handle.toCallHandle(),
             displayName = displayName,
@@ -238,18 +237,18 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
             ringtonePath = ringtonePath,
             createdTime = System.currentTimeMillis()
         )
+        PhoneConnectionService.startIncomingCall(baseContext, metadata)
 
-        connectionService.incomingCall(callMetaData, callback)
     }
 
     override fun endCall(callId: String, callback: (Result<Unit>) -> Unit) {
-        val callMetaData = CallMetadata(callId = callId)
-        connectionService.hungUp(callMetaData, callback)
+        val metadata = CallMetadata(callId = callId)
+        PhoneConnectionService.startHungUpCall(baseContext, metadata)
         callback.invoke(Result.success(Unit)) // TODO: Ensure proper cleanup of connections
     }
 
     override fun endAllCalls(callback: (Result<Unit>) -> Unit) {
-        connectionService.endAllCalls()
+        PhoneConnectionService.tearDown(baseContext)
         callback.invoke(Result.success(Unit)) // TODO: Ensure proper cleanup of connections
     }
 
@@ -260,8 +259,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
         private const val PARAM_JSON_DATA = "PARAM_JSON_DATA"
         private const val PARAM_CHANGE_LIFECYCLE_EVENT = "PARAM_CHANGE_LIFECYCLE_EVENT"
 
-        @JvmStatic
-        val isRunning = AtomicBoolean(false)
+        var isRunning = false
 
         /**
          * Communicates with the service by starting it with the specified action and metadata.
@@ -274,7 +272,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
             try {
                 context.startForegroundService(intent)
             } catch (e: IllegalStateException) {
-                Log.e(TAG, "Cannot start service: ${e.message}", e)
+                Log.e(TAG, "Cannot start service: ${e.message}")
             }
         }
 
@@ -288,7 +286,7 @@ class SignalingService : Service(), PHostBackgroundServiceApi {
 
         @SuppressLint("ImplicitSamInstance")
         fun stop(context: Context) {
-            ForegroundCallWorker.Companion.remove(context)
+            SignalingServiceBootWorker.Companion.remove(context)
             context.stopService(Intent(context, SignalingService::class.java))
         }
 
