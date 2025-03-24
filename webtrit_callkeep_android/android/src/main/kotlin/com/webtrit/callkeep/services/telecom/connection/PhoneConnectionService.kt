@@ -77,13 +77,9 @@ class PhoneConnectionService : ConnectionService() {
             return Connection.createFailedConnection(DisconnectCause(DisconnectCause.BUSY))
         }
 
-        val connection =
-            PhoneConnection.createOutgoingPhoneConnection(
-                applicationContext,
-                dispatcher,
-                metadata,
-                ::disconnectConnection
-            )
+        val connection = PhoneConnection.createOutgoingPhoneConnection(
+            applicationContext, dispatcher, metadata, ::disconnectConnection
+        )
         sensorManager.setShouldListenProximity(metadata.proximityEnabled)
         connectionManager.addConnection(metadata.callId, connection)
 
@@ -150,13 +146,9 @@ class PhoneConnectionService : ConnectionService() {
             return Connection.createFailedConnection(DisconnectCause(DisconnectCause.BUSY))
         }
 
-        val connection =
-            PhoneConnection.createIncomingPhoneConnection(
-                applicationContext,
-                dispatcher,
-                metadata,
-                ::disconnectConnection
-            )
+        val connection = PhoneConnection.createIncomingPhoneConnection(
+            applicationContext, dispatcher, metadata, ::disconnectConnection
+        )
         sensorManager.setShouldListenProximity(true)
         connectionManager.addConnection(metadata.callId, connection)
 
@@ -302,7 +294,7 @@ class PhoneConnectionService : ConnectionService() {
                     it.hungUp()
                 }
 
-                telephonyUtils.getTelecomManager().placeCall(uri, telephonyUtils.buildOutgoingCallExtras(metadata))
+                telephonyUtils.placeOutgoingCall(uri, metadata)
             }
         }
 
@@ -314,34 +306,18 @@ class PhoneConnectionService : ConnectionService() {
          * @param metadata The [CallMetadata] for the incoming call.
          */
         fun startIncomingCall(
-            context: Context,
-            metadata: CallMetadata,
-            onSuccess: () -> Unit,
-            onError: (PIncomingCallError?) -> Unit
+            context: Context, metadata: CallMetadata, onSuccess: () -> Unit, onError: (PIncomingCallError?) -> Unit
         ) {
             Log.i(TAG, "startIncomingCall: callId=${metadata.callId}")
 
-            val telephonyUtils = TelephonyUtils(context)
+            ConnectionManager.validateConnectionAddition(metadata = metadata, onSuccess = {
+                TelephonyUtils(context).addNewIncomingCall(metadata)
+                onSuccess()
 
-            ConnectionManager.validateConnectionAddition(
-                metadata = metadata,
-                onSuccess = {
-                    try {
-                        telephonyUtils.getTelecomManager().addNewIncomingCall(
-                            telephonyUtils.getPhoneAccountHandle(),
-                            telephonyUtils.buildIncomingCallExtras(metadata)
-                        )
-                        onSuccess()
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to start incoming call ${metadata.callId}: ${e.message}")
-                        onError(PIncomingCallError(PIncomingCallErrorEnum.UNKNOWN))
-                    }
-                },
-                onError = { incomingCallError ->
-                    Log.w(TAG, "Incoming call rejected: ${incomingCallError.value}")
-                    onError(incomingCallError)
-                }
-            )
+            }, onError = { incomingCallError ->
+                Log.w(TAG, "Incoming call rejected: ${incomingCallError.value}")
+                onError(incomingCallError)
+            })
         }
 
         private fun communicate(context: Context, action: ServiceAction, metadata: CallMetadata?) {

@@ -1,7 +1,9 @@
 package com.webtrit.callkeep.common
 
+import android.Manifest
 import android.content.ComponentName
 import android.content.Context
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.telecom.PhoneAccount
@@ -9,6 +11,7 @@ import android.telecom.PhoneAccountHandle
 import android.telecom.TelecomManager
 import android.telephony.PhoneNumberUtils
 import android.telephony.TelephonyManager
+import androidx.annotation.RequiresPermission
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 
@@ -25,6 +28,15 @@ class TelephonyUtils(private val context: Context) {
 
     fun getTelecomManager(): TelecomManager {
         return context.getSystemService(Context.TELECOM_SERVICE) as TelecomManager
+    }
+
+    @RequiresPermission(Manifest.permission.CALL_PHONE)
+    fun placeOutgoingCall(uri: Uri, metadata: CallMetadata) {
+        getTelecomManager().placeCall(uri, buildOutgoingCallExtras(metadata))
+    }
+
+    fun addNewIncomingCall(metadata: CallMetadata) {
+        getTelecomManager().addNewIncomingCall(getPhoneAccountHandle(), buildIncomingCallExtras(metadata))
     }
 
     fun registerPhoneAccount() {
