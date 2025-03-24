@@ -18,6 +18,9 @@ dependencies:
   flutter_bloc: ^8.1.6
   hydrated_bloc: ^9.1.5
   clock: ^1.1.1
+  logging: ^1.2.0
+  logging_appenders: ^1.2.0
+  fluttertoast: ^8.2.12
 
 flutter:
   uses-material-design: true

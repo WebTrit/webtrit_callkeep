@@ -12,22 +12,29 @@ import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 
 import 'isolates.dart' as isolate;
 
+final logger = Logger('bootstrap');
+
 Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
-  final logger = Logger('bootstrap');
-  WidgetsFlutterBinding.ensureInitialized();
-  isolate.logIsolateI('Main isolate');
-
-  await Permission.notification.request();
-
-  CallkeepBackgroundService.initializeCallback(
-    onStart: isolate.onStartForegroundService,
-    onChangedLifecycle: isolate.onChangedLifecycle,
-  );
-
-  WebtritCallkeepLogs().setLogsDelegate(CallkeepLogs());
-
   await runZonedGuarded(
     () async {
+      WidgetsFlutterBinding.ensureInitialized();
+
+      initializeLogs();
+      logger.info('bootstrap');
+
+      await Permission.notification.request();
+
+      AndroidCallkeepServices.backgroundSignalingBootstrapService.initializeCallback(
+        onStart: isolate.onStartForegroundService,
+        onChangedLifecycle: isolate.onChangedLifecycle,
+      );
+
+      AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+          .initializeCallback(isolate.onPushNotificationCallback);
+
+      AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+          .configurePushNotificationSignalingService(launchBackgroundIsolateEvenIfAppIsOpen: true);
+
       HydratedBloc.storage = await HydratedStorage.build(
         storageDirectory: kIsWeb ? HydratedStorage.webStorageDirectory : await getTemporaryDirectory(),
       );
@@ -51,4 +58,23 @@ class CallkeepLogs implements CallkeepLogsDelegate {
   void onLog(CallkeepLogType type, String tag, String message) {
     _logger.info('$tag $message');
   }
+}
+
+void initializeLogs() {
+  hierarchicalLoggingEnabled = true;
+
+  Logger.root.clearListeners();
+  Logger.root.level = Level.ALL;
+
+  Logger.root.onRecord.listen((record) {
+    debugPrint('${record.time} [${record.level.name}] ${record.loggerName}: ${record.message}');
+    if (record.error != null) {
+      debugPrint('Error: ${record.error}');
+    }
+    if (record.stackTrace != null) {
+      debugPrint('${record.stackTrace}');
+    }
+  });
+
+  WebtritCallkeepLogs().setLogsDelegate(CallkeepLogs());
 }

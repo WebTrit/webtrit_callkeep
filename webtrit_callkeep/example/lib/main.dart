@@ -8,7 +8,7 @@ void main() {
   hierarchicalLoggingEnabled = true;
   bootstrap(() async {
     return App(
-      callkeepBackgroundService: CallkeepBackgroundService(),
+      callkeepBackgroundService: BackgroundPushNotificationService(),
     );
   });
 }

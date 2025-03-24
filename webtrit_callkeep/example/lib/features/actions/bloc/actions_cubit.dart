@@ -1,36 +1,21 @@
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
-
 import 'package:bloc/bloc.dart';
 import 'package:meta/meta.dart';
 
 import 'package:webtrit_callkeep/webtrit_callkeep.dart';
-import 'package:webtrit_callkeep_example/app/constants.dart';
+
+import '../../../app/constants.dart';
 
 part 'actions_state.dart';
 
 class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, CallkeepBackgroundServiceDelegate {
   ActionsCubit(
     this._callkeep,
-    this._callkeepBackgroundService,
   ) : super(const ActionsUpdate([])) {
     _callkeep.setDelegate(this);
-
-    if (!kIsWeb) {
-      if (Platform.isAndroid) {
-        _callkeepBackgroundService.setBackgroundServiceDelegate(this);
-      }
-    }
   }
 
   final Callkeep _callkeep;
-  final CallkeepBackgroundService _callkeepBackgroundService;
 
-  final call1Identifier = '0';
-  final call2Identifier = '1';
-
-  final numberMock = const CallkeepHandle.number('380000000000');
-  final numberMock1 = const CallkeepHandle.number('380000000001');
 
   bool _speakerEnabled = false;
   bool _isMuted = false;
@@ -39,11 +24,6 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
   @override
   Future<void> close() {
     _callkeep.setDelegate(null);
-    if (!kIsWeb) {
-      if (Platform.isAndroid) {
-        _callkeepBackgroundService.setBackgroundServiceDelegate(null);
-      }
-    }
     return super.close();
   }
 
@@ -73,61 +53,19 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
     }
   }
 
-  // TODO: remove, action deprecated
-
-  // void shutDownAppAndroid() async {
-  //   try {
-  //     _callkeepAndroidService.shutDownApp(path: "/", onlyWhenLock: false);
-  //     emit(state.update.addAction(action: "[Android]: Shut down app android: success"));
-  //   } catch (error) {
-  //     emit(state.update.addAction(action: "[Android]: Is setup error: $error"));
-  //   }
-  // }
-
-  // TODO: remove, action deprecated
-
-  // void isLookScreenAndroid() async {
-  //   try {
-  //     var result = await _callkeepAndroidService.isLockScreen();
-  //     emit(state.update.addAction(action: "[Android]: Is look screen: $result"));
-  //   } catch (error) {
-  //     emit(state.update.addAction(action: "[Android]: Is setup error: $error"));
-  //   }
-  // }
-
   void incomingCallAndroid() async {
     try {
-      var result = await _callkeepBackgroundService.incomingCall(
+      AndroidCallkeepServices.backgroundPushNotificationBootstrapService.reportNewIncomingCall(
         call1Identifier,
-        numberMock,
+        call1Number,
         displayName: 'User Name',
       );
-      emit(state.update.addAction(action: "[Android]: Incoming  call: $result"));
+
+      emit(state.update.addAction(action: "[Android]: Incoming  cal"));
     } catch (error) {
       emit(state.update.addAction(action: "[Android]: Is setup error: $error"));
     }
   }
-
-  // TODO: rename
-  void hungUpAndroid() async {
-    try {
-      var result = await _callkeepBackgroundService.endBackgroundCall(call1Identifier);
-      emit(state.update.addAction(action: "[Android]:Hung up: $result"));
-    } catch (error) {
-      emit(state.update.addAction(action: "[Android]: Hung up error: $error"));
-    }
-  }
-
-  // TODO: remove, action deprecated
-
-  // void wakeUpAndroid() async {
-  //   try {
-  //     await _callkeepAndroidService.wakeUpApp(path: "/");
-  //     emit(state.update.addAction(action: "[Android]:wake up android:"));
-  //   } catch (error) {
-  //     emit(state.update.addAction(action: "[Android]: wake up android error: $error"));
-  //   }
-  // }
 
   void tearDown() async {
     try {
@@ -142,7 +80,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
     try {
       var result = await _callkeep.reportNewIncomingCall(
         call1Identifier,
-        numberMock,
+        call1Number,
         displayName: 'User Name',
         hasVideo: true,
       );
@@ -160,7 +98,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
     try {
       var result = await _callkeep.reportNewIncomingCall(
         call2Identifier,
-        numberMock1,
+        call2Number,
         displayName: 'User Name 1',
         hasVideo: true,
       );
@@ -178,7 +116,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
     try {
       var result = await _callkeep.startCall(
         call1Identifier,
-        numberMock,
+        call1Number,
         displayNameOrContactIdentifier: 'User Name',
         hasVideo: true,
       );
@@ -212,7 +150,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   void reportUpdateCall() async {
     try {
-      await _callkeep.reportUpdateCall(call1Identifier, handle: numberMock, displayName: 'User Name', hasVideo: true);
+      await _callkeep.reportUpdateCall(call1Identifier, handle: call1Number, displayName: 'User Name', hasVideo: true);
 
       emit(state.update.addAction(action: "Success report update call"));
     } catch (error) {

@@ -171,32 +171,6 @@ class ActionsScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(
-                      height: 24,
-                    ),
-                    Text(
-                      "Exclusively for android services",
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(
-                      height: 16,
-                    ),
-                    Wrap(
-                      children: [
-                        Button(
-                          title: "Hung up",
-                          padding: const EdgeInsets.all(8),
-                          textAlign: TextAlign.start,
-                          onClick: () => context.read<ActionsCubit>().hungUpAndroid(),
-                        ),
-                        Button(
-                          title: "Incoming call",
-                          padding: const EdgeInsets.all(8),
-                          textAlign: TextAlign.start,
-                          onClick: () => context.read<ActionsCubit>().incomingCallAndroid(),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               ],

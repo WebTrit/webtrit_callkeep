@@ -5,7 +5,8 @@ import 'package:bloc/bloc.dart';
 import 'package:meta/meta.dart';
 
 import 'package:webtrit_callkeep/webtrit_callkeep.dart';
-import 'package:webtrit_callkeep_example/app/constants.dart';
+
+import '../../../app/constants.dart';
 
 part 'tests_state.dart';
 
@@ -24,17 +25,7 @@ class TestsCubit extends Cubit<TestsState> implements CallkeepDelegate, Callkeep
   }
 
   final Callkeep _callkeep;
-  final CallkeepBackgroundService _callkeepBackgroundService;
-
-  final call1Identifier = '0';
-  final call2Identifier = '1';
-
-  final numberMock = const CallkeepHandle.number('380000000000');
-  final numberMock1 = const CallkeepHandle.number('380000000001');
-
-  bool _speakerEnabled = false;
-  bool _isMuted = false;
-  bool _isHold = false;
+  final BackgroundPushNotificationService _callkeepBackgroundService;
 
   @override
   Future<void> close() {
@@ -67,10 +58,10 @@ class TestsCubit extends Cubit<TestsState> implements CallkeepDelegate, Callkeep
   void spamSameIncomingCalls() async {
     await setup();
     try {
-      await _callkeep.reportNewIncomingCall(call1Identifier, numberMock, displayName: 'User Name');
-      _callkeep.reportNewIncomingCall(call1Identifier, numberMock, displayName: 'User Name');
-      await _callkeep.reportNewIncomingCall(call1Identifier, numberMock, displayName: 'User Name');
-      _callkeep.reportNewIncomingCall(call1Identifier, numberMock, displayName: 'User Name');
+      await _callkeep.reportNewIncomingCall(call1Identifier, call1Number, displayName: 'User Name');
+      _callkeep.reportNewIncomingCall(call1Identifier, call1Number, displayName: 'User Name');
+      await _callkeep.reportNewIncomingCall(call1Identifier, call1Number, displayName: 'User Name');
+      _callkeep.reportNewIncomingCall(call1Identifier, call1Number, displayName: 'User Name');
 
       emit(state.update.addAction(action: "twiceIncomingCallWithSameId success"));
     } catch (error) {
@@ -81,11 +72,11 @@ class TestsCubit extends Cubit<TestsState> implements CallkeepDelegate, Callkeep
   void spamDifferentIncomingCalls() async {
     await setup();
     try {
-      await _callkeep.reportNewIncomingCall(call1Identifier, numberMock, displayName: call1Identifier);
-      _callkeep.reportNewIncomingCall(call1Identifier, numberMock, displayName: call1Identifier);
+      await _callkeep.reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
+      _callkeep.reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
 
-      await _callkeep.reportNewIncomingCall(call2Identifier, numberMock1, displayName: call2Identifier);
-      _callkeep.reportNewIncomingCall(call2Identifier, numberMock1, displayName: call2Identifier);
+      await _callkeep.reportNewIncomingCall(call2Identifier, call1Number, displayName: call2Identifier);
+      _callkeep.reportNewIncomingCall(call2Identifier, call2Number, displayName: call2Identifier);
 
       emit(state.update.addAction(action: "spamDifferentIncomingCalls success"));
     } catch (error) {
@@ -96,14 +87,20 @@ class TestsCubit extends Cubit<TestsState> implements CallkeepDelegate, Callkeep
   void spamBackgroundSameIncomingCalls() async {
     await setup();
     try {
-      await _callkeepBackgroundService.incomingCall(call1Identifier, numberMock, displayName: call1Identifier);
-      _callkeepBackgroundService.incomingCall(call1Identifier, numberMock, displayName: call1Identifier);
+      await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
+      AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
 
-      await _callkeepBackgroundService.incomingCall(call1Identifier, numberMock, displayName: call1Identifier);
-      _callkeepBackgroundService.incomingCall(call1Identifier, numberMock, displayName: call1Identifier);
+      AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
+      AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
 
-      await _callkeepBackgroundService.incomingCall(call1Identifier, numberMock, displayName: call1Identifier);
-      _callkeepBackgroundService.incomingCall(call1Identifier, numberMock, displayName: call1Identifier);
+      AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
+      AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
 
       emit(state.update.addAction(action: "twiceIncomingCallWithSameId success"));
     } catch (error) {
@@ -114,20 +111,26 @@ class TestsCubit extends Cubit<TestsState> implements CallkeepDelegate, Callkeep
   void spamSameIncomingCallsAndBackground() async {
     await setup();
     try {
-      await _callkeepBackgroundService.incomingCall(call1Identifier, numberMock, displayName: call1Identifier);
-      _callkeepBackgroundService.incomingCall(call1Identifier, numberMock, displayName: call1Identifier);
+      await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
+      AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
 
-      await _callkeep.reportNewIncomingCall(call1Identifier, numberMock, displayName: 'User Name');
-      _callkeep.reportNewIncomingCall(call1Identifier, numberMock, displayName: 'User Name');
+      await _callkeep.reportNewIncomingCall(call1Identifier, call1Number, displayName: 'User Name');
+      _callkeep.reportNewIncomingCall(call1Identifier, call1Number, displayName: 'User Name');
 
-      await _callkeepBackgroundService.incomingCall(call1Identifier, numberMock, displayName: call1Identifier);
-      _callkeepBackgroundService.incomingCall(call1Identifier, numberMock, displayName: call1Identifier);
+      await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
+      AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
 
-      await _callkeep.reportNewIncomingCall(call1Identifier, numberMock, displayName: 'User Name');
-      _callkeep.reportNewIncomingCall(call1Identifier, numberMock, displayName: 'User Name');
+      await _callkeep.reportNewIncomingCall(call1Identifier, call1Number, displayName: 'User Name');
+      _callkeep.reportNewIncomingCall(call1Identifier, call1Number, displayName: 'User Name');
 
-      await _callkeepBackgroundService.incomingCall(call1Identifier, numberMock, displayName: call1Identifier);
-      _callkeepBackgroundService.incomingCall(call1Identifier, numberMock, displayName: call1Identifier);
+      await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
+      AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
 
       emit(state.update.addAction(action: "twiceIncomingCallWithSameId success"));
     } catch (error) {
@@ -190,14 +193,12 @@ class TestsCubit extends Cubit<TestsState> implements CallkeepDelegate, Callkeep
 
   @override
   Future<bool> performSetHeld(String callId, bool onHold) {
-    _isHold = onHold;
     emit(state.update.addAction(action: "Delegate held: $onHold"));
     return Future.value(true);
   }
 
   @override
   Future<bool> performSetMuted(String callId, bool muted) {
-    _isMuted = muted;
     emit(state.update.addAction(action: "Delegate muted: $muted"));
     return Future.value(true);
   }
@@ -215,7 +216,6 @@ class TestsCubit extends Cubit<TestsState> implements CallkeepDelegate, Callkeep
 
   @override
   Future<bool> performSetSpeaker(String callId, bool enabled) {
-    _speakerEnabled = enabled;
     emit(state.update.addAction(action: "Delegate set speaker: $enabled"));
 
     return Future.value(true);

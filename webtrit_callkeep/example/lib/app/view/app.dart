@@ -14,7 +14,7 @@ class App extends StatefulWidget {
     required this.callkeepBackgroundService,
   }) : super(key: key);
 
-  final CallkeepBackgroundService callkeepBackgroundService;
+  final BackgroundPushNotificationService callkeepBackgroundService;
 
   @override
   State<App> createState() => _AppState();
@@ -49,10 +49,7 @@ class _AppState extends State<App> {
             path: '/actions',
             builder: (context, state) => BlocProvider(
               create: (context) {
-                return ActionsCubit(
-                  Callkeep(),
-                  widget.callkeepBackgroundService,
-                );
+                return ActionsCubit(Callkeep());
               },
               child: const ActionsScreen(),
             ),
