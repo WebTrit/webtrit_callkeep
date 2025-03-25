@@ -21,15 +21,9 @@ class BackgroundSignalingBootstrapService {
   static String incomingCallType = 'call-incoming-type';
 
   /// Initializes the background service callback handlers (Android only).
-  Future<void> initializeCallback({
-    required ForegroundStartServiceHandle onStart,
-    required ForegroundChangeLifecycleHandle onChangedLifecycle,
-  }) {
+  Future<void> initializeCallback(ForegroundStartServiceHandle onSync) {
     if (kIsWeb || !Platform.isAndroid) return Future.value();
-    return platform.initializeBackgroundSignalingServiceCallback(
-      onStart: onStart,
-      onChangedLifecycle: onChangedLifecycle,
-    );
+    return platform.initializeBackgroundSignalingServiceCallback(onSync);
   }
 
   /// Sets up notification config for the background service (Android only).

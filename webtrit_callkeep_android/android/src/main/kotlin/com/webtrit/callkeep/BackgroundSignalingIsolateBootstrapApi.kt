@@ -10,14 +10,11 @@ class BackgroundSignalingIsolateBootstrapApi(
 ) : PHostBackgroundSignalingIsolateBootstrapApi {
     override fun initializeSignalingServiceCallback(
         callbackDispatcher: Long,
-        onStartHandler: Long,
-        onChangedLifecycleHandler: Long,
+        onSync: Long,
         callback: (Result<Unit>) -> Unit
     ) {
         StorageDelegate.SignalingService.setCallbackDispatcher(context, callbackDispatcher)
-
-        StorageDelegate.SignalingService.setOnStartHandler(context, onStartHandler)
-        StorageDelegate.SignalingService.setOnChangedLifecycleHandler(context, onChangedLifecycleHandler)
+        StorageDelegate.SignalingService.setOnSyncHandler(context, onSync)
 
         callback(Result.success(Unit))
     }

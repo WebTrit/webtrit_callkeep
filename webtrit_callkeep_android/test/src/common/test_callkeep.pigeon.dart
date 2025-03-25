@@ -42,7 +42,7 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is PCallRequestErrorEnum) {
       buffer.putUint8(136);
       writeValue(buffer, value.index);
-    }    else if (value is PCallkeepLifecycleType) {
+    }    else if (value is PCallkeepLifecycleEvent) {
       buffer.putUint8(137);
       writeValue(buffer, value.index);
     }    else if (value is PCallkeepPushNotificationSyncStatus) {
@@ -121,7 +121,7 @@ class _PigeonCodec extends StandardMessageCodec {
         return value == null ? null : PCallRequestErrorEnum.values[value];
       case 137: 
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : PCallkeepLifecycleType.values[value];
+        return value == null ? null : PCallkeepLifecycleEvent.values[value];
       case 138: 
         final int? value = readValue(buffer) as int?;
         return value == null ? null : PCallkeepPushNotificationSyncStatus.values[value];

@@ -89,7 +89,7 @@ enum PCallRequestErrorEnum {
   emergencyNumber,
 }
 
-enum PCallkeepLifecycleType {
+enum PCallkeepLifecycleEvent {
   onCreate,
   onStart,
   onResume,
@@ -358,21 +358,26 @@ class PCallRequestError {
 
 class PCallkeepServiceStatus {
   PCallkeepServiceStatus({
-    required this.lifecycle,
+    required this.lifecycleEvent,
+    this.mainSignalingStatus,
   });
 
-  PCallkeepLifecycleType lifecycle;
+  PCallkeepLifecycleEvent lifecycleEvent;
+
+  PCallkeepSignalingStatus? mainSignalingStatus;
 
   Object encode() {
     return <Object?>[
-      lifecycle,
+      lifecycleEvent,
+      mainSignalingStatus,
     ];
   }
 
   static PCallkeepServiceStatus decode(Object result) {
     result as List<Object?>;
     return PCallkeepServiceStatus(
-      lifecycle: result[0]! as PCallkeepLifecycleType,
+      lifecycleEvent: result[0]! as PCallkeepLifecycleEvent,
+      mainSignalingStatus: result[1] as PCallkeepSignalingStatus?,
     );
   }
 }
@@ -466,7 +471,7 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is PCallRequestErrorEnum) {
       buffer.putUint8(136);
       writeValue(buffer, value.index);
-    }    else if (value is PCallkeepLifecycleType) {
+    }    else if (value is PCallkeepLifecycleEvent) {
       buffer.putUint8(137);
       writeValue(buffer, value.index);
     }    else if (value is PCallkeepPushNotificationSyncStatus) {
@@ -545,7 +550,7 @@ class _PigeonCodec extends StandardMessageCodec {
         return value == null ? null : PCallRequestErrorEnum.values[value];
       case 137: 
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : PCallkeepLifecycleType.values[value];
+        return value == null ? null : PCallkeepLifecycleEvent.values[value];
       case 138: 
         final int? value = readValue(buffer) as int?;
         return value == null ? null : PCallkeepPushNotificationSyncStatus.values[value];
@@ -597,7 +602,7 @@ class PHostBackgroundSignalingIsolateBootstrapApi {
 
   final String pigeonVar_messageChannelSuffix;
 
-  Future<void> initializeSignalingServiceCallback({required int callbackDispatcher, required int onStartHandler, required int onChangedLifecycleHandler,}) async {
+  Future<void> initializeSignalingServiceCallback({required int callbackDispatcher, required int onSync}) async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateBootstrapApi.initializeSignalingServiceCallback$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
@@ -605,7 +610,7 @@ class PHostBackgroundSignalingIsolateBootstrapApi {
       binaryMessenger: pigeonVar_binaryMessenger,
     );
     final List<Object?>? pigeonVar_replyList =
-        await pigeonVar_channel.send(<Object?>[callbackDispatcher, onStartHandler, onChangedLifecycleHandler]) as List<Object?>?;
+        await pigeonVar_channel.send(<Object?>[callbackDispatcher, onSync]) as List<Object?>?;
     if (pigeonVar_replyList == null) {
       throw _createConnectionError(pigeonVar_channelName);
     } else if (pigeonVar_replyList.length > 1) {

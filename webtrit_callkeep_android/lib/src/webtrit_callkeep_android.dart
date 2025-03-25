@@ -31,7 +31,6 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   int? _signalingIsolatePluginCallbackHandle;
   int? _pushNotificationIsolatePluginCallbackHandle;
 
-  int? _onSignalingServiceChangedLifecycleHandle;
   int? _onSignalingServiceStartHandle;
   int? _onPushNotificationNotificationSync;
 
@@ -257,8 +256,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
 // ------------------------------------------------------------------------------------------------
 
   @override
-  Future<void> initializeBackgroundSignalingServiceCallback(
-      {ForegroundStartServiceHandle? onStart, ForegroundChangeLifecycleHandle? onChangedLifecycle}) async {
+  Future<void> initializeBackgroundSignalingServiceCallback(ForegroundStartServiceHandle? onSync) async {
     // Initialization callback handle for the isolate plugin only once;
     _signalingIsolatePluginCallbackHandle = _signalingIsolatePluginCallbackHandle ??
         PluginUtilities.getCallbackHandle(
@@ -267,21 +265,13 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
 
     _onSignalingServiceStartHandle = _onSignalingServiceStartHandle ??
         PluginUtilities.getCallbackHandle(
-          onStart!,
+          onSync!,
         )?.toRawHandle();
 
-    _onSignalingServiceChangedLifecycleHandle = _onSignalingServiceChangedLifecycleHandle ??
-        PluginUtilities.getCallbackHandle(
-          onChangedLifecycle!,
-        )?.toRawHandle();
-
-    if (_signalingIsolatePluginCallbackHandle != null &&
-        _onSignalingServiceStartHandle != null &&
-        _onSignalingServiceChangedLifecycleHandle != null) {
+    if (_signalingIsolatePluginCallbackHandle != null && _onSignalingServiceStartHandle != null) {
       await _backgroundSignalingIsolateBootstrapApi.initializeSignalingServiceCallback(
         callbackDispatcher: _signalingIsolatePluginCallbackHandle!,
-        onStartHandler: _onSignalingServiceStartHandle!,
-        onChangedLifecycleHandler: _onSignalingServiceChangedLifecycleHandle!,
+        onSync: _onSignalingServiceStartHandle!,
       );
     }
   }

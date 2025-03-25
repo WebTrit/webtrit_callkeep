@@ -159,7 +159,7 @@ enum class PCallRequestErrorEnum(val raw: Int) {
   }
 }
 
-enum class PCallkeepLifecycleType(val raw: Int) {
+enum class PCallkeepLifecycleEvent(val raw: Int) {
   ON_CREATE(0),
   ON_START(1),
   ON_RESUME(2),
@@ -169,7 +169,7 @@ enum class PCallkeepLifecycleType(val raw: Int) {
   ON_ANY(6);
 
   companion object {
-    fun ofRaw(raw: Int): PCallkeepLifecycleType? {
+    fun ofRaw(raw: Int): PCallkeepLifecycleEvent? {
       return values().firstOrNull { it.raw == raw }
     }
   }
@@ -409,18 +409,21 @@ data class PCallRequestError (
 
 /** Generated class from Pigeon that represents data sent in messages. */
 data class PCallkeepServiceStatus (
-  val lifecycle: PCallkeepLifecycleType
+  val lifecycleEvent: PCallkeepLifecycleEvent,
+  val mainSignalingStatus: PCallkeepSignalingStatus? = null
 )
  {
   companion object {
     fun fromList(pigeonVar_list: List<Any?>): PCallkeepServiceStatus {
-      val lifecycle = pigeonVar_list[0] as PCallkeepLifecycleType
-      return PCallkeepServiceStatus(lifecycle)
+      val lifecycleEvent = pigeonVar_list[0] as PCallkeepLifecycleEvent
+      val mainSignalingStatus = pigeonVar_list[1] as PCallkeepSignalingStatus?
+      return PCallkeepServiceStatus(lifecycleEvent, mainSignalingStatus)
     }
   }
   fun toList(): List<Any?> {
     return listOf(
-      lifecycle,
+      lifecycleEvent,
+      mainSignalingStatus,
     )
   }
 }
@@ -514,7 +517,7 @@ private open class GeneratedPigeonCodec : StandardMessageCodec() {
       }
       137.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          PCallkeepLifecycleType.ofRaw(it.toInt())
+          PCallkeepLifecycleEvent.ofRaw(it.toInt())
         }
       }
       138.toByte() -> {
@@ -624,7 +627,7 @@ private open class GeneratedPigeonCodec : StandardMessageCodec() {
         stream.write(136)
         writeValue(stream, value.raw)
       }
-      is PCallkeepLifecycleType -> {
+      is PCallkeepLifecycleEvent -> {
         stream.write(137)
         writeValue(stream, value.raw)
       }
@@ -692,7 +695,7 @@ private open class GeneratedPigeonCodec : StandardMessageCodec() {
 
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface PHostBackgroundSignalingIsolateBootstrapApi {
-  fun initializeSignalingServiceCallback(callbackDispatcher: Long, onStartHandler: Long, onChangedLifecycleHandler: Long, callback: (Result<Unit>) -> Unit)
+  fun initializeSignalingServiceCallback(callbackDispatcher: Long, onSync: Long, callback: (Result<Unit>) -> Unit)
   fun configureSignalingService(androidNotificationName: String?, androidNotificationDescription: String?, callback: (Result<Unit>) -> Unit)
   fun startService(callback: (Result<Unit>) -> Unit)
   fun stopService(callback: (Result<Unit>) -> Unit)
@@ -712,9 +715,8 @@ interface PHostBackgroundSignalingIsolateBootstrapApi {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
             val callbackDispatcherArg = args[0] as Long
-            val onStartHandlerArg = args[1] as Long
-            val onChangedLifecycleHandlerArg = args[2] as Long
-            api.initializeSignalingServiceCallback(callbackDispatcherArg, onStartHandlerArg, onChangedLifecycleHandlerArg) { result: Result<Unit> ->
+            val onSyncArg = args[1] as Long
+            api.initializeSignalingServiceCallback(callbackDispatcherArg, onSyncArg) { result: Result<Unit> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(wrapError(error))

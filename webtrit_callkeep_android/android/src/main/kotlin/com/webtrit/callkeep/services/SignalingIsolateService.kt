@@ -176,7 +176,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         val lifecycle = ActivityHolder.getActivityState()
         val pLifecycle = lifecycle.toPCallkeepLifecycleType()
 
-        val wakeUpHandler = StorageDelegate.SignalingService.getOnStartHandler(baseContext)
+        val wakeUpHandler = StorageDelegate.SignalingService.getOnSyncHandler(baseContext)
 
         _isolateSignalingFlutterApi?.onWakeUpBackgroundHandler(
             wakeUpHandler, PCallkeepServiceStatus(
