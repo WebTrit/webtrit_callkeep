@@ -15,7 +15,9 @@ import android.os.Parcelable
 import androidx.core.app.ServiceCompat
 import androidx.lifecycle.Lifecycle
 import com.webtrit.callkeep.PCallkeepLifecycleType
+import com.webtrit.callkeep.PCallkeepSignalingStatus
 import com.webtrit.callkeep.common.Log
+import com.webtrit.callkeep.models.SignalingStatus
 
 inline fun <reified T : Parcelable> Intent.parcelable(key: String): T? = when {
     SDK_INT >= 33 -> getParcelableExtra(key, T::class.java)
@@ -69,3 +71,25 @@ fun Context.startForegroundServiceCompat(
         service.startForeground(notificationId, notification)
     }
 }
+
+fun SignalingStatus.toPCallkeepSignalingStatus(): PCallkeepSignalingStatus {
+    return when (this) {
+        SignalingStatus.DISCONNECTING -> PCallkeepSignalingStatus.DISCONNECTING
+        SignalingStatus.DISCONNECT -> PCallkeepSignalingStatus.DISCONNECT
+        SignalingStatus.CONNECTING -> PCallkeepSignalingStatus.CONNECTING
+        SignalingStatus.CONNECT -> PCallkeepSignalingStatus.CONNECT
+        SignalingStatus.FAILURE -> PCallkeepSignalingStatus.FAILURE
+    }
+}
+
+fun PCallkeepSignalingStatus.toSignalingStatus(): SignalingStatus {
+    return when (this) {
+        PCallkeepSignalingStatus.DISCONNECTING -> SignalingStatus.DISCONNECTING
+        PCallkeepSignalingStatus.DISCONNECT -> SignalingStatus.DISCONNECT
+        PCallkeepSignalingStatus.CONNECTING -> SignalingStatus.CONNECTING
+        PCallkeepSignalingStatus.CONNECT -> SignalingStatus.CONNECT
+        PCallkeepSignalingStatus.FAILURE -> SignalingStatus.FAILURE
+    }
+}
+
+
