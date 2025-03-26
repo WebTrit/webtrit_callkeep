@@ -24,13 +24,13 @@ class BackgroundPushNotificationService {
   }
 
   /// Ends a background call by [callId] (Android only).
-  Future<dynamic> endBackgroundCall(String callId) {
+  Future<dynamic> endCall(String callId) {
     if (kIsWeb || !Platform.isAndroid) return Future.value();
     return platform.endCallBackgroundPushNotificationService(callId);
   }
 
   /// Ends all background calls (Android only).
-  Future<dynamic> endAllBackgroundCalls() {
+  Future<dynamic> endCalls() {
     if (kIsWeb || !Platform.isAndroid) return Future.value();
     return platform.endCallsBackgroundPushNotificationService();
   }
