@@ -3,7 +3,6 @@ package com.webtrit.callkeep.common
 import android.content.Context
 import android.content.SharedPreferences
 import com.webtrit.callkeep.R
-import com.webtrit.callkeep.common.StorageDelegate.SignalingService.ON_START_HANDLER
 
 /**
  * A delegate for managing SharedPreferences related to incoming and root routes.
@@ -93,9 +92,7 @@ object StorageDelegate {
         private const val SS_NOTIFICATION_TITLE_KEY = "SS_NOTIFICATION_TITLE_KEY"
         private const val SS_NOTIFICATION_DESCRIPTION_KEY = "SS_NOTIFICATION_DESCRIPTION_KEY"
 
-        private const val ON_START_HANDLER = "ON_START_HANDLER"
-        private const val ON_LIFECYCLE_CHANGE_HANDLER = "ON_LIFECYCLE_CHANGE_HANDLER"
-
+        private const val ON_SYNC_HANDLER = "ON_SYNC_HANDLER"
         private const val CALLBACK_DISPATCHER = "CALLBACK_DISPATCHER"
 
         fun setSignalingServiceEnabled(context: Context, value: Boolean) {
@@ -135,28 +132,16 @@ object StorageDelegate {
             ) ?: default
         }
 
-        fun setOnStartHandler(context: Context, value: Long) {
+        fun setOnSyncHandler(context: Context, value: Long) {
             getSharedPreferences(context)?.edit()?.apply {
-                putLong(ON_START_HANDLER, value)
+                putLong(ON_SYNC_HANDLER, value)
                 apply()
             }
         }
 
-        fun setOnChangedLifecycleHandler(context: Context, value: Long) {
-            getSharedPreferences(context)?.edit()?.apply {
-                putLong(ON_LIFECYCLE_CHANGE_HANDLER, value)
-                apply()
-            }
-        }
-
-        fun getOnStartHandler(context: Context): Long {
-            return getSharedPreferences(context)?.getLong(ON_START_HANDLER, -1)
+        fun getOnSyncHandler(context: Context): Long {
+            return getSharedPreferences(context)?.getLong(ON_SYNC_HANDLER, -1)
                 ?: throw Exception("OnStartHandler not found")
-        }
-
-        fun getOnChangedLifecycleHandler(context: Context): Long {
-            return getSharedPreferences(context)?.getLong(ON_LIFECYCLE_CHANGE_HANDLER, -1)
-                ?: throw Exception("OnChangedLifecycleHandler not found")
         }
 
         fun getCallbackDispatcher(context: Context): Long {

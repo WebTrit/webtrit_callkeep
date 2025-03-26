@@ -1,4 +1,4 @@
-enum CallkeepLifecycleType {
+enum CallkeepLifecycleEvent {
   onCreate,
   onStart,
   onResume,

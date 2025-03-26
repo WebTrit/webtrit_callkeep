@@ -121,7 +121,7 @@ class PCallRequestError {
   late PCallRequestErrorEnum value;
 }
 
-enum PCallkeepLifecycleType {
+enum PCallkeepLifecycleEvent {
   onCreate,
   onStart,
   onResume,
@@ -137,7 +137,8 @@ enum PCallkeepPushNotificationSyncStatus {
 }
 
 class PCallkeepServiceStatus {
-  late PCallkeepLifecycleType lifecycle;
+  late PCallkeepLifecycleEvent lifecycleEvent;
+  late PCallkeepSignalingStatus? mainSignalingStatus;
 }
 
 enum PCallkeepConnectionState {
@@ -191,8 +192,7 @@ abstract class PHostBackgroundSignalingIsolateBootstrapApi {
   @async
   void initializeSignalingServiceCallback({
     required int callbackDispatcher,
-    required int onStartHandler,
-    required int onChangedLifecycleHandler,
+    required int onSync,
   });
 
   @async

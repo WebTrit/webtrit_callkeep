@@ -207,23 +207,23 @@ extension PCallkeepAndroidBatteryModeConverter on PCallkeepAndroidBatteryMode {
   }
 }
 
-extension CallkeepLifecycleTypeConverter on CallkeepLifecycleType {
-  PCallkeepLifecycleType toPigeon() {
+extension CallkeepLifecycleTypeConverter on CallkeepLifecycleEvent {
+  PCallkeepLifecycleEvent toPigeon() {
     switch (this) {
-      case CallkeepLifecycleType.onCreate:
-        return PCallkeepLifecycleType.onCreate;
-      case CallkeepLifecycleType.onStart:
-        return PCallkeepLifecycleType.onStart;
-      case CallkeepLifecycleType.onResume:
-        return PCallkeepLifecycleType.onResume;
-      case CallkeepLifecycleType.onPause:
-        return PCallkeepLifecycleType.onPause;
-      case CallkeepLifecycleType.onStop:
-        return PCallkeepLifecycleType.onStop;
-      case CallkeepLifecycleType.onDestroy:
-        return PCallkeepLifecycleType.onDestroy;
-      case CallkeepLifecycleType.onAny:
-        return PCallkeepLifecycleType.onAny;
+      case CallkeepLifecycleEvent.onCreate:
+        return PCallkeepLifecycleEvent.onCreate;
+      case CallkeepLifecycleEvent.onStart:
+        return PCallkeepLifecycleEvent.onStart;
+      case CallkeepLifecycleEvent.onResume:
+        return PCallkeepLifecycleEvent.onResume;
+      case CallkeepLifecycleEvent.onPause:
+        return PCallkeepLifecycleEvent.onPause;
+      case CallkeepLifecycleEvent.onStop:
+        return PCallkeepLifecycleEvent.onStop;
+      case CallkeepLifecycleEvent.onDestroy:
+        return PCallkeepLifecycleEvent.onDestroy;
+      case CallkeepLifecycleEvent.onAny:
+        return PCallkeepLifecycleEvent.onAny;
     }
   }
 }
@@ -273,23 +273,23 @@ extension PCallkeepPushNotificationSyncStatusConverter on PCallkeepPushNotificat
   }
 }
 
-extension PCallkeepLifecycleTypeConverter on PCallkeepLifecycleType {
-  CallkeepLifecycleType toCallkeep() {
+extension PCallkeepLifecycleTypeConverter on PCallkeepLifecycleEvent {
+  CallkeepLifecycleEvent toCallkeep() {
     switch (this) {
-      case PCallkeepLifecycleType.onCreate:
-        return CallkeepLifecycleType.onCreate;
-      case PCallkeepLifecycleType.onStart:
-        return CallkeepLifecycleType.onStart;
-      case PCallkeepLifecycleType.onResume:
-        return CallkeepLifecycleType.onResume;
-      case PCallkeepLifecycleType.onPause:
-        return CallkeepLifecycleType.onPause;
-      case PCallkeepLifecycleType.onStop:
-        return CallkeepLifecycleType.onStop;
-      case PCallkeepLifecycleType.onDestroy:
-        return CallkeepLifecycleType.onDestroy;
-      case PCallkeepLifecycleType.onAny:
-        return CallkeepLifecycleType.onAny;
+      case PCallkeepLifecycleEvent.onCreate:
+        return CallkeepLifecycleEvent.onCreate;
+      case PCallkeepLifecycleEvent.onStart:
+        return CallkeepLifecycleEvent.onStart;
+      case PCallkeepLifecycleEvent.onResume:
+        return CallkeepLifecycleEvent.onResume;
+      case PCallkeepLifecycleEvent.onPause:
+        return CallkeepLifecycleEvent.onPause;
+      case PCallkeepLifecycleEvent.onStop:
+        return CallkeepLifecycleEvent.onStop;
+      case PCallkeepLifecycleEvent.onDestroy:
+        return CallkeepLifecycleEvent.onDestroy;
+      case PCallkeepLifecycleEvent.onAny:
+        return CallkeepLifecycleEvent.onAny;
     }
   }
 }
@@ -297,7 +297,8 @@ extension PCallkeepLifecycleTypeConverter on PCallkeepLifecycleType {
 extension PCallkeepServiceStatusConverter on PCallkeepServiceStatus {
   CallkeepServiceStatus toCallkeep() {
     return CallkeepServiceStatus(
-      lifecycle: lifecycle.toCallkeep(),
+      lifecycleEvent: lifecycleEvent.toCallkeep(),
+      mainSignalingStatus: mainSignalingStatus?.toCallkeep(),
     );
   }
 }
@@ -305,7 +306,7 @@ extension PCallkeepServiceStatusConverter on PCallkeepServiceStatus {
 extension CallkeepServiceStatusConverter on CallkeepServiceStatus {
   PCallkeepServiceStatus toPigeon() {
     return PCallkeepServiceStatus(
-      lifecycle: lifecycle.toPigeon(),
+      lifecycleEvent: lifecycleEvent.toPigeon(),
     );
   }
 }

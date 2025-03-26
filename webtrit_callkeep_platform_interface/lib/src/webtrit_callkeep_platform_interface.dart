@@ -240,10 +240,7 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   /// of the foreground service (e.g., when the service is paused, resumed, or stopped). .
   ///
   /// Throws an [UnimplementedError] if this method is not yet implemented.
-  Future<void> initializeBackgroundSignalingServiceCallback({
-    required ForegroundStartServiceHandle onStart,
-    required ForegroundChangeLifecycleHandle onChangedLifecycle,
-  }) {
+  Future<void> initializeBackgroundSignalingServiceCallback(ForegroundStartServiceHandle onSync) {
     throw UnimplementedError('setUpServiceCallback() is not implemented');
   }
 
@@ -309,7 +306,7 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   /// [onNotificationSync] - A callback function that handles the push notification sync status change.
   ///
   /// Throws an [UnimplementedError] if this method is not yet implemented.
-  Future<void> initializePushNotificationCallback(CallKeepPushNotificationSyncStatusHandle onNotificationSync) {
+  Future<void> initializePushNotificationCallback(CallKeepPushNotificationSyncStatusHandle onSync) {
     throw UnimplementedError('initializePushNotificationCallback() is not implemented');
   }
 

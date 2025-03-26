@@ -1,10 +1,10 @@
 package com.webtrit.callkeep.services.helpers
 
 import androidx.lifecycle.Lifecycle
-import com.webtrit.callkeep.PCallkeepSignalingStatus
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.Log
-import com.webtrit.callkeep.common.SignalingHolder
+import com.webtrit.callkeep.models.SignalingStatus
+import com.webtrit.callkeep.services.dispatchers.SignalingStatusDispatcher
 
 enum class IsolateType {
     MAIN, BACKGROUND
@@ -14,9 +14,9 @@ interface IsolateSelectionStrategy {
     fun getIsolateType(): IsolateType
 }
 
-class SignalingStatusStrategy(private val signalingStatus: PCallkeepSignalingStatus?) : IsolateSelectionStrategy {
+class SignalingStatusStrategy(private val signalingStatus: SignalingStatus?) : IsolateSelectionStrategy {
     override fun getIsolateType(): IsolateType {
-        return if (signalingStatus in listOf(PCallkeepSignalingStatus.CONNECT, PCallkeepSignalingStatus.CONNECTING)) {
+        return if (signalingStatus in listOf(SignalingStatus.CONNECT, SignalingStatus.CONNECTING)) {
             IsolateType.MAIN
         } else {
             IsolateType.BACKGROUND
@@ -40,7 +40,7 @@ object IsolateSelector {
     private const val TAG = "IsolateSelector"
 
     private fun getStrategy(): IsolateSelectionStrategy {
-        return SignalingHolder.getStatus()?.let { SignalingStatusStrategy(it) } ?: ActivityStateStrategy()
+        return SignalingStatusDispatcher.currentStatus?.let { SignalingStatusStrategy(it) } ?: ActivityStateStrategy()
     }
 
     fun getIsolateType(): IsolateType {

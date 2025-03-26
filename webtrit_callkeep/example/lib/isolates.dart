@@ -33,7 +33,7 @@ Future<void> onChangedLifecycle(CallkeepServiceStatus status) async {
   initializeLogs();
   _log.info('onChangedLifecycle: $status');
 
-  if (status.lifecycle == CallkeepLifecycleType.onStop) {
+  if (status.lifecycleEvent == CallkeepLifecycleEvent.onStop) {
     BackgroundSignalingService().endBackgroundCall(call1Identifier);
   }
 
