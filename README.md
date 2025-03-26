@@ -415,7 +415,6 @@ Ensure the following permissions are declared:
 
 ## 📃 More Resources
 
-- [Flutter Plugin Development Guide](https://docs.flutter.dev/development/packages-and-plugins/plugin-overview)
 - [CallKit Documentation (Apple)](https://developer.apple.com/documentation/callkit)
 - [ConnectionService API (Android)](https://developer.android.com/reference/android/telecom/ConnectionService)
 
