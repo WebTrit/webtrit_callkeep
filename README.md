@@ -104,10 +104,10 @@ Implement these by providing a `CallkeepDelegate` via `Callkeep().setDelegate(..
 > 🧐 **Note**: `perform*` methods usually require you to respond asynchronously (e.g., via signaling servers) and return
 > a `bool` indicating success or failure. Failing to respond may result in incorrect UI behavior or system timeouts.
 
-
 ### Example: `startCall` ➝ `performStartCall`
 
-Below is a simplified lifecycle flow illustrating how an outgoing call is initiated and processed using `Callkeep.startCall` followed by a native event triggering `performStartCall`:
+Below is a simplified lifecycle flow illustrating how an outgoing call is initiated and processed using
+`Callkeep.startCall` followed by a native event triggering `performStartCall`:
 
 ```dart
 // Triggered by your Flutter app logic
@@ -121,7 +121,8 @@ await callkeep.startCall(
 );
 ```
 
-This will attempt to establish a new connection and validate it. If the connection is successfully created and valid, the system will invoke `performStartCall` to proceed with the call setup.
+This will attempt to establish a new connection and validate it. If the connection is successfully created and valid,
+the system will invoke `performStartCall` to proceed with the call setup.
 
 If the connection is valid, the system will call the following delegate method:
 
@@ -156,12 +157,12 @@ You are expected to:
 3. Send offer to your signaling server
 4. Set local description on the peer connection
 
-If everything succeeds, return `true`. If anything fails, return `false` and CallKeep will automatically terminate the native call screen.
+If everything succeeds, return `true`. If anything fails, return `false` and CallKeep will automatically terminate the
+native call screen.
 
 ---
 
 You can add similar flows for `answerCall`, `endCall`, etc.
-
 
 ## 🚀 Quick Start
 
@@ -239,14 +240,21 @@ Webtrit CallKeep offers two modes to handle background call signaling in Android
 Ideal for apps that **do not maintain a persistent connection** and instead rely on push notifications to trigger call
 events.
 
-#### Initialize Callback
+#### Setup
 
-Before rendering your app, register the background handler:
+Configure the push notification isolate with the following code (Optional):
 
 ```dart
-await AndroidCallkeepServices.backgroundPushNotificationBootstrapService.initializeCallback(
-  onPushNotificationCallback,
-);
+AndroidCallkeepServices.backgroundPushNotificationBootstrapService.configurePushNotificationSignalingService(launchBackgroundIsolateEvenIfAppIsOpen: false);
+```
+
+Initialize the push notification isolate callback.
+This callback will be triggered when
+`AndroidCallkeepServices.backgroundPushNotificationBootstrapService.reportNewIncomingCall` is called, for example, from
+an FCM isolate.
+
+```dart
+AndroidCallkeepServices.backgroundPushNotificationBootstrapService.initializeCallback(onPushNotificationSyncCallback););
 ```
 
 #### Triggering Incoming Call from FCM or Another Isolate
@@ -265,7 +273,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 ```
 
-#### ⭮️ Handling Events in Background
+#### Initialize push notification callback
 
 To manage resources and synchronize signaling from push notifications, implement a background callback like this:
 
@@ -285,44 +293,13 @@ Future<void> onPushNotificationCallback(CallkeepPushNotificationSyncStatus statu
 }
 ```
 
-This ensures your app can rehydrate or tear down background services based on the nature of the push event.
-
----
-
-### 🔌 2. Background Signaling Isolate (Persistent)
-
-Used for always-on signaling, even in the background.
-
-#### Setup
+Inside this isolate, when a connection is established, we can communicate with the native part using
+`BackgroundPushNotificationServicee`. This service provides methods for `endBackgroundCall`, and
+`endAllBackgroundCalls`. Additionally, you can set a delegate using `setBackgroundServiceDelegate` to listen for events
+such as `performServiceAnswerCall`, `performServiceEndCall`, and `endCallReceived`.
 
 ```dart
-await AndroidCallkeepServices.backgroundSignalingBootstrapService.setUp();
-```
-
-#### Start and stop the foreground signaling service
-
-```dart
-await AndroidCallkeepServices.backgroundSignalingBootstrapService.startService();
-await AndroidCallkeepServices.backgroundSignalingBootstrapService.stopService();
-```
-
-#### Initialize callbacks for events (e.g., lifecycle)
-
-```dart
-await AndroidCallkeepServices.backgroundSignalingBootstrapService.initializeCallback(
-  onStart: () => debugPrint('Foreground started'),
-  onChangedLifecycle: (state) => debugPrint('Lifecycle: $state'),
-);
-```
-
----
-
-### ⭮️ Handling Events in Background
-
-Example delegate implementation:
-
-```dart
-class BackgroundIncomingCallEventManager implements CallkeepBackgroundServiceDelegate {
+class SignalingForegroundIsolateManager implements CallkeepBackgroundServiceDelegate {
   @override
   void performServiceAnswerCall(String callId) async {
     if (!(await _signalingManager.hasNetworkConnection())) {
@@ -334,6 +311,85 @@ class BackgroundIncomingCallEventManager implements CallkeepBackgroundServiceDel
   @override
   void performServiceEndCall(String callId) async {
     await _signalingManager.declineCall(callId);
+  }
+  
+  void anwserCall(String callId) {
+    BackgroundPushNotificationServicee.answerCall(callId);
+  }
+}
+```
+
+This ensures your app can rehydrate or tear down background services based on the nature of the push event.
+
+---
+
+### 🔌 2. Background Signaling Isolate (Persistent)
+
+Used for always-on signaling, even in the background.
+
+#### Setup
+
+Configure the signaling isolate and set up the notification details for the foreground service(Optional).
+
+```dart
+AndroidCallkeepServices.backgroundSignalingBootstrapService.setUp(androidNotificationName: "WebTrit Inbound Calls",androidNotificationDescription: "This is required to receive incoming calls",);
+```
+
+Initialize the isolate callback for background signaling. This callback will be triggered when the status of the main
+isolate changes, the app lifecycle changes, or the isolate starts:
+
+```dart
+AndroidCallkeepServices.backgroundSignalingBootstrapService.initializeCallback(onSignalingSyncCallback);
+```
+
+#### Start and stop the foreground signaling service from the main isolate:
+
+```dart
+await AndroidCallkeepServices.backgroundSignalingBootstrapService.startService();
+await AndroidCallkeepServices.backgroundSignalingBootstrapService.stopService();
+```
+
+#### Initialize signaling callback
+
+Register the callback that will be triggered to manage the signaling connection.
+This can be done using the `CallkeepLifecycleEvent` from `CallkeepServiceStatus`, which contains parameters such as the
+current activity status (e.g., opened or closed) and the `CallkeepSignalingStatus` from `CallkeepServiceStatus`,
+indicating the current signaling status if provided by the main isolate; otherwise, it will be null.
+
+```dart
+@pragma('vm:entry-point')
+Future<void> onSignalingSyncCallback(CallkeepServiceStatus status) async {
+  await _initializeDependencies();
+
+  await _signalingForegroundIsolateManager?.sync(status);
+  
+  return;
+}
+
+```
+
+Inside this isolate, when a connection is established, we can communicate with the native part using
+`BackgroundSignalingService`. This service provides methods for `incomingCall`, `endBackgroundCall`, and
+`endAllBackgroundCalls`. Additionally, you can set a delegate using `setBackgroundServiceDelegate` to listen for events
+such as `performServiceAnswerCall`, `performServiceEndCall`, and `endCallReceived`.
+
+```dart
+class SignalingForegroundIsolateManager implements CallkeepBackgroundServiceDelegate {
+  @override
+  void performServiceAnswerCall(String callId) async {
+    if (!(await _signalingManager.hasNetworkConnection())) {
+      throw Exception('No connection');
+    }
+    // Proceed with answering
+  }
+
+  @override
+  void performServiceEndCall(String callId) async {
+    await _signalingManager.declineCall(callId);
+  }
+  
+  void anwserCall(String callId) {
+    BackgroundSignalingService.answerCall(callId);
   }
 }
 ```
