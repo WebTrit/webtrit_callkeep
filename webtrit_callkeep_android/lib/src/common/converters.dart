@@ -298,6 +298,7 @@ extension PCallkeepServiceStatusConverter on PCallkeepServiceStatus {
   CallkeepServiceStatus toCallkeep() {
     return CallkeepServiceStatus(
       lifecycleEvent: lifecycleEvent.toCallkeep(),
+      mainSignalingStatus: mainSignalingStatus?.toCallkeep(),
     );
   }
 }

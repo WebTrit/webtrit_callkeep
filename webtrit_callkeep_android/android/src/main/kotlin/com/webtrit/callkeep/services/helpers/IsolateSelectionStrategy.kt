@@ -40,7 +40,7 @@ object IsolateSelector {
     private const val TAG = "IsolateSelector"
 
     private fun getStrategy(): IsolateSelectionStrategy {
-        return SignalingStatusDispatcher.getStatus()?.let { SignalingStatusStrategy(it) } ?: ActivityStateStrategy()
+        return SignalingStatusDispatcher.currentStatus?.let { SignalingStatusStrategy(it) } ?: ActivityStateStrategy()
     }
 
     fun getIsolateType(): IsolateType {

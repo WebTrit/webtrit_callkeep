@@ -14,6 +14,9 @@ object SignalingStatusDispatcher {
     const val ACTION_STATUS_CHANGED = "SIGNALING_STATUS_CHANGED"
 
     private var status: SignalingStatus? = null
+    val currentStatus: SignalingStatus?
+        get() = status
+
     private val registeredServices = mutableSetOf<Class<out Service>>()
 
     fun setStatus(newStatus: SignalingStatus) {
@@ -33,7 +36,7 @@ object SignalingStatusDispatcher {
         for (service in registeredServices) {
             val intent = Intent(context, service).apply {
                 action = ACTION_STATUS_CHANGED
-                status.toBundle()
+                putExtras(status.toBundle())
             }
             try {
                 context.startService(intent)

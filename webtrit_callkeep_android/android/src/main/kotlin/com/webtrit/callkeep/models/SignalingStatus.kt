@@ -8,8 +8,10 @@ enum class SignalingStatus {
     companion object {
         const val KEY = "signalingStatus"
 
-        fun fromBundle(bundle: Bundle): SignalingStatus {
-            return valueOf(bundle.getString(KEY) ?: error("Missing signalingStatus"))
+        fun fromBundle(bundle: Bundle?): SignalingStatus? {
+            return bundle?.getString(KEY)?.let {
+                valueOf(it)
+            }
         }
     }
 
