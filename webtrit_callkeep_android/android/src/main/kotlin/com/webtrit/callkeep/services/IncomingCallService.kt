@@ -53,15 +53,25 @@ class IncomingCallService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val metadata = intent?.extras?.let { CallMetadata.fromBundle(it) }
+        val metadata = intent?.extras?.let(CallMetadata::fromBundle)
+            ?: return START_NOT_STICKY
 
-        when (intent?.action) {
-            NotificationAction.Answer.action -> IncomingCallEventDispatcher.answer(baseContext, metadata!!)
-            NotificationAction.Hangup.action -> IncomingCallEventDispatcher.hungUp(baseContext, metadata!!)
-            else -> showIncomingCallNotification(metadata!!);
+        return when (intent.action) {
+            NotificationAction.Answer.action -> {
+                IncomingCallEventDispatcher.answer(baseContext, metadata)
+                START_NOT_STICKY
+            }
+
+            NotificationAction.Hangup.action -> {
+                IncomingCallEventDispatcher.hungUp(baseContext, metadata)
+                START_NOT_STICKY
+            }
+
+            else -> {
+                showIncomingCallNotification(metadata)
+                START_STICKY
+            }
         }
-
-        return START_STICKY
     }
 
     fun showIncomingCallNotification(metadata: CallMetadata) {
