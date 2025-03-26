@@ -169,7 +169,6 @@ class PhoneConnection internal constructor(
     override fun onHold() {
         super.onHold()
         setOnHold()
-//        TelephonyForegroundCallkeepApi.notifyAboutHolding(context, metadata.copy(hasHold = true))
         dispatcher.dispatch(ConnectionReport.ConnectionHolding, metadata.copy(hasHold = true).toBundle())
     }
 
@@ -181,7 +180,6 @@ class PhoneConnection internal constructor(
     override fun onUnhold() {
         super.onUnhold()
         setActive()
-//        TelephonyForegroundCallkeepApi.notifyAboutHolding(context, metadata.copy(hasHold = false))
         dispatcher.dispatch(ConnectionReport.ConnectionHolding, metadata.copy(hasHold = false).toBundle())
     }
 
@@ -194,9 +192,6 @@ class PhoneConnection internal constructor(
      */
     override fun onPlayDtmfTone(c: Char) {
         super.onPlayDtmfTone(c)
-//        TelephonyForegroundCallkeepApi.notifyAboutDTMF(
-//            context, metadata.copy(dualToneMultiFrequency = c)
-//        )
         dispatcher.dispatch(ConnectionReport.SentDTMF, metadata.copy(dualToneMultiFrequency = c).toBundle())
     }
 
@@ -258,9 +253,6 @@ class PhoneConnection internal constructor(
             state?.isMuted?.let {
                 // Update the mute state locally
                 this.isMute = it
-//                TelephonyForegroundCallkeepApi.notifyMuting(
-//                    context, metadata.copy(hasMute = this.isMute)
-//                )
                 dispatcher.dispatch(ConnectionReport.AudioMuting, metadata.copy(hasMute = this.isMute).toBundle())
             }
         }
@@ -268,9 +260,6 @@ class PhoneConnection internal constructor(
         state?.route?.let {
             // Update the audio route state
             this.isHasSpeaker = it == CallAudioState.ROUTE_SPEAKER
-//            TelephonyForegroundCallkeepApi.notifyAudioRouteChanged(
-//                context, metadata.copy(hasSpeaker = this.isHasSpeaker)
-//            )
             dispatcher.dispatch(
                 ConnectionReport.ConnectionHasSpeaker,
                 metadata.copy(hasSpeaker = this.isHasSpeaker).toBundle()
@@ -319,8 +308,7 @@ class PhoneConnection internal constructor(
         if (state == STATE_RINGING) {
             notificationManager.showMissedCallNotification(metadata)
             // TODO: Implement missed call notification
-
-//            TelephonyBackgroundCallkeepApi.notifyMissedIncomingCall(context, metadata)
+            // TelephonyBackgroundCallkeepApi.notifyMissedIncomingCall(context, metadata)
         }
 
         Log.d(TAG, "PhoneConnection:declineCall")
@@ -332,7 +320,6 @@ class PhoneConnection internal constructor(
      * Hang up the call.
      */
     fun hungUp() {
-//        TelephonyBackgroundCallkeepApi.notifyHungUp(context, metadata)
         dispatcher.dispatch(ConnectionReport.AudioMuting, metadata.copy(hasMute = this.isMute).toBundle())
 
         setDisconnected(DisconnectCause(DisconnectCause.LOCAL))
@@ -351,17 +338,9 @@ class PhoneConnection internal constructor(
 
         notificationManager.showActiveCallNotification(id, metadata)
         if (Build.VERSION.SDK_INT == Build.VERSION_CODES.O_MR1) {
-//            TelephonyForegroundCallkeepApi.notifyMuting(
-//                context, metadata.copy(hasMute = this.isMute)
-//            )
-//            TelephonyForegroundCallkeepApi.notifyAudioRouteChanged(
-//                context, metadata.copy(hasSpeaker = this.isHasSpeaker)
-//            )
-            dispatcher.dispatch(ConnectionReport.AudioMuting, metadata.copy(hasMute = this.isMute).toBundle())
-            dispatcher.dispatch(
-                ConnectionReport.ConnectionHasSpeaker,
-                metadata.copy(hasSpeaker = this.isHasSpeaker).toBundle()
-            )
+            val metadata = metadata.copy(hasMute = this.isMute, hasSpeaker = this.isHasSpeaker).toBundle()
+            dispatcher.dispatch(ConnectionReport.AudioMuting, metadata)
+            dispatcher.dispatch(ConnectionReport.ConnectionHasSpeaker, metadata)
         }
     }
 
@@ -369,7 +348,6 @@ class PhoneConnection internal constructor(
      * Handle actions when the call is in the dialing state.
      */
     private fun onDialing() {
-//        TelephonyForegroundCallkeepApi.notifyOutgoingCall(context, metadata)
         dispatcher.dispatch(ConnectionReport.OngoingCall, metadata.toBundle())
     }
 
@@ -437,7 +415,7 @@ class PhoneConnection internal constructor(
         ).apply {
             setDialing()
             setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
-            // ‍️Weirdly on some Samsung phones (A50, S9...) using `setInitialized` will not display the native UI ...
+            // Weirdly on some Samsung phones (A50, S9...) using `setInitialized` will not display the native UI ...
             // when making a call from the native Phone application. The call will still be displayed correctly without it.
             if (!Build.MANUFACTURER.equals("Samsung", ignoreCase = true)) {
                 setInitialized()
