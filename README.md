@@ -411,6 +411,26 @@ Ensure the following permissions are declared:
 
 ---
 
+## 🧪 Example Project
+
+To see **Webtrit CallKeep** in action, check out the official open-source demo app:
+
+### 🔗 [`webtrit_phone`](https://github.com/WebTrit/webtrit_phone)
+
+This is a reference implementation of a Flutter-based VoIP/WebRTC app that uses **Webtrit CallKeep** to handle incoming
+and outgoing calls with native UI support on both Android and iOS.
+
+The project demonstrates:
+
+- Integration with signaling and media layers
+- Usage of `CallkeepDelegate` and background isolates
+- Real-world call handling scenarios including mute, hold, and DTMF
+- Full support for foreground and background call workflows
+
+Feel free to explore it, fork it, and use it as a starting point for your own app!
+
+---
+
 ## 📃 More Resources
 
 - [CallKit Documentation (Apple)](https://developer.apple.com/documentation/callkit)
