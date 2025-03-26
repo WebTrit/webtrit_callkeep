@@ -433,7 +433,3 @@ We welcome contributions from the community! Please follow our contribution guid
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
-
-## Acknowledgments
-
-This project is tested with [BrowserStack](https://www.browserstack.com/).
