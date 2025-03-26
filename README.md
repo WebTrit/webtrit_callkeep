@@ -50,6 +50,66 @@ dependencies:
 
 ---
 
+## 🚀 Quick Start
+
+### Initialization (Main Isolate)
+
+```dart
+await _callkeep.setUp(
+  CallkeepOptions(
+    ios: CallkeepIOSOptions(
+      localizedName: context.read<PackageInfo>().appName,
+      ringtoneSound: Assets.ringtones.incomingCall1,
+      ringbackSound: Assets.ringtones.outgoingCall1,
+      iconTemplateImageAssetName: Assets.callkeep.iosIconTemplateImage.path,
+      maximumCallGroups: 13,
+      maximumCallsPerCallGroup: 13,
+      supportedHandleTypes: const {CallkeepHandleType.number},
+    ),
+    android: CallkeepAndroidOptions(
+      ringtoneSound: Assets.ringtones.incomingCall1,
+      ringbackSound: Assets.ringtones.outgoingCall1,
+    ),
+  ),
+);
+```
+
+### Setting Delegates
+
+The plugin allows you to register delegate classes to handle call-related events.
+
+```dart
+Callkeep().setDelegate(MyCallkeepDelegate());
+Callkeep().setPushRegistryDelegate(MyPushRegistryDelegate()); // iOS only
+```
+
+- `setDelegate(...)`: Listen to call events (incoming, answered, ended, etc.) entirely on the Flutter side.
+- `setPushRegistryDelegate(...)`: Handle PushKit VoIP push events on iOS only.
+
+---
+
+### Receiving Incoming Call
+
+```dart
+await Callkeep().reportNewIncomingCall(
+  callId,
+  CallkeepHandle.number('+123456789'),
+  displayName: 'Caller Name',
+  hasVideo: false,
+);
+```
+
+### Starting Outgoing Call
+
+```dart
+await Callkeep().startCall(
+  'outgoing-id',
+  CallkeepHandle.number('+987654321'),
+  displayNameOrContactIdentifier: 'Jane Doe',
+  hasVideo: true,
+);
+```
+
 ## 🔄 Event Communication Between Flutter and Platform
 
 Webtrit CallKeep provides a robust two-way communication system between the Flutter layer and native platforms (iOS and
@@ -163,68 +223,6 @@ native call screen.
 ---
 
 You can add similar flows for `answerCall`, `endCall`, etc.
-
-## 🚀 Quick Start
-
-### Initialization (Main Isolate)
-
-```dart
-await _callkeep.setUp(
-  CallkeepOptions(
-    ios: CallkeepIOSOptions(
-      localizedName: context.read<PackageInfo>().appName,
-      ringtoneSound: Assets.ringtones.incomingCall1,
-      ringbackSound: Assets.ringtones.outgoingCall1,
-      iconTemplateImageAssetName: Assets.callkeep.iosIconTemplateImage.path,
-      maximumCallGroups: 13,
-      maximumCallsPerCallGroup: 13,
-      supportedHandleTypes: const {CallkeepHandleType.number},
-    ),
-    android: CallkeepAndroidOptions(
-      ringtoneSound: Assets.ringtones.incomingCall1,
-      ringbackSound: Assets.ringtones.outgoingCall1,
-    ),
-  ),
-);
-```
-
-### Setting Delegates
-
-The plugin allows you to register delegate classes to handle call-related events.
-
-```dart
-Callkeep().setDelegate(MyCallkeepDelegate());
-Callkeep().setPushRegistryDelegate(MyPushRegistryDelegate()); // iOS only
-```
-
-- `setDelegate(...)`: Listen to call events (incoming, answered, ended, etc.) entirely on the Flutter side.
-- `setPushRegistryDelegate(...)`: Handle PushKit VoIP push events on iOS only.
-
----
-
-### Receiving Incoming Call
-
-```dart
-await Callkeep().reportNewIncomingCall(
-  callId,
-  CallkeepHandle.number('+123456789'),
-  displayName: 'Caller Name',
-  hasVideo: false,
-);
-```
-
-### Starting Outgoing Call
-
-```dart
-await Callkeep().startCall(
-  'outgoing-id',
-  CallkeepHandle.number('+987654321'),
-  displayNameOrContactIdentifier: 'Jane Doe',
-  hasVideo: true,
-);
-```
-
----
 
 ## ⚙️ Android Background Modes
 
