@@ -261,8 +261,7 @@ class PhoneConnection internal constructor(
             // Update the audio route state
             this.isHasSpeaker = it == CallAudioState.ROUTE_SPEAKER
             dispatcher.dispatch(
-                ConnectionReport.ConnectionHasSpeaker,
-                metadata.copy(hasSpeaker = this.isHasSpeaker).toBundle()
+                ConnectionReport.ConnectionHasSpeaker, metadata.copy(hasSpeaker = this.isHasSpeaker).toBundle()
             )
         }
     }
@@ -305,13 +304,12 @@ class PhoneConnection internal constructor(
      * Decline the call.
      */
     fun declineCall() {
+        Log.d(TAG, "declineCall")
         if (state == STATE_RINGING) {
             notificationManager.showMissedCallNotification(metadata)
-            // TODO: Implement missed call notification
-            // TelephonyBackgroundCallkeepApi.notifyMissedIncomingCall(context, metadata)
+            dispatcher.dispatch(ConnectionReport.MissedCall, metadata.toBundle())
         }
 
-        Log.d(TAG, "PhoneConnection:declineCall")
         setDisconnected(DisconnectCause(DisconnectCause.REMOTE))
         onDisconnect()
     }
@@ -320,7 +318,11 @@ class PhoneConnection internal constructor(
      * Hang up the call.
      */
     fun hungUp() {
-        dispatcher.dispatch(ConnectionReport.AudioMuting, metadata.copy(hasMute = this.isMute).toBundle())
+        Log.d(TAG, "hungUp callId: ${metadata.callId}")
+
+        val metadata = metadata.copy(hasMute = this.isMute)
+
+        dispatcher.dispatch(ConnectionReport.AudioMuting, metadata.toBundle())
 
         setDisconnected(DisconnectCause(DisconnectCause.LOCAL))
         onDisconnect()

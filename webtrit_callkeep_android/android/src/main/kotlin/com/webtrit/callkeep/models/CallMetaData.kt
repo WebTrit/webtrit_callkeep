@@ -78,8 +78,12 @@ data class CallMetadata(
         private const val CALL_RINGTONE_PATH = "CALL_RINGTONE_PATH"
 
         fun fromBundle(bundle: Bundle): CallMetadata {
-            val callId = bundle.getString(CallDataConst.CALL_ID)
-                ?: throw IllegalArgumentException("Missing required callId property in Bundle")
+            val metadata = fromBundleOrNull(bundle)
+            return metadata ?: throw IllegalArgumentException("Missing required callId property in Bundle")
+        }
+
+        fun fromBundleOrNull(bundle: Bundle): CallMetadata? {
+            val callId = bundle.getString(CallDataConst.CALL_ID) ?: return null
 
             return CallMetadata(
                 callId = callId,

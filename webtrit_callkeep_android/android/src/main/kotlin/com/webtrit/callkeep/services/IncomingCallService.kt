@@ -53,7 +53,7 @@ class IncomingCallService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val metadata = intent?.extras?.let(CallMetadata::fromBundle)
+        val metadata = intent?.extras?.let(CallMetadata::fromBundleOrNull)
             ?: return START_NOT_STICKY
 
         return when (intent.action) {
