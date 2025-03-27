@@ -1,44 +1,37 @@
 package com.webtrit.callkeep.notifications
 
 import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Person
-import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.Icon
 import android.os.Build
 import androidx.core.app.NotificationCompat
-
 import com.webtrit.callkeep.R
+import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.NotificationAction
-import io.flutter.Log
+import com.webtrit.callkeep.common.ContextHolder.context
+import com.webtrit.callkeep.notifications.NotificationChannelManager.INCOMING_CALL_NOTIFICATION_CHANNEL_ID
 
-class IncomingCallNotificationBuilder(
-    private val context: Context
-) : NotificationBuilder(context) {
-    init {
-        registerNotificationChannel()
+class IncomingCallNotificationBuilder() : NotificationBuilder() {
+    private var callMetaData: CallMetadata? = null
+    private var hasAnswerButton: Boolean = true
+
+    fun setCallMetaData(callMetaData: CallMetadata) {
+        this.callMetaData = callMetaData
     }
 
-    private fun registerNotificationChannel() {
-        val notificationChannel = NotificationChannel(
-            INCOMING_CALL_NOTIFICATION_CHANNEL_ID,
-            context.getString(R.string.push_notification_incoming_call_channel_title),
-            NotificationManager.IMPORTANCE_HIGH
-        ).apply {
-            description = context.getString(R.string.push_notification_incoming_call_channel_description)
-            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            setShowBadge(true)
-            setSound(null, null)
-        }
-        notificationManager.createNotificationChannel(notificationChannel)
+    fun setHasAnswerButton(hasAnswerButton: Boolean) {
+        this.hasAnswerButton = hasAnswerButton
     }
 
-    private fun getAnsweredCallIntent(): PendingIntent {
+    private fun getCallMetaData(): CallMetadata {
+        return callMetaData ?: throw IllegalStateException("Call metadata is not set")
+    }
+
+    private fun getAnsweredCallIntent(callMetaData: CallMetadata): PendingIntent {
         val answerIntent = Intent(NotificationAction.Answer.action).apply {
-            putExtras(getMetaData().toBundle())
+            putExtras(callMetaData.toBundle())
         }
 
         return PendingIntent.getBroadcast(
@@ -49,18 +42,20 @@ class IncomingCallNotificationBuilder(
         )
     }
 
-    private fun getHungUpCallIntent(): PendingIntent {
+    private fun getHungUpCallIntent(callMetaData: CallMetadata): PendingIntent {
         val hangUpIntent = Intent(NotificationAction.Hangup.action).apply {
-            putExtras(getMetaData().toBundle())
+            putExtras(callMetaData.toBundle())
         }
         return PendingIntent.getBroadcast(
             context, 0, hangUpIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
     }
 
-    private fun build(): Notification {
-        val declineIntent = getHungUpCallIntent()
-        val answerIntent = getAnsweredCallIntent()
+    override fun build(): Notification {
+        val callMetaData = getCallMetaData()
+
+        val declineIntent = getHungUpCallIntent(callMetaData)
+        val answerIntent = getAnsweredCallIntent(callMetaData)
 
         val answerAction: Notification.Action = Notification.Action.Builder(
             Icon.createWithResource(context, R.drawable.ic_call_answer),
@@ -81,17 +76,15 @@ class IncomingCallNotificationBuilder(
             setOngoing(true)
             setCategory(NotificationCompat.CATEGORY_CALL)
             setContentTitle(context.getString(R.string.incoming_call_title))
-            setContentText("You have an incoming call from ${getMetaData().name}")
+            setContentText("You have an incoming call from ${callMetaData.name}")
             setAutoCancel(true)
-            setFullScreenIntent(buildOpenAppIntent(context, getMetaData().getCallUri()), true)
+            setFullScreenIntent(buildOpenAppIntent(context, callMetaData.getCallUri()), true)
         }
-
-        val hasAnswerButton = hasAnswerButton()
 
         notificationBuilder.apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && hasAnswerButton) {
                 style = Notification.CallStyle.forIncomingCall(
-                    Person.Builder().setName(getMetaData().name).setImportant(true).build(), declineIntent, answerIntent
+                    Person.Builder().setName(callMetaData.name).setImportant(true).build(), declineIntent, answerIntent
                 )
             } else {
                 addAction(declineAction)
@@ -102,33 +95,5 @@ class IncomingCallNotificationBuilder(
         val notification = notificationBuilder.build()
         notification.flags = notification.flags or NotificationCompat.FLAG_INSISTENT
         return notification
-    }
-
-    override fun cancel() {}
-
-    override fun show() {
-        if (notificationManager.areNotificationsEnabled()) {
-            try {
-                notificationManager.notify(R.integer.notification_incoming_call_id, build())
-            } catch (e: SecurityException) {
-                Log.e(TAG, "Notifications exception", e)
-            }
-        } else {
-            Log.d(TAG, "Notifications are disabled")
-        }
-    }
-
-    override fun hide() {
-        notificationManager.cancel(R.integer.notification_incoming_call_id)
-    }
-
-    private fun hasAnswerButton(): Boolean = getNotificationData().getOrDefault(
-        NOTIFICATION_DATA_HAS_ANSWER_BUTTON, true
-    ) as Boolean
-
-    companion object {
-        const val TAG = "INCOMING_CALL_NOTIFICATION"
-        const val INCOMING_CALL_NOTIFICATION_CHANNEL_ID = "INCOMING_CALL_NOTIFICATION_SILENT_CHANNEL_ID"
-        const val NOTIFICATION_DATA_HAS_ANSWER_BUTTON = "NOTIFICATION_DATA_HAS_ANSWER_BUTTON"
     }
 }

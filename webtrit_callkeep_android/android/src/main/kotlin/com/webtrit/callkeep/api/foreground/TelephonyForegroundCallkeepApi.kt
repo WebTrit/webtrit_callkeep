@@ -16,6 +16,7 @@ import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.helpers.Telecom
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.FailureMetadata
+import com.webtrit.callkeep.notifications.NotificationChannelManager
 import com.webtrit.callkeep.receivers.IncomingCallNotificationReceiver
 
 class TelephonyForegroundCallkeepApi(
@@ -32,6 +33,10 @@ class TelephonyForegroundCallkeepApi(
 
     override fun setUp(options: POptions, callback: (Result<Unit>) -> Unit) {
         Log.i(TAG, "setUp: ${options.android}")
+
+        // Registers all necessary notification channels for the application.
+        // This includes channels for active calls, incoming calls, missed calls, and foreground calls.
+        NotificationChannelManager.registerNotificationChannels(activity)
 
         if (!isSetup) {
             flutterDelegate.registerReceiver(activity)

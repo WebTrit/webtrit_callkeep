@@ -28,7 +28,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 class ForegroundCallService : Service() {
     private lateinit var notificationBuilder: ForegroundCallNotificationBuilder
 
-    private var isRunning = AtomicBoolean(false)
     private var isEngineAttached = false
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -38,7 +37,7 @@ class ForegroundCallService : Service() {
 
         ContextHolder.init(applicationContext)
 
-        notificationBuilder = ForegroundCallNotificationBuilder(applicationContext)
+        notificationBuilder = ForegroundCallNotificationBuilder()
 
         val config = StorageDelegate.getForegroundCallServiceConfiguration(applicationContext)
 
@@ -62,9 +61,9 @@ class ForegroundCallService : Service() {
      */
     private fun startForegroundService(config: ForegroundCallServiceConfig) {
         Log.d(TAG, "Starting foreground service")
-        val notification = notificationBuilder.build(
-            config.androidNotificationName!!, config.androidNotificationDescription!!
-        )
+        notificationBuilder.setTitle(config.androidNotificationName!!)
+        notificationBuilder.setContent(config.androidNotificationDescription!!)
+        val notification = notificationBuilder.build()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ServiceCompat.startForeground(
@@ -232,6 +231,9 @@ class ForegroundCallService : Service() {
         private var backgroundEngine: FlutterEngine? = null
         private const val TAG = "ForegroundCallService"
         private const val PARAM_JSON_DATA = "PARAM_JSON_DATA"
+
+        @JvmStatic
+        val isRunning = AtomicBoolean(false)
 
         /**
          * Communicates with the service by starting it with the specified action and metadata.

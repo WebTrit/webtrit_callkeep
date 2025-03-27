@@ -1,8 +1,6 @@
 package com.webtrit.callkeep.services.telecom.connection
 
-import java.lang.Exception
 import android.content.Context
-import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -11,15 +9,15 @@ import android.telecom.Connection
 import android.telecom.DisconnectCause
 import android.telecom.TelecomManager
 import android.telecom.VideoProfile
-
-import com.webtrit.callkeep.common.Log
+import androidx.core.net.toUri
 import com.webtrit.callkeep.api.background.TelephonyBackgroundCallkeepApi
 import com.webtrit.callkeep.api.foreground.TelephonyForegroundCallkeepApi
 import com.webtrit.callkeep.common.ActivityHolder
+import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.helpers.Platform
-import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.managers.AudioManager
 import com.webtrit.callkeep.managers.NotificationManager
+import com.webtrit.callkeep.models.CallMetadata
 
 /**
  * Represents a phone connection for handling telephony calls.
@@ -37,7 +35,7 @@ class PhoneConnection internal constructor(
     private var isHasSpeaker = false
     private var answer = false
 
-    private val notificationManager = NotificationManager(context)
+    private val notificationManager = NotificationManager()
     private val audioManager = AudioManager(context)
 
     init {
@@ -123,17 +121,6 @@ class PhoneConnection internal constructor(
         // as ringing and notifications are no longer needed once the call is answered
         setActive()
 
-        try {
-            // Cancel incoming call notification and missed call notification
-            notificationManager.cancelIncomingNotification()
-            notificationManager.cancelMissedCall(metadata)
-
-            // Stop the ringtone to indicate the call has been answered
-            this@PhoneConnection.audioManager.stopRingtone()
-        } catch (e: Exception) {
-            Log.e(TAG, "onAnswer: $e")
-        }
-
         // Notify the  activity about the answered call, if app is in the foreground
         TelephonyForegroundCallkeepApi.notifyAnswer(context, metadata)
 
@@ -166,7 +153,8 @@ class PhoneConnection internal constructor(
         super.onDisconnect()
         Log.i(TAG, "onDisconnect: ${metadata.callId}")
 
-        this@PhoneConnection.notificationManager.cancelActiveNotification()
+        this@PhoneConnection.notificationManager.cancelIncomingNotification()
+        this@PhoneConnection.notificationManager.cancelActiveCallNotification(id)
         this@PhoneConnection.audioManager.stopRingtone()
 
         // This call is required to confirm the hangup, ensuring the call flow completes correctly,
@@ -263,6 +251,7 @@ class PhoneConnection internal constructor(
      *
      * @param state The new audio state of the call.
      */
+    @Deprecated("Deprecated in Java")
     override fun onCallAudioStateChanged(state: CallAudioState?) {
         super.onCallAudioStateChanged(state)
 
@@ -297,7 +286,7 @@ class PhoneConnection internal constructor(
     fun updateData(metadata: CallMetadata) {
         this.metadata = this.metadata.mergeWith(metadata)
         this.extras = metadata.toBundle()
-        setAddress(Uri.parse(metadata.number), TelecomManager.PRESENTATION_ALLOWED)
+        setAddress(metadata.number.toUri(), TelecomManager.PRESENTATION_ALLOWED)
         setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
         changeVideoState(metadata.hasVideo)
     }
@@ -328,6 +317,7 @@ class PhoneConnection internal constructor(
             notificationManager.showMissedCallNotification(metadata)
             TelephonyBackgroundCallkeepApi.notifyMissedIncomingCall(context, metadata)
         }
+
         Log.d(TAG, "PhoneConnection:declineCall")
         setDisconnected(DisconnectCause(DisconnectCause.REMOTE))
         onDisconnect()
@@ -347,7 +337,12 @@ class PhoneConnection internal constructor(
      */
     private fun onActiveConnection() {
         this@PhoneConnection.audioManager.stopRingtone()
-        notificationManager.showActiveCallNotification(metadata)
+
+        // Cancel incoming call notification and missed call notification
+        notificationManager.cancelIncomingNotification()
+        notificationManager.cancelMissedCall(metadata)
+
+        notificationManager.showActiveCallNotification(id, metadata)
         if (Build.VERSION.SDK_INT == Build.VERSION_CODES.O_MR1) {
             TelephonyForegroundCallkeepApi.notifyMuting(
                 context, metadata.copy(hasMute = this.isMute)

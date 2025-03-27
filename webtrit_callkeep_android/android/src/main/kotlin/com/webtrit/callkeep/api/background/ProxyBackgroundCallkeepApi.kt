@@ -21,7 +21,7 @@ class ProxyBackgroundCallkeepApi(
     private val context: Context,
     private val api: PDelegateBackgroundServiceFlutterApi,
 ) : BackgroundCallkeepApi {
-    private val notificationManager = NotificationManager(context)
+    private val notificationManager = NotificationManager()
     private val audioManager = AudioManager(context)
 
     /**
@@ -76,7 +76,7 @@ class ProxyBackgroundCallkeepApi(
      * @param callback A callback function to be invoked after hanging up the call.
      */
     override fun hungUp(metadata: CallMetadata, callback: (Result<Unit>) -> Unit) {
-        notificationManager.cancelActiveNotification()
+        notificationManager.cancelActiveCallNotification(metadata.callId)
         this@ProxyBackgroundCallkeepApi.audioManager.stopRingtone()
         callback(Result.success(Unit))
     }

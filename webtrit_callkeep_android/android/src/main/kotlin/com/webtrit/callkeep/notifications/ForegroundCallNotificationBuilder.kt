@@ -1,32 +1,26 @@
 package com.webtrit.callkeep.notifications
 
 import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.content.Context
 import com.webtrit.callkeep.R
+import com.webtrit.callkeep.common.ContextHolder.context
+import com.webtrit.callkeep.notifications.NotificationChannelManager.FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID
 
-class ForegroundCallNotificationBuilder(
-    private val context: Context
-) : NotificationBuilder(context) {
-    init {
-        registerNotificationChannel()
+class ForegroundCallNotificationBuilder() : NotificationBuilder() {
+    private var title = ""
+    private var content = ""
+
+    fun setTitle(title: String) {
+        this.title = title
     }
 
-    private fun registerNotificationChannel() {
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-        val notificationChannel = NotificationChannel(
-            FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID,
-            context.getString(R.string.push_notification_foreground_call_service_title),
-            NotificationManager.IMPORTANCE_LOW
-        ).apply {
-            description = context.getString(R.string.push_notification_foreground_call_service_description)
-        }
-        notificationManager.createNotificationChannel(notificationChannel)
+    fun setContent(content: String) {
+        this.content = content
     }
 
-    fun build(title: String, content: String): Notification {
+
+    override fun build(): Notification {
+        if (title.isEmpty() || content.isEmpty()) throw IllegalStateException("Title and content must be set")
+
         val notificationBuilder = Notification.Builder(context, FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID).apply {
             setSmallIcon(R.drawable.call_foreground_icon)
             setContentTitle(title)
@@ -46,14 +40,8 @@ class ForegroundCallNotificationBuilder(
         return notification
     }
 
-    override fun cancel() {}
-
-    override fun show() {}
-
-    override fun hide() {}
 
     companion object {
-        const val FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID = "FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID"
         const val FOREGROUND_CALL_NOTIFICATION_ID = 3 // R.integer.notification_incoming_call_id
     }
 }
