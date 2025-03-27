@@ -7,7 +7,7 @@ import com.webtrit.callkeep.common.ContextHolder.context
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.notifications.MissedCallNotificationBuilder
 import com.webtrit.callkeep.services.ActiveCallService
-import com.webtrit.callkeep.services.IncomingCallService
+import com.webtrit.callkeep.services.incomming_call.IncomingCallService
 import io.flutter.Log
 
 class NotificationManager() {

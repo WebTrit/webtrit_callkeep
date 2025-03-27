@@ -49,4 +49,14 @@ object IsolateSelector {
         Log.i(TAG, "IsolateSelector: $strategy -> $isolateType")
         return isolateType
     }
+
+    inline fun executeBasedOnIsolate(
+        mainAction: () -> Unit,
+        backgroundAction: () -> Unit
+    ) {
+        when (getIsolateType()) {
+            IsolateType.MAIN -> mainAction()
+            IsolateType.BACKGROUND -> backgroundAction()
+        }
+    }
 }
