@@ -5,7 +5,9 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.PowerManager
 import android.util.Log
 import androidx.annotation.Keep
@@ -41,11 +43,15 @@ class IncomingCallService : Service() {
     }
 
     override fun onDestroy() {
-        Log.d(TAG, "onDestroy")
         wakeLock?.let { if (it.isHeld) it.release() }
         wakeLock = null
 
-        PushNotificationIsolateService.stop(applicationContext)
+        // BUG: This stops the service immediately, so the isolate doesn't have enough time to complete its work
+        // PushNotificationIsolateService.stop(applicationContext)
+
+        // WORKAROUND: Delay stopping the service by 2 seconds
+        // TODO: Find a better solution for this issue — possibly add a cancel-type notification instead of stopping IncomingCallService immediately
+        Handler(Looper.getMainLooper()).postDelayed({ PushNotificationIsolateService.stop(applicationContext) }, 2000)
 
         stopForeground(STOP_FOREGROUND_REMOVE)
 
@@ -53,15 +59,24 @@ class IncomingCallService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val metadata = intent?.extras?.let { CallMetadata.fromBundle(it) }
+        val metadata = intent?.extras?.let(CallMetadata::fromBundleOrNull) ?: return START_NOT_STICKY
 
-        when (intent?.action) {
-            NotificationAction.Answer.action -> IncomingCallEventDispatcher.answer(baseContext, metadata!!)
-            NotificationAction.Hangup.action -> IncomingCallEventDispatcher.hungUp(baseContext, metadata!!)
-            else -> showIncomingCallNotification(metadata!!);
+        return when (intent.action) {
+            NotificationAction.Answer.action -> {
+                IncomingCallEventDispatcher.answer(baseContext, metadata)
+                START_NOT_STICKY
+            }
+
+            NotificationAction.Hangup.action -> {
+                IncomingCallEventDispatcher.hungUp(baseContext, metadata)
+                START_NOT_STICKY
+            }
+
+            else -> {
+                showIncomingCallNotification(metadata)
+                START_STICKY
+            }
         }
-
-        return START_STICKY
     }
 
     fun showIncomingCallNotification(metadata: CallMetadata) {

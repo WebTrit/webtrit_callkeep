@@ -5,7 +5,9 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.PowerManager
 import android.util.Log
 import androidx.annotation.Keep
@@ -17,6 +19,9 @@ import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.FlutterEngineHelper
 import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.models.ConnectionReport
+import com.webtrit.callkeep.services.dispatchers.CommunicateServiceDispatcher
+import com.webtrit.callkeep.services.dispatchers.SignalingStatusDispatcher
 import com.webtrit.callkeep.services.helpers.IsolateSelector
 import com.webtrit.callkeep.services.helpers.IsolateType
 import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
@@ -68,6 +73,9 @@ class PushNotificationIsolateService : Service(), PHostBackgroundPushNotificatio
     override fun onCreate() {
         super.onCreate()
         ContextHolder.init(applicationContext)
+
+        // Subscribe to connection service events for handling missed call event
+        CommunicateServiceDispatcher.registerService(this::class.java)
     }
 
     override fun onDestroy() {
@@ -79,21 +87,42 @@ class PushNotificationIsolateService : Service(), PHostBackgroundPushNotificatio
         flutterEngineHelper?.detachAndDestroyEngine()
         flutterEngineHelper = null
 
+        CommunicateServiceDispatcher.unregisterService(this::class.java)
+
         super.onDestroy()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val metadata = intent?.extras?.let { CallMetadata.fromBundle(it) }
+        val action = intent?.action
+        val extras = intent?.extras
+        val metadata = extras?.let(CallMetadata::fromBundleOrNull)
 
-        when (intent?.action) {
-            // Incoming call service actions
-            PushNotificationServiceEnums.LAUNCH.name -> handleIncomingCallLaunch(metadata!!)
-            PushNotificationServiceEnums.ANSWER.name -> answerCall(metadata!!)
-            PushNotificationServiceEnums.HANGUP.name -> terminateCall(metadata!!, DeclineSource.USER)
-            else -> Log.e(TAG, "Missing or unknown intent action")
+        return when (action) {
+            PushNotificationServiceEnums.LAUNCH.name -> {
+                handleIncomingCallLaunch()
+                START_STICKY
+            }
+
+            PushNotificationServiceEnums.ANSWER.name -> {
+                answerCall(metadata!!)
+                START_NOT_STICKY
+            }
+
+            PushNotificationServiceEnums.HANGUP.name -> {
+                terminateCall(metadata!!, DeclineSource.USER)
+                START_NOT_STICKY
+            }
+
+            ConnectionReport.MissedCall.name -> {
+                handleMissedCall(metadata!!)
+                START_NOT_STICKY
+            }
+
+            else -> {
+                Log.e(TAG, "Unknown or missing intent action: $action")
+                START_NOT_STICKY
+            }
         }
-
-        return START_STICKY
     }
 
     /**
@@ -105,21 +134,15 @@ class PushNotificationIsolateService : Service(), PHostBackgroundPushNotificatio
      *
      * @param metadata The metadata of the incoming call.
      */
-    private fun handleIncomingCallLaunch(metadata: CallMetadata) {
-        Log.d(TAG, "handleIncomingCallLaunch: $metadata")
-
+    private fun handleIncomingCallLaunch() {
         val isolate = IsolateSelector.getIsolateType()
         val signalingIsolateServiceRunning = SignalingIsolateService.isRunning
         val launchBackgroundIsolateEvenIfAppIsOpen =
             StorageDelegate.IncomingCallService.isLaunchBackgroundIsolateEvenIfAppIsOpen(baseContext)
 
-        Log.d(
-            TAG,
-            "Incoming call launched: $metadata in $isolate with signaling service running: $signalingIsolateServiceRunning"
-        )
         // Launch push notifications callbacks and handling only if signaling service is not running
         if (launchBackgroundIsolateEvenIfAppIsOpen || (isolate == IsolateType.BACKGROUND && !signalingIsolateServiceRunning)) {
-            Log.d(TAG, "Launching isolate: $metadata")
+            Log.d(TAG, "Launching isolate:")
 
             startIncomingCallIsolate()
 
@@ -135,8 +158,38 @@ class PushNotificationIsolateService : Service(), PHostBackgroundPushNotificatio
                 }
             }
         } else {
-            Log.d(TAG, "Skipped launching isolate: $metadata")
+            Log.d(TAG, "Skipped launching isolate")
             stopSelf();
+        }
+    }
+
+    /**
+     * Records a missed call event when the main isolate is not running.
+     *
+     * @param extras The missed call information.
+     */
+    private fun handleMissedCall(metadata: CallMetadata) {
+        Log.d(TAG, "handleMissedCall: $metadata")
+
+        isolateCalkeepFlutterApi?.endCallReceived(
+            metadata.callId,
+            metadata.number,
+            metadata.hasVideo,
+            metadata.createdTime ?: System.currentTimeMillis(),
+            null,
+            System.currentTimeMillis()
+        ) { response ->
+            response.onSuccess {
+                // Do not directly invoke PhoneConnectionService.startHungUpCall here. Instead, wait for the signaling
+                // response (RELEASE_RESOURCES). After successful signaling, DeclineSource.USER will be triggered from Flutter.
+                Log.d(TAG, "handleMissedCall success: $it")
+            }
+            response.onFailure {
+                // If signaling fails, directly end the call and close the isolate.
+                Log.e(TAG, "handleMissedCall failure: $it")
+                PhoneConnectionService.startHungUpCall(baseContext, metadata)
+                stopSelf()
+            }
         }
     }
 
@@ -291,7 +344,7 @@ class PushNotificationIsolateService : Service(), PHostBackgroundPushNotificatio
     override fun onBind(intent: Intent?): IBinder? = null
 
     companion object {
-        private const val TAG = "PushNotificationService"
+        private const val TAG = "PushNotificationIsolateService"
 
         @JvmStatic
         var isRunning = false
