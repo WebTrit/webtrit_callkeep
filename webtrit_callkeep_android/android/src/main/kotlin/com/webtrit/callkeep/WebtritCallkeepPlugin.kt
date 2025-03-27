@@ -13,7 +13,7 @@ import com.webtrit.callkeep.common.AssetHolder
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.services.ForegroundService
-import com.webtrit.callkeep.services.IncomingCallService
+import com.webtrit.callkeep.services.incomming_call.IncomingCallService
 import com.webtrit.callkeep.services.SignalingIsolateService
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.FlutterPlugin.FlutterAssets

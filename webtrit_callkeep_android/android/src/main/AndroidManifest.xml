@@ -45,7 +45,7 @@
             android:foregroundServiceType="phoneCall" />
 
         <service
-            android:name=".services.IncomingCallService"
+            android:name=".services.incomming_call.IncomingCallService"
             android:exported="false"
             android:foregroundServiceType="phoneCall" />
 
