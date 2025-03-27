@@ -3,7 +3,7 @@ package com.webtrit.callkeep.services.dispatchers
 import android.content.Context
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.services.PushNotificationIsolateService
+import com.webtrit.callkeep.services.IncomingCallService
 import com.webtrit.callkeep.services.SignalingIsolateService
 
 interface IncomingCallServiceContract {
@@ -26,7 +26,7 @@ object IncomingCallAdapter : IncomingCallServiceContract {
         if (SignalingIsolateService.isRunning) {
             SignalingIsolateService.answerCall(context, metadata)
         } else {
-            PushNotificationIsolateService.answer(context, metadata)
+            IncomingCallService.answer(context, metadata)
         }
     }
 
@@ -34,7 +34,7 @@ object IncomingCallAdapter : IncomingCallServiceContract {
         if (SignalingIsolateService.isRunning) {
             SignalingIsolateService.endCall(context, metadata)
         } else {
-            PushNotificationIsolateService.hangup(context, metadata)
+            IncomingCallService.hangup(context, metadata)
         }
     }
 }

@@ -13,7 +13,7 @@ import com.webtrit.callkeep.common.AssetHolder
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.services.ForegroundService
-import com.webtrit.callkeep.services.PushNotificationIsolateService
+import com.webtrit.callkeep.services.IncomingCallService
 import com.webtrit.callkeep.services.SignalingIsolateService
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.FlutterPlugin.FlutterAssets
@@ -34,7 +34,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     private lateinit var context: Context
 
     private var signalingIsolateService: SignalingIsolateService? = null
-    private var pushNotificationIsolateService: PushNotificationIsolateService? = null
+    private var pushNotificationIsolateService: IncomingCallService? = null
 
     private var foregroundService: ForegroundService? = null
     private var serviceConnection: ServiceConnection? = null
@@ -113,8 +113,8 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
 
     override fun onAttachedToService(binding: ServicePluginBinding) {
         // Create communication bridge between the service and the push notification isolate
-        if (binding.service is PushNotificationIsolateService) {
-            pushNotificationIsolateService = binding.service as? PushNotificationIsolateService
+        if (binding.service is IncomingCallService) {
+            pushNotificationIsolateService = binding.service as? IncomingCallService
 
             PDelegateBackgroundServiceFlutterApi(messenger).let {
                 pushNotificationIsolateService?.isolateCalkeepFlutterApi = it
