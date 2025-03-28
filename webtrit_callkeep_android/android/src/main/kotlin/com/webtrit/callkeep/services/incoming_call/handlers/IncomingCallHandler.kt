@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.services.incoming_call
+package com.webtrit.callkeep.services.incoming_call.handlers
 
 import android.annotation.SuppressLint
 import android.app.Service
@@ -6,6 +6,7 @@ import android.util.Log
 import com.webtrit.callkeep.common.startForegroundServiceCompat
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
+import com.webtrit.callkeep.services.incoming_call.IsolateLaunchPolicy
 
 class IncomingCallHandler(
     private val service: Service,
@@ -24,7 +25,7 @@ class IncomingCallHandler(
     private fun showNotification(metadata: CallMetadata) {
         service.startForegroundServiceCompat(
             service,
-            IncomingCallNotificationBuilder.NOTIFICATION_ID,
+            IncomingCallNotificationBuilder.Companion.NOTIFICATION_ID,
             notificationBuilder.apply { setCallMetaData(metadata) }.build()
         )
     }
