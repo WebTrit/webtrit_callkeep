@@ -19,6 +19,7 @@ class NotificationManager() {
     }
 
     fun cancelIncomingNotification() {
+        Log.d(TAG, "cancelIncomingNotification")
         IncomingCallService.stop(context)
     }
 

@@ -6,6 +6,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.PermissionsHelper
 import com.webtrit.callkeep.common.parcelableArrayList
 import com.webtrit.callkeep.common.startForegroundServiceCompat
@@ -17,6 +18,11 @@ import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
 class ActiveCallService : Service() {
     private val activeCallNotificationBuilder = ActiveCallNotificationBuilder()
     private var callsMetadata = mutableListOf<CallMetadata>()
+
+    override fun onCreate() {
+        super.onCreate()
+        ContextHolder.init(applicationContext)
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Handle the hangup action from the notification

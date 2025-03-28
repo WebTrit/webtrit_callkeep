@@ -1,5 +1,7 @@
 package com.webtrit.callkeep.services.incomming_call
 
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.webtrit.callkeep.PHostBackgroundPushNotificationIsolateApi
 import com.webtrit.callkeep.models.CallMetadata
@@ -64,10 +66,9 @@ class CallLifecycleHandler(
         }
     }
 
+    // Event from flutter side, as case signaling declined the call
     private fun handleServerDecline(metadata: CallMetadata) {
-        flutterApi?.releaseResources {
-            connectionController.hangUp(metadata)
-        }
+        connectionController.decline(metadata)
     }
 
     private fun performSafeEndCall(callId: String, metadata: CallMetadata) {
@@ -92,7 +93,32 @@ class CallLifecycleHandler(
         callback(Result.success(Unit))
     }
 
+    // Isolate
+    fun release() {
+        Log.d(TAG, "Resources released")
+        flutterApi?.releaseResources {
+            Log.d(TAG, "Stopping service")
+            Handler(Looper.getMainLooper()).postDelayed({
+                Log.d(TAG, "Stopped service")
+                stopService()
+            }, SERVICE_STOP_DELAY_MS)
+        } ?: run { stopService() }
+    }
+
+
+    // Isolate
+    fun performEndCall(metadata: CallMetadata) {
+        Log.d(TAG, "Resources released")
+        flutterApi?.performEndCall(metadata.callId, onSuccess = {
+            release()
+        }, onFailure = {
+            release()
+        }) ?: run { stopService() }
+    }
+
+
     companion object {
+        private const val SERVICE_STOP_DELAY_MS = 1000L
         private const val TAG = "CallLifecycleHandler"
     }
 }
