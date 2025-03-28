@@ -7,6 +7,10 @@ import com.webtrit.callkeep.PHostBackgroundPushNotificationIsolateApi
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.helpers.IsolateSelector
 
+enum class DeclineSource {
+    USER, SERVER
+}
+
 class CallLifecycleHandler(
     private val connectionController: CallConnectionController,
     private val stopService: () -> Unit,
@@ -15,11 +19,31 @@ class CallLifecycleHandler(
 
     internal var flutterApi: FlutterIsolateCommunicator? = null
 
-    fun answerCall(metadata: CallMetadata) {
-        IsolateSelector.executeBasedOnIsolate(
-            mainAction = { connectionController.answer(metadata) },
-            backgroundAction = { answerCallByBackground(metadata) })
+    // Notify connection service about answering the call
+    fun reportAnswerToConnectionService(metadata: CallMetadata) {
+        connectionController.answer(metadata)
     }
+
+    // Notify connection service about declining the call
+    fun reportDeclineToConnectionService(metadata: CallMetadata) {
+        connectionController.decline(metadata)
+    }
+
+    // Connection service event for answering the call, synchronized with Flutter if the app is in the background
+    fun performAnswerCall(metadata: CallMetadata) {
+        IsolateSelector.executeIfBackground {
+            answerCallByBackground(metadata)
+        }
+    }
+
+    fun performEndCall(metadata: CallMetadata) {
+        Log.d(TAG, "Resources released")
+//        flutterApi?.performEndCall(metadata.callId, onSuccess = { release() }, onFailure = { release() })
+//            ?: run { stopService() }
+
+        flutterApi?.performEndCall(metadata.callId, onSuccess = { release() }, onFailure = { release() })
+    }
+
 
     fun answerCallByBackground(metadata: CallMetadata) {
         flutterApi?.performAnswer(metadata.callId, onSuccess = {
@@ -97,25 +121,17 @@ class CallLifecycleHandler(
     fun release() {
         Log.d(TAG, "Resources released")
         flutterApi?.releaseResources {
-            Log.d(TAG, "Stopping service")
-            Handler(Looper.getMainLooper()).postDelayed({
-                Log.d(TAG, "Stopped service")
-                stopService()
-            }, SERVICE_STOP_DELAY_MS)
+            stopServiceWithDelay()
         } ?: run { stopService() }
     }
 
-
-    // Isolate
-    fun performEndCall(metadata: CallMetadata) {
-        Log.d(TAG, "Resources released")
-        flutterApi?.performEndCall(metadata.callId, onSuccess = {
-            release()
-        }, onFailure = {
-            release()
-        }) ?: run { stopService() }
+    private fun stopServiceWithDelay() {
+        Log.d(TAG, "Stopping service")
+        Handler(Looper.getMainLooper()).postDelayed({
+            Log.d(TAG, "Stopped service")
+            stopService()
+        }, SERVICE_STOP_DELAY_MS)
     }
-
 
     companion object {
         private const val SERVICE_STOP_DELAY_MS = 1000L

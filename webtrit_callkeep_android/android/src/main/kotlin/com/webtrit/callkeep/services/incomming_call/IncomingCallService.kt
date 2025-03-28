@@ -17,7 +17,6 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.ConnectionReport
 import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
-import com.webtrit.callkeep.services.SignalingIsolateService
 import com.webtrit.callkeep.services.dispatchers.CommunicateServiceDispatcher
 import com.webtrit.callkeep.services.helpers.DefaultIsolateLaunchPolicy
 
@@ -32,9 +31,9 @@ class IncomingCallService : Service() {
     }
 
     private lateinit var incomingCallHandler: IncomingCallHandler
-
-    lateinit var callLifecycleHandler: CallLifecycleHandler
-    lateinit var isolateHandler: FlutterIsolateHandler
+    private lateinit var isolateHandler: FlutterIsolateHandler
+    private lateinit var callLifecycleHandler: CallLifecycleHandler
+    fun getCallLifecycleHandler(): CallLifecycleHandler = callLifecycleHandler
 
     override fun onCreate() {
         super.onCreate()
@@ -72,11 +71,19 @@ class IncomingCallService : Service() {
         }
 
         return when (action) {
-            NotificationAction.Answer.action -> handleAnswer(metadata!!)
-            NotificationAction.Hangup.action -> handleHangup(metadata!!)
+            // Listen foreground service actions
             PushNotificationServiceEnums.LAUNCH.name -> handleLaunch(metadata!!)
-            PushNotificationServiceEnums.RELEASE.name -> performDeclineCall(metadata)
-            ConnectionReport.MissedCall.name -> handleMissedCall(metadata!!)
+            PushNotificationServiceEnums.RELEASE.name -> handleRelease()
+
+            // Listen push notification actions (Only notify connection service)
+            NotificationAction.Answer.action -> reportAnswerToConnectionService(metadata!!)
+            NotificationAction.Hangup.action -> reportHungUpToConnectionService(metadata!!)
+
+            // Listen connection service actions (and try to notify isolate if it background)
+            ConnectionReport.AnswerCall.name -> performAnswerCall(metadata!!)
+            ConnectionReport.DeclineCall.name -> performDeclineCall(metadata!!)
+            ConnectionReport.HungUp.name -> performDeclineCall(metadata!!)
+            ConnectionReport.MissedCall.name -> performMissedCall(metadata!!)
             else -> handleUnknownAction(action)
         }
     }
@@ -96,48 +103,47 @@ class IncomingCallService : Service() {
         callLifecycleHandler.apply {
             flutterApi = DefaultFlutterIsolateCommunicator(this@IncomingCallService, serviceApi, registerApi)
         }
-
-        incomingCallHandler.apply {}
     }
 
-    private fun handleAnswer(metadata: CallMetadata): Int {
-        if (SignalingIsolateService.isRunning) {
-            SignalingIsolateService.answerCall(baseContext, metadata)
-        } else {
-            callLifecycleHandler.answerCall(metadata)
-        }
+    private fun reportAnswerToConnectionService(metadata: CallMetadata): Int {
+        callLifecycleHandler.reportAnswerToConnectionService(metadata)
         return START_NOT_STICKY
     }
 
-    private fun handleHangup(metadata: CallMetadata): Int {
-        if (SignalingIsolateService.isRunning) {
-            SignalingIsolateService.endCall(baseContext, metadata)
-        } else {
-            callLifecycleHandler.terminateCall(metadata, DeclineSource.USER)
-        }
+    private fun reportHungUpToConnectionService(metadata: CallMetadata): Int {
+        callLifecycleHandler.reportDeclineToConnectionService(metadata)
         return START_NOT_STICKY
     }
 
-    // Starts the service with the LAUNCH action, cancelling any existing timeout,
-    // since this is a new incoming call
+    private fun performAnswerCall(metadata: CallMetadata): Int {
+        callLifecycleHandler.performAnswerCall(metadata)
+        return START_STICKY
+    }
+
+    private fun performMissedCall(metadata: CallMetadata): Int {
+        callLifecycleHandler.handleMissedCall(metadata)
+        return START_NOT_STICKY
+    }
+
+    // Starts the service with the RELEASE action and schedules a timeout,
+    // in case the Flutter isolate doesn't stop the service correctly
+    private fun performDeclineCall(metadata: CallMetadata): Int {
+        callLifecycleHandler.performEndCall(metadata)
+        return START_NOT_STICKY
+    }
+
+    // Launches the service with the LAUNCH action and cancels the timeout
     private fun handleLaunch(metadata: CallMetadata): Int {
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
         incomingCallHandler.handle(metadata)
         return START_STICKY
     }
 
-
-    // Starts the service with the RELEASE action and schedules a timeout,
-    // in case the Flutter isolate doesn't stop the service correctly
-    private fun performDeclineCall(metadata: CallMetadata?): Int {
+    // Handles the RELEASE action and cancels the timeout
+    private fun handleRelease(): Int {
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
         timeoutHandler.postDelayed(stopTimeoutRunnable, SERVICE_TIMEOUT_MS)
-        if (metadata != null) callLifecycleHandler.performEndCall(metadata) else callLifecycleHandler.release()
-        return START_NOT_STICKY
-    }
-
-    private fun handleMissedCall(metadata: CallMetadata): Int {
-        callLifecycleHandler.handleMissedCall(metadata)
+        callLifecycleHandler.release()
         return START_NOT_STICKY
     }
 
@@ -156,16 +162,13 @@ class IncomingCallService : Service() {
 
             val intent = Intent(context, IncomingCallService::class.java).apply {
                 this.action = action.name
-                metadata?.let { putExtras(it) }
+                metadata?.let(::putExtras)
             }
 
-            if (action == PushNotificationServiceEnums.LAUNCH) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
+            // Use startForegroundService only if the action requires launching the service in the foreground (e.g., displaying UI or ongoing notification)
+            // Otherwise, use startService to send a command to an already running or background service
+            (if (action.isLaunch()) Context::startForegroundService else Context::startService)(context, intent)
         }
-
 
         fun start(context: Context, metadata: CallMetadata) {
             communicate(context, PushNotificationServiceEnums.LAUNCH, metadata.toBundle())
@@ -179,9 +182,7 @@ class IncomingCallService : Service() {
 }
 
 enum class PushNotificationServiceEnums {
-    LAUNCH, RELEASE
-}
+    LAUNCH, RELEASE;
 
-enum class DeclineSource {
-    USER, SERVER
+    fun isLaunch() = this == LAUNCH
 }

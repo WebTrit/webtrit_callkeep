@@ -59,4 +59,10 @@ object IsolateSelector {
             IsolateType.BACKGROUND -> backgroundAction()
         }
     }
+
+    inline fun executeIfBackground(action: () -> Unit) {
+        if (getIsolateType() == IsolateType.BACKGROUND) {
+            action()
+        }
+    }
 }

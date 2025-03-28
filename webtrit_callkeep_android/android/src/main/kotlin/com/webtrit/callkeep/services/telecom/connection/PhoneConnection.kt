@@ -148,16 +148,17 @@ class PhoneConnection internal constructor(
         super.onDisconnect()
         Log.i(TAG, "onDisconnect: ${metadata.callId}")
 
-        this@PhoneConnection.notificationManager.cancelIncomingNotification()
-        this@PhoneConnection.notificationManager.cancelActiveCallNotification(id)
-        this@PhoneConnection.audioManager.stopRingtone()
+        notificationManager.cancelIncomingNotification()
+        notificationManager.cancelActiveCallNotification(id)
+        audioManager.stopRingtone()
 
-        // This call is required to confirm the hangup, ensuring the call flow completes correctly,
-        // or to provide a notification if the system terminates the Flutter side when app is open.
-        dispatcher.dispatch(ConnectionReport.DeclineCall, metadata.toBundle())
+        val event = when (disconnectCause.code) {
+            DisconnectCause.REMOTE -> ConnectionReport.DeclineCall
+            else -> ConnectionReport.HungUp
+        }
+        dispatcher.dispatch(event, metadata.toBundle())
 
         onDisconnectCallback.invoke(this)
-
         destroy()
     }
 

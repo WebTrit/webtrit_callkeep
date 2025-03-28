@@ -123,7 +123,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
 
             PHostBackgroundPushNotificationIsolateApi.setUp(
                 messenger,
-                pushNotificationIsolateService?.callLifecycleHandler
+                pushNotificationIsolateService?.getCallLifecycleHandler()
             )
         }
 

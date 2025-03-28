@@ -67,6 +67,7 @@ class ForegroundService : Service(), PHostApi {
         when (intent?.action) {
             ConnectionReport.DidPushIncomingCall.name -> handleCSReportDidPushIncomingCall(intent.extras)
             ConnectionReport.DeclineCall.name -> handleCSReportDeclineCall(intent.extras)
+            ConnectionReport.HungUp.name -> handleCSReportDeclineCall(intent.extras)
             ConnectionReport.AnswerCall.name -> handleCSReportAnswerCall(intent.extras)
             ConnectionReport.OngoingCall.name -> handleCSReportOngoingCall(intent.extras)
             ConnectionReport.ConnectionHasSpeaker.name -> handleCSReportConnectionHasSpeaker(intent.extras)
