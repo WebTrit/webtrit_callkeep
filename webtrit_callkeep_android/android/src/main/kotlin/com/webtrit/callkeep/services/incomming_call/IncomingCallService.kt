@@ -1,5 +1,6 @@
 package com.webtrit.callkeep.services.incomming_call
 
+import android.R.attr.action
 import android.annotation.SuppressLint
 import android.app.Service
 import android.content.Context
@@ -64,7 +65,7 @@ class IncomingCallService : Service() {
 
         Log.d(TAG, "onStartCommand: $action, $metadata")
 
-        if (startId == 0 && action != PushNotificationServiceEnums.LAUNCH.name) {
+        if (startId == 0 && action != PushNotificationServiceEnums.IC_INITIALIZE.name) {
             Log.w(TAG, "Service was not properly started (startId=0), stopping to avoid crash")
             stopSelf()
             return START_NOT_STICKY
@@ -72,8 +73,9 @@ class IncomingCallService : Service() {
 
         return when (action) {
             // Listen foreground service actions
-            PushNotificationServiceEnums.LAUNCH.name -> handleLaunch(metadata!!)
-            PushNotificationServiceEnums.RELEASE.name -> handleRelease()
+            PushNotificationServiceEnums.IC_INITIALIZE.name -> handleLaunch(metadata!!)
+            IncomingCallRelease.IC_RELEASE_WITH_DECLINE.name -> handleRelease(answered = false)
+            IncomingCallRelease.IC_RELEASE_WITH_ANSWER.name -> handleRelease(answered = true)
 
             // Listen push notification actions (Only notify connection service)
             NotificationAction.Answer.action -> reportAnswerToConnectionService(metadata!!)
@@ -140,7 +142,8 @@ class IncomingCallService : Service() {
     }
 
     // Handles the RELEASE action and cancels the timeout
-    private fun handleRelease(): Int {
+    private fun handleRelease(answered: Boolean = false): Int {
+        if (!answered) incomingCallHandler.releaseIncomingCallNotification()
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
         timeoutHandler.postDelayed(stopTimeoutRunnable, SERVICE_TIMEOUT_MS)
         callLifecycleHandler.release()
@@ -157,32 +160,27 @@ class IncomingCallService : Service() {
 
         private const val SERVICE_TIMEOUT_MS = 2_000L
 
-        private fun communicate(context: Context, action: PushNotificationServiceEnums, metadata: Bundle?) {
-            Log.d(TAG, "Communicate with action: $action, metadata: $metadata")
-
-            val intent = Intent(context, IncomingCallService::class.java).apply {
-                this.action = action.name
-                metadata?.let(::putExtras)
-            }
-
-            // Use startForegroundService only if the action requires launching the service in the foreground (e.g., displaying UI or ongoing notification)
-            // Otherwise, use startService to send a command to an already running or background service
-            (if (action.isLaunch()) Context::startForegroundService else Context::startService)(context, intent)
-        }
-
         fun start(context: Context, metadata: CallMetadata) {
-            communicate(context, PushNotificationServiceEnums.LAUNCH, metadata.toBundle())
+            context.startForegroundService(Intent(context, IncomingCallService::class.java).apply {
+                this.action = PushNotificationServiceEnums.IC_INITIALIZE.name
+                metadata.toBundle().let(::putExtras)
+            })
         }
 
         @SuppressLint("ImplicitSamInstance")
-        fun stop(context: Context) {
-            communicate(context, PushNotificationServiceEnums.RELEASE, null)
+        fun release(context: Context, type: IncomingCallRelease) {
+            context.startService(Intent(context, IncomingCallService::class.java).apply {
+                this.action = type.name
+            })
         }
     }
 }
 
-enum class PushNotificationServiceEnums {
-    LAUNCH, RELEASE;
+enum class IncomingCallRelease {
+    IC_RELEASE_WITH_ANSWER,
+    IC_RELEASE_WITH_DECLINE;
+}
 
-    fun isLaunch() = this == LAUNCH
+enum class PushNotificationServiceEnums {
+    IC_INITIALIZE;
 }

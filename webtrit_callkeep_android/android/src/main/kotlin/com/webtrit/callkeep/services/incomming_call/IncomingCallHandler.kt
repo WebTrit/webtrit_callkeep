@@ -1,5 +1,6 @@
 package com.webtrit.callkeep.services.incomming_call
 
+import android.annotation.SuppressLint
 import android.app.Service
 import android.util.Log
 import com.webtrit.callkeep.common.startForegroundServiceCompat
@@ -27,6 +28,11 @@ class IncomingCallHandler(
             IncomingCallNotificationBuilder.NOTIFICATION_ID,
             notificationBuilder.apply { setCallMetaData(metadata) }.build()
         )
+    }
+
+    @SuppressLint("MissingPermission")
+    fun releaseIncomingCallNotification() {
+        notificationBuilder.updateToReleaseIncomingCallNotification()
     }
 
     private fun maybeInitBackgroundHandling() {
