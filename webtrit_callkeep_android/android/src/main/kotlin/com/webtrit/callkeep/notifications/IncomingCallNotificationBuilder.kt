@@ -14,7 +14,7 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.common.ContextHolder.context
 import com.webtrit.callkeep.managers.NotificationChannelManager.INCOMING_CALL_NOTIFICATION_CHANNEL_ID
-import com.webtrit.callkeep.services.incomming_call.IncomingCallService
+import com.webtrit.callkeep.services.incoming_call.IncomingCallService
 
 class IncomingCallNotificationBuilder() : NotificationBuilder() {
     private var callMetaData: CallMetadata? = null
