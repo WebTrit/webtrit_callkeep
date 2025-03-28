@@ -38,9 +38,6 @@ class CallLifecycleHandler(
 
     fun performEndCall(metadata: CallMetadata) {
         Log.d(TAG, "Resources released")
-//        flutterApi?.performEndCall(metadata.callId, onSuccess = { release() }, onFailure = { release() })
-//            ?: run { stopService() }
-
         flutterApi?.performEndCall(metadata.callId, onSuccess = { release() }, onFailure = { release() })
     }
 

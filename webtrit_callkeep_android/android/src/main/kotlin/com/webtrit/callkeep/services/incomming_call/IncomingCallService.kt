@@ -1,11 +1,9 @@
 package com.webtrit.callkeep.services.incomming_call
 
-import android.R.attr.action
 import android.annotation.SuppressLint
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -79,7 +77,7 @@ class IncomingCallService : Service() {
 
             // Listen push notification actions (Only notify connection service)
             NotificationAction.Answer.action -> reportAnswerToConnectionService(metadata!!)
-            NotificationAction.Hangup.action -> reportHungUpToConnectionService(metadata!!)
+            NotificationAction.Decline.action -> reportHungUpToConnectionService(metadata!!)
 
             // Listen connection service actions (and try to notify isolate if it background)
             ConnectionReport.AnswerCall.name -> performAnswerCall(metadata!!)

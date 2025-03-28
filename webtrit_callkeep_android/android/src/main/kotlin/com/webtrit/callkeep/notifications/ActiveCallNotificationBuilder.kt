@@ -54,7 +54,7 @@ class ActiveCallNotificationBuilder() : NotificationBuilder() {
 
     private fun getHungUpCallIntent(callMetaData: CallMetadata): PendingIntent {
         val hangUpIntent = Intent(context, ActiveCallService::class.java).apply {
-            action = NotificationAction.Hangup.action
+            action = NotificationAction.Decline.action
             putExtras(callMetaData.toBundle())
         }
         return PendingIntent.getService(

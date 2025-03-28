@@ -26,7 +26,7 @@ class ActiveCallService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Handle the hangup action from the notification
-        if (NotificationAction.Hangup.action == intent?.action) {
+        if (NotificationAction.Decline.action == intent?.action) {
             hungUpCall()
 
             return START_NOT_STICKY

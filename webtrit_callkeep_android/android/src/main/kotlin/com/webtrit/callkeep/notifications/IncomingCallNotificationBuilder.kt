@@ -1,6 +1,5 @@
 package com.webtrit.callkeep.notifications
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.PendingIntent
@@ -8,7 +7,6 @@ import android.app.Person
 import android.content.Intent
 import android.graphics.drawable.Icon
 import android.os.Build
-import androidx.annotation.RequiresPermission
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.webtrit.callkeep.R
@@ -57,7 +55,7 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
         val meta = requireNotNull(callMetaData) { "Call metadata must be set before building the notification." }
 
         val answerIntent = createCallActionIntent(NotificationAction.Answer.action)
-        val declineIntent = createCallActionIntent(NotificationAction.Hangup.action)
+        val declineIntent = createCallActionIntent(NotificationAction.Decline.action)
 
         val icDecline = R.drawable.ic_call_hungup
         val icAnswer = R.drawable.ic_call_answer
