@@ -1,22 +1,20 @@
-package com.webtrit.callkeep.services.telecom.connection
+package com.webtrit.callkeep.services.connection
 
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Bundle
 import android.telecom.*
 import com.webtrit.callkeep.PIncomingCallError
-import com.webtrit.callkeep.PIncomingCallErrorEnum
 import com.webtrit.callkeep.models.ConnectionReport
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.TelephonyUtils
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.FailureMetadata
-import com.webtrit.callkeep.services.ForegroundService
-import com.webtrit.callkeep.services.dispatchers.CommunicateServiceDispatcher
-import com.webtrit.callkeep.services.dispatchers.PhoneConnectionServiceDispatcher
+import com.webtrit.callkeep.services.foreground.ForegroundService
+import com.webtrit.callkeep.services.connection.dispatchers.CommunicateServiceDispatcher
+import com.webtrit.callkeep.services.connection.dispatchers.PhoneConnectionServiceDispatcher
 
 /**
  * `PhoneConnectionService` is a service class responsible for managing phone call connections

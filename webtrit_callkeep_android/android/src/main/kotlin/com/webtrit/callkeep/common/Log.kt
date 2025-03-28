@@ -51,11 +51,9 @@ object Log {
                 PLogTypeEnum.VERBOSE -> Log.v(tag, message)
             }
         } else {
-            // If delegates exist, send the log to them
+            // If delegates exist, send the log to the first delegate to avoid multiple calls in the Flutter console
             Handler(Looper.getMainLooper()).post {
-                isolateDelegates.forEach {
-                    it.onLog(type, tag, message) {}
-                }
+                isolateDelegates.first().onLog(type, tag, message) {}
             }
         }
     }

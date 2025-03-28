@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.services.telecom.connection
+package com.webtrit.callkeep.services.connection
 
 import android.net.Uri
 import android.telecom.Connection

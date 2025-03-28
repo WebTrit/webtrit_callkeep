@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.services.telecom.connection
+package com.webtrit.callkeep.services.connection
 
 import android.content.Context
 import android.os.Build
@@ -16,7 +16,7 @@ import com.webtrit.callkeep.common.*
 import com.webtrit.callkeep.managers.AudioManager
 import com.webtrit.callkeep.managers.NotificationManager
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.services.dispatchers.CommunicateServiceDispatcher.DispatchHandle
+import com.webtrit.callkeep.services.connection.dispatchers.CommunicateServiceDispatcher.DispatchHandle
 
 /**
  * Represents a phone connection for handling telephony calls.
@@ -34,6 +34,7 @@ class PhoneConnection internal constructor(
     private var isMute = false
     private var isHasSpeaker = false
     private var answer = false
+    private var disconnected = false
 
     private val notificationManager = NotificationManager()
     private val audioManager = AudioManager(context)
@@ -132,9 +133,9 @@ class PhoneConnection internal constructor(
      * This method sets the call's disconnect cause to "Rejected" and initiates the call disconnect process.
      */
     override fun onReject() {
+        Log.i(TAG, "onReject: $metadata")
         super.onReject()
         setDisconnected(DisconnectCause(DisconnectCause.REJECTED))
-        onDisconnect()
     }
 
     /**
@@ -148,16 +149,17 @@ class PhoneConnection internal constructor(
         super.onDisconnect()
         Log.i(TAG, "onDisconnect: ${metadata.callId}")
 
-        this@PhoneConnection.notificationManager.cancelIncomingNotification()
-        this@PhoneConnection.notificationManager.cancelActiveCallNotification(id)
-        this@PhoneConnection.audioManager.stopRingtone()
+        notificationManager.cancelIncomingNotification(isAnswered())
+        notificationManager.cancelActiveCallNotification(id)
+        audioManager.stopRingtone()
 
-        // This call is required to confirm the hangup, ensuring the call flow completes correctly,
-        // or to provide a notification if the system terminates the Flutter side when app is open.
-        dispatcher.dispatch(ConnectionReport.DeclineCall, metadata.toBundle())
+        val event = when (disconnectCause.code) {
+            DisconnectCause.REMOTE -> ConnectionReport.DeclineCall
+            else -> ConnectionReport.HungUp
+        }
+        dispatcher.dispatch(event, metadata.toBundle())
 
         onDisconnectCallback.invoke(this)
-
         destroy()
     }
 
@@ -217,6 +219,7 @@ class PhoneConnection internal constructor(
     }
 
     private fun handleIncomingTimeout(state: Int) {
+        Log.i(TAG, "handleIncomingTimeout: $state")
         if (state in timeout?.states.orEmpty()) {
             // Start the timeout if the current state is in the allowed states
             timeout?.start {
@@ -310,8 +313,7 @@ class PhoneConnection internal constructor(
             dispatcher.dispatch(ConnectionReport.MissedCall, metadata.toBundle())
         }
 
-        setDisconnected(DisconnectCause(DisconnectCause.REMOTE))
-        onDisconnect()
+        terminateWithCause(DisconnectCause(DisconnectCause.REMOTE))
     }
 
     /**
@@ -324,8 +326,7 @@ class PhoneConnection internal constructor(
 
         dispatcher.dispatch(ConnectionReport.AudioMuting, metadata.toBundle())
 
-        setDisconnected(DisconnectCause(DisconnectCause.LOCAL))
-        onDisconnect()
+        terminateWithCause(DisconnectCause(DisconnectCause.LOCAL))
     }
 
     /**
@@ -335,7 +336,7 @@ class PhoneConnection internal constructor(
         this@PhoneConnection.audioManager.stopRingtone()
 
         // Cancel incoming call notification and missed call notification
-        notificationManager.cancelIncomingNotification()
+        notificationManager.cancelIncomingNotification(true)
         notificationManager.cancelMissedCall(metadata)
 
         notificationManager.showActiveCallNotification(id, metadata)
@@ -422,6 +423,17 @@ class PhoneConnection internal constructor(
             if (!Build.MANUFACTURER.equals("Samsung", ignoreCase = true)) {
                 setInitialized()
             }
+        }
+    }
+
+    // Safely terminate the call with the specified cause.
+    fun terminateWithCause(disconnectCause: DisconnectCause) {
+        if (!disconnected) {
+            disconnected = true
+            setDisconnected(disconnectCause)
+            onDisconnect()
+        } else {
+            Log.d(TAG, "terminateCallWithCause: already disconnected")
         }
     }
 }

@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.services
+package com.webtrit.callkeep.services.signaling
 
 import android.annotation.SuppressLint
 import android.app.NotificationManager
@@ -21,9 +21,9 @@ import com.webtrit.callkeep.PHostBackgroundSignalingIsolateApi
 import com.webtrit.callkeep.common.*
 import com.webtrit.callkeep.models.*
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
-import com.webtrit.callkeep.services.dispatchers.SignalingStatusDispatcher
-import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
-import com.webtrit.callkeep.services.workers.SignalingServiceBootWorker
+import com.webtrit.callkeep.dispatchers.SignalingStatusDispatcher
+import com.webtrit.callkeep.services.connection.PhoneConnectionService
+import com.webtrit.callkeep.services.signaling.workers.SignalingServiceBootWorker
 
 /**
  * A foreground service that manages the call state and Flutter background isolate.

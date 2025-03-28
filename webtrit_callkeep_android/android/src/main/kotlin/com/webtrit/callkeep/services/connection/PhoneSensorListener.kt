@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.services.telecom.connection
+package com.webtrit.callkeep.services.connection
 
 import android.annotation.SuppressLint
 import android.content.Context

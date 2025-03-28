@@ -13,7 +13,7 @@ import android.telephony.PhoneNumberUtils
 import android.telephony.TelephonyManager
 import androidx.annotation.RequiresPermission
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
+import com.webtrit.callkeep.services.connection.PhoneConnectionService
 
 class TelephonyUtils(private val context: Context) {
     fun isEmergencyNumber(number: String): Boolean {

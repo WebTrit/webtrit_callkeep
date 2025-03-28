@@ -1,23 +1,22 @@
-package com.webtrit.callkeep.services.dispatchers
+package com.webtrit.callkeep.services.connection.dispatchers
 
-import android.app.BackgroundServiceStartNotAllowedException
 import android.app.Service
 import android.content.Intent
 import android.os.Bundle
-import com.webtrit.callkeep.models.ConnectionReport
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
+import com.webtrit.callkeep.models.ConnectionReport
 
 /**
- * A helper object that dispatches [ConnectionReport] events from
- * [com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService] and
- * [com.webtrit.callkeep.services.telecom.connection.PhoneConnection] to registered Android [Service] components.
+ * A helper object that dispatches [com.webtrit.callkeep.models.ConnectionReport] events from
+ * [com.webtrit.callkeep.services.connection.connection.PhoneConnectionService] and
+ * [com.webtrit.callkeep.services.connection.connection.PhoneConnection] to registered Android [android.app.Service] components.
  *
  * This helper encapsulates the logic of dispatching events to registered services in the application,
  * instead of managing it directly within the PhoneConnectionService-related classes.
  *
  * Typically, there are two services involved:
- * - [com.webtrit.callkeep.services.ForegroundService], which represents the connection with the activity and shares its lifecycle.
+ * - [com.webtrit.callkeep.services.foreground.ForegroundService], which represents the connection with the activity and shares its lifecycle.
  * - [com.webtrit.callkeep.services.IncomingCallService], which represents the connection with the notification in a background isolate.
  *
  * Services registered with this dispatcher will receive dispatched events and have established method channels

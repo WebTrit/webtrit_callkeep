@@ -29,7 +29,7 @@
 
     <application>
         <service
-            android:name=".services.telecom.connection.PhoneConnectionService"
+            android:name=".services.connection.PhoneConnectionService"
             android:enabled="true"
             android:exported="false"
             android:label="PhoneConnectionService"
@@ -40,29 +40,24 @@
         </service>
 
         <service
-            android:name=".services.SignalingIsolateService"
+            android:name=".services.signaling.SignalingIsolateService"
             android:exported="false"
             android:foregroundServiceType="phoneCall" />
 
         <service
-            android:name=".services.IncomingCallService"
+            android:name=".services.incoming_call.IncomingCallService"
             android:exported="false"
             android:foregroundServiceType="phoneCall" />
 
         <service
-            android:name=".services.PushNotificationIsolateService"
-            android:exported="false"
-            android:foregroundServiceType="phoneCall" />
-
-        <service
-            android:name=".services.ActiveCallService"
+            android:name=".services.active_call.ActiveCallService"
             android:exported="false"
             android:foregroundServiceType="phoneCall|microphone|camera" />
 
-        <service android:name=".services.ForegroundService" />
+        <service android:name=".services.foreground.ForegroundService" />
 
         <receiver
-            android:name=".services.receivers.ForegroundCallBootReceiver"
+            android:name=".services.signaling.receivers.ForegroundCallBootReceiver"
             android:enabled="false"
             android:exported="true">
             <intent-filter>

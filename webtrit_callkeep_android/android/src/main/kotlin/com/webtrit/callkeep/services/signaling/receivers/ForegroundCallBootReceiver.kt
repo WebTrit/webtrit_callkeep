@@ -1,11 +1,11 @@
-package com.webtrit.callkeep.services.receivers
+package com.webtrit.callkeep.services.signaling.receivers
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.ContextCompat
 import com.webtrit.callkeep.common.Log
-import com.webtrit.callkeep.services.SignalingIsolateService
+import com.webtrit.callkeep.services.signaling.SignalingIsolateService
 
 class ForegroundCallBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {

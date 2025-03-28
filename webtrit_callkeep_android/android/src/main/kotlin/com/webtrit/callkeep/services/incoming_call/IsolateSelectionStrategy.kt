@@ -1,10 +1,10 @@
-package com.webtrit.callkeep.services.helpers
+package com.webtrit.callkeep.services.incoming_call
 
 import androidx.lifecycle.Lifecycle
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.models.SignalingStatus
-import com.webtrit.callkeep.services.dispatchers.SignalingStatusDispatcher
+import com.webtrit.callkeep.dispatchers.SignalingStatusDispatcher
 
 enum class IsolateType {
     MAIN, BACKGROUND
@@ -48,5 +48,21 @@ object IsolateSelector {
         val isolateType = strategy.getIsolateType()
         Log.i(TAG, "IsolateSelector: $strategy -> $isolateType")
         return isolateType
+    }
+
+    inline fun executeBasedOnIsolate(
+        mainAction: () -> Unit,
+        backgroundAction: () -> Unit
+    ) {
+        when (getIsolateType()) {
+            IsolateType.MAIN -> mainAction()
+            IsolateType.BACKGROUND -> backgroundAction()
+        }
+    }
+
+    inline fun executeIfBackground(action: () -> Unit) {
+        if (getIsolateType() == IsolateType.BACKGROUND) {
+            action()
+        }
     }
 }

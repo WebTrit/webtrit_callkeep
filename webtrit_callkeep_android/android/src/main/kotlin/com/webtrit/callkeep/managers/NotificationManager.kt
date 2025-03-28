@@ -6,20 +6,27 @@ import androidx.core.app.NotificationManagerCompat
 import com.webtrit.callkeep.common.ContextHolder.context
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.notifications.MissedCallNotificationBuilder
-import com.webtrit.callkeep.services.ActiveCallService
-import com.webtrit.callkeep.services.IncomingCallService
+import com.webtrit.callkeep.services.active_call.ActiveCallService
+import com.webtrit.callkeep.services.incoming_call.IncomingCallRelease
+import com.webtrit.callkeep.services.incoming_call.IncomingCallService
 import io.flutter.Log
 
 class NotificationManager() {
     private val notificationManager by lazy { NotificationManagerCompat.from(context) }
     private val missedCallNotificationBuilder by lazy { MissedCallNotificationBuilder() }
 
-    fun showIncomingCallNotification(callMetaData: CallMetadata, hasAnswerButton: Boolean = true) {
+    fun showIncomingCallNotification(callMetaData: CallMetadata) {
         IncomingCallService.start(context, callMetaData)
     }
 
-    fun cancelIncomingNotification() {
-        IncomingCallService.stop(context)
+    fun cancelIncomingNotification(answered: Boolean) {
+        IncomingCallService.release(
+            context, if (answered) {
+                IncomingCallRelease.IC_RELEASE_WITH_ANSWER
+            } else {
+                IncomingCallRelease.IC_RELEASE_WITH_DECLINE
+            }
+        )
     }
 
     fun showMissedCallNotification(callMetaData: CallMetadata) {

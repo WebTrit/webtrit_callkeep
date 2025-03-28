@@ -1,11 +1,12 @@
-package com.webtrit.callkeep.services.dispatchers
+package com.webtrit.callkeep.dispatchers
 
 import android.annotation.SuppressLint
 import android.app.Service
 import android.content.Intent
-import com.webtrit.callkeep.common.ContextHolder.context
+import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.models.SignalingStatus
+
 
 @SuppressLint("StaticFieldLeak")
 object SignalingStatusDispatcher {
@@ -34,12 +35,12 @@ object SignalingStatusDispatcher {
 
     private fun notifyStatusChanged(status: SignalingStatus) {
         for (service in registeredServices) {
-            val intent = Intent(context, service).apply {
+            val intent = Intent(ContextHolder.context, service).apply {
                 action = ACTION_STATUS_CHANGED
                 putExtras(status.toBundle())
             }
             try {
-                context.startService(intent)
+                ContextHolder.context.startService(intent)
             } catch (e: Exception) {
                 Log.i(TAG, "Failed to start service: $e service: $service")
             }

@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.services
+package com.webtrit.callkeep.services.active_call
 
 import android.app.Service
 import android.content.Intent
@@ -6,28 +6,34 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.PermissionsHelper
 import com.webtrit.callkeep.common.parcelableArrayList
 import com.webtrit.callkeep.common.startForegroundServiceCompat
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.notifications.ActiveCallNotificationBuilder
-import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
+import com.webtrit.callkeep.services.connection.PhoneConnectionService
 
 class ActiveCallService : Service() {
     private val activeCallNotificationBuilder = ActiveCallNotificationBuilder()
     private var callsMetadata = mutableListOf<CallMetadata>()
 
+    override fun onCreate() {
+        super.onCreate()
+        ContextHolder.init(applicationContext)
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Handle the hangup action from the notification
-        if (NotificationAction.Hangup.action == intent?.action) {
+        if (NotificationAction.Decline.action == intent?.action) {
             hungUpCall()
 
             return START_NOT_STICKY
         }
 
         callsMetadata =
-            intent?.parcelableArrayList<Bundle>("metadata")?.map { CallMetadata.fromBundle(it) }?.toMutableList()
+            intent?.parcelableArrayList<Bundle>("metadata")?.map { CallMetadata.Companion.fromBundle(it) }?.toMutableList()
                 ?: mutableListOf()
 
         activeCallNotificationBuilder.setCallsMetaData(callsMetadata)
@@ -35,7 +41,7 @@ class ActiveCallService : Service() {
 
         startForegroundServiceCompat(
             this,
-            ActiveCallNotificationBuilder.NOTIFICATION_ID,
+            ActiveCallNotificationBuilder.Companion.NOTIFICATION_ID,
             notification,
             getForegroundServiceTypes(callsMetadata),
         )
@@ -46,8 +52,8 @@ class ActiveCallService : Service() {
     }
 
     private fun hungUpCall() = callsMetadata.firstOrNull()?.let {
-        PhoneConnectionService.startHungUpCall(baseContext, it)
-    } ?: PhoneConnectionService.tearDown(baseContext)
+        PhoneConnectionService.Companion.startHungUpCall(baseContext, it)
+    } ?: PhoneConnectionService.Companion.tearDown(baseContext)
 
     private fun getForegroundServiceTypes(callsMetadata: List<CallMetadata>): Int? {
         return when {

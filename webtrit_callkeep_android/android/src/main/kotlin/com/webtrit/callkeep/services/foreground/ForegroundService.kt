@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.services
+package com.webtrit.callkeep.services.foreground
 
 import android.annotation.SuppressLint
 import android.app.Service
@@ -14,24 +14,32 @@ import com.webtrit.callkeep.PEndCallReason
 import com.webtrit.callkeep.PHandle
 import com.webtrit.callkeep.PHostApi
 import com.webtrit.callkeep.PIncomingCallError
-import com.webtrit.callkeep.PIncomingCallErrorEnum
 import com.webtrit.callkeep.POptions
-import com.webtrit.callkeep.models.ConnectionReport
+import com.webtrit.callkeep.common.ActivityHolder
+import com.webtrit.callkeep.common.Log
+import com.webtrit.callkeep.common.PigeonCallback
+import com.webtrit.callkeep.common.Platform
+import com.webtrit.callkeep.common.StorageDelegate
+import com.webtrit.callkeep.common.TelephonyUtils
 import com.webtrit.callkeep.managers.NotificationChannelManager
-import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
-import com.webtrit.callkeep.services.dispatchers.CommunicateServiceDispatcher
-import com.webtrit.callkeep.common.*
-import com.webtrit.callkeep.models.*
+import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.models.ConnectionReport
+import com.webtrit.callkeep.models.FailureMetadata
+import com.webtrit.callkeep.models.OutgoingFailureType
+import com.webtrit.callkeep.models.toCallHandle
+import com.webtrit.callkeep.models.toPHandle
+import com.webtrit.callkeep.services.connection.dispatchers.CommunicateServiceDispatcher
+import com.webtrit.callkeep.services.connection.PhoneConnectionService
 
 /**
  * ForegroundService is an Android bound Service that maintains a connection with the main Flutter isolate
- * while the app's activity is active. It implements the [PHostApi] interface to receive and handle method calls
+ * while the app's activity is active. It implements the [com.webtrit.callkeep.PHostApi] interface to receive and handle method calls
  * from the Flutter side via Pigeon.
  *
  * Responsibilities:
  * - Acts as a bridge between Android Telecom API and Flutter.
  * - Handles both incoming and outgoing call actions.
- * - Sends updates back to Flutter using [PDelegateFlutterApi].
+ * - Sends updates back to Flutter using [com.webtrit.callkeep.PDelegateFlutterApi].
  * - Manages call features such as mute, hold, speaker, DTMF.
  * - Registers notification channels and Telecom PhoneAccount on setup.
  * - Listens for ConnectionService reports via intents.
@@ -67,6 +75,7 @@ class ForegroundService : Service(), PHostApi {
         when (intent?.action) {
             ConnectionReport.DidPushIncomingCall.name -> handleCSReportDidPushIncomingCall(intent.extras)
             ConnectionReport.DeclineCall.name -> handleCSReportDeclineCall(intent.extras)
+            ConnectionReport.HungUp.name -> handleCSReportDeclineCall(intent.extras)
             ConnectionReport.AnswerCall.name -> handleCSReportAnswerCall(intent.extras)
             ConnectionReport.OngoingCall.name -> handleCSReportOngoingCall(intent.extras)
             ConnectionReport.ConnectionHasSpeaker.name -> handleCSReportConnectionHasSpeaker(intent.extras)
@@ -131,7 +140,7 @@ class ForegroundService : Service(), PHostApi {
             ringtonePath = ringtonePath
         )
 
-        PhoneConnectionService.startIncomingCall(
+        PhoneConnectionService.Companion.startIncomingCall(
             context = baseContext,
             metadata = metadata,
             onSuccess = { callback(Result.success(null)) },
@@ -237,7 +246,7 @@ class ForegroundService : Service(), PHostApi {
 
     private fun handleCSReportDidPushIncomingCall(extras: Bundle?) {
         extras?.let {
-            val metadata = CallMetadata.fromBundle(it)
+            val metadata = CallMetadata.Companion.fromBundle(it)
             flutterDelegateApi?.didPushIncomingCall(
                 handleArg = metadata.handle!!.toPHandle(),
                 displayNameArg = metadata.displayName,
@@ -250,7 +259,7 @@ class ForegroundService : Service(), PHostApi {
 
     private fun handleCSReportDeclineCall(extras: Bundle?) {
         extras?.let {
-            val callMetaData = CallMetadata.fromBundle(it)
+            val callMetaData = CallMetadata.Companion.fromBundle(it)
             flutterDelegateApi?.performEndCall(callMetaData.callId) {}
             flutterDelegateApi?.didDeactivateAudioSession {}
 
@@ -262,7 +271,7 @@ class ForegroundService : Service(), PHostApi {
 
     private fun handleCSReportAnswerCall(extras: Bundle?) {
         extras?.let {
-            val callMetaData = CallMetadata.fromBundle(it)
+            val callMetaData = CallMetadata.Companion.fromBundle(it)
             flutterDelegateApi?.performAnswerCall(callMetaData.callId) {}
             flutterDelegateApi?.didActivateAudioSession {}
         }
@@ -270,7 +279,7 @@ class ForegroundService : Service(), PHostApi {
 
     private fun handleCSReportOngoingCall(extras: Bundle?) {
         extras?.let {
-            val callMetaData = CallMetadata.fromBundle(it)
+            val callMetaData = CallMetadata.Companion.fromBundle(it)
             outgoingCallback?.invoke(Result.success(null))
             outgoingCallback = null
             flutterDelegateApi?.performStartCall(
@@ -284,7 +293,7 @@ class ForegroundService : Service(), PHostApi {
 
     private fun handleCSReportConnectionHasSpeaker(extras: Bundle?) {
         extras?.let {
-            val callMetaData = CallMetadata.fromBundle(it)
+            val callMetaData = CallMetadata.Companion.fromBundle(it)
             flutterDelegateApi?.performSetSpeaker(
                 callMetaData.callId, callMetaData.hasSpeaker
             ) {}
@@ -293,7 +302,7 @@ class ForegroundService : Service(), PHostApi {
 
     private fun handleCSReportAudioMuting(extras: Bundle?) {
         extras?.let {
-            val callMetaData = CallMetadata.fromBundle(it)
+            val callMetaData = CallMetadata.Companion.fromBundle(it)
             flutterDelegateApi?.performSetMuted(
                 callMetaData.callId, callMetaData.hasMute
             ) {}
@@ -302,7 +311,7 @@ class ForegroundService : Service(), PHostApi {
 
     private fun handleCSReportConnectionHolding(extras: Bundle?) {
         extras?.let {
-            val callMetaData = CallMetadata.fromBundle(it)
+            val callMetaData = CallMetadata.Companion.fromBundle(it)
             flutterDelegateApi?.performSetHeld(
                 callMetaData.callId, callMetaData.hasHold
             ) {}
@@ -311,7 +320,7 @@ class ForegroundService : Service(), PHostApi {
 
     private fun handleCSReportSentDTMF(extras: Bundle?) {
         extras?.let {
-            val callMetaData = CallMetadata.fromBundle(it)
+            val callMetaData = CallMetadata.Companion.fromBundle(it)
             flutterDelegateApi?.performSendDTMF(
                 callMetaData.callId, callMetaData.dualToneMultiFrequency.toString()
             ) {}
@@ -320,7 +329,7 @@ class ForegroundService : Service(), PHostApi {
 
     private fun handleCSReportOutgoingFailure(extras: Bundle?) {
         extras?.let {
-            val failureMetaData = FailureMetadata.fromBundle(it)
+            val failureMetaData = FailureMetadata.Companion.fromBundle(it)
 
             outgoingCallback = when (failureMetaData.outgoingFailureType) {
                 OutgoingFailureType.UNENTITLED -> {

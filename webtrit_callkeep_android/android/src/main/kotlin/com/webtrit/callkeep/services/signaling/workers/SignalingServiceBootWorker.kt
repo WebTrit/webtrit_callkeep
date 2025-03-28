@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.services.workers
+package com.webtrit.callkeep.services.signaling.workers
 
 import android.content.Context
 import android.content.Intent
@@ -7,7 +7,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.*
 import com.webtrit.callkeep.common.Log
-import com.webtrit.callkeep.services.SignalingIsolateService
+import com.webtrit.callkeep.services.signaling.SignalingIsolateService
 import java.util.concurrent.TimeUnit
 
 class SignalingServiceBootWorker(context: Context, workerParams: WorkerParameters) : Worker(context, workerParams) {

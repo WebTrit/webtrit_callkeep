@@ -3,7 +3,7 @@ package com.webtrit.callkeep
 import android.content.Context
 import android.util.Log
 import com.webtrit.callkeep.common.StorageDelegate
-import com.webtrit.callkeep.services.SignalingIsolateService
+import com.webtrit.callkeep.services.signaling.SignalingIsolateService
 
 class BackgroundSignalingIsolateBootstrapApi(
     private val context: Context

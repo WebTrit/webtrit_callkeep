@@ -5,7 +5,7 @@ import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.toCallHandle
-import com.webtrit.callkeep.services.telecom.connection.PhoneConnectionService
+import com.webtrit.callkeep.services.connection.PhoneConnectionService
 
 class BackgroundPushNotificationIsolateBootstrapApi(
     private val context: Context

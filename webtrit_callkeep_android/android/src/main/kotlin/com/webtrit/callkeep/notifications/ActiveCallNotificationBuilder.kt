@@ -10,7 +10,7 @@ import com.webtrit.callkeep.common.ContextHolder.context
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.managers.NotificationChannelManager.NOTIFICATION_ACTIVE_CALL_CHANNEL_ID
-import com.webtrit.callkeep.services.ActiveCallService
+import com.webtrit.callkeep.services.active_call.ActiveCallService
 
 class ActiveCallNotificationBuilder() : NotificationBuilder() {
     private var callsMetaData = ArrayList<CallMetadata>()
@@ -54,7 +54,7 @@ class ActiveCallNotificationBuilder() : NotificationBuilder() {
 
     private fun getHungUpCallIntent(callMetaData: CallMetadata): PendingIntent {
         val hangUpIntent = Intent(context, ActiveCallService::class.java).apply {
-            action = NotificationAction.Hangup.action
+            action = NotificationAction.Decline.action
             putExtras(callMetaData.toBundle())
         }
         return PendingIntent.getService(

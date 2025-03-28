@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.services.telecom.connection
+package com.webtrit.callkeep.services.connection
 
 import android.telecom.Connection
 import java.util.concurrent.ConcurrentHashMap
@@ -34,10 +34,11 @@ class ConnectionManager {
         }
     }
 
-    fun getConnections(): List<PhoneConnection> {
-        synchronized(connectionResourceLock) {
-            return connections.values.toList()
-        }
+    /**
+     * Get all connections.
+     */
+    fun getConnections(): List<PhoneConnection> = synchronized(connectionResourceLock) {
+        connections.values.filter { it.state != Connection.STATE_DISCONNECTED }
     }
 
     /**
