@@ -15,4 +15,6 @@
     <string name="push_notification_foreground_call_service_description">This service keeps the call active in the background</string>
     <string name="signaling_service_notification_name">Inbound Calls</string>
     <string name="signaling_service_notification_description">This is required to receive incoming calls</string>
+    <string name="incoming_call_declined_title">Call Declined</string>
+    <string name="incoming_call_declined_text">Declined an incoming call from %1$s</string>
 </resources>
