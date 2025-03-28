@@ -34,10 +34,11 @@ class ConnectionManager {
         }
     }
 
-    fun getConnections(): List<PhoneConnection> {
-        synchronized(connectionResourceLock) {
-            return connections.values.toList()
-        }
+    /**
+     * Get all connections.
+     */
+    fun getConnections(): List<PhoneConnection> = synchronized(connectionResourceLock) {
+        connections.values.filter { it.state != Connection.STATE_DISCONNECTED }
     }
 
     /**
