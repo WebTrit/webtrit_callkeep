@@ -2,7 +2,7 @@ package com.webtrit.callkeep
 
 import com.webtrit.callkeep.common.toSignalingStatus
 import com.webtrit.callkeep.models.toPConnection
-import com.webtrit.callkeep.dispatchers.SignalingStatusDispatcher
+import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
 import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 
 class ConnectionsApi() : PHostConnectionsApi {
@@ -21,7 +21,7 @@ class ConnectionsApi() : PHostConnectionsApi {
     override fun updateActivitySignalingStatus(
         status: PCallkeepSignalingStatus, callback: (Result<Unit>) -> Unit
     ) {
-        SignalingStatusDispatcher.setStatus(status.toSignalingStatus())
+        SignalingStatusBroadcaster.setStatus(status.toSignalingStatus())
         callback(Result.success(Unit))
     }
 

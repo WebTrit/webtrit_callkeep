@@ -1,8 +1,11 @@
 package com.webtrit.callkeep.common
 
+import android.annotation.SuppressLint
 import android.app.Notification
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.media.Ringtone
 import android.os.Build
 import android.os.Build.VERSION.SDK_INT
@@ -44,6 +47,15 @@ inline fun <reified T : Parcelable> Bundle.parcelableArrayList(key: String): Arr
 fun Ringtone.setLoopingCompat(looping: Boolean) {
     if (SDK_INT >= Build.VERSION_CODES.P) {
         isLooping = looping
+    }
+}
+
+@SuppressLint("UnspecifiedRegisterReceiverFlag")
+fun Context.registerReceiverCompat(receiver: BroadcastReceiver, intentFilter: IntentFilter) {
+    if (SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        registerReceiver(receiver, intentFilter, Context.RECEIVER_NOT_EXPORTED)
+    } else {
+        registerReceiver(receiver, intentFilter)
     }
 }
 
