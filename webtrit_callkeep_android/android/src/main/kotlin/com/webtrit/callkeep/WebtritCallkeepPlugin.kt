@@ -12,9 +12,9 @@ import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.AssetHolder
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
-import com.webtrit.callkeep.services.foreground.ForegroundService
-import com.webtrit.callkeep.services.incoming_call.IncomingCallService
-import com.webtrit.callkeep.services.signaling.SignalingIsolateService
+import com.webtrit.callkeep.services.services.foreground.ForegroundService
+import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
+import com.webtrit.callkeep.services.services.signaling.SignalingIsolateService
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.FlutterPlugin.FlutterAssets
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
