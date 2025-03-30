@@ -163,8 +163,6 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
 
     override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
         Log.d(TAG, "onStateChanged: Lifecycle event received - $event")
-        ActivityHolder.setLifecycle(event)
-
         ActivityLifecycleBroadcaster.setValue(event)
 
         // When the app is in the background, the service should be stopped. However, there is an unresolved issue if a call starts from the activity and the app is minimized, causing incomplete event handling.

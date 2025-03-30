@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import androidx.lifecycle.Lifecycle
 
 interface ActivityProvider {
     fun getActivity(): Activity?
@@ -14,7 +13,6 @@ interface ActivityProvider {
 
 @SuppressLint("StaticFieldLeak")
 object ActivityHolder : ActivityProvider {
-    private var lifecycle: Lifecycle.Event? = null
     private var activity: Activity? = null
 
     private val activityChangeListeners = mutableListOf<(Activity?) -> Unit>()
@@ -30,14 +28,6 @@ object ActivityHolder : ActivityProvider {
             activity = newActivity
             notifyActivityChanged(newActivity)
         }
-    }
-
-    fun getActivityState(): Lifecycle.Event {
-        return lifecycle ?: Lifecycle.Event.ON_ANY
-    }
-
-    fun setLifecycle(event: Lifecycle.Event) {
-        lifecycle = event
     }
 
     fun start(context: Context) {
