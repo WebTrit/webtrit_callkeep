@@ -7,7 +7,7 @@ import com.webtrit.callkeep.PCallkeepDisconnectCause
 import com.webtrit.callkeep.PCallkeepDisconnectCauseType
 import com.webtrit.callkeep.PHandle
 import com.webtrit.callkeep.PHandleTypeEnum
-import com.webtrit.callkeep.services.connection.PhoneConnection
+import com.webtrit.callkeep.services.services.connection.PhoneConnection
 
 fun PHandle.toCallHandle(): CallHandle {
     return CallHandle(value)
