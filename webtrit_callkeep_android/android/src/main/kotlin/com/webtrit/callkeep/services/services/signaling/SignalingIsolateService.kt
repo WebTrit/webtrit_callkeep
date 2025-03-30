@@ -3,8 +3,10 @@ package com.webtrit.callkeep.services.services.signaling
 import android.annotation.SuppressLint
 import android.app.NotificationManager
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Build.VERSION.SDK_INT
@@ -21,7 +23,7 @@ import com.webtrit.callkeep.PHostBackgroundSignalingIsolateApi
 import com.webtrit.callkeep.common.*
 import com.webtrit.callkeep.models.*
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
-import com.webtrit.callkeep.dispatchers.SignalingStatusDispatcher
+import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
 import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 import com.webtrit.callkeep.services.services.signaling.workers.SignalingServiceBootWorker
 
@@ -33,6 +35,8 @@ import com.webtrit.callkeep.services.services.signaling.workers.SignalingService
  */
 @Keep
 class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
+    private var latestSignalingStatus: SignalingStatus? = null
+
     private lateinit var notificationBuilder: ForegroundCallNotificationBuilder
     private lateinit var flutterEngineHelper: FlutterEngineHelper
 
@@ -50,11 +54,23 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
             _isolateCalkeepFlutterApi = value
         }
 
+    private val signalingStatusReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == SignalingStatusBroadcaster.ACTION_STATUS_CHANGED) {
+                latestSignalingStatus = SignalingStatus.fromBundle(intent.extras)
+                synchronizeSignalingIsolate(ActivityHolder.getActivityState(), latestSignalingStatus)
+            }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         ContextHolder.init(applicationContext)
-        // Subscribe to connection service events for handling missed call event
-        SignalingStatusDispatcher.registerService(this::class.java)
+        // Register the service to receive signaling status updates
+        latestSignalingStatus = SignalingStatusBroadcaster.currentStatus;
+        registerReceiverCompat(
+            signalingStatusReceiver, IntentFilter(SignalingStatusBroadcaster.ACTION_STATUS_CHANGED)
+        )
 
         notificationBuilder = ForegroundCallNotificationBuilder()
 
@@ -67,6 +83,10 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
     }
 
     override fun onDestroy() {
+        // Unregister the service from receiving signaling status updates
+        latestSignalingStatus = null
+        unregisterReceiver(signalingStatusReceiver)
+
         if (StorageDelegate.SignalingService.isSignalingServiceEnabled(context = applicationContext)) {
             SignalingServiceBootWorker.Companion.enqueue(this)
         }
@@ -79,8 +99,6 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
         stopForeground(STOP_FOREGROUND_REMOVE)
         flutterEngineHelper.detachAndDestroyEngine()
-
-        SignalingStatusDispatcher.unregisterService(this::class.java)
 
         isRunning = false
 
@@ -135,18 +153,10 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         ensureNotification()
 
         when (action) {
-            SignalingStatusDispatcher.ACTION_STATUS_CHANGED -> {
-                synchronizeSignalingIsolate(
-                    ActivityHolder.getActivityState(),
-                    SignalingStatus.fromBundle(intent.extras)
-                )
-                return START_STICKY
-            }
-
             ForegroundCallServiceEnums.CHANGE_LIFECYCLE.action -> {
                 synchronizeSignalingIsolate(
                     extras?.serializableCompat<Lifecycle.Event>(PARAM_CHANGE_LIFECYCLE_EVENT)!!,
-                    SignalingStatusDispatcher.currentStatus
+                    latestSignalingStatus
                 )
                 return START_STICKY
             }

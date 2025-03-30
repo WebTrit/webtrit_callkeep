@@ -4,7 +4,7 @@ import androidx.lifecycle.Lifecycle
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.models.SignalingStatus
-import com.webtrit.callkeep.dispatchers.SignalingStatusDispatcher
+import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
 
 enum class IsolateType {
     MAIN, BACKGROUND
@@ -40,7 +40,7 @@ object IsolateSelector {
     private const val TAG = "IsolateSelector"
 
     private fun getStrategy(): IsolateSelectionStrategy {
-        return SignalingStatusDispatcher.currentStatus?.let { SignalingStatusStrategy(it) } ?: ActivityStateStrategy()
+        return SignalingStatusBroadcaster.currentStatus?.let { SignalingStatusStrategy(it) } ?: ActivityStateStrategy()
     }
 
     fun getIsolateType(): IsolateType {
