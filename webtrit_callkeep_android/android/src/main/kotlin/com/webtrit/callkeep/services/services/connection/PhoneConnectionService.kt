@@ -6,14 +6,14 @@ import android.content.Intent
 import android.net.Uri
 import android.telecom.*
 import com.webtrit.callkeep.PIncomingCallError
-import com.webtrit.callkeep.models.ConnectionReport
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.TelephonyUtils
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.FailureMetadata
+import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
+import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.services.foreground.ForegroundService
-import com.webtrit.callkeep.services.services.connection.dispatchers.CommunicateServiceDispatcher
 import com.webtrit.callkeep.services.services.connection.dispatchers.PhoneConnectionServiceDispatcher
 
 /**
@@ -30,7 +30,7 @@ class PhoneConnectionService : ConnectionService() {
     private lateinit var phoneConnectionServiceDispatcher: PhoneConnectionServiceDispatcher
     private lateinit var telephonyUtils: TelephonyUtils
 
-    private val dispatcher: CommunicateServiceDispatcher.DispatchHandle = CommunicateServiceDispatcher.handle
+    private val dispatcher: ConnectionServicePerformBroadcaster.DispatchHandle = ConnectionServicePerformBroadcaster.handle
 
     override fun onCreate() {
         super.onCreate()
@@ -105,7 +105,8 @@ class PhoneConnectionService : ConnectionService() {
         )
 
         dispatcher.dispatch(
-            ConnectionReport.OutgoingFailure,
+            baseContext,
+            ConnectionPerform.OutgoingFailure,
             FailureMetadata("onCreateOutgoingConnectionFailed: $connectionManagerPhoneAccount  $request").toBundle()
         )
 
@@ -173,7 +174,8 @@ class PhoneConnectionService : ConnectionService() {
             TAG, "onCreateIncomingConnectionFailed:: $connectionManagerPhoneAccount  $connectionManager "
         )
         dispatcher.dispatch(
-            ConnectionReport.IncomingFailure,
+            baseContext,
+            ConnectionPerform.IncomingFailure,
             FailureMetadata("onCreateOutgoingConnectionFailed: $connectionManagerPhoneAccount  $request").toBundle()
         )
 

@@ -53,10 +53,23 @@ fun Ringtone.setLoopingCompat(looping: Boolean) {
 @SuppressLint("UnspecifiedRegisterReceiverFlag")
 fun Context.registerReceiverCompat(receiver: BroadcastReceiver, intentFilter: IntentFilter) {
     if (SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        registerReceiver(receiver, intentFilter, Context.RECEIVER_NOT_EXPORTED)
+        registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED)
     } else {
         registerReceiver(receiver, intentFilter)
     }
+}
+
+/**
+ * Sends an internal broadcast within the application.
+ *
+ * @param action The action string for the broadcast intent.
+ * @param extras Optional extras to include in the broadcast intent.
+ */
+fun Context.sendInternalBroadcast(action: String, extras: Bundle? = null) {
+    Intent(action).apply {
+        setPackage(packageName)
+        extras?.let { putExtras(it) }
+    }.also { sendBroadcast(it) }
 }
 
 fun Lifecycle.Event.toPCallkeepLifecycleType(): PCallkeepLifecycleEvent {

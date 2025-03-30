@@ -2,6 +2,8 @@ package com.webtrit.callkeep.services.services.foreground
 
 import android.annotation.SuppressLint
 import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
 import android.os.Binder
 import android.os.Bundle
@@ -23,12 +25,12 @@ import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.TelephonyUtils
 import com.webtrit.callkeep.managers.NotificationChannelManager
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.models.ConnectionReport
 import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.models.OutgoingFailureType
 import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.models.toPHandle
-import com.webtrit.callkeep.services.services.connection.dispatchers.CommunicateServiceDispatcher
+import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
+import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 
 /**
@@ -61,31 +63,32 @@ class ForegroundService : Service(), PHostApi {
             _flutterDelegateApi = value
         }
 
+    private val connectionServicePerformReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                ConnectionPerform.DidPushIncomingCall.name -> handleCSReportDidPushIncomingCall(intent.extras)
+                ConnectionPerform.DeclineCall.name -> handleCSReportDeclineCall(intent.extras)
+                ConnectionPerform.HungUp.name -> handleCSReportDeclineCall(intent.extras)
+                ConnectionPerform.AnswerCall.name -> handleCSReportAnswerCall(intent.extras)
+                ConnectionPerform.OngoingCall.name -> handleCSReportOngoingCall(intent.extras)
+                ConnectionPerform.ConnectionHasSpeaker.name -> handleCSReportConnectionHasSpeaker(intent.extras)
+                ConnectionPerform.AudioMuting.name -> handleCSReportAudioMuting(intent.extras)
+                ConnectionPerform.ConnectionHolding.name -> handleCSReportConnectionHolding(intent.extras)
+                ConnectionPerform.SentDTMF.name -> handleCSReportSentDTMF(intent.extras)
+                ConnectionPerform.OutgoingFailure.name -> handleCSReportOutgoingFailure(intent.extras)
+            }
+        }
+    }
+
     override fun onBind(intent: Intent?): IBinder = binder
 
     override fun onCreate() {
         super.onCreate()
-        // Register the service with the dispatcher to receive ConnectionService reports.
-        CommunicateServiceDispatcher.registerService(this::class.java)
+        // Register the service to receive connection service perform events
+        ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
+            ConnectionPerform.entries, baseContext, connectionServicePerformReceiver
+        )
         isRunning = true
-    }
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Subscribe to ConnectionService reports via intents.
-        when (intent?.action) {
-            ConnectionReport.DidPushIncomingCall.name -> handleCSReportDidPushIncomingCall(intent.extras)
-            ConnectionReport.DeclineCall.name -> handleCSReportDeclineCall(intent.extras)
-            ConnectionReport.HungUp.name -> handleCSReportDeclineCall(intent.extras)
-            ConnectionReport.AnswerCall.name -> handleCSReportAnswerCall(intent.extras)
-            ConnectionReport.OngoingCall.name -> handleCSReportOngoingCall(intent.extras)
-            ConnectionReport.ConnectionHasSpeaker.name -> handleCSReportConnectionHasSpeaker(intent.extras)
-            ConnectionReport.AudioMuting.name -> handleCSReportAudioMuting(intent.extras)
-            ConnectionReport.ConnectionHolding.name -> handleCSReportConnectionHolding(intent.extras)
-            ConnectionReport.SentDTMF.name -> handleCSReportSentDTMF(intent.extras)
-            ConnectionReport.OutgoingFailure.name -> handleCSReportOutgoingFailure(intent.extras)
-        }
-
-        return super.onStartCommand(intent, flags, startId)
     }
 
     override fun setUp(options: POptions, callback: (Result<Unit>) -> Unit) {
@@ -364,9 +367,12 @@ class ForegroundService : Service(), PHostApi {
 
     override fun onDestroy() {
         super.onDestroy()
-        Log.i(TAG, "onDestroy")
+        // Unregister the service from receiving connection service perform events
+        ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(
+            baseContext,
+            connectionServicePerformReceiver
+        )
         isRunning = false
-        CommunicateServiceDispatcher.unregisterService(this::class.java)
     }
 
     inner class LocalBinder : Binder() {
