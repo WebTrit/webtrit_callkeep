@@ -11,9 +11,10 @@ enum class ConnectionPerform {
     AnswerCall, DeclineCall, HungUp, OngoingCall, AudioMuting, ConnectionHolding, SentDTMF, DidPushIncomingCall, ConnectionHasSpeaker, MissedCall, OutgoingFailure, IncomingFailure;
 }
 
+/**
+ * This object is responsible for broadcasting the connection service perform events.
+ */
 object ConnectionServicePerformBroadcaster {
-    const val TAG = "ConnectionServicePerformBroadcaster"
-
     fun registerConnectionPerformReceiver(
         performActions: List<ConnectionPerform>, context: Context, receiver: BroadcastReceiver
     ): IntentFilter {
