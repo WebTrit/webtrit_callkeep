@@ -2,6 +2,7 @@ package com.webtrit.callkeep.services.services.incoming_call
 
 import android.annotation.SuppressLint
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Handler
@@ -13,11 +14,13 @@ import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.models.ConnectionReport
 import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
-import com.webtrit.callkeep.services.services.connection.dispatchers.CommunicateServiceDispatcher
-import com.webtrit.callkeep.services.services.incoming_call.handlers.*
+import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
+import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
+import com.webtrit.callkeep.services.services.incoming_call.handlers.CallLifecycleHandler
+import com.webtrit.callkeep.services.services.incoming_call.handlers.FlutterIsolateHandler
+import com.webtrit.callkeep.services.services.incoming_call.handlers.IncomingCallHandler
 
 @Keep
 class IncomingCallService : Service() {
@@ -34,10 +37,35 @@ class IncomingCallService : Service() {
     private lateinit var callLifecycleHandler: CallLifecycleHandler
     fun getCallLifecycleHandler(): CallLifecycleHandler = callLifecycleHandler
 
+    private val connectionService = listOf(
+        ConnectionPerform.AnswerCall,
+        ConnectionPerform.DeclineCall,
+        ConnectionPerform.HungUp,
+        ConnectionPerform.MissedCall
+    )
+
+    private val connectionServicePerformReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val metadata = intent?.extras?.let(CallMetadata::fromBundleOrNull)
+
+            when (intent?.action) {
+                // Listen connection service actions (and try to notify isolate if it background)
+                ConnectionPerform.AnswerCall.name -> performAnswerCall(metadata!!)
+                ConnectionPerform.DeclineCall.name -> performDeclineCall(metadata!!)
+                ConnectionPerform.HungUp.name -> performDeclineCall(metadata!!)
+                ConnectionPerform.MissedCall.name -> performMissedCall(metadata!!)
+
+            }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         ContextHolder.init(applicationContext)
-        CommunicateServiceDispatcher.registerService(this::class.java)
+        // Register the service to receive connection service perform events
+        ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
+            connectionService, this, connectionServicePerformReceiver
+        )
 
         isolateHandler = FlutterIsolateHandler(this@IncomingCallService, this@IncomingCallService) {
             callLifecycleHandler.flutterApi?.syncPushIsolate(onSuccess = {}, onFailure = {})
@@ -79,11 +107,6 @@ class IncomingCallService : Service() {
             NotificationAction.Answer.action -> reportAnswerToConnectionService(metadata!!)
             NotificationAction.Decline.action -> reportHungUpToConnectionService(metadata!!)
 
-            // Listen connection service actions (and try to notify isolate if it background)
-            ConnectionReport.AnswerCall.name -> performAnswerCall(metadata!!)
-            ConnectionReport.DeclineCall.name -> performDeclineCall(metadata!!)
-            ConnectionReport.HungUp.name -> performDeclineCall(metadata!!)
-            ConnectionReport.MissedCall.name -> performMissedCall(metadata!!)
             else -> handleUnknownAction(action)
         }
     }
@@ -91,7 +114,9 @@ class IncomingCallService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
-        CommunicateServiceDispatcher.unregisterService(this::class.java)
+        // Unregister the service from receiving connection service perform events
+        ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(this, connectionServicePerformReceiver)
+
         stopForeground(STOP_FOREGROUND_REMOVE)
         isolateHandler.cleanup()
         super.onDestroy()
@@ -175,8 +200,7 @@ class IncomingCallService : Service() {
 }
 
 enum class IncomingCallRelease {
-    IC_RELEASE_WITH_ANSWER,
-    IC_RELEASE_WITH_DECLINE;
+    IC_RELEASE_WITH_ANSWER, IC_RELEASE_WITH_DECLINE;
 }
 
 enum class PushNotificationServiceEnums {

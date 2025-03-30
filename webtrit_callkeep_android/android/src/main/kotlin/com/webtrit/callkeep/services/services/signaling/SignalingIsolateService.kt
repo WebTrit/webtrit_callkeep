@@ -24,6 +24,8 @@ import com.webtrit.callkeep.common.*
 import com.webtrit.callkeep.models.*
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
 import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
+import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
+import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
 import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 import com.webtrit.callkeep.services.services.signaling.workers.SignalingServiceBootWorker
@@ -76,16 +78,38 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         }
     }
 
+    private val connectionServicePerformReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                ConnectionPerform.MissedCall.name -> {
+                    intent.extras?.let { handleMissedCall(CallMetadata.fromBundle(it)) }
+                }
+            }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         ContextHolder.init(applicationContext)
         // Register the service to receive signaling status updates
         latestSignalingStatus = SignalingStatusBroadcaster.currentStatus
-        registerReceiverCompat(signalingStatusReceiver, IntentFilter(SignalingStatusBroadcaster.ACTION_STATUS_CHANGED))
+        registerReceiverCompat(
+            signalingStatusReceiver,
+            IntentFilter(SignalingStatusBroadcaster.ACTION_STATUS_CHANGED)
+        )
 
         // Register the service to receive lifecycle events
         latestLifecycleActivityEvent = ActivityLifecycleBroadcaster.currentValue
-        registerReceiverCompat(lifecycleEventReceiver, IntentFilter(ActivityLifecycleBroadcaster.ACTION_VALUE_CHANGED))
+        registerReceiverCompat(
+            lifecycleEventReceiver,
+            IntentFilter(ActivityLifecycleBroadcaster.ACTION_VALUE_CHANGED)
+        )
+
+        // Register the service to receive connection service perform events
+        registerReceiverCompat(
+            connectionServicePerformReceiver,
+            IntentFilter(ConnectionPerform.MissedCall.name)
+        )
 
         notificationBuilder = ForegroundCallNotificationBuilder()
 
@@ -105,6 +129,10 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         // Unregister the service from receiving lifecycle events
         unregisterReceiver(lifecycleEventReceiver)
         latestLifecycleActivityEvent = null
+
+        // Unregister the service from receiving connection service perform events
+        unregisterReceiver(connectionServicePerformReceiver)
+
 
         if (StorageDelegate.SignalingService.isSignalingServiceEnabled(context = applicationContext)) {
             SignalingServiceBootWorker.Companion.enqueue(this)
@@ -183,12 +211,6 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
                 PhoneConnectionService.startAnswerCall(
                     baseContext, metadata!!
                 )
-                return START_STICKY
-            }
-
-            // Connection service events
-            ConnectionReport.MissedCall.name -> {
-                handleMissedCall(metadata!!)
                 return START_STICKY
             }
         }
