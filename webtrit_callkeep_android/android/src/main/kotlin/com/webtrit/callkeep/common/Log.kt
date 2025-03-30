@@ -10,8 +10,6 @@ import com.webtrit.callkeep.PLogTypeEnum
  * A simplified logging utility that sends logs to delegates or system log if no delegates are registered.
  */
 object Log {
-    private const val LOG_TAG = "FlutterLog"
-
     // List of delegates that will receive log messages
     private var isolateDelegates = mutableListOf<PDelegateLogsFlutterApi>()
 

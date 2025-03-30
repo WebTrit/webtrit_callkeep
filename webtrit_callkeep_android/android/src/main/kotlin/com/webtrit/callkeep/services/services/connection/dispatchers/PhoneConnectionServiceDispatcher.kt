@@ -20,7 +20,6 @@ class PhoneConnectionServiceDispatcher(
             ServiceAction.SendDTMF -> metadata?.let { handleSendDTMF(it) }
             ServiceAction.Speaker -> metadata?.let { handleSpeaker(it) }
             ServiceAction.TearDown -> handleTearDown()
-            else -> throw IllegalArgumentException("Unknown service action: $action")
         }
     }
 

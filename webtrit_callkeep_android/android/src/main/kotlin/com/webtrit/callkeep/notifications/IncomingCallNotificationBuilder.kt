@@ -72,7 +72,7 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
         }
 
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val person = Person.Builder().setName(meta.name).setImportant(true).build();
+            val person = Person.Builder().setName(meta.name).setImportant(true).build()
             val style = Notification.CallStyle.forIncomingCall(person, declineIntent, answerIntent)
             builder.setStyle(style).build().apply { flags = flags or NotificationCompat.FLAG_INSISTENT }
         } else {

@@ -76,7 +76,7 @@ class CallLifecycleHandler(
     }
 
     private fun handleUserDecline(metadata: CallMetadata) {
-        if (isolateHandler?.isReady == true) {
+        if (isolateHandler.isReady == true) {
             performSafeEndCall(metadata.callId, metadata)
         } else {
             flutterApi?.syncPushIsolate(onSuccess = {
