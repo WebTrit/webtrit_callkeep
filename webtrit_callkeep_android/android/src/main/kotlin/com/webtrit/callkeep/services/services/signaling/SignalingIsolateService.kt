@@ -69,21 +69,18 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
     private val signalingStatusReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == SignalingStatusBroadcaster.ACTION_VALUE_CHANGED) {
-                latestSignalingStatus = SignalingStatus.fromBundle(intent.extras)
-                synchronizeSignalingIsolate(latestLifecycleActivityEvent!!, latestSignalingStatus)
-            }
+            latestSignalingStatus = SignalingStatus.fromBundle(intent?.extras)
+            synchronizeSignalingIsolate(latestLifecycleActivityEvent!!, latestSignalingStatus)
+
         }
     }
 
     private val lifecycleEventReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == ActivityLifecycleBroadcaster.ACTION_VALUE_CHANGED) {
-                latestLifecycleActivityEvent = Lifecycle.Event.fromBundle(intent.extras)
-                synchronizeSignalingIsolate(
-                    latestLifecycleActivityEvent!!, latestSignalingStatus
-                )
-            }
+            latestLifecycleActivityEvent = Lifecycle.Event.fromBundle(intent?.extras)
+            synchronizeSignalingIsolate(
+                latestLifecycleActivityEvent!!, latestSignalingStatus
+            )
         }
     }
 
@@ -102,17 +99,12 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         ContextHolder.init(applicationContext)
         // Register the service to receive signaling status updates
         latestSignalingStatus = SignalingStatusBroadcaster.currentValue
-        registerReceiverCompat(
-            signalingStatusReceiver,
-            IntentFilter(SignalingStatusBroadcaster.ACTION_VALUE_CHANGED)
-        )
+        SignalingStatusBroadcaster.register(this, signalingStatusReceiver)
 
         // Register the service to receive lifecycle events
         latestLifecycleActivityEvent = ActivityLifecycleBroadcaster.currentValue
-        registerReceiverCompat(
-            lifecycleEventReceiver,
-            IntentFilter(ActivityLifecycleBroadcaster.ACTION_VALUE_CHANGED)
-        )
+        ActivityLifecycleBroadcaster.register(this, lifecycleEventReceiver)
+
 
         // Register the service to receive connection service perform events
         registerReceiverCompat(
@@ -132,11 +124,11 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
     override fun onDestroy() {
         // Unregister the service from receiving signaling status updates
-        unregisterReceiver(signalingStatusReceiver)
+        SignalingStatusBroadcaster.unregister(this, signalingStatusReceiver)
         latestSignalingStatus = null
 
         // Unregister the service from receiving lifecycle events
-        unregisterReceiver(lifecycleEventReceiver)
+        ActivityLifecycleBroadcaster.unregister(baseContext, lifecycleEventReceiver)
         latestLifecycleActivityEvent = null
 
         // Unregister the service from receiving connection service perform events

@@ -1,8 +1,10 @@
 package com.webtrit.callkeep.services.broadcaster
 
-import android.content.Intent
-import com.webtrit.callkeep.common.ContextHolder
-import com.webtrit.callkeep.common.Log
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
+import com.webtrit.callkeep.common.registerReceiverCompat
+import com.webtrit.callkeep.common.sendInternalBroadcast
 import com.webtrit.callkeep.models.SignalingStatus
 
 /**
@@ -10,29 +12,27 @@ import com.webtrit.callkeep.models.SignalingStatus
  * The object holds the current signaling status and notifies any interested parties when it changes.
  */
 object SignalingStatusBroadcaster {
-    private const val TAG = "SignalingStatusDispatcher"
-
-    const val ACTION_VALUE_CHANGED = "SIGNALING_STATUS_CHANGED"
+    const val ACTION = "SignalingStatusBroadcaster.SIGNALING_STATUS"
 
     private var value: SignalingStatus? = null
 
     val currentValue: SignalingStatus?
         get() = value
 
-    fun setValue(newStatus: SignalingStatus) {
-        value = newStatus
-        notifyValueChanged(newStatus)
+    fun setValue(context: Context, newValue: SignalingStatus) {
+        value = newValue
+        notifyValueChanged(context, newValue)
     }
 
-    private fun notifyValueChanged(status: SignalingStatus) {
-        val context = ContextHolder.context
-        val intent = Intent(ACTION_VALUE_CHANGED).apply {
-            putExtras(status.toBundle())
-        }
-        try {
-            context.sendBroadcast(intent)
-        } catch (e: Exception) {
-            Log.i(TAG, "Failed to send broadcast: $e")
-        }
+    fun register(context: Context, receiver: BroadcastReceiver) {
+        context.registerReceiverCompat(receiver, IntentFilter(ACTION))
+    }
+
+    fun unregister(context: Context, receiver: BroadcastReceiver) {
+        context.unregisterReceiver(receiver)
+    }
+
+    private fun notifyValueChanged(context: Context, value: SignalingStatus) {
+        context.applicationContext.sendInternalBroadcast(ACTION, value.toBundle())
     }
 }

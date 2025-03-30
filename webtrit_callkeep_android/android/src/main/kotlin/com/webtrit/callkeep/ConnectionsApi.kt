@@ -1,5 +1,6 @@
 package com.webtrit.callkeep
 
+import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.toSignalingStatus
 import com.webtrit.callkeep.models.toPConnection
 import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
@@ -21,7 +22,7 @@ class ConnectionsApi() : PHostConnectionsApi {
     override fun updateActivitySignalingStatus(
         status: PCallkeepSignalingStatus, callback: (Result<Unit>) -> Unit
     ) {
-        SignalingStatusBroadcaster.setValue(status.toSignalingStatus())
+        SignalingStatusBroadcaster.setValue(ContextHolder.context, status.toSignalingStatus())
         callback(Result.success(Unit))
     }
 
