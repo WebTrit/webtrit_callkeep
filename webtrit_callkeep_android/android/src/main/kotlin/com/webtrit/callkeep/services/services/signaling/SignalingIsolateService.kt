@@ -69,7 +69,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
     private val signalingStatusReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == SignalingStatusBroadcaster.ACTION_STATUS_CHANGED) {
+            if (intent?.action == SignalingStatusBroadcaster.ACTION_VALUE_CHANGED) {
                 latestSignalingStatus = SignalingStatus.fromBundle(intent.extras)
                 synchronizeSignalingIsolate(latestLifecycleActivityEvent!!, latestSignalingStatus)
             }
@@ -101,10 +101,10 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         super.onCreate()
         ContextHolder.init(applicationContext)
         // Register the service to receive signaling status updates
-        latestSignalingStatus = SignalingStatusBroadcaster.currentStatus
+        latestSignalingStatus = SignalingStatusBroadcaster.currentValue
         registerReceiverCompat(
             signalingStatusReceiver,
-            IntentFilter(SignalingStatusBroadcaster.ACTION_STATUS_CHANGED)
+            IntentFilter(SignalingStatusBroadcaster.ACTION_VALUE_CHANGED)
         )
 
         // Register the service to receive lifecycle events

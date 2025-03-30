@@ -21,7 +21,7 @@ class ConnectionsApi() : PHostConnectionsApi {
     override fun updateActivitySignalingStatus(
         status: PCallkeepSignalingStatus, callback: (Result<Unit>) -> Unit
     ) {
-        SignalingStatusBroadcaster.setStatus(status.toSignalingStatus())
+        SignalingStatusBroadcaster.setValue(status.toSignalingStatus())
         callback(Result.success(Unit))
     }
 

@@ -5,24 +5,28 @@ import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.models.SignalingStatus
 
+/**
+ * This object is responsible for broadcasting the signaling status events.
+ * The object holds the current signaling status and notifies any interested parties when it changes.
+ */
 object SignalingStatusBroadcaster {
     private const val TAG = "SignalingStatusDispatcher"
 
-    const val ACTION_STATUS_CHANGED = "com.webtrit.callkeep.SIGNALING_STATUS_CHANGED"
+    const val ACTION_VALUE_CHANGED = "SIGNALING_STATUS_CHANGED"
 
-    private var status: SignalingStatus? = null
+    private var value: SignalingStatus? = null
 
-    val currentStatus: SignalingStatus?
-        get() = status
+    val currentValue: SignalingStatus?
+        get() = value
 
-    fun setStatus(newStatus: SignalingStatus) {
-        status = newStatus
-        notifyStatusChanged(newStatus)
+    fun setValue(newStatus: SignalingStatus) {
+        value = newStatus
+        notifyValueChanged(newStatus)
     }
 
-    private fun notifyStatusChanged(status: SignalingStatus) {
+    private fun notifyValueChanged(status: SignalingStatus) {
         val context = ContextHolder.context
-        val intent = Intent(ACTION_STATUS_CHANGED).apply {
+        val intent = Intent(ACTION_VALUE_CHANGED).apply {
             putExtras(status.toBundle())
         }
         try {
