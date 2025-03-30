@@ -10,7 +10,6 @@ import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Build.VERSION.SDK_INT
-import android.os.Bundle
 import android.os.IBinder
 import android.os.PowerManager
 import androidx.annotation.Keep
@@ -20,12 +19,22 @@ import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.PHandle
 import com.webtrit.callkeep.PHostBackgroundSignalingIsolateApi
-import com.webtrit.callkeep.common.*
-import com.webtrit.callkeep.models.*
+import com.webtrit.callkeep.common.ContextHolder
+import com.webtrit.callkeep.common.FlutterEngineHelper
+import com.webtrit.callkeep.common.Log
+import com.webtrit.callkeep.common.PermissionsHelper
+import com.webtrit.callkeep.common.StorageDelegate
+import com.webtrit.callkeep.common.fromBundle
+import com.webtrit.callkeep.common.registerReceiverCompat
+import com.webtrit.callkeep.common.startForegroundServiceCompat
+import com.webtrit.callkeep.common.toPCallkeepLifecycleType
+import com.webtrit.callkeep.common.toPCallkeepSignalingStatus
+import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.models.SignalingStatus
+import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
 import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
 import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
-import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
 import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 import com.webtrit.callkeep.services.services.signaling.workers.SignalingServiceBootWorker
@@ -60,21 +69,18 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
     private val signalingStatusReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == SignalingStatusBroadcaster.ACTION_STATUS_CHANGED) {
-                latestSignalingStatus = SignalingStatus.fromBundle(intent.extras)
-                synchronizeSignalingIsolate(latestLifecycleActivityEvent!!, latestSignalingStatus)
-            }
+            latestSignalingStatus = SignalingStatus.fromBundle(intent?.extras)
+            synchronizeSignalingIsolate(latestLifecycleActivityEvent!!, latestSignalingStatus)
+
         }
     }
 
     private val lifecycleEventReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == ActivityLifecycleBroadcaster.ACTION_VALUE_CHANGED) {
-                latestLifecycleActivityEvent = Lifecycle.Event.fromBundle(intent.extras)
-                synchronizeSignalingIsolate(
-                    latestLifecycleActivityEvent!!, latestSignalingStatus
-                )
-            }
+            latestLifecycleActivityEvent = Lifecycle.Event.fromBundle(intent?.extras)
+            synchronizeSignalingIsolate(
+                latestLifecycleActivityEvent!!, latestSignalingStatus
+            )
         }
     }
 
@@ -92,18 +98,13 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         super.onCreate()
         ContextHolder.init(applicationContext)
         // Register the service to receive signaling status updates
-        latestSignalingStatus = SignalingStatusBroadcaster.currentStatus
-        registerReceiverCompat(
-            signalingStatusReceiver,
-            IntentFilter(SignalingStatusBroadcaster.ACTION_STATUS_CHANGED)
-        )
+        latestSignalingStatus = SignalingStatusBroadcaster.currentValue
+        SignalingStatusBroadcaster.register(this, signalingStatusReceiver)
 
         // Register the service to receive lifecycle events
         latestLifecycleActivityEvent = ActivityLifecycleBroadcaster.currentValue
-        registerReceiverCompat(
-            lifecycleEventReceiver,
-            IntentFilter(ActivityLifecycleBroadcaster.ACTION_VALUE_CHANGED)
-        )
+        ActivityLifecycleBroadcaster.register(this, lifecycleEventReceiver)
+
 
         // Register the service to receive connection service perform events
         registerReceiverCompat(
@@ -123,11 +124,11 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
     override fun onDestroy() {
         // Unregister the service from receiving signaling status updates
-        unregisterReceiver(signalingStatusReceiver)
+        SignalingStatusBroadcaster.unregister(this, signalingStatusReceiver)
         latestSignalingStatus = null
 
         // Unregister the service from receiving lifecycle events
-        unregisterReceiver(lifecycleEventReceiver)
+        ActivityLifecycleBroadcaster.unregister(baseContext, lifecycleEventReceiver)
         latestLifecycleActivityEvent = null
 
         // Unregister the service from receiving connection service perform events
@@ -225,7 +226,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
     /**
      * Records a missed call event when the main isolate is not running.
      *
-     * @param extras The missed call information.
+     * @param metadata The missed call information.
      */
     private fun handleMissedCall(metadata: CallMetadata) {
         Log.d(TAG, "handleMissedCall: $metadata")
@@ -312,11 +313,8 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         /**
          * Communicates with the service by starting it with the specified action and metadata.
          */
-        private fun communicate(context: Context, action: ForegroundCallServiceEnums?, metadata: Bundle?) {
-            val intent = Intent(context, SignalingIsolateService::class.java).apply {
-                this.action = action?.action
-                metadata?.let { putExtras(it) }
-            }
+        private fun communicate(context: Context) {
+            val intent = Intent(context, SignalingIsolateService::class.java)
             try {
                 context.startForegroundService(intent)
             } catch (e: IllegalStateException) {
@@ -324,7 +322,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
             }
         }
 
-        fun start(context: Context) = communicate(context, null, null)
+        fun start(context: Context) = communicate(context)
 
         @SuppressLint("ImplicitSamInstance")
         fun stop(context: Context) {
@@ -332,12 +330,6 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
             context.stopService(Intent(context, SignalingIsolateService::class.java))
         }
-
-        fun endCall(context: Context, callMetadata: CallMetadata) =
-            communicate(context, ForegroundCallServiceEnums.DECLINE, callMetadata.toBundle())
-
-        fun answerCall(context: Context, callMetadata: CallMetadata) =
-            communicate(context, ForegroundCallServiceEnums.ANSWER, callMetadata.toBundle())
 
         /**
          * Acquires a partial wake lock to keep the CPU running.

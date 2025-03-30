@@ -8,6 +8,7 @@ import io.flutter.embedding.engine.plugins.FlutterPlugin
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import androidx.core.net.toUri
 
 /**
  * Manages caching operations for assets.
@@ -23,7 +24,7 @@ class FlutterAssetManager(private val context: Context, private var assets: Flut
 
     fun getAsset(asset: String): Uri? {
         val assets = assets.getAssetFilePathByName(asset)
-        val fileName = Uri.parse(assets).lastPathSegment ?: "cache"
+        val fileName = assets.toUri().lastPathSegment ?: "cache"
 
         // For note: there may be issues with cached data if, for example, another sound is saved under the same name.
         val cachedFile = File(cacheDir, fileName)

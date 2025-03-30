@@ -94,7 +94,7 @@ fun Lifecycle.Event.Companion.fromBundle(bundle: Bundle?): Lifecycle.Event? {
     val name = bundle?.getString("LifecycleEvent") ?: return null
     return try {
         Lifecycle.Event.valueOf(name)
-    } catch (e: IllegalArgumentException) {
+    } catch (_: IllegalArgumentException) {
         null
     }
 }

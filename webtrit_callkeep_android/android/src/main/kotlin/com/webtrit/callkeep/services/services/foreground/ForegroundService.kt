@@ -48,7 +48,7 @@ import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
  *
  * Lifecycle:
  * - Bound to the activity lifecycle: starts when activity is active, stops when unbound.
- * - Registers and unregisters itself with [CommunicateServiceDispatcher] for communication.
+ * - Registers and unregisters itself with [ConnectionServicePerformBroadcaster] for communication.
  */
 @Keep
 class ForegroundService : Service(), PHostApi {

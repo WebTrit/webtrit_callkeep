@@ -1,35 +1,39 @@
 package com.webtrit.callkeep.services.broadcaster
 
-import android.content.Intent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
 import androidx.lifecycle.Lifecycle
-import com.webtrit.callkeep.common.ContextHolder
-import com.webtrit.callkeep.common.Log
+import com.webtrit.callkeep.common.registerReceiverCompat
+import com.webtrit.callkeep.common.sendInternalBroadcast
 import com.webtrit.callkeep.common.toBundle
 
+/**
+ * This object is responsible for broadcasting the lifecycle events of the activity.
+ * The object holds the current lifecycle event and notifies any interested parties when it changes.
+ */
 object ActivityLifecycleBroadcaster {
-    private const val TAG = "ActivityLifecycleBroadcaster"
-
-    const val ACTION_VALUE_CHANGED = "com.webtrit.callkeep.ACTIVITY_LIFECYCLE_EVENT_CHANGED"
+    const val ACTION = "ActivityLifecycleBroadcaster.LIFECYCLE_EVENT"
 
     private var value: Lifecycle.Event? = null
 
     val currentValue: Lifecycle.Event?
         get() = value
 
-    fun setValue(newValue: Lifecycle.Event) {
+    fun setValue(context: Context, newValue: Lifecycle.Event) {
         value = newValue
-        notifyStatusChanged(newValue)
+        notifyValueChanged(context, newValue)
     }
 
-    private fun notifyStatusChanged(value: Lifecycle.Event) {
-        val context = ContextHolder.context
-        val intent = Intent(ACTION_VALUE_CHANGED).apply {
-            putExtras(value.toBundle())
-        }
-        try {
-            context.sendBroadcast(intent)
-        } catch (e: Exception) {
-            Log.i(TAG, "Failed to send broadcast: $e")
-        }
+    fun register(context: Context, receiver: BroadcastReceiver) {
+        context.registerReceiverCompat(receiver, IntentFilter(ACTION))
+    }
+
+    fun unregister(context: Context, receiver: BroadcastReceiver) {
+        context.unregisterReceiver(receiver)
+    }
+
+    private fun notifyValueChanged(context: Context, value: Lifecycle.Event) {
+        context.applicationContext.sendInternalBroadcast(ACTION, value.toBundle())
     }
 }

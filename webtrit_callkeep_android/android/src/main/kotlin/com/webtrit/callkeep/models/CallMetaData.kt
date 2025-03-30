@@ -35,22 +35,6 @@ data class CallMetadata(
         acceptedTime?.let { putLong(CALL_METADATA_ACCEPTED_TIME, it) }
     }
 
-    private fun bundleToQueries(): String {
-        val parameters = mapOf(
-            CallDataConst.CALL_ID to callId,
-            CallDataConst.DISPLAY_NAME to displayName,
-            CallDataConst.NUMBER to handle?.number,
-            CallDataConst.HAS_VIDEO to hasVideo,
-            CallDataConst.HAS_SPEAKER to hasSpeaker,
-            CallDataConst.PROXIMITY_ENABLED to proximityEnabled,
-            CallDataConst.HAS_MUTE to hasMute,
-            CallDataConst.HAS_HOLD to hasHold,
-            CallDataConst.DTMF to dualToneMultiFrequency
-        )
-
-        return parameters.entries.joinToString("&") { (key, value) -> "$key=$value" }
-    }
-
     fun mergeWith(other: CallMetadata?): CallMetadata {
         return CallMetadata(
             callId = other?.callId ?: callId,
