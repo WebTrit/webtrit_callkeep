@@ -7,7 +7,7 @@ import com.webtrit.callkeep.PHostBackgroundPushNotificationIsolateApi
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.services.incoming_call.CallConnectionController
 import com.webtrit.callkeep.services.services.incoming_call.FlutterIsolateCommunicator
-import com.webtrit.callkeep.services.services.incoming_call.IsolateSelector
+import com.webtrit.callkeep.services.common.IsolateSelector
 
 enum class DeclineSource {
     USER, SERVER

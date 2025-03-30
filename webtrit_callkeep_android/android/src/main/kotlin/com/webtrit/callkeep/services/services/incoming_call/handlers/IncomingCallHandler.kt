@@ -6,7 +6,7 @@ import android.util.Log
 import com.webtrit.callkeep.common.startForegroundServiceCompat
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
-import com.webtrit.callkeep.services.services.incoming_call.IsolateLaunchPolicy
+import com.webtrit.callkeep.services.common.IsolateLaunchPolicy
 
 class IncomingCallHandler(
     private val service: Service,

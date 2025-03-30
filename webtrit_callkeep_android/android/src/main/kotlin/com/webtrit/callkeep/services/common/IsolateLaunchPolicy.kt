@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.services.services.incoming_call
+package com.webtrit.callkeep.services.common
 
 import android.app.Service
 import com.webtrit.callkeep.common.StorageDelegate
