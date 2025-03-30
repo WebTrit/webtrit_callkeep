@@ -1,9 +1,9 @@
 package com.webtrit.callkeep.services.services.incoming_call
 
 import androidx.lifecycle.Lifecycle
-import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.models.SignalingStatus
+import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
 import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
 
 enum class IsolateType {
@@ -26,14 +26,13 @@ class SignalingStatusStrategy(private val signalingStatus: SignalingStatus?) : I
 
 class ActivityStateStrategy : IsolateSelectionStrategy {
     override fun getIsolateType(): IsolateType {
-        val state = ActivityHolder.getActivityState()
+        val state = ActivityLifecycleBroadcaster.currentValue
         return if (state == Lifecycle.Event.ON_RESUME || state == Lifecycle.Event.ON_PAUSE || state == Lifecycle.Event.ON_STOP) {
             IsolateType.MAIN
         } else {
             IsolateType.BACKGROUND
         }
     }
-
 }
 
 object IsolateSelector {
