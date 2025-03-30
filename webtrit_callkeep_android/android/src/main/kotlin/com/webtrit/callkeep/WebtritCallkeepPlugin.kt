@@ -12,6 +12,7 @@ import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.AssetHolder
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
+import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
 import com.webtrit.callkeep.services.services.foreground.ForegroundService
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
 import com.webtrit.callkeep.services.services.signaling.SignalingIsolateService
@@ -164,10 +165,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         Log.d(TAG, "onStateChanged: Lifecycle event received - $event")
         ActivityHolder.setLifecycle(event)
 
-        // Notify the signaling service about the lifecycle event for correct handling of the signaling connection
-        if (SignalingIsolateService.isRunning) {
-            SignalingIsolateService.changeLifecycle(context, event)
-        }
+        ActivityLifecycleBroadcaster.setValue(event)
 
         // When the app is in the background, the service should be stopped. However, there is an unresolved issue if a call starts from the activity and the app is minimized, causing incomplete event handling.
         // To handle events when the app is minimized, we allow the service to remain active for as long as possible to manage recent events.

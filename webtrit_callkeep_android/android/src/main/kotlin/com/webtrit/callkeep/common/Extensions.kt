@@ -71,6 +71,21 @@ fun Lifecycle.Event.toPCallkeepLifecycleType(): PCallkeepLifecycleEvent {
     }
 }
 
+fun Lifecycle.Event.toBundle(): Bundle {
+    return Bundle().apply {
+        putString("LifecycleEvent", this@toBundle.name)
+    }
+}
+
+fun Lifecycle.Event.Companion.fromBundle(bundle: Bundle?): Lifecycle.Event? {
+    val name = bundle?.getString("LifecycleEvent") ?: return null
+    return try {
+        Lifecycle.Event.valueOf(name)
+    } catch (e: IllegalArgumentException) {
+        null
+    }
+}
+
 fun Context.startForegroundServiceCompat(
     service: android.app.Service, notificationId: Int, notification: Notification, foregroundServiceType: Int? = null
 ) {
@@ -125,9 +140,9 @@ private fun PDelegateBackgroundRegisterFlutterApi.isolateEvent(
 }
 
 inline fun Result<Unit>.handle(
-    successAction: () -> Unit,
-    failureAction: (Throwable) -> Unit
+    successAction: () -> Unit, failureAction: (Throwable) -> Unit
 ) {
     onSuccess { successAction() }
     onFailure { failureAction(it) }
 }
+

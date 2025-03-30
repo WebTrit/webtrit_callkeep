@@ -23,6 +23,7 @@ import com.webtrit.callkeep.PHostBackgroundSignalingIsolateApi
 import com.webtrit.callkeep.common.*
 import com.webtrit.callkeep.models.*
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
+import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
 import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
 import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 import com.webtrit.callkeep.services.services.signaling.workers.SignalingServiceBootWorker
@@ -36,6 +37,7 @@ import com.webtrit.callkeep.services.services.signaling.workers.SignalingService
 @Keep
 class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
     private var latestSignalingStatus: SignalingStatus? = null
+    private var latestLifecycleActivityEvent: Lifecycle.Event? = Lifecycle.Event.ON_DESTROY
 
     private lateinit var notificationBuilder: ForegroundCallNotificationBuilder
     private lateinit var flutterEngineHelper: FlutterEngineHelper
@@ -58,7 +60,18 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == SignalingStatusBroadcaster.ACTION_STATUS_CHANGED) {
                 latestSignalingStatus = SignalingStatus.fromBundle(intent.extras)
-                synchronizeSignalingIsolate(ActivityHolder.getActivityState(), latestSignalingStatus)
+                synchronizeSignalingIsolate(latestLifecycleActivityEvent!!, latestSignalingStatus)
+            }
+        }
+    }
+
+    private val lifecycleEventReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == ActivityLifecycleBroadcaster.ACTION_VALUE_CHANGED) {
+                latestLifecycleActivityEvent = Lifecycle.Event.fromBundle(intent.extras)
+                synchronizeSignalingIsolate(
+                    latestLifecycleActivityEvent!!, latestSignalingStatus
+                )
             }
         }
     }
@@ -67,10 +80,12 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         super.onCreate()
         ContextHolder.init(applicationContext)
         // Register the service to receive signaling status updates
-        latestSignalingStatus = SignalingStatusBroadcaster.currentStatus;
-        registerReceiverCompat(
-            signalingStatusReceiver, IntentFilter(SignalingStatusBroadcaster.ACTION_STATUS_CHANGED)
-        )
+        latestSignalingStatus = SignalingStatusBroadcaster.currentStatus
+        registerReceiverCompat(signalingStatusReceiver, IntentFilter(SignalingStatusBroadcaster.ACTION_STATUS_CHANGED))
+
+        // Register the service to receive lifecycle events
+        latestLifecycleActivityEvent = ActivityLifecycleBroadcaster.currentValue
+        registerReceiverCompat(lifecycleEventReceiver, IntentFilter(ActivityLifecycleBroadcaster.ACTION_VALUE_CHANGED))
 
         notificationBuilder = ForegroundCallNotificationBuilder()
 
@@ -84,8 +99,12 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
     override fun onDestroy() {
         // Unregister the service from receiving signaling status updates
-        latestSignalingStatus = null
         unregisterReceiver(signalingStatusReceiver)
+        latestSignalingStatus = null
+
+        // Unregister the service from receiving lifecycle events
+        unregisterReceiver(lifecycleEventReceiver)
+        latestLifecycleActivityEvent = null
 
         if (StorageDelegate.SignalingService.isSignalingServiceEnabled(context = applicationContext)) {
             SignalingServiceBootWorker.Companion.enqueue(this)
@@ -153,14 +172,6 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         ensureNotification()
 
         when (action) {
-            ForegroundCallServiceEnums.CHANGE_LIFECYCLE.action -> {
-                synchronizeSignalingIsolate(
-                    extras?.serializableCompat<Lifecycle.Event>(PARAM_CHANGE_LIFECYCLE_EVENT)!!,
-                    latestSignalingStatus
-                )
-                return START_STICKY
-            }
-
             ForegroundCallServiceEnums.DECLINE.action -> {
                 PhoneConnectionService.startHungUpCall(
                     baseContext, metadata!!
@@ -273,7 +284,6 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
     companion object {
         private const val TAG = "SignalingIsolateService"
-        private const val PARAM_CHANGE_LIFECYCLE_EVENT = "PARAM_CHANGE_LIFECYCLE_EVENT"
 
         var isRunning = false
 
@@ -293,11 +303,6 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         }
 
         fun start(context: Context) = communicate(context, null, null)
-
-        fun changeLifecycle(context: Context, event: Lifecycle.Event) = communicate(
-            context,
-            ForegroundCallServiceEnums.CHANGE_LIFECYCLE,
-            Bundle().apply { putSerializable(PARAM_CHANGE_LIFECYCLE_EVENT, event) })
 
         @SuppressLint("ImplicitSamInstance")
         fun stop(context: Context) {
@@ -327,7 +332,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 }
 
 enum class ForegroundCallServiceEnums {
-    CHANGE_LIFECYCLE, ANSWER, DECLINE;
+    ANSWER, DECLINE;
 
     val action: String
         get() = ContextHolder.appUniqueKey + name + "_foreground_call_service"
