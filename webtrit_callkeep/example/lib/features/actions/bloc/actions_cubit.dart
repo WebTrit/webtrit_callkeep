@@ -16,7 +16,6 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   final Callkeep _callkeep;
 
-
   bool _speakerEnabled = false;
   bool _isMuted = false;
   bool _isHold = false;
@@ -299,18 +298,9 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
   }
 
   @override
-  void performServiceEndCall(String callId) {
-    emit(state.update.addAction(action: "Delegate service end call$callId"));
-  }
-
-  @override
-  void endCallReceived(String callId, String number, DateTime createdTime, DateTime? acceptedTime, DateTime? hungUpTime,
+  void performReceivedCall(
+      String callId, String number, DateTime createdTime, DateTime? acceptedTime, DateTime? hungUpTime,
       {bool video = false}) {
     emit(state.update.addAction(action: "End call received"));
-  }
-
-  @override
-  void performServiceAnswerCall(String callId) {
-    // TODO: implement performServiceAnswerCall
   }
 }

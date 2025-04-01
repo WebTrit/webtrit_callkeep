@@ -222,18 +222,14 @@ class TestsCubit extends Cubit<TestsState> implements CallkeepDelegate, Callkeep
   }
 
   @override
-  void performServiceEndCall(String callId) {
-    emit(state.update.addAction(action: "Delegate service end call$callId"));
-  }
-
-  @override
-  void endCallReceived(String callId, String number, DateTime createdTime, DateTime? acceptedTime, DateTime? hungUpTime,
-      {bool video = false}) {
-    emit(state.update.addAction(action: "End call received"));
-  }
-
-  @override
-  void performServiceAnswerCall(String callId) {
-    // TODO: implement performServiceAnswerCall
+  void performReceivedCall(
+    String callId,
+    String number,
+    DateTime createdTime,
+    DateTime? acceptedTime,
+    DateTime? hungUpTime, {
+    bool video = false,
+  }) {
+    // TODO: implement performReceivedCall
   }
 }

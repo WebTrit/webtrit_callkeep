@@ -1,11 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:logging/logging.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'package:webtrit_callkeep/webtrit_callkeep.dart';
@@ -31,10 +28,6 @@ Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
 
       AndroidCallkeepServices.backgroundPushNotificationBootstrapService
           .configurePushNotificationSignalingService(launchBackgroundIsolateEvenIfAppIsOpen: true);
-
-      HydratedBloc.storage = await HydratedStorage.build(
-        storageDirectory: kIsWeb ? HydratedStorage.webStorageDirectory : await getTemporaryDirectory(),
-      );
 
       FlutterError.onError = (details) {
         logger.severe('FlutterError', details.exception, details.stack);
