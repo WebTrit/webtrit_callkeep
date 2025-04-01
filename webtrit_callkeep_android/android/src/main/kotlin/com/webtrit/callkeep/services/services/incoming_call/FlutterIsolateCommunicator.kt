@@ -36,7 +36,7 @@ class DefaultFlutterIsolateCommunicator(
     }
 
     override fun notifyMissedCall(metadata: CallMetadata, onSuccess: () -> Unit, onFailure: (Throwable) -> Unit) {
-        serviceApi?.endCallReceived(
+        serviceApi?.performReceivedCall  (
             metadata.callId,
             metadata.number,
             metadata.hasVideo,

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -515,11 +514,11 @@ class _CallkeepBackgroundServiceDelegateRelay implements PDelegateBackgroundServ
   Future<void> performEndCall(
     String callId,
   ) async {
-    return _delegate.performServiceEndCall(callId);
+    return _delegate.performEndCall(callId);
   }
 
   @override
-  Future<void> endCallReceived(
+  Future<void> performReceivedCall(
     String callId,
     String number,
     bool video,
@@ -527,7 +526,7 @@ class _CallkeepBackgroundServiceDelegateRelay implements PDelegateBackgroundServ
     int? acceptedTime,
     int? hungUpTime,
   ) async {
-    return _delegate.endCallReceived(
+    return _delegate.performReceivedCall(
       callId,
       number,
       DateTime.fromMillisecondsSinceEpoch(createdTime),
@@ -539,7 +538,7 @@ class _CallkeepBackgroundServiceDelegateRelay implements PDelegateBackgroundServ
 
   @override
   Future<void> performAnswerCall(String callId) async {
-    return _delegate.performServiceAnswerCall(callId);
+    return _delegate.performAnswerCall(callId);
   }
 }
 

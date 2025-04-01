@@ -458,7 +458,7 @@ abstract class PDelegateBackgroundServiceFlutterApi {
   void performEndCall(String callId);
 
   @async
-  void endCallReceived(
+  void performReceivedCall(
     String callId,
     String number,
     bool video,
