@@ -1968,7 +1968,7 @@ abstract class PDelegateBackgroundServiceFlutterApi {
 
   Future<void> performEndCall(String callId);
 
-  Future<void> endCallReceived(String callId, String number, bool video, int createdTime, int? acceptedTime, int? hungUpTime);
+  Future<void> performReceivedCall(String callId, String number, bool video, int createdTime, int? acceptedTime, int? hungUpTime);
 
   static void setUp(PDelegateBackgroundServiceFlutterApi? api, {BinaryMessenger? binaryMessenger, String messageChannelSuffix = '',}) {
     messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
@@ -2024,31 +2024,31 @@ abstract class PDelegateBackgroundServiceFlutterApi {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi.endCallReceived$messageChannelSuffix', pigeonChannelCodec,
+          'dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi.performReceivedCall$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
       } else {
         pigeonVar_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-          'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi.endCallReceived was null.');
+          'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi.performReceivedCall was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final String? arg_callId = (args[0] as String?);
           assert(arg_callId != null,
-              'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi.endCallReceived was null, expected non-null String.');
+              'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi.performReceivedCall was null, expected non-null String.');
           final String? arg_number = (args[1] as String?);
           assert(arg_number != null,
-              'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi.endCallReceived was null, expected non-null String.');
+              'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi.performReceivedCall was null, expected non-null String.');
           final bool? arg_video = (args[2] as bool?);
           assert(arg_video != null,
-              'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi.endCallReceived was null, expected non-null bool.');
+              'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi.performReceivedCall was null, expected non-null bool.');
           final int? arg_createdTime = (args[3] as int?);
           assert(arg_createdTime != null,
-              'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi.endCallReceived was null, expected non-null int.');
+              'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi.performReceivedCall was null, expected non-null int.');
           final int? arg_acceptedTime = (args[4] as int?);
           final int? arg_hungUpTime = (args[5] as int?);
           try {
-            await api.endCallReceived(arg_callId!, arg_number!, arg_video!, arg_createdTime!, arg_acceptedTime, arg_hungUpTime);
+            await api.performReceivedCall(arg_callId!, arg_number!, arg_video!, arg_createdTime!, arg_acceptedTime, arg_hungUpTime);
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);

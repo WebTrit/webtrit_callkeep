@@ -231,7 +231,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
     private fun handleMissedCall(metadata: CallMetadata) {
         Log.d(TAG, "handleMissedCall: $metadata")
 
-        isolateCalkeepFlutterApi?.endCallReceived(
+        isolateCalkeepFlutterApi?.performReceivedCall(
             metadata.callId,
             metadata.number,
             metadata.hasVideo,
