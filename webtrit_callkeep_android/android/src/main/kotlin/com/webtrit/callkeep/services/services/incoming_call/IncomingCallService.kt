@@ -184,6 +184,9 @@ class IncomingCallService : Service() {
 
         private const val SERVICE_TIMEOUT_MS = 2_000L
 
+        @Volatile
+        private var isRunning = false
+        
         fun start(context: Context, metadata: CallMetadata) {
             context.startForegroundService(Intent(context, IncomingCallService::class.java).apply {
                 this.action = PushNotificationServiceEnums.IC_INITIALIZE.name
@@ -191,11 +194,18 @@ class IncomingCallService : Service() {
             })
         }
 
-        @SuppressLint("ImplicitSamInstance")
+        // Method is invoked when the connection is disconnected and the incoming call can be released.
+        // Stopping the service immediately would destroy the isolate, which can be critical if the signaling layer
+        // still needs to be notified about the disconnection.
+        // Instead, we initiate communication with the Flutter side and delay stopping the service to ensure a graceful shutdown.
+        // During this time, the notification is replaced with a special "release" notification
+        // using IncomingCallNotificationBuilder.buildReleaseNotification to inform the user that the call is being finalized.
         fun release(context: Context, type: IncomingCallRelease) {
-            context.startService(Intent(context, IncomingCallService::class.java).apply {
-                this.action = type.name
-            })
+            if (isRunning) {
+                context.startService(Intent(context, IncomingCallService::class.java).apply { this.action = type.name })
+            } else {
+                Log.w(TAG, "Service is not running. Release action $type ignored.")
+            }
         }
     }
 }
