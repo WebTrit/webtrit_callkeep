@@ -62,6 +62,7 @@ class IncomingCallService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        setRunning(true)
         ContextHolder.init(applicationContext)
         // Register the service to receive connection service perform events
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
@@ -115,6 +116,7 @@ class IncomingCallService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        setRunning(false)
         // Unregister the service from receiving connection service perform events
         ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(this, connectionServicePerformReceiver)
 
@@ -187,6 +189,10 @@ class IncomingCallService : Service() {
         @Volatile
         private var isRunning = false
         
+        private fun setRunning(running: Boolean) {
+            isRunning = running
+        }
+
         fun start(context: Context, metadata: CallMetadata) {
             context.startForegroundService(Intent(context, IncomingCallService::class.java).apply {
                 this.action = PushNotificationServiceEnums.IC_INITIALIZE.name
