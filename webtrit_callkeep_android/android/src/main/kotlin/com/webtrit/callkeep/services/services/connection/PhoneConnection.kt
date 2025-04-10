@@ -153,7 +153,7 @@ class PhoneConnection internal constructor(
         notificationManager.cancelActiveCallNotification(id)
         audioManager.stopRingtone()
 
-        val event = when (disconnectCause.code) {
+        val event = when (disconnectCause?.code) {
             DisconnectCause.REMOTE -> ConnectionPerform.DeclineCall
             else -> ConnectionPerform.HungUp
         }
