@@ -1,6 +1,7 @@
 <resources>
     <string name="client_title">User name</string>
     <string name="incoming_call_title">Incoming call</string>
+    <string name="incoming_call_description">"You have an incoming call from %1$s</string>
     <string name="answer_call_button_text">Answer</string>
     <string name="decline_button_text">Decline</string>
     <string name="hang_up_button_text">Hung up</string>

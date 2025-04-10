@@ -61,7 +61,7 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
         val icAnswer = R.drawable.ic_call_answer
 
         val title = context.getString(R.string.incoming_call_title)
-        val description = context.getString(R.string.incoming_call_declined_text, meta.name)
+        val description = context.getString(R.string.incoming_call_description, meta.name)
 
         val answerButton = R.string.answer_call_button_text
         val declineButton = R.string.decline_button_text
