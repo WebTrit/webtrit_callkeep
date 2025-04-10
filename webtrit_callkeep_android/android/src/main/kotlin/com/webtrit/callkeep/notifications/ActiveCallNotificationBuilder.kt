@@ -31,7 +31,7 @@ class ActiveCallNotificationBuilder() : NotificationBuilder() {
         val hungUpAction: Notification.Action = Notification.Action.Builder(
             Icon.createWithResource(context, R.drawable.ic_call_hungup),
             context.getString(R.string.hang_up_button_text),
-            getHungUpCallIntent(callsMetaData.first())
+            getHungUpCallIntent(callsMetaData.firstOrNull())
         ).build()
 
         val notificationBuilder = Notification.Builder(
@@ -52,10 +52,10 @@ class ActiveCallNotificationBuilder() : NotificationBuilder() {
         return notification
     }
 
-    private fun getHungUpCallIntent(callMetaData: CallMetadata): PendingIntent {
+    private fun getHungUpCallIntent(callMetaData: CallMetadata?): PendingIntent {
         val hangUpIntent = Intent(context, ActiveCallService::class.java).apply {
             action = NotificationAction.Decline.action
-            putExtras(callMetaData.toBundle())
+            callMetaData?.toBundle()?.let { putExtras(it) }
         }
         return PendingIntent.getService(
             context, 0, hangUpIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
