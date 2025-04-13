@@ -11,6 +11,7 @@ import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.TelephonyUtils
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.FailureMetadata
+import com.webtrit.callkeep.models.OutgoingFailureType
 import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.services.foreground.ForegroundService
@@ -295,17 +296,19 @@ class PhoneConnectionService : ConnectionService() {
 
             val uri: Uri = Uri.fromParts(PhoneAccount.SCHEME_TEL, metadata.number, null)
             val telephonyUtils = TelephonyUtils(context)
+            val reportDispatcher = ConnectionServicePerformBroadcaster.handle
 
             if (telephonyUtils.isEmergencyNumber(metadata.number)) {
                 // TODO: Implement emergency number handling
                 Log.i(TAG, "onOutgoingCall, trying to call on emergency number: ${metadata.number}")
-//                TelephonyForegroundCallkeepApi.notifyOutgoingFailure(
-//                    context, FailureMetadata(
-//                        "Failed to establish outgoing connection: Emergency number",
-//                        outgoingFailureType = OutgoingFailureType.EMERGENCY_NUMBER
-//                    )
-//                )
 
+                val failureMetadata = FailureMetadata(
+                    "Failed to establish outgoing connection: Emergency number",
+                    outgoingFailureType = OutgoingFailureType.EMERGENCY_NUMBER
+                )
+                reportDispatcher.dispatch(
+                    context, ConnectionPerform.OutgoingFailure, failureMetadata.toBundle()
+                )
 
             } else {
                 // If there is already an active call not on hold, we terminate it and start a new one,
@@ -342,13 +345,23 @@ class PhoneConnectionService : ConnectionService() {
         }
 
         private fun communicate(context: Context, action: ServiceAction, metadata: CallMetadata?) {
-            if (isRunning) {
-                val intent = Intent(context, PhoneConnectionService::class.java)
-                intent.action = action.action
-                metadata?.toBundle()?.let { intent.putExtras(it) }
+            val intent = Intent(context, PhoneConnectionService::class.java)
+            intent.action = action.action
+            metadata?.toBundle()?.let { intent.putExtras(it) }
+
+            try {
                 context.startService(intent)
-            } else {
-                Log.i(TAG, "Unable to send command to connection service as it is not running")
+            } catch (e: Exception) {
+                val reportDispatcher = ConnectionServicePerformBroadcaster.handle
+
+                // Fallback: failed to start PhoneConnectionService.
+                // This may happen if the app is in the background, lacks sufficient permissions,
+                // or the system restricts service launches (e.g., background start limitations).
+                //
+                // To avoid the call hanging indefinitely, we proactively finish the call
+                // as "HungUp" to ensure consistent call termination on the UI side.
+                reportDispatcher.dispatch(context, ConnectionPerform.HungUp, metadata?.toBundle())
+                Log.d(TAG, "Failed to start service with action: ${action.name}, error: $e")
             }
         }
     }

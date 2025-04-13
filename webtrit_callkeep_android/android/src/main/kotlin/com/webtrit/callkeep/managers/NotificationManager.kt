@@ -86,6 +86,11 @@ class NotificationManager() {
         notificationManager.cancel(id)
     }
 
+    fun tearDown() {
+        context.stopService(Intent(context, ActiveCallService::class.java))
+        context.stopService(Intent(context, IncomingCallService::class.java))
+    }
+
     companion object {
         const val TAG = "NotificationManager"
         private var activeCalls = mutableListOf<CallMetadata>()

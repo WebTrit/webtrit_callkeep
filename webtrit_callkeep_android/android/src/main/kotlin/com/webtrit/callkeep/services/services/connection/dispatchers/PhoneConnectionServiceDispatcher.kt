@@ -55,20 +55,20 @@ class PhoneConnectionServiceDispatcher(
     private fun handleAnswerCall(metadata: CallMetadata) {
         proximitySensorManager.startListening()
         connectionManager.getConnection(metadata.callId)?.onAnswer() ?: dispatcher(
-            ConnectionPerform.HungUp, metadata
+            ConnectionPerform.ConnectionNotFound, metadata
         )
     }
 
     private fun handleDeclineCall(metadata: CallMetadata) {
         connectionManager.getConnection(metadata.callId)?.declineCall() ?: dispatcher(
-            ConnectionPerform.HungUp, metadata
+            ConnectionPerform.ConnectionNotFound, metadata
         )
         proximitySensorManager.stopListening()
     }
 
     private fun handleHungUpCall(metadata: CallMetadata) {
         connectionManager.getConnection(metadata.callId)?.hungUp() ?: dispatcher(
-            ConnectionPerform.HungUp, metadata
+            ConnectionPerform.ConnectionNotFound, metadata
         )
         proximitySensorManager.stopListening()
     }
@@ -76,13 +76,13 @@ class PhoneConnectionServiceDispatcher(
     private fun handleEstablishCall(metadata: CallMetadata) {
         proximitySensorManager.startListening()
         connectionManager.getConnection(metadata.callId)?.establish() ?: dispatcher(
-            ConnectionPerform.HungUp, metadata
+            ConnectionPerform.ConnectionNotFound, metadata
         )
     }
 
     private fun handleMute(metadata: CallMetadata) {
         connectionManager.getConnection(metadata.callId)?.changeMuteState(metadata.hasMute) ?: dispatcher(
-            ConnectionPerform.HungUp, metadata
+            ConnectionPerform.ConnectionNotFound, metadata
         )
     }
 
@@ -90,13 +90,13 @@ class PhoneConnectionServiceDispatcher(
         connectionManager.getConnection(metadata.callId)?.apply {
             if (metadata.hasHold) onHold() else onUnhold()
         } ?: dispatcher(
-            ConnectionPerform.HungUp, metadata
+            ConnectionPerform.ConnectionNotFound, metadata
         )
     }
 
     private fun handleUpdateCall(metadata: CallMetadata) {
         connectionManager.getConnection(metadata.callId)?.updateData(metadata) ?: dispatcher(
-            ConnectionPerform.HungUp, metadata
+            ConnectionPerform.ConnectionNotFound, metadata
         )
     }
 
@@ -104,13 +104,13 @@ class PhoneConnectionServiceDispatcher(
         metadata.dualToneMultiFrequency?.let {
             connectionManager.getConnection(metadata.callId)?.onPlayDtmfTone(it)
         } ?: dispatcher(
-            ConnectionPerform.HungUp, metadata
+            ConnectionPerform.ConnectionNotFound, metadata
         )
     }
 
     private fun handleSpeaker(metadata: CallMetadata) {
         connectionManager.getConnection(metadata.callId)?.changeSpeakerState(metadata.hasSpeaker) ?: dispatcher(
-            ConnectionPerform.HungUp, metadata
+            ConnectionPerform.ConnectionNotFound, metadata
         )
     }
 
