@@ -16,7 +16,7 @@ import com.webtrit.callkeep.managers.AudioManager
 import com.webtrit.callkeep.managers.NotificationManager
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
-import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster.DispatchHandle
+import com.webtrit.callkeep.services.services.connection.models.PerformDispatchHandle
 
 /**
  * Represents a phone connection for handling telephony calls.
@@ -26,7 +26,7 @@ import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadca
  */
 class PhoneConnection internal constructor(
     private val context: Context,
-    private val dispatcher: DispatchHandle,
+    private val dispatcher: PerformDispatchHandle,
     var metadata: CallMetadata,
     var timeout: ConnectionTimeout? = null,
     var onDisconnectCallback: (connection: PhoneConnection) -> Unit,
@@ -87,7 +87,7 @@ class PhoneConnection internal constructor(
         if (Build.VERSION.SDK_INT == Build.VERSION_CODES.O_MR1) {
             //TODO: DO SINGLE ENDPOINT METHOD FOR SET STATE
             this.isMute = isMute
-            dispatcher.dispatch(context, ConnectionPerform.AudioMuting, metadata.copy(hasMute = this.isMute).toBundle())
+            dispatcher(ConnectionPerform.AudioMuting, metadata.copy(hasMute = this.isMute))
         }
     }
 
@@ -121,7 +121,7 @@ class PhoneConnection internal constructor(
         setActive()
 
         // Notify the  activity about the answered call, if app is in the foreground
-        dispatcher.dispatch(context, ConnectionPerform.AnswerCall, metadata.toBundle())
+        dispatcher(ConnectionPerform.AnswerCall, metadata)
 
         // Start the activity for the answered call if the app is in the background
         ActivityHolder.start(context)
@@ -157,7 +157,7 @@ class PhoneConnection internal constructor(
             DisconnectCause.REMOTE -> ConnectionPerform.DeclineCall
             else -> ConnectionPerform.HungUp
         }
-        dispatcher.dispatch(context, event, metadata.toBundle())
+        dispatcher(event, metadata)
 
         onDisconnectCallback.invoke(this)
         destroy()
@@ -171,7 +171,7 @@ class PhoneConnection internal constructor(
     override fun onHold() {
         super.onHold()
         setOnHold()
-        dispatcher.dispatch(context, ConnectionPerform.ConnectionHolding, metadata.copy(hasHold = true).toBundle())
+        dispatcher(ConnectionPerform.ConnectionHolding, metadata.copy(hasHold = true))
     }
 
     /**
@@ -182,7 +182,7 @@ class PhoneConnection internal constructor(
     override fun onUnhold() {
         super.onUnhold()
         setActive()
-        dispatcher.dispatch(context, ConnectionPerform.ConnectionHolding, metadata.copy(hasHold = false).toBundle())
+        dispatcher(ConnectionPerform.ConnectionHolding, metadata.copy(hasHold = false))
     }
 
     /**
@@ -194,7 +194,7 @@ class PhoneConnection internal constructor(
      */
     override fun onPlayDtmfTone(c: Char) {
         super.onPlayDtmfTone(c)
-        dispatcher.dispatch(context, ConnectionPerform.SentDTMF, metadata.copy(dualToneMultiFrequency = c).toBundle())
+        dispatcher(ConnectionPerform.SentDTMF, metadata.copy(dualToneMultiFrequency = c))
     }
 
     /**
@@ -256,21 +256,15 @@ class PhoneConnection internal constructor(
             state?.isMuted?.let {
                 // Update the mute state locally
                 this.isMute = it
-                dispatcher.dispatch(
-                    context,
-                    ConnectionPerform.AudioMuting,
-                    metadata.copy(hasMute = this.isMute).toBundle()
-                )
+                dispatcher(ConnectionPerform.AudioMuting, metadata.copy(hasMute = this.isMute))
             }
         }
 
         state?.route?.let {
             // Update the audio route state
             this.isHasSpeaker = it == CallAudioState.ROUTE_SPEAKER
-            dispatcher.dispatch(
-                context,
-                ConnectionPerform.ConnectionHasSpeaker,
-                metadata.copy(hasSpeaker = this.isHasSpeaker).toBundle()
+            dispatcher(
+                ConnectionPerform.ConnectionHasSpeaker, metadata.copy(hasSpeaker = this.isHasSpeaker)
             )
         }
     }
@@ -316,7 +310,7 @@ class PhoneConnection internal constructor(
         Log.d(TAG, "declineCall")
         if (state == STATE_RINGING) {
             notificationManager.showMissedCallNotification(metadata)
-            dispatcher.dispatch(context, ConnectionPerform.MissedCall, metadata.toBundle())
+            dispatcher(ConnectionPerform.MissedCall, metadata)
         }
 
         terminateWithCause(DisconnectCause(DisconnectCause.REMOTE))
@@ -330,7 +324,7 @@ class PhoneConnection internal constructor(
 
         val metadata = metadata.copy(hasMute = this.isMute)
 
-        dispatcher.dispatch(context, ConnectionPerform.AudioMuting, metadata.toBundle())
+        dispatcher(ConnectionPerform.AudioMuting, metadata)
 
         terminateWithCause(DisconnectCause(DisconnectCause.LOCAL))
     }
@@ -347,9 +341,9 @@ class PhoneConnection internal constructor(
 
         notificationManager.showActiveCallNotification(id, metadata)
         if (Build.VERSION.SDK_INT == Build.VERSION_CODES.O_MR1) {
-            val metadata = metadata.copy(hasMute = this.isMute, hasSpeaker = this.isHasSpeaker).toBundle()
-            dispatcher.dispatch(context, ConnectionPerform.AudioMuting, metadata)
-            dispatcher.dispatch(context, ConnectionPerform.ConnectionHasSpeaker, metadata)
+            val metadata = metadata.copy(hasMute = this.isMute, hasSpeaker = this.isHasSpeaker)
+            dispatcher(ConnectionPerform.AudioMuting, metadata)
+            dispatcher(ConnectionPerform.ConnectionHasSpeaker, metadata)
         }
     }
 
@@ -357,7 +351,7 @@ class PhoneConnection internal constructor(
      * Handle actions when the call is in the dialing state.
      */
     private fun onDialing() {
-        dispatcher.dispatch(context, ConnectionPerform.OngoingCall, metadata.toBundle())
+        dispatcher(ConnectionPerform.OngoingCall, metadata)
     }
 
     /**
@@ -390,7 +384,7 @@ class PhoneConnection internal constructor(
          * @return The created incoming phone connection.
          */
         internal fun createIncomingPhoneConnection(
-            context: Context, dispatcher: DispatchHandle,
+            context: Context, dispatcher: PerformDispatchHandle,
             metadata: CallMetadata, onDisconnect: (connection: PhoneConnection) -> Unit,
         ) = PhoneConnection(
             context = context,
@@ -412,7 +406,7 @@ class PhoneConnection internal constructor(
          */
         internal fun createOutgoingPhoneConnection(
             context: Context,
-            dispatcher: DispatchHandle,
+            dispatcher: PerformDispatchHandle,
             metadata: CallMetadata,
             onDisconnect: (connection: PhoneConnection) -> Unit,
         ) = PhoneConnection(

@@ -30,7 +30,8 @@ class PhoneConnectionService : ConnectionService() {
     private lateinit var phoneConnectionServiceDispatcher: PhoneConnectionServiceDispatcher
     private lateinit var telephonyUtils: TelephonyUtils
 
-    private val dispatcher: ConnectionServicePerformBroadcaster.DispatchHandle = ConnectionServicePerformBroadcaster.handle
+    private val dispatcher: ConnectionServicePerformBroadcaster.DispatchHandle =
+        ConnectionServicePerformBroadcaster.handle
 
     override fun onCreate() {
         super.onCreate()
@@ -38,8 +39,28 @@ class PhoneConnectionService : ConnectionService() {
         isRunning = true
         sensorManager = ProximitySensorManager(applicationContext, PhoneConnectionConsts())
         activityWakelockManager = ActivityWakelockManager(ActivityHolder)
-        phoneConnectionServiceDispatcher = PhoneConnectionServiceDispatcher(connectionManager, sensorManager)
         telephonyUtils = TelephonyUtils(applicationContext)
+        phoneConnectionServiceDispatcher =
+            PhoneConnectionServiceDispatcher(connectionManager, sensorManager, ::performEventHandle)
+    }
+
+    /**
+     * Handles an event related to a call connection and dispatches it to the appropriate components.
+     *
+     * This method should be used to report events back to subscribers. If the connection reference
+     * still exists, use it directly to handle the event. However, in cases where the connection
+     * was destroyed due to concurrency (e.g., another component removed the connection before this
+     * component tried to access it), this method serves as a proxy to forward the event via the
+     * [PhoneConnectionServiceDispatcher].
+     *
+     * Using this proxy avoids potential freezes caused by unhandled async/await logic on the Flutter side.
+     *
+     * @param event The connection-related event to be handled.
+     * @param data Optional call metadata associated with the event.
+     */
+    fun performEventHandle(event: ConnectionPerform, data: CallMetadata? = null) {
+        Log.i(TAG, "performEventHandle: $event")
+        dispatcher.dispatch(baseContext, event, data?.toBundle())
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
@@ -76,7 +97,7 @@ class PhoneConnectionService : ConnectionService() {
         }
 
         val connection = PhoneConnection.createOutgoingPhoneConnection(
-            applicationContext, dispatcher, metadata, ::disconnectConnection
+            applicationContext, ::performEventHandle, metadata, ::disconnectConnection
         )
         sensorManager.setShouldListenProximity(metadata.proximityEnabled)
         connectionManager.addConnection(metadata.callId, connection)
@@ -146,7 +167,7 @@ class PhoneConnectionService : ConnectionService() {
         }
 
         val connection = PhoneConnection.createIncomingPhoneConnection(
-            applicationContext, dispatcher, metadata, ::disconnectConnection
+            applicationContext, ::performEventHandle, metadata, ::disconnectConnection
         )
         sensorManager.setShouldListenProximity(true)
         connectionManager.addConnection(metadata.callId, connection)
