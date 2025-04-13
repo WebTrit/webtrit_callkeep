@@ -7,7 +7,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Binder
 import android.os.Bundle
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import androidx.annotation.Keep
 import com.webtrit.callkeep.PCallRequestError
 import com.webtrit.callkeep.PCallRequestErrorEnum
@@ -25,6 +27,7 @@ import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.TelephonyUtils
 import com.webtrit.callkeep.managers.NotificationChannelManager
 import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.models.EmergencyNumberException
 import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.models.OutgoingFailureType
 import com.webtrit.callkeep.models.toCallHandle
@@ -53,6 +56,8 @@ import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 @Keep
 class ForegroundService : Service(), PHostApi {
     private val binder = LocalBinder()
+
+    private val handler by lazy { Handler(Looper.getMainLooper()) }
 
     private var outgoingCallback: PigeonCallback<PCallRequestError>? = null
 
@@ -113,7 +118,8 @@ class ForegroundService : Service(), PHostApi {
         proximityEnabled: Boolean,
         callback: (Result<PCallRequestError?>) -> Unit
     ) {
-        Log.i(TAG, "startCall $callId.")
+        Log.i(TAG, "startCall $callId")
+
         val metadata = CallMetadata(
             callId = callId,
             handle = handle.toCallHandle(),
@@ -121,8 +127,36 @@ class ForegroundService : Service(), PHostApi {
             hasVideo = video,
             proximityEnabled = proximityEnabled
         )
-        PhoneConnectionService.Companion.startOutgoingCall(baseContext, metadata)
-        callback.invoke(Result.success(null))
+
+        // Store the callback to be used later (for success, timeout, or failure in connection services)
+        outgoingCallback = callback
+
+        // Create a timeout handler in case the system does not respond in time
+        val timeoutRunnable = Runnable {
+            outgoingCallback?.let {
+                Log.w(TAG, "startCall timeout for $callId")
+                it(Result.success(PCallRequestError(PCallRequestErrorEnum.INTERNAL)))
+                outgoingCallback = null
+            }
+        }
+
+        // Schedule the timeout runnable to run after a delay
+        handler.postDelayed(timeoutRunnable, CALLBACK_TIMEOUT_MS)
+
+        try {
+            PhoneConnectionService.startOutgoingCall(baseContext, metadata)
+        } catch (_: EmergencyNumberException) {
+            // Handle case where the number is recognized as an emergency number
+            handler.removeCallbacks(timeoutRunnable)
+            outgoingCallback?.invoke(Result.success(PCallRequestError(PCallRequestErrorEnum.EMERGENCY_NUMBER)))
+            outgoingCallback = null
+        } catch (e: Exception) {
+            // Handle any other unexpected exceptions
+            handler.removeCallbacks(timeoutRunnable)
+            Log.e(TAG, "startCall failed: ${e.message}")
+            outgoingCallback?.invoke(Result.failure(e))
+            outgoingCallback = null
+        }
     }
 
     // TODO: Move logic to the PhoneConnectionService
@@ -333,7 +367,7 @@ class ForegroundService : Service(), PHostApi {
     private fun handleCSReportOutgoingFailure(extras: Bundle?) {
         extras?.let {
             val failureMetaData = FailureMetadata.Companion.fromBundle(it)
-
+            Log.e(TAG, "handleCSReportOutgoingFailure: ${failureMetaData.outgoingFailureType}")
             outgoingCallback = when (failureMetaData.outgoingFailureType) {
                 OutgoingFailureType.UNENTITLED -> {
                     outgoingCallback?.invoke(Result.failure(failureMetaData.getThrowable()))
@@ -369,8 +403,7 @@ class ForegroundService : Service(), PHostApi {
         super.onDestroy()
         // Unregister the service from receiving connection service perform events
         ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(
-            baseContext,
-            connectionServicePerformReceiver
+            baseContext, connectionServicePerformReceiver
         )
         isRunning = false
     }
@@ -381,6 +414,7 @@ class ForegroundService : Service(), PHostApi {
 
     companion object {
         private const val TAG = "ForegroundService"
+        const val CALLBACK_TIMEOUT_MS = 5000L
 
         var isRunning = false
     }

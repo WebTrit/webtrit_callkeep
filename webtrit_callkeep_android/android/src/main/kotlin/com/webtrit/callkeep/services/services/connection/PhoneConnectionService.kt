@@ -10,6 +10,7 @@ import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.TelephonyUtils
 import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.models.EmergencyNumberException
 import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.models.OutgoingFailureType
 import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
@@ -296,7 +297,6 @@ class PhoneConnectionService : ConnectionService() {
 
             val uri: Uri = Uri.fromParts(PhoneAccount.SCHEME_TEL, metadata.number, null)
             val telephonyUtils = TelephonyUtils(context)
-            val reportDispatcher = ConnectionServicePerformBroadcaster.handle
 
             if (telephonyUtils.isEmergencyNumber(metadata.number)) {
                 // TODO: Implement emergency number handling
@@ -306,9 +306,8 @@ class PhoneConnectionService : ConnectionService() {
                     "Failed to establish outgoing connection: Emergency number",
                     outgoingFailureType = OutgoingFailureType.EMERGENCY_NUMBER
                 )
-                reportDispatcher.dispatch(
-                    context, ConnectionPerform.OutgoingFailure, failureMetadata.toBundle()
-                )
+
+                throw EmergencyNumberException(failureMetadata)
 
             } else {
                 // If there is already an active call not on hold, we terminate it and start a new one,
