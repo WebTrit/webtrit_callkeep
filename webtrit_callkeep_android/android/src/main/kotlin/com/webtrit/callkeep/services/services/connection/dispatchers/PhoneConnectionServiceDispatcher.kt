@@ -1,5 +1,6 @@
 package com.webtrit.callkeep.services.services.connection.dispatchers
 
+import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
 import com.webtrit.callkeep.services.services.connection.ConnectionManager
@@ -38,6 +39,7 @@ class PhoneConnectionServiceDispatcher(
      * @param metadata Metadata associated with the call, if applicable.
      */
     fun dispatch(action: ServiceAction, metadata: CallMetadata?) {
+        Log.d(TAG, "Dispatching action: $action with metadata: $metadata")
         when (action) {
             ServiceAction.AnswerCall -> metadata?.let { handleAnswerCall(it) }
             ServiceAction.DeclineCall -> metadata?.let { handleDeclineCall(it) }
@@ -94,9 +96,12 @@ class PhoneConnectionServiceDispatcher(
         )
     }
 
+    // This method updates the call metadata. It can be invoked during the connection creation process,
+    // where the connection might not yet be registered in the ConnectionManager. If no connection is found,
+    // the update is ignored to prevent errors.
     private fun handleUpdateCall(metadata: CallMetadata) {
-        connectionManager.getConnection(metadata.callId)?.updateData(metadata) ?: dispatcher(
-            ConnectionPerform.ConnectionNotFound, metadata
+        connectionManager.getConnection(metadata.callId)?.updateData(metadata) ?: Log.d(
+            TAG, "Connection not found for callId: ${metadata.callId}, ignoring update"
         )
     }
 
@@ -118,5 +123,9 @@ class PhoneConnectionServiceDispatcher(
         connectionManager.getConnections().forEach {
             it.hungUp()
         }
+    }
+
+    companion object {
+        private const val TAG = "PhoneConnectionServiceDispatcher"
     }
 }
