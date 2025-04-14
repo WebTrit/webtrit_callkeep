@@ -14,7 +14,7 @@ enum class ConnectionPerform {
 }
 
 /**
- * This object is responsible for broadcasting the connection service perform events.
+ * This object is responsible for broadcasting the connection service perform events from the connection service.
  */
 object ConnectionServicePerformBroadcaster {
     private val notificationManager = NotificationManager()
@@ -46,6 +46,7 @@ object ConnectionServicePerformBroadcaster {
         override fun dispatch(context: Context, report: ConnectionPerform, data: Bundle?) {
             val appContext = context.applicationContext
 
+            // When connection is not found, we need to cancel the notification if it exists and send action for finishing call
             if (report == ConnectionPerform.ConnectionNotFound) {
                 data?.getString(CallDataConst.CALL_ID)?.let {
                     notificationManager.cancelActiveCallNotification(it)
