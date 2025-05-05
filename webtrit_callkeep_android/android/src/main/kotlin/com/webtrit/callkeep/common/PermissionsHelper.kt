@@ -19,17 +19,11 @@ class PermissionsHelper(private val context: Context) {
         }
     }
 
-    fun launchFullScreenIntentSettings(): Boolean {
-        return try {
-            val intent = Intent("android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENT").apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            context.startActivity(intent)
-            true
-        } catch (e: Exception) {
-            Log.i(TAG, "Error launching full screen intent settings", e)
-            false
+    fun launchFullScreenIntentSettings() {
+        val intent = Intent("android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENT").apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
+        context.startActivity(intent)
     }
 
     fun hasCameraPermission(): Boolean {

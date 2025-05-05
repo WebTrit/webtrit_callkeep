@@ -212,7 +212,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<bool> openFullScreenIntentSettings() {
+  Future<void> openFullScreenIntentSettings() {
     return _permissionsApi.openFullScreenIntentSettings();
   }
 
