@@ -217,6 +217,11 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
+  Future<void> openSettings() {
+    return _permissionsApi.openSettings();
+  }
+
+  @override
   Future<CallkeepAndroidBatteryMode> getBatteryMode() {
     return _permissionsApi.getBatteryMode().then((value) => value.toCallkeep());
   }

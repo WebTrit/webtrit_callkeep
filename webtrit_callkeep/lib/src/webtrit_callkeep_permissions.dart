@@ -51,6 +51,16 @@ class WebtritCallkeepPermissions {
     return platform.openFullScreenIntentSettings();
   }
 
+  /// Attempts to open the system settings screen for managing the app's permissions.
+  // TODO(Serdun): Add support for iOS.
+  Future<void> openSettings() {
+    if (kIsWeb) {
+      return Future.value();
+    }
+
+    return platform.openSettings();
+  }
+
   /// Gets the battery optimization status.
   Future<CallkeepAndroidBatteryMode> getBatteryMode() {
     if (kIsWeb) {

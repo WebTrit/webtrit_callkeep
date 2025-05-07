@@ -26,6 +26,13 @@ class PermissionsHelper(private val context: Context) {
         context.startActivity(intent)
     }
 
+    fun launchSettings() {
+        val intent = Intent(android.provider.Settings.ACTION_SETTINGS).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(intent)
+    }
+    
     fun hasCameraPermission(): Boolean {
         val cameraPermission = context.checkSelfPermission(Manifest.permission.CAMERA)
         return cameraPermission == PackageManager.PERMISSION_GRANTED

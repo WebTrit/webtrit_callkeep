@@ -36,6 +36,18 @@ class PermissionsApi(
         }
     }
 
+    /**
+     * Attempts to open the common system settings screen
+     */
+    override fun openSettings(callback: (Result<Unit>) -> Unit) {
+        try {
+            PermissionsHelper(context).launchSettings()
+            callback.invoke(Result.success(Unit))
+        } catch (e: Exception) {
+            callback.invoke(Result.failure(e))
+        }
+    }
+
     override fun getBatteryMode(callback: (Result<PCallkeepAndroidBatteryMode>) -> Unit) {
         val batteryMode = BatteryModeHelper(context)
         val mode = when {

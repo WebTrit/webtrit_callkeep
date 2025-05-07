@@ -269,6 +269,9 @@ abstract class PHostPermissionsApi {
   void openFullScreenIntentSettings();
 
   @async
+  void openSettings();
+
+  @async
   PCallkeepAndroidBatteryMode getBatteryMode();
 }
 

@@ -999,6 +999,7 @@ interface PHostBackgroundPushNotificationIsolateApi {
 interface PHostPermissionsApi {
   fun getFullScreenIntentPermissionStatus(callback: (Result<PSpecialPermissionStatusTypeEnum>) -> Unit)
   fun openFullScreenIntentSettings(callback: (Result<Unit>) -> Unit)
+  fun openSettings(callback: (Result<Unit>) -> Unit)
   fun getBatteryMode(callback: (Result<PCallkeepAndroidBatteryMode>) -> Unit)
 
   companion object {
@@ -1033,6 +1034,23 @@ interface PHostPermissionsApi {
         if (api != null) {
           channel.setMessageHandler { _, reply ->
             api.openFullScreenIntentSettings{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.openSettings$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.openSettings{ result: Result<Unit> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(wrapError(error))
