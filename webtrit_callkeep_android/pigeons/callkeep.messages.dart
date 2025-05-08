@@ -266,7 +266,10 @@ abstract class PHostPermissionsApi {
   PSpecialPermissionStatusTypeEnum getFullScreenIntentPermissionStatus();
 
   @async
-  bool openFullScreenIntentSettings();
+  void openFullScreenIntentSettings();
+
+  @async
+  void openSettings();
 
   @async
   PCallkeepAndroidBatteryMode getBatteryMode();

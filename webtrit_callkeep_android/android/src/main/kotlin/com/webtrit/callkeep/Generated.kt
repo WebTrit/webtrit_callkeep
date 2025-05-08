@@ -998,7 +998,8 @@ interface PHostBackgroundPushNotificationIsolateApi {
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface PHostPermissionsApi {
   fun getFullScreenIntentPermissionStatus(callback: (Result<PSpecialPermissionStatusTypeEnum>) -> Unit)
-  fun openFullScreenIntentSettings(callback: (Result<Boolean>) -> Unit)
+  fun openFullScreenIntentSettings(callback: (Result<Unit>) -> Unit)
+  fun openSettings(callback: (Result<Unit>) -> Unit)
   fun getBatteryMode(callback: (Result<PCallkeepAndroidBatteryMode>) -> Unit)
 
   companion object {
@@ -1032,13 +1033,29 @@ interface PHostPermissionsApi {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.openFullScreenIntentSettings$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            api.openFullScreenIntentSettings{ result: Result<Boolean> ->
+            api.openFullScreenIntentSettings{ result: Result<Unit> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(wrapError(error))
               } else {
-                val data = result.getOrNull()
-                reply.reply(wrapResult(data))
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.openSettings$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.openSettings{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
               }
             }
           }
