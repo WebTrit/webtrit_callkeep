@@ -23,10 +23,6 @@
         android:name="android.hardware.telephony"
         android:required="false" />
 
-    <uses-feature
-        android:name="android.software.telecom"
-        android:required="true" />
-
     <application>
         <service
             android:name=".services.services.connection.PhoneConnectionService"
