@@ -23,9 +23,9 @@
         android:name="android.hardware.telephony"
         android:required="false" />
 
-    <uses-feature
+    <!-- <uses-feature
         android:name="android.software.telecom"
-        android:required="true" />
+        android:required="true" /> -->
 
     <application>
         <service
