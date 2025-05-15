@@ -528,6 +528,7 @@ class _CallkeepBackgroundServiceDelegateRelay implements PDelegateBackgroundServ
     String number,
     bool video,
     int createdTime,
+    String? displayName,
     int? acceptedTime,
     int? hungUpTime,
   ) async {
@@ -535,6 +536,7 @@ class _CallkeepBackgroundServiceDelegateRelay implements PDelegateBackgroundServ
       callId,
       number,
       DateTime.fromMillisecondsSinceEpoch(createdTime),
+      displayName,
       acceptedTime != null ? DateTime.fromMillisecondsSinceEpoch(acceptedTime) : null,
       hungUpTime != null ? DateTime.fromMillisecondsSinceEpoch(hungUpTime) : null,
       video: video,

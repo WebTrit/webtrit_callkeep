@@ -11,6 +11,7 @@ abstract class CallkeepBackgroundServiceDelegate {
     String callId,
     String number,
     DateTime createdTime,
+    String? displayName,
     DateTime? acceptedTime,
     DateTime? hungUpTime, {
     bool video = false,

@@ -466,6 +466,7 @@ abstract class PDelegateBackgroundServiceFlutterApi {
     String number,
     bool video,
     int createdTime,
+    String? displayName,
     int? acceptedTime,
     int? hungUpTime,
   );
