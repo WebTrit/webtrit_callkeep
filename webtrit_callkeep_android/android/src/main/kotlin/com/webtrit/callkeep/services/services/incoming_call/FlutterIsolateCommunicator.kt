@@ -41,6 +41,7 @@ class DefaultFlutterIsolateCommunicator(
             metadata.number,
             metadata.hasVideo,
             metadata.createdTime ?: System.currentTimeMillis(),
+            metadata.displayName,
             null,
             System.currentTimeMillis()
         ) { result ->
