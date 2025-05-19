@@ -534,6 +534,20 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
   [self didReceiveIncomingPushWithPayloadForPushTypeVoIP:payload withCompletionHandler:^() {}];
 }
 
+/// Called when a VoIP push notification is received by the system.
+///
+/// This method is responsible for parsing the VoIP payload and reporting a new
+/// incoming call to CallKit. It prepares the `CXCallUpdate` and uses the UUID
+/// derived from the call ID to avoid race conditions.
+///
+///  Important:
+/// - Before calling `reportNewIncomingCallWithUUID:update:completion:`,
+///   this method calls `configureAudioSession()` to preconfigure the audio session.
+///   This is a workaround for a known issue (Radar #28774388) where `didActivateAudioSession`
+///   might not be triggered correctly on cold start if audio session is not set up early enough.
+///
+/// @param payload The VoIP push payload containing call information.
+/// @param completion A completion handler to signal that processing is complete.
 - (void)didReceiveIncomingPushWithPayloadForPushTypeVoIP:(PKPushPayload *)payload withCompletionHandler:(void (^)(void))completion {
   NSDictionary *dictionaryPayload = payload.dictionaryPayload;
 #ifdef DEBUG
@@ -594,6 +608,8 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
   // Such UUID allows overcoming possible races between VoIP push and relevant signaling events.
   NSUUID *uuid = [NSUUID makeWithName:callId namespace:[[NSUUID alloc] initWithUUIDString:NAMESPACE_OID]];
 
+  [self configureAudioSession];
+
   CXCallUpdate *callUpdate = [[CXCallUpdate alloc] init];
   callUpdate.remoteHandle = [[CXHandle alloc] initWithType:CXHandleTypeFromString(handleType)
                                                      value:handleValue];
@@ -627,6 +643,34 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
                                                                               completion();
                                                                             }];
                                 }];
+}
+
+/// Prepares the AVAudioSession for an incoming call.
+///
+/// This method sets the audio session category and mode to support VoIP audio routing.
+/// It is called before `reportNewIncomingCallWithUUID` to ensure the audio session
+/// is properly configured before CallKit attempts to activate it.
+///
+/// Do not call `setActive:YES` here — CallKit is responsible for activating the audio session.
+///
+/// Best practice:
+/// - Call this method *before* reporting the call to CallKit (e.g., in `didReceiveIncomingPush…`)
+///   to prevent timing issues where `didActivateAudioSession` fails to trigger.
+- (void)configureAudioSession {÷
+    AVAudioSession *session = [AVAudioSession sharedInstance];
+    NSError *error = nil;
+
+    BOOL success = [session setCategory:AVAudioSessionCategoryPlayAndRecord
+                            withOptions:AVAudioSessionCategoryOptionAllowBluetooth | AVAudioSessionCategoryOptionDefaultToSpeaker
+                                  error:&error];
+    if (!success) {
+        NSLog(@"[Callkeep] Failed to set category: %@", error);
+    }
+
+    success = [session setMode:AVAudioSessionModeVoiceChat error:&error];
+    if (!success) {
+        NSLog(@"[Callkeep] Failed to set mode: %@", error);
+    }
 }
 
 #pragma mark - CXProviderDelegate
