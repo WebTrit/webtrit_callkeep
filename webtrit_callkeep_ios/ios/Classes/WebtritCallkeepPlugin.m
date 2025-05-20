@@ -656,7 +656,7 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
 /// Best practice:
 /// - Call this method *before* reporting the call to CallKit (e.g., in `didReceiveIncomingPush…`)
 ///   to prevent timing issues where `didActivateAudioSession` fails to trigger.
-- (void)configureAudioSession {÷
+- (void)configureAudioSession {
     AVAudioSession *session = [AVAudioSession sharedInstance];
     NSError *error = nil;
 
