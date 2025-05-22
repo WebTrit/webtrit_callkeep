@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.os.Build
 import android.os.IBinder
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -12,6 +13,7 @@ import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.AssetHolder
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
+import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
 import com.webtrit.callkeep.services.services.foreground.ForegroundService
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
@@ -97,6 +99,21 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         lifeCycle = (binding.lifecycle as HiddenLifecycleReference).lifecycle
         lifeCycle!!.addObserver(this)
 
+        // Launch the signaling service manually on Android 15+ (API 34 / UPSIDE_DOWN_CAKE) if enabled.
+        //
+        // On Android 15 and above, the system no longer allows ForegroundServices of type "phone call"
+        // to be started from BOOT_COMPLETED or similar system broadcasts. As a result, the service must
+        // be started explicitly from the app lifecycle — in this case, from the plugin/activity attachment.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            if (StorageDelegate.SignalingService.isSignalingServiceEnabled(binding.activity)) {
+                try {
+                    val intent = Intent(binding.activity, SignalingIsolateService::class.java)
+                    context.startForegroundService(intent)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to start SignalingIsolateService: ${e.message}")
+                }
+            }
+        }
         bindForegroundService(binding.activity)
     }
 
