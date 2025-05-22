@@ -52,13 +52,30 @@
 
         <service android:name=".services.services.foreground.ForegroundService" />
 
+        <!--
+          Receiver for starting the signaling service (SignalingIsolateService) on system events,
+          only if the service is enabled in app settings.
+
+          Used to relaunch the service on:
+            - device boot (BOOT_COMPLETED, LOCKED_BOOT_COMPLETED),
+            - app update (MY_PACKAGE_REPLACED),
+            - quick boot on some legacy HTC/Motorola devices (QUICKBOOT_POWERON)
+
+           Note:
+            - On Android 14+ (API 34), BOOT_COMPLETED can no longer start a ForegroundService
+              of type "phone call". The service must be started later from WebtritCallkeepPlugin.
+
+          See: ForegroundCallBootReceiver.kt
+        -->
         <receiver
             android:name=".services.services.signaling.receivers.ForegroundCallBootReceiver"
-            android:enabled="false"
+            android:enabled="true"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
     </application>

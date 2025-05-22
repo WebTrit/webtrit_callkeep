@@ -33,6 +33,7 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.SignalingStatus
 import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
+import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder.Companion.ACTION_RESTORE_NOTIFICATION
 import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
 import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
 import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
@@ -195,28 +196,34 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action
-        val extras = intent?.extras
-        val metadata = extras?.let(CallMetadata::fromBundleOrNull)
-
-        ensureNotification()
+        val metadata = intent?.extras?.let(CallMetadata::fromBundleOrNull)
 
         when (action) {
+            ACTION_RESTORE_NOTIFICATION -> {
+                Log.d(TAG, "User removed notification, restoring")
+                ensureNotification()
+            }
+
             ForegroundCallServiceEnums.DECLINE.action -> {
-                PhoneConnectionService.startHungUpCall(
-                    baseContext, metadata!!
-                )
-                return START_STICKY
+                metadata?.let {
+                    PhoneConnectionService.startHungUpCall(baseContext, it)
+                    ensureNotification()
+                } ?: Log.w(TAG, "Missing metadata for DECLINE action")
             }
 
             ForegroundCallServiceEnums.ANSWER.action -> {
-                PhoneConnectionService.startAnswerCall(
-                    baseContext, metadata!!
-                )
-                return START_STICKY
+                metadata?.let {
+                    PhoneConnectionService.startAnswerCall(baseContext, it)
+                    ensureNotification()
+                } ?: Log.w(TAG, "Missing metadata for ANSWER action")
+            }
+
+            else -> {
+                ensureNotification()
             }
         }
 
-        getLock(applicationContext)?.acquire(10 * 60 * 1000L /*10 minutes*/)
+        getLock(applicationContext)?.acquire(10 * 60 * 1000L)
 
         flutterEngineHelper.startOrAttachEngine()
 
