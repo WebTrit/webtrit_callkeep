@@ -226,10 +226,9 @@ class TestsCubit extends Cubit<TestsState> implements CallkeepDelegate, Callkeep
     String callId,
     String number,
     DateTime createdTime,
+    String? displayName,
     DateTime? acceptedTime,
     DateTime? hungUpTime, {
     bool video = false,
-  }) {
-    // TODO: implement performReceivedCall
-  }
+  }) {}
 }
