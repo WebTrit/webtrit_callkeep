@@ -299,8 +299,14 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   @override
   void performReceivedCall(
-      String callId, String number, DateTime createdTime, DateTime? acceptedTime, DateTime? hungUpTime,
-      {bool video = false}) {
+    String callId,
+    String number,
+    DateTime createdTime,
+    String? displayName,
+    DateTime? acceptedTime,
+    DateTime? hungUpTime, {
+    bool video = false,
+  }) {
     emit(state.update.addAction(action: "End call received"));
   }
 }
