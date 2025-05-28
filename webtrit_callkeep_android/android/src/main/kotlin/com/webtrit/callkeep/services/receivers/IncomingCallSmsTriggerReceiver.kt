@@ -13,58 +13,52 @@ import java.net.URLDecoder
 
 class IncomingCallSmsTriggerReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        Log.d(TAG, "onReceive: intent = $intent")
-
-        if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
-            Log.w(TAG, "Unexpected intent action: ${intent.action}")
-            return
-        }
+        if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
 
         val prefix = StorageDelegate.IncomingCallSmsConfig.getSmsPrefix(context) ?: return
         val pattern = StorageDelegate.IncomingCallSmsConfig.getRegexPattern(context) ?: return
-        val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent) ?: return
-
-        Log.d(TAG, "Received SMS with prefix: $prefix and regex pattern: $pattern")
-
-        val regex = try {
-            Regex(pattern)
-        } catch (e: Exception) {
-            Log.e(TAG, "Invalid regex pattern: $pattern, error: ${e.message}")
+        val regex = runCatching { Regex(pattern) }.getOrElse {
+            Log.e(TAG, "Invalid regex: $pattern, error: ${it.message}")
             return
         }
 
-        for (message in messages) {
-            val body = message.messageBody ?: continue
+        extractValidSmsMessages(context, intent, prefix, regex).forEach {
+            tryStartCall(context, it)
+        }
+    }
 
-            if (!body.startsWith(prefix)) continue
-            Log.d(TAG, "Matched SMS prefix: $prefix — full body: $body")
+    private fun tryStartCall(context: Context, metadata: CallMetadata) {
+        try {
+            PhoneConnectionService.startIncomingCall(
+                context,
+                metadata,
+                onSuccess = { Log.d(TAG, "Incoming call started") },
+                onError = { Log.e(TAG, "Failed to start call: $it") })
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception starting call: ${e.message}")
+        }
+    }
 
-            val match = regex.find(body) ?: run {
-                Log.w(TAG, "Regex did not match body: $body")
-                return;
-            }
+    private fun extractValidSmsMessages(
+        context: Context, intent: Intent, prefix: String, regex: Regex
+    ): List<CallMetadata> {
+        val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent) ?: return emptyList()
 
+        return messages.mapNotNull { message ->
+            val body = message.messageBody ?: return@mapNotNull null
+            if (!body.startsWith(prefix)) return@mapNotNull null
+
+            val match = regex.find(body) ?: return@mapNotNull null
             val (callId, handle, displayNameEncoded, hasVideoStr) = match.destructured
             val displayName = URLDecoder.decode(displayNameEncoded, "UTF-8")
 
-            val metadata = CallMetadata(
+            CallMetadata(
                 callId = callId,
                 handle = CallHandle(handle),
                 displayName = displayName,
                 hasVideo = hasVideoStr == "true",
                 ringtonePath = StorageDelegate.Sound.getRingtonePath(context)
             )
-
-            try {
-                PhoneConnectionService.startIncomingCall(
-                    context,
-                    metadata,
-                    onSuccess = { Log.d(TAG, "Incoming call started") },
-                    onError = { Log.e(TAG, "Failed to start call: $it") }
-                )
-            } catch (e: Exception) {
-                Log.e(TAG, "Exception starting call: ${e.message}")
-            }
         }
     }
 
