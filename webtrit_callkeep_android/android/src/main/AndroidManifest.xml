@@ -13,6 +13,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
 
+    <!-- Permission to receive SMS as a fallback trigger for incoming calls when push notifications are not delivered -->
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+
     <!-- Needed for auto start at boot if keep alive service is enabled -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -76,6 +79,21 @@
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!--
+          Receiver for starting the foreground service on SMS received.
+          Used to handle incoming calls via SMS (if enabled in app settings).
+            Note: This receiver requires the RECEIVE_SMS permission.
+            See: SmsReceiver.kt
+        -->
+        <receiver
+            android:name=".services.receivers.IncomingCallSmsTriggerReceiver"
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
             </intent-filter>
         </receiver>
     </application>
