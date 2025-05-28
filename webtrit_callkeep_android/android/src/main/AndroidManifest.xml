@@ -13,14 +13,15 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
 
-    <!-- Permission to receive SMS as a fallback trigger for incoming calls when push notifications are not delivered -->
-    <uses-permission android:name="android.permission.RECEIVE_SMS" />
-
     <!-- Needed for auto start at boot if keep alive service is enabled -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!--
+        Required only if the SMS receiver is used.
+        Allows the app to receive SMS messages to trigger incoming calls as a fallback when push notifications fail.
+    -->
+    <!-- <uses-permission android:name="android.permission.RECEIVE_SMS" /> -->
 
     <uses-feature
         android:name="android.hardware.telephony"
@@ -83,18 +84,29 @@
         </receiver>
 
         <!--
-          Receiver for starting the foreground service on SMS received.
-          Used to handle incoming calls via SMS (if enabled in app settings).
-            Note: This receiver requires the RECEIVE_SMS permission.
-            See: SmsReceiver.kt
-        -->
+          [Optional Integration] SMS Fallback Receiver
+
+          This receiver is used to trigger the foreground service when an incoming call is announced via SMS,
+          typically as a fallback mechanism when push notifications are unavailable.
+
+          This component is NOT enabled by default and is not required for all use cases.
+          If your application supports incoming calls via SMS fallback, you must:
+
+             1. Add the following <receiver> declaration to your app's AndroidManifest.xml
+             2. Add the RECEIVE_SMS permission at the manifest level:
+                <uses-permission android:name="android.permission.RECEIVE_SMS" />
+                -->
+
+        <!--
         <receiver
-            android:name=".services.receivers.IncomingCallSmsTriggerReceiver"
+            android:name="com.webtrit.callkeep.services.receivers.IncomingCallSmsTriggerReceiver"
+            android:enabled="true"
             android:exported="true"
             android:permission="android.permission.BROADCAST_SMS">
             <intent-filter>
                 <action android:name="android.provider.Telephony.SMS_RECEIVED" />
             </intent-filter>
         </receiver>
+        -->
     </application>
 </manifest>
