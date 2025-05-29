@@ -5,10 +5,8 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import androidx.core.app.NotificationManagerCompat
 import com.webtrit.callkeep.R
-import com.webtrit.callkeep.common.ContextHolder.context
-import com.webtrit.callkeep.common.helpers.Platform
+import com.webtrit.callkeep.common.Platform
 
 abstract class NotificationBuilder() {
     protected fun buildOpenAppIntent(context: Context, uri: Uri = Uri.EMPTY): PendingIntent {
@@ -22,6 +20,5 @@ abstract class NotificationBuilder() {
         )
     }
 
-    abstract fun build(): Notification;
-
+    abstract fun build(): Notification
 }

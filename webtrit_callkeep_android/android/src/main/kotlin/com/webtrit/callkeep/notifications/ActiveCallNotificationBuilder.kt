@@ -1,11 +1,16 @@
 package com.webtrit.callkeep.notifications
 
 import android.app.Notification
+import android.app.PendingIntent
+import android.content.Intent
+import android.graphics.drawable.Icon
 import androidx.core.app.NotificationCompat
 import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.ContextHolder.context
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.notifications.NotificationChannelManager.NOTIFICATION_ACTIVE_CALL_CHANNEL_ID
+import com.webtrit.callkeep.models.NotificationAction
+import com.webtrit.callkeep.managers.NotificationChannelManager.NOTIFICATION_ACTIVE_CALL_CHANNEL_ID
+import com.webtrit.callkeep.services.services.active_call.ActiveCallService
 
 class ActiveCallNotificationBuilder() : NotificationBuilder() {
     private var callsMetaData = ArrayList<CallMetadata>()
@@ -23,6 +28,12 @@ class ActiveCallNotificationBuilder() : NotificationBuilder() {
 
         val text = callsMetaData.joinToString { it.name }
 
+        val hungUpAction: Notification.Action = Notification.Action.Builder(
+            Icon.createWithResource(context, R.drawable.ic_call_hungup),
+            context.getString(R.string.hang_up_button_text),
+            getHungUpCallIntent(callsMetaData.firstOrNull())
+        ).build()
+
         val notificationBuilder = Notification.Builder(
             context, NOTIFICATION_ACTIVE_CALL_CHANNEL_ID
         ).apply {
@@ -33,16 +44,26 @@ class ActiveCallNotificationBuilder() : NotificationBuilder() {
             setAutoCancel(false)
             setCategory(Notification.CATEGORY_SERVICE)
             setFullScreenIntent(buildOpenAppIntent(context), true)
-
+            addAction(hungUpAction)
         }
+
         val notification = notificationBuilder.build()
         notification.flags = notification.flags or NotificationCompat.FLAG_INSISTENT
         return notification
     }
 
+    private fun getHungUpCallIntent(callMetaData: CallMetadata?): PendingIntent {
+        val hangUpIntent = Intent(context, ActiveCallService::class.java).apply {
+            action = NotificationAction.Decline.action
+            callMetaData?.toBundle()?.let { putExtras(it) }
+        }
+        return PendingIntent.getService(
+            context, 0, hangUpIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+    }
 
     companion object {
         const val TAG = "ACTIVE_CALL_NOTIFICATION"
-        const val ACTIVE_CALL_NOTIFICATION_ID = 1 //  R.integer.notification_active_call_id
+        const val NOTIFICATION_ID = 1
     }
 }

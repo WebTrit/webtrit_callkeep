@@ -7,10 +7,7 @@ import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.Ringtone
 import android.media.RingtoneManager
-
-import com.webtrit.callkeep.common.Log
-import com.webtrit.callkeep.common.AssetHolder
-import com.webtrit.callkeep.common.helpers.setLoopingCompat
+import com.webtrit.callkeep.common.*
 
 class AudioManager(val context: Context) {
     private val audioManager = requireNotNull(context.getSystemService(Context.AUDIO_SERVICE) as AudioManager)
@@ -100,9 +97,8 @@ class AudioManager(val context: Context) {
      */
     private fun createRingback(asset: String): MediaPlayer {
         val path = AssetHolder.flutterAssetManager.getAsset(asset)
-        val attributes = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING)
-            .build()
+        val attributes =
+            AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING).build()
         val session = audioManager.generateAudioSessionId()
         return MediaPlayer.create(context, path, null, attributes, session).apply {
             isLooping = true

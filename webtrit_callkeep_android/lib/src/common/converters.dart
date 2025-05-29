@@ -1,7 +1,5 @@
 // ignore_for_file: public_member_api_docs, always_use_package_imports
 
-import 'dart:convert';
-
 import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
 
 import 'callkeep.pigeon.dart';
@@ -177,8 +175,6 @@ extension CallkeepIOSOptionsConverter on CallkeepIOSOptions {
 extension CallkeepAndroidOptionsConverter on CallkeepAndroidOptions {
   PAndroidOptions toPigeon() {
     return PAndroidOptions(
-      incomingPath: incomingPath,
-      rootPath: rootPath,
       ringtoneSound: ringtoneSound,
       ringbackSound: ringbackSound,
     );
@@ -211,44 +207,89 @@ extension PCallkeepAndroidBatteryModeConverter on PCallkeepAndroidBatteryMode {
   }
 }
 
-extension CallkeepLifecycleTypeConverter on CallkeepLifecycleType {
-  PCallkeepLifecycleType toPigeon() {
+extension CallkeepLifecycleTypeConverter on CallkeepLifecycleEvent {
+  PCallkeepLifecycleEvent toPigeon() {
     switch (this) {
-      case CallkeepLifecycleType.onCreate:
-        return PCallkeepLifecycleType.onCreate;
-      case CallkeepLifecycleType.onStart:
-        return PCallkeepLifecycleType.onStart;
-      case CallkeepLifecycleType.onResume:
-        return PCallkeepLifecycleType.onResume;
-      case CallkeepLifecycleType.onPause:
-        return PCallkeepLifecycleType.onPause;
-      case CallkeepLifecycleType.onStop:
-        return PCallkeepLifecycleType.onStop;
-      case CallkeepLifecycleType.onDestroy:
-        return PCallkeepLifecycleType.onDestroy;
-      case CallkeepLifecycleType.onAny:
-        return PCallkeepLifecycleType.onAny;
+      case CallkeepLifecycleEvent.onCreate:
+        return PCallkeepLifecycleEvent.onCreate;
+      case CallkeepLifecycleEvent.onStart:
+        return PCallkeepLifecycleEvent.onStart;
+      case CallkeepLifecycleEvent.onResume:
+        return PCallkeepLifecycleEvent.onResume;
+      case CallkeepLifecycleEvent.onPause:
+        return PCallkeepLifecycleEvent.onPause;
+      case CallkeepLifecycleEvent.onStop:
+        return PCallkeepLifecycleEvent.onStop;
+      case CallkeepLifecycleEvent.onDestroy:
+        return PCallkeepLifecycleEvent.onDestroy;
+      case CallkeepLifecycleEvent.onAny:
+        return PCallkeepLifecycleEvent.onAny;
     }
   }
 }
 
-extension PCallkeepLifecycleTypeConverter on PCallkeepLifecycleType {
-  CallkeepLifecycleType toCallkeep() {
+extension PCallkeepSignalingStatusConverter on PCallkeepSignalingStatus {
+  CallkeepSignalingStatus toCallkeep() {
     switch (this) {
-      case PCallkeepLifecycleType.onCreate:
-        return CallkeepLifecycleType.onCreate;
-      case PCallkeepLifecycleType.onStart:
-        return CallkeepLifecycleType.onStart;
-      case PCallkeepLifecycleType.onResume:
-        return CallkeepLifecycleType.onResume;
-      case PCallkeepLifecycleType.onPause:
-        return CallkeepLifecycleType.onPause;
-      case PCallkeepLifecycleType.onStop:
-        return CallkeepLifecycleType.onStop;
-      case PCallkeepLifecycleType.onDestroy:
-        return CallkeepLifecycleType.onDestroy;
-      case PCallkeepLifecycleType.onAny:
-        return CallkeepLifecycleType.onAny;
+      case PCallkeepSignalingStatus.disconnecting:
+        return CallkeepSignalingStatus.disconnecting;
+      case PCallkeepSignalingStatus.disconnect:
+        return CallkeepSignalingStatus.disconnect;
+      case PCallkeepSignalingStatus.connecting:
+        return CallkeepSignalingStatus.connecting;
+      case PCallkeepSignalingStatus.connect:
+        return CallkeepSignalingStatus.connect;
+      case PCallkeepSignalingStatus.failure:
+        return CallkeepSignalingStatus.failure;
+    }
+  }
+}
+
+extension CallkeepSignalingStatusConverter on CallkeepSignalingStatus {
+  PCallkeepSignalingStatus toPigeon() {
+    switch (this) {
+      case CallkeepSignalingStatus.disconnecting:
+        return PCallkeepSignalingStatus.disconnecting;
+      case CallkeepSignalingStatus.disconnect:
+        return PCallkeepSignalingStatus.disconnect;
+      case CallkeepSignalingStatus.connecting:
+        return PCallkeepSignalingStatus.connecting;
+      case CallkeepSignalingStatus.connect:
+        return PCallkeepSignalingStatus.connect;
+      case CallkeepSignalingStatus.failure:
+        return PCallkeepSignalingStatus.failure;
+    }
+  }
+}
+
+extension PCallkeepPushNotificationSyncStatusConverter on PCallkeepPushNotificationSyncStatus {
+  CallkeepPushNotificationSyncStatus toCallkeep() {
+    switch (this) {
+      case PCallkeepPushNotificationSyncStatus.synchronizeCallStatus:
+        return CallkeepPushNotificationSyncStatus.synchronizeCallStatus;
+      case PCallkeepPushNotificationSyncStatus.releaseResources:
+        return CallkeepPushNotificationSyncStatus.releaseResources;
+    }
+  }
+}
+
+extension PCallkeepLifecycleTypeConverter on PCallkeepLifecycleEvent {
+  CallkeepLifecycleEvent toCallkeep() {
+    switch (this) {
+      case PCallkeepLifecycleEvent.onCreate:
+        return CallkeepLifecycleEvent.onCreate;
+      case PCallkeepLifecycleEvent.onStart:
+        return CallkeepLifecycleEvent.onStart;
+      case PCallkeepLifecycleEvent.onResume:
+        return CallkeepLifecycleEvent.onResume;
+      case PCallkeepLifecycleEvent.onPause:
+        return CallkeepLifecycleEvent.onPause;
+      case PCallkeepLifecycleEvent.onStop:
+        return CallkeepLifecycleEvent.onStop;
+      case PCallkeepLifecycleEvent.onDestroy:
+        return CallkeepLifecycleEvent.onDestroy;
+      case PCallkeepLifecycleEvent.onAny:
+        return CallkeepLifecycleEvent.onAny;
     }
   }
 }
@@ -256,11 +297,8 @@ extension PCallkeepLifecycleTypeConverter on PCallkeepLifecycleType {
 extension PCallkeepServiceStatusConverter on PCallkeepServiceStatus {
   CallkeepServiceStatus toCallkeep() {
     return CallkeepServiceStatus(
-      lifecycle: lifecycle.toCallkeep(),
-      lockScreen: lockScreen,
-      activityReady: activityReady,
-      activeCalls: activeCalls,
-      data: jsonDecode(jsonData) as Map<String, dynamic>,
+      lifecycleEvent: lifecycleEvent.toCallkeep(),
+      mainSignalingStatus: mainSignalingStatus?.toCallkeep(),
     );
   }
 }
@@ -268,11 +306,7 @@ extension PCallkeepServiceStatusConverter on PCallkeepServiceStatus {
 extension CallkeepServiceStatusConverter on CallkeepServiceStatus {
   PCallkeepServiceStatus toPigeon() {
     return PCallkeepServiceStatus(
-      lifecycle: lifecycle.toPigeon(),
-      lockScreen: lockScreen,
-      activityReady: activityReady,
-      activeCalls: activeCalls,
-      jsonData: jsonEncode(data),
+      lifecycleEvent: lifecycleEvent.toPigeon(),
     );
   }
 }

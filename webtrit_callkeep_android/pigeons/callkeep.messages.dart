@@ -28,8 +28,6 @@ class PIOSOptions {
 }
 
 class PAndroidOptions {
-  late String incomingPath;
-  late String rootPath;
   late String? ringtoneSound;
   late String? ringbackSound;
 }
@@ -123,7 +121,7 @@ class PCallRequestError {
   late PCallRequestErrorEnum value;
 }
 
-enum PCallkeepLifecycleType {
+enum PCallkeepLifecycleEvent {
   onCreate,
   onStart,
   onResume,
@@ -133,12 +131,14 @@ enum PCallkeepLifecycleType {
   onAny,
 }
 
+enum PCallkeepPushNotificationSyncStatus {
+  synchronizeCallStatus,
+  releaseResources,
+}
+
 class PCallkeepServiceStatus {
-  late PCallkeepLifecycleType lifecycle;
-  late bool lockScreen;
-  late bool activityReady;
-  late bool activeCalls;
-  late String jsonData;
+  late PCallkeepLifecycleEvent lifecycleEvent;
+  late PCallkeepSignalingStatus? mainSignalingStatus;
 }
 
 enum PCallkeepConnectionState {
@@ -168,6 +168,14 @@ enum PCallkeepDisconnectCauseType {
   callPulled,
 }
 
+enum PCallkeepSignalingStatus {
+  disconnecting,
+  disconnect,
+  connecting,
+  connect,
+  failure,
+}
+
 class PCallkeepDisconnectCause {
   late PCallkeepDisconnectCauseType type;
   late String? reason;
@@ -180,7 +188,28 @@ class PCallkeepConnection {
 }
 
 @HostApi()
-abstract class PHostBackgroundServiceApi {
+abstract class PHostBackgroundSignalingIsolateBootstrapApi {
+  @async
+  void initializeSignalingServiceCallback({
+    required int callbackDispatcher,
+    required int onSync,
+  });
+
+  @async
+  void configureSignalingService({
+    String? androidNotificationName,
+    String? androidNotificationDescription,
+  });
+
+  @async
+  void startService();
+
+  @async
+  void stopService();
+}
+
+@HostApi()
+abstract class PHostBackgroundSignalingIsolateApi {
   @async
   void incomingCall(
     String callId,
@@ -199,32 +228,36 @@ abstract class PHostBackgroundServiceApi {
 }
 
 @HostApi()
-abstract class PHostIsolateApi {
+abstract class PHostBackgroundPushNotificationIsolateBootstrapApi {
   @async
-  void setUpCallback({
+  void initializePushNotificationCallback({
     required int callbackDispatcher,
-    required int onStartHandler,
-    required int onChangedLifecycleHandler,
+    required int onNotificationSync,
   });
 
   @async
-  void setUp({
-    bool autoRestartOnTerminate = false,
-    bool autoStartOnBoot = false,
-    String? androidNotificationName,
-    String? androidNotificationDescription,
+  void configureSignalingService({
+    bool launchBackgroundIsolateEvenIfAppIsOpen = false,
   });
 
   @async
-  void startService({
-    String? jsonData,
-  });
+  PIncomingCallError? reportNewIncomingCall(
+    String callId,
+    PHandle handle,
+    String? displayName,
+    bool hasVideo,
+  );
+}
+
+@HostApi()
+abstract class PHostBackgroundPushNotificationIsolateApi {
+  @async
+  void endCall(
+    String callId,
+  );
 
   @async
-  void stopService();
-
-  @async
-  void finishActivity();
+  void endAllCalls();
 }
 
 @HostApi()
@@ -233,7 +266,10 @@ abstract class PHostPermissionsApi {
   PSpecialPermissionStatusTypeEnum getFullScreenIntentPermissionStatus();
 
   @async
-  bool openFullScreenIntentSettings();
+  void openFullScreenIntentSettings();
+
+  @async
+  void openSettings();
 
   @async
   PCallkeepAndroidBatteryMode getBatteryMode();
@@ -255,6 +291,9 @@ abstract class PDelegateBackgroundRegisterFlutterApi {
 
   @async
   void onApplicationStatusChanged(int applicationStatusCallbackHandle, PCallkeepServiceStatus status);
+
+  @async
+  void onNotificationSync(int pushNotificationSyncStatusHandle, PCallkeepPushNotificationSyncStatus status);
 }
 
 @HostApi()
@@ -341,6 +380,15 @@ abstract class PHostConnectionsApi {
   @ObjCSelector('getConnection:')
   @async
   PCallkeepConnection? getConnection(String callId);
+
+  @async
+  List<PCallkeepConnection> getConnections();
+
+  @async
+  void cleanConnections();
+
+  @async
+  void updateActivitySignalingStatus(PCallkeepSignalingStatus status);
 }
 
 @FlutterApi()
@@ -413,11 +461,12 @@ abstract class PDelegateBackgroundServiceFlutterApi {
   void performEndCall(String callId);
 
   @async
-  void endCallReceived(
+  void performReceivedCall(
     String callId,
     String number,
     bool video,
     int createdTime,
+    String? displayName,
     int? acceptedTime,
     int? hungUpTime,
   );

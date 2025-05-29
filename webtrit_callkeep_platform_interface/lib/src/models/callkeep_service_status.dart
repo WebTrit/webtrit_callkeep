@@ -1,28 +1,20 @@
 import 'package:equatable/equatable.dart';
 
-import 'callkeep_lifecycle_type.dart';
+import 'callkeep_lifecycle_event.dart';
+import 'callkeep_signaling_status.dart';
 
 class CallkeepServiceStatus extends Equatable {
   const CallkeepServiceStatus({
-    required this.lifecycle,
-    required this.activityReady,
-    required this.lockScreen,
-    required this.activeCalls,
-    required this.data,
+    required this.lifecycleEvent,
+    this.mainSignalingStatus,
   });
 
-  final CallkeepLifecycleType lifecycle;
-  final bool lockScreen;
-  final bool activityReady;
-  final bool activeCalls;
-  final Map<String, dynamic> data;
+  final CallkeepLifecycleEvent lifecycleEvent;
+  final CallkeepSignalingStatus? mainSignalingStatus;
 
   @override
   List<Object?> get props => [
-        data,
-        lifecycle,
-        lockScreen,
-        activityReady,
-        activeCalls,
+        lifecycleEvent,
+        mainSignalingStatus,
       ];
 }

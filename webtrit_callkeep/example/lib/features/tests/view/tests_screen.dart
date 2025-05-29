@@ -21,20 +21,7 @@ class TestsScreen extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(4),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withOpacity(0.2),
-                            spreadRadius: 1,
-                            blurRadius: 4,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
+                    Card(
                       child: ConstrainedBox(
                         constraints: BoxConstraints(
                           maxHeight: MediaQuery.of(context).size.height / 3,

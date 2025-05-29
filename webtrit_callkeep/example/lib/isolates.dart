@@ -1,36 +1,58 @@
-import 'dart:isolate';
-
-import 'package:flutter/foundation.dart';
+import 'package:logging/logging.dart';
 import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 
-@pragma('vm:entry-point')
-Future<void> sideIsolateCallbackHandle() async {
-  CallkeepBackgroundService().startService();
-  logIsolateI('Side isolate callback handle');
-}
+import 'app/constants.dart';
+import 'bootstrap.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+
+final _log = Logger('Isolates');
 
 @pragma('vm:entry-point')
 Future<void> onStartForegroundService(CallkeepServiceStatus status) async {
-  logIsolateI('Callkeep sync status: $status');
-  await CallkeepBackgroundService().endAllBackgroundCalls();
-  Future.delayed(Duration(seconds: 5), () {
-    CallkeepBackgroundService().stopService();
+  initializeLogs();
+  _log.info('onStartForegroundService: $status');
+  CallkeepConnections().cleanConnections();
+
+  _log.info('Starting call after 3 seconds');
+  Future.delayed(Duration(seconds: 3), () {
+    Fluttertoast.showToast(msg: "Starting incoming call", toastLength: Toast.LENGTH_SHORT);
+    BackgroundSignalingService().incomingCall(call1Identifier, call1Number);
   });
+
+  _log.info('Starting call after 5 seconds');
+  Future.delayed(Duration(seconds: 8), () {
+    Fluttertoast.showToast(msg: "End incoming call", toastLength: Toast.LENGTH_SHORT);
+    BackgroundSignalingService().endCall(call1Identifier);
+  });
+
+  return Future.value();
 }
 
 @pragma('vm:entry-point')
 Future<void> onChangedLifecycle(CallkeepServiceStatus status) async {
-  if (status.lifecycle == CallkeepLifecycleType.onStop) {
-    CallkeepBackgroundService().stopService();
-  } else {
-    CallkeepBackgroundService().startService();
+  initializeLogs();
+  _log.info('onChangedLifecycle: $status');
+
+  if (status.lifecycleEvent == CallkeepLifecycleEvent.onStop) {
+    BackgroundSignalingService().endCall(call1Identifier);
   }
+
+  return Future.value();
 }
 
-void logIsolateI(String message) {
-  if (kIsWeb) {
-    print("logIsolateI web not supported");
+@pragma('vm:entry-point')
+Future<void> onPushNotificationCallback(CallkeepPushNotificationSyncStatus status) async {
+  initializeLogs();
+  _log.info('onPushNotificationCallback: $status');
+
+  if (status == CallkeepPushNotificationSyncStatus.synchronizeCallStatus) {
+    Future.delayed(Duration(seconds: 3), () {
+      _log.info('Ending call after 3 seconds');
+      BackgroundPushNotificationService().endCall(call1Identifier);
+    });
   } else {
-    print('[$message] Isolate ID: ${Isolate.current.hashCode}');
+    _log.info('onPushNotificationCallback: unknown');
   }
+
+  return Future.value();
 }

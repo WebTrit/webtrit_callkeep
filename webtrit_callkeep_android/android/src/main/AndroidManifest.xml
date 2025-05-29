@@ -25,7 +25,7 @@
 
     <application>
         <service
-            android:name=".services.telecom.connection.PhoneConnectionService"
+            android:name=".services.services.connection.PhoneConnectionService"
             android:enabled="true"
             android:exported="false"
             android:label="PhoneConnectionService"
@@ -36,23 +36,46 @@
         </service>
 
         <service
-            android:name=".services.callkeep.foreground.ForegroundCallService"
+            android:name=".services.services.signaling.SignalingIsolateService"
             android:exported="false"
             android:foregroundServiceType="phoneCall" />
 
         <service
-            android:name=".services.ActiveCallService"
+            android:name=".services.services.incoming_call.IncomingCallService"
+            android:exported="false"
+            android:foregroundServiceType="phoneCall" />
+
+        <service
+            android:name=".services.services.active_call.ActiveCallService"
             android:exported="false"
             android:foregroundServiceType="phoneCall|microphone|camera" />
 
+        <service android:name=".services.services.foreground.ForegroundService" />
+
+        <!--
+          Receiver for starting the signaling service (SignalingIsolateService) on system events,
+          only if the service is enabled in app settings.
+
+          Used to relaunch the service on:
+            - device boot (BOOT_COMPLETED, LOCKED_BOOT_COMPLETED),
+            - app update (MY_PACKAGE_REPLACED),
+            - quick boot on some legacy HTC/Motorola devices (QUICKBOOT_POWERON)
+
+           Note:
+            - On Android 14+ (API 34), BOOT_COMPLETED can no longer start a ForegroundService
+              of type "phone call". The service must be started later from WebtritCallkeepPlugin.
+
+          See: ForegroundCallBootReceiver.kt
+        -->
         <receiver
-            android:name=".services.callkeep.foreground.ForegroundCallBootReceiver"
+            android:name=".services.services.signaling.receivers.ForegroundCallBootReceiver"
             android:enabled="true"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
     </application>

@@ -6,7 +6,7 @@ import androidx.core.app.NotificationCompat
 import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.ContextHolder.context
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.notifications.NotificationChannelManager.MISSED_CALL_NOTIFICATION_CHANNEL_ID
+import com.webtrit.callkeep.managers.NotificationChannelManager.MISSED_CALL_NOTIFICATION_CHANNEL_ID
 
 class MissedCallNotificationBuilder() : NotificationBuilder() {
     private var callMetaData: CallMetadata? = null
@@ -30,9 +30,7 @@ class MissedCallNotificationBuilder() : NotificationBuilder() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 setCategory(Notification.CATEGORY_MISSED_CALL)
             }
-            setFullScreenIntent(
-                buildOpenAppIntent(context, callMetaData.getCallUri()), true
-            )
+            setFullScreenIntent(buildOpenAppIntent(context), true)
         }
         val notification = notificationBuilder.build()
         notification.flags = notification.flags or NotificationCompat.FLAG_INSISTENT

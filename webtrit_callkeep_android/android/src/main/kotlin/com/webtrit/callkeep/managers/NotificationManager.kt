@@ -3,30 +3,30 @@ package com.webtrit.callkeep.managers
 import android.app.Notification
 import android.content.Intent
 import androidx.core.app.NotificationManagerCompat
-import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.ContextHolder.context
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
 import com.webtrit.callkeep.notifications.MissedCallNotificationBuilder
-import com.webtrit.callkeep.services.ActiveCallService
+import com.webtrit.callkeep.services.services.active_call.ActiveCallService
+import com.webtrit.callkeep.services.services.incoming_call.IncomingCallRelease
+import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
 import io.flutter.Log
 
 class NotificationManager() {
     private val notificationManager by lazy { NotificationManagerCompat.from(context) }
-    private val incomingCallNotificationBuilder by lazy { IncomingCallNotificationBuilder() }
     private val missedCallNotificationBuilder by lazy { MissedCallNotificationBuilder() }
 
-    fun showIncomingCallNotification(callMetaData: CallMetadata, hasAnswerButton: Boolean = true) {
-        val notification =  incomingCallNotificationBuilder.apply {
-            setCallMetaData(callMetaData)
-            setHasAnswerButton(hasAnswerButton)
-        }.build()
-
-        showRegularNotification(notification, R.integer.notification_incoming_call_id)
+    fun showIncomingCallNotification(callMetaData: CallMetadata) {
+        IncomingCallService.start(context, callMetaData)
     }
 
-    fun cancelIncomingNotification() {
-        cancelRegularNotification(R.integer.notification_incoming_call_id)
+    fun cancelIncomingNotification(answered: Boolean) {
+        IncomingCallService.release(
+            context, if (answered) {
+                IncomingCallRelease.IC_RELEASE_WITH_ANSWER
+            } else {
+                IncomingCallRelease.IC_RELEASE_WITH_DECLINE
+            }
+        )
     }
 
     fun showMissedCallNotification(callMetaData: CallMetadata) {
@@ -84,6 +84,11 @@ class NotificationManager() {
 
     private fun cancelRegularNotification(id: Int) {
         notificationManager.cancel(id)
+    }
+
+    fun tearDown() {
+        context.stopService(Intent(context, ActiveCallService::class.java))
+        context.stopService(Intent(context, IncomingCallService::class.java))
     }
 
     companion object {

@@ -1,8 +1,10 @@
 <resources>
     <string name="client_title">User name</string>
     <string name="incoming_call_title">Incoming call</string>
+    <string name="incoming_call_description">"You have an incoming call from %1$s</string>
     <string name="answer_call_button_text">Answer</string>
-    <string name="hang_up_button_text">Decline</string>
+    <string name="decline_button_text">Decline</string>
+    <string name="hang_up_button_text">Hung up</string>
     <string name="push_notification_incoming_call_channel_title">Incoming call</string>
     <string name="push_notification_active_call_channel_title">Active call</string>
     <string name="push_notification_active_calls_channel_title">Active calls</string>
@@ -12,4 +14,8 @@
     <string name="push_notification_missed_call_channel_description">Notification of missed calls</string>
     <string name="push_notification_foreground_call_service_title">Ongoing call</string>
     <string name="push_notification_foreground_call_service_description">This service keeps the call active in the background</string>
+    <string name="signaling_service_notification_name">Inbound Calls</string>
+    <string name="signaling_service_notification_description">This is required to receive incoming calls</string>
+    <string name="incoming_call_declined_title">Call Declined</string>
+    <string name="incoming_call_declined_text">Declined an incoming call from %1$s</string>
 </resources>

@@ -4,13 +4,15 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import androidx.lifecycle.Lifecycle
-import com.webtrit.callkeep.common.helpers.Platform
-import com.webtrit.callkeep.models.CallMetadata
+
+interface ActivityProvider {
+    fun getActivity(): Activity?
+    fun addActivityChangeListener(listener: (Activity?) -> Unit)
+    fun removeActivityChangeListener(listener: (Activity?) -> Unit)
+}
 
 @SuppressLint("StaticFieldLeak")
 object ActivityHolder : ActivityProvider {
-    private var lifecycle: Lifecycle.Event? = null
     private var activity: Activity? = null
 
     private val activityChangeListeners = mutableListOf<(Activity?) -> Unit>()
@@ -28,21 +30,8 @@ object ActivityHolder : ActivityProvider {
         }
     }
 
-    fun getActivityState(): Lifecycle.Event {
-        return lifecycle ?: Lifecycle.Event.ON_ANY
-    }
-
-    fun setLifecycle(event: Lifecycle.Event) {
-        lifecycle = event
-    }
-
-    fun isActivityVisible(): Boolean {
-        return lifecycle == Lifecycle.Event.ON_RESUME && activity != null
-    }
-
-    fun start(metadata: CallMetadata?, context: Context) {
+    fun start(context: Context) {
         val hostAppActivity = Platform.getLaunchActivity(context)?.apply {
-            data = metadata?.getCallUri()
             // Ensures the activity is started in a new task if needed (required when launching from a service)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                     // Prevents recreating the activity if it's already at the top of the task

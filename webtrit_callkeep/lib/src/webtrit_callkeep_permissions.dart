@@ -30,19 +30,35 @@ class WebtritCallkeepPermissions {
     return platform.getFullScreenIntentPermissionStatus();
   }
 
-  /// Opens the settings screen for full screen intent permission.
+  /// Attempts to open the system settings screen for managing the full screen intent permission.
   ///
-  /// Returns a [Future] that resolves to a boolean indicating whether the settings screen was successfully opened.
-  Future<bool> openFullScreenIntentSettings() {
+  /// This permission allows the app to display full screen notifications, such as incoming call UI,
+  /// when the device is locked.
+  ///
+  /// On non-Android platforms and web, this call does nothing.
+  ///
+  /// Returns a [Future] that completes when the operation is finished.
+  /// Errors (e.g., if the settings screen cannot be opened) should be handled via platform implementation.
+  Future<void> openFullScreenIntentSettings() {
     if (kIsWeb) {
-      return Future.value(false);
+      return Future.value();
     }
 
     if (!Platform.isAndroid) {
-      return Future.value(false);
+      return Future.value();
     }
 
     return platform.openFullScreenIntentSettings();
+  }
+
+  /// Attempts to open the system settings screen for managing the app's permissions.
+  // TODO(Serdun): Add support for iOS.
+  Future<void> openSettings() {
+    if (kIsWeb) {
+      return Future.value();
+    }
+
+    return platform.openSettings();
   }
 
   /// Gets the battery optimization status.

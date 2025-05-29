@@ -1,70 +1,172 @@
 package com.webtrit.callkeep
 
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
+import android.os.Build
+import android.os.IBinder
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
+import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.AssetHolder
 import com.webtrit.callkeep.common.ContextHolder
-import com.webtrit.callkeep.services.callkeep.foreground.ForegroundCallService
-
+import com.webtrit.callkeep.common.Log
+import com.webtrit.callkeep.common.StorageDelegate
+import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
+import com.webtrit.callkeep.services.services.foreground.ForegroundService
+import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
+import com.webtrit.callkeep.services.services.signaling.SignalingIsolateService
 import io.flutter.embedding.engine.plugins.FlutterPlugin
+import io.flutter.embedding.engine.plugins.FlutterPlugin.FlutterAssets
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.embedding.engine.plugins.lifecycle.HiddenLifecycleReference
 import io.flutter.embedding.engine.plugins.service.ServiceAware
 import io.flutter.embedding.engine.plugins.service.ServicePluginBinding
+import io.flutter.plugin.common.BinaryMessenger
 
 /** WebtritCallkeepAndroidPlugin */
 class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, LifecycleEventObserver {
     private var activityPluginBinding: ActivityPluginBinding? = null
     private var lifeCycle: Lifecycle? = null
-    var service: ForegroundCallService? = null
 
-    private lateinit var state: WebtritCallkeepPluginState
+    private lateinit var messenger: BinaryMessenger
+    private lateinit var assets: FlutterAssets
+    private lateinit var context: Context
+
+    private var signalingIsolateService: SignalingIsolateService? = null
+    private var pushNotificationIsolateService: IncomingCallService? = null
+
+    private var foregroundService: ForegroundService? = null
+    private var serviceConnection: ServiceConnection? = null
+
+    private var delegateLogsFlutterApi: PDelegateLogsFlutterApi? = null
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         // Store binnyMessenger for later use if instance of the flutter engine belongs to main isolate OR call service isolate
-        val messenger = flutterPluginBinding.binaryMessenger
-        val assets = flutterPluginBinding.flutterAssets
-        val context = flutterPluginBinding.applicationContext
+        messenger = flutterPluginBinding.binaryMessenger
+        assets = flutterPluginBinding.flutterAssets
+        context = flutterPluginBinding.applicationContext
 
-        ContextHolder.init(context);
+        ContextHolder.init(context)
         AssetHolder.init(context, assets)
 
-        state = WebtritCallkeepPluginState(context, messenger).apply {
-            initIsolateApi()
+        delegateLogsFlutterApi = PDelegateLogsFlutterApi(messenger).also { Log.add(it) }
+
+        // Bootstrap isolate APIs
+        BackgroundSignalingIsolateBootstrapApi(context).let {
+            PHostBackgroundSignalingIsolateBootstrapApi.setUp(messenger, it)
+        }
+        BackgroundPushNotificationIsolateBootstrapApi(context).let {
+            PHostBackgroundPushNotificationIsolateBootstrapApi.setUp(messenger, it)
+        }
+
+        // Helper APIs
+        PermissionsApi(context).let {
+            PHostPermissionsApi.setUp(messenger, it)
+        }
+        SoundApi(context).let {
+            PHostSoundApi.setUp(messenger, it)
+        }
+        ConnectionsApi().let {
+            PHostConnectionsApi.setUp(messenger, it)
         }
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-        this.state.deAttachLogs()
-        this.state.onDetach()
+        delegateLogsFlutterApi?.let { Log.remove(it) }
+        delegateLogsFlutterApi = null
+
+        PHostApi.setUp(this.messenger, null)
+
+        ActivityHolder.setActivity(null)
+
+        PHostBackgroundSignalingIsolateBootstrapApi.setUp(messenger, null)
+        PHostBackgroundPushNotificationIsolateBootstrapApi.setUp(messenger, null)
+
+        PHostPermissionsApi.setUp(messenger, null)
+        PHostSoundApi.setUp(messenger, null)
+        PHostConnectionsApi.setUp(messenger, null)
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         this.activityPluginBinding = binding
 
+        ActivityHolder.setActivity(binding.activity)
+
         lifeCycle = (binding.lifecycle as HiddenLifecycleReference).lifecycle
         lifeCycle!!.addObserver(this)
 
-        this.state.initMainIsolateApi(binding.activity)
+        // Launch the signaling service manually on Android 15+ (API 34 / UPSIDE_DOWN_CAKE) if enabled.
+        //
+        // On Android 15 and above, the system no longer allows ForegroundServices of type "phone call"
+        // to be started from BOOT_COMPLETED or similar system broadcasts. As a result, the service must
+        // be started explicitly from the app lifecycle — in this case, from the plugin/activity attachment.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            if (StorageDelegate.SignalingService.isSignalingServiceEnabled(binding.activity)) {
+                try {
+                    val intent = Intent(binding.activity, SignalingIsolateService::class.java)
+                    context.startForegroundService(intent)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to start SignalingIsolateService: ${e.message}")
+                }
+            }
+        }
+        bindForegroundService(binding.activity)
     }
 
     override fun onDetachedFromActivity() {
-        state.detachActivity()
+        ActivityHolder.setActivity(null)
+
         this.lifeCycle?.removeObserver(this)
+
+        activityPluginBinding?.activity?.let { unbindAndStopForegroundService(it) }
+        PHostApi.setUp(messenger, null)
+
+        foregroundService = null
+        serviceConnection = null
     }
 
     override fun onAttachedToService(binding: ServicePluginBinding) {
-        if (binding.service !is ForegroundCallService) return
+        // Create communication bridge between the service and the push notification isolate
+        if (binding.service is IncomingCallService) {
+            pushNotificationIsolateService = binding.service as? IncomingCallService
 
-        this.service = binding.service as ForegroundCallService
+            pushNotificationIsolateService?.establishFlutterCommunication(
+                PDelegateBackgroundServiceFlutterApi(messenger),
+                PDelegateBackgroundRegisterFlutterApi(messenger)
+            )
 
-        this.state.initBackgroundIsolateApi(binding.service.applicationContext)
+            PHostBackgroundPushNotificationIsolateApi.setUp(
+                messenger,
+                pushNotificationIsolateService?.getCallLifecycleHandler()
+            )
+        }
+
+        // Create communication bridge between the service and the signaling isolate
+        if (binding.service is SignalingIsolateService) {
+            this.signalingIsolateService = binding.service as SignalingIsolateService
+
+            PDelegateBackgroundServiceFlutterApi(messenger).let {
+                signalingIsolateService?.isolateCalkeepFlutterApi = it
+            }
+
+            PDelegateBackgroundRegisterFlutterApi(messenger).let {
+                signalingIsolateService?.isolateSignalingFlutterApi = it
+            }
+
+            PHostBackgroundSignalingIsolateApi.setUp(messenger, signalingIsolateService)
+        }
     }
 
     override fun onDetachedFromService() {
-        this.state.destroyService()
+        PHostBackgroundSignalingIsolateApi.setUp(messenger, null)
+        PHostBackgroundPushNotificationIsolateApi.setUp(messenger, null)
+
+        signalingIsolateService = null
+        pushNotificationIsolateService = null
     }
 
     override fun onDetachedFromActivityForConfigChanges() {
@@ -77,7 +179,55 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     }
 
     override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
-        state.onStateChanged(event)
+        Log.d(TAG, "onStateChanged: Lifecycle event received - $event")
+        ActivityLifecycleBroadcaster.setValue(context, event)
+
+        // When the app is in the background, the service should be stopped. However, there is an unresolved issue if a call starts from the activity and the app is minimized, causing incomplete event handling.
+        // To handle events when the app is minimized, we allow the service to remain active for as long as possible to manage recent events.
+        // Currently, this can throw a BackgroundServiceStartNotAllowedException when the activity is in the background and the connection service emits an event.
+        // To handle events when the app is in the background, we use isolates, so we do not stop the service to correctly handle recent events from the activity.
+
+        // if (event == Lifecycle.Event.ON_STOP) {
+        //     activityPluginBinding?.activity?.let { unbindAndStopForegroundService(it) }
+        // }
+        // if (event == Lifecycle.Event.ON_START && serviceConnection == null) {
+        //     activityPluginBinding?.activity?.let {
+        //         bindForegroundService(it)
+        //     }
+        // }
+    }
+
+    private fun bindForegroundService(activity: Context) {
+        val intent = Intent(activity, ForegroundService::class.java)
+        serviceConnection = object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                val binder = service as ForegroundService.LocalBinder
+                foregroundService = binder.getService()
+                foregroundService?.flutterDelegateApi = PDelegateFlutterApi(messenger)
+                PHostApi.setUp(messenger, foregroundService)
+            }
+
+            override fun onServiceDisconnected(name: ComponentName?) {
+                foregroundService = null
+            }
+        }
+        activity.bindService(intent, serviceConnection!!, Context.BIND_AUTO_CREATE)
+    }
+
+    private fun unbindAndStopForegroundService(activity: Context) {
+        serviceConnection?.let { conn ->
+            try {
+                activity.unbindService(conn)
+                val stopIntent = Intent(activity, ForegroundService::class.java)
+                activity.stopService(stopIntent)
+            } catch (e: IllegalArgumentException) {
+                Log.e(TAG, "unbindAndStopForegroundService: Service not registered - ${e.message}")
+            }
+        }
+
+        serviceConnection = null
+        foregroundService = null
+        PHostApi.setUp(messenger, null)
     }
 
     companion object {
