@@ -27,9 +27,7 @@ class MissedCallNotificationBuilder() : NotificationBuilder() {
             setContentTitle(context.getString(R.string.push_notification_missed_call_channel_title))
             setContentText("You have a missed call from ${callMetaData.name}")
             setAutoCancel(true)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                setCategory(Notification.CATEGORY_MISSED_CALL)
-            }
+            setCategory(NotificationCompat.CATEGORY_MISSED_CALL)
             setFullScreenIntent(buildOpenAppIntent(context), true)
         }
         val notification = notificationBuilder.build()

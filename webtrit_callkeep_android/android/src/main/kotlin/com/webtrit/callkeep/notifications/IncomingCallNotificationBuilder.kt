@@ -41,7 +41,6 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
             setCategory(NotificationCompat.CATEGORY_CALL)
             setContentTitle(title)
             text?.let { setContentText(it) }
-            setAutoCancel(true)
         }
     }
 
@@ -67,7 +66,6 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
         val declineButton = R.string.decline_button_text
 
         val builder = baseNotificationBuilder(title, description).apply {
-            setOngoing(true)
             setFullScreenIntent(buildOpenAppIntent(context), true)
         }
 

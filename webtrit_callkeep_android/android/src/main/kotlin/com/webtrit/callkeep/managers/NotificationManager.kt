@@ -3,8 +3,10 @@ package com.webtrit.callkeep.managers
 import android.app.Notification
 import android.content.Intent
 import androidx.core.app.NotificationManagerCompat
+import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.ContextHolder.context
 import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
 import com.webtrit.callkeep.notifications.MissedCallNotificationBuilder
 import com.webtrit.callkeep.services.services.active_call.ActiveCallService
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallRelease
@@ -14,19 +16,34 @@ import io.flutter.Log
 class NotificationManager() {
     private val notificationManager by lazy { NotificationManagerCompat.from(context) }
     private val missedCallNotificationBuilder by lazy { MissedCallNotificationBuilder() }
+    private val incomingCallNotificationBuilder by lazy { IncomingCallNotificationBuilder() }
 
     fun showIncomingCallNotification(callMetaData: CallMetadata) {
-        IncomingCallService.start(context, callMetaData)
+        // Switched back to old displaying method
+        // Because using foreground service automatically sets the notification as ongoing
+        // which makes some OS versions (MIUI. EMUI..) to show notification silently
+        // without waking up device if its locked.
+        //
+        // do not set isOutgoing in notification builder also
+        // As documented in setOutgoing:
+        // They are typically used to indicate a background task that the user is actively engaged with (e. g., playing music) or is pending in some way and therefore occupying the device (e. g., a file download, sync operation, active network connection).
+        //
+        // IncomingCallService.start(context, callMetaData)
+        val notification = incomingCallNotificationBuilder.apply {
+            setCallMetaData(callMetaData)
+        }.build()
+        showRegularNotification(notification, R.integer.notification_incoming_call_id)
     }
 
     fun cancelIncomingNotification(answered: Boolean) {
-        IncomingCallService.release(
-            context, if (answered) {
-                IncomingCallRelease.IC_RELEASE_WITH_ANSWER
-            } else {
-                IncomingCallRelease.IC_RELEASE_WITH_DECLINE
-            }
-        )
+        //        IncomingCallService.release(
+        //            context, if (answered) {
+        //                IncomingCallRelease.IC_RELEASE_WITH_ANSWER
+        //            } else {
+        //                IncomingCallRelease.IC_RELEASE_WITH_DECLINE
+        //            }
+        //        )
+        cancelRegularNotification(R.integer.notification_incoming_call_id)
     }
 
     fun showMissedCallNotification(callMetaData: CallMetadata) {
