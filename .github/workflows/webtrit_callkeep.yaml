@@ -24,13 +24,14 @@ jobs:
         **/*.md
         !brick/**/*.md
         .*/**/*.md
+      dictionary: .cspell.json
       modified_files_only: false
 
   build:
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/flutter_package.yml@v1
     with:
       flutter_channel: stable
-      flutter_version: 3.13.2
+      flutter_version: 3.13.5
       working_directory: webtrit_callkeep
 
 
@@ -46,7 +47,7 @@ jobs:
       - uses: actions/setup-java@v3
         with:
           distribution: "temurin"
-          java-version: "11"
+          java-version: "17"
 
       - uses: subosito/flutter-action@v2
 
@@ -67,7 +68,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
-          force-avd-creation: false
+          force-avd-creation: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
           script: echo "Generated AVD snapshot for caching."
