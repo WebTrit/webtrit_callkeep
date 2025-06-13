@@ -24,7 +24,6 @@ jobs:
         **/*.md
         !brick/**/*.md
         .*/**/*.md
-      dictionary: .cspell.json
       modified_files_only: false
 
   build:
