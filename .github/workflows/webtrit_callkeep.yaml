@@ -25,12 +25,13 @@ jobs:
         !brick/**/*.md
         .*/**/*.md
       modified_files_only: false
+      custom_dictionary: .github/dictionary.txt
 
   build:
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/flutter_package.yml@v1
     with:
       flutter_channel: stable
-      flutter_version: 3.13.5
+      flutter_version: 3.32.0
       working_directory: webtrit_callkeep
 
 
