@@ -356,7 +356,7 @@ class _UUIDToCallIdMapping {
 
   // Converts a Call ID to a UUID using a version 5 UUID algorithm.
   String _callIdToUUID(String callId) {
-    return const Uuid().v5obj(Uuid.NAMESPACE_OID, callId).uuid;
+    return const Uuid().v5obj(Namespace.oid.value, callId).uuid;
   }
 }
 

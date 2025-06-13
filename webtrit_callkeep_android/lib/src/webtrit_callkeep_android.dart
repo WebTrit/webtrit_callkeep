@@ -335,7 +335,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
 // Android background push notification service
 // ------------------------------------------------------------------------------------------------
   @override
-  Future<void> initializePushNotificationCallback(CallKeepPushNotificationSyncStatusHandle onNotificationSync) async {
+  Future<void> initializePushNotificationCallback(CallKeepPushNotificationSyncStatusHandle onSync) async {
     // Initialization callback handle for the isolate plugin only once;
     _pushNotificationIsolatePluginCallbackHandle = _pushNotificationIsolatePluginCallbackHandle ??
         PluginUtilities.getCallbackHandle(
@@ -344,7 +344,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
 
     _onPushNotificationNotificationSync = _onPushNotificationNotificationSync ??
         PluginUtilities.getCallbackHandle(
-          onNotificationSync,
+          onSync,
         )?.toRawHandle();
 
     if (_pushNotificationIsolatePluginCallbackHandle != null && _onPushNotificationNotificationSync != null) {
