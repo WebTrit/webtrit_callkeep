@@ -1,0 +1,5 @@
+# Placeholder for test_platform_name.yaml
+# Define the required steps or configurations for your flow
+steps:
+  - name: Open App
+    run: echo "App opened"
