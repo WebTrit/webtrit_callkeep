@@ -1,8 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/mockito.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
 
-class MockWebtritCallkeepPlatformInterfacePlatform with MockPlatformInterfaceMixin implements WebtritCallkeepPlatform {
+class MockWebtritCallkeepPlatformInterfacePlatform extends Mock
+    with MockPlatformInterfaceMixin
+    implements WebtritCallkeepPlatform {
   CallkeepDelegate? _callkeepDelegate;
   CallkeepBackgroundServiceDelegate? _androidServiceDelegate;
 
@@ -20,7 +23,7 @@ class MockWebtritCallkeepPlatformInterfacePlatform with MockPlatformInterfaceMix
 
   @override
   Future<dynamic> endCallBackgroundSignalingService(String callId) {
-    _androidServiceDelegate?.performServiceEndCall(callId);
+    _androidServiceDelegate?.performEndCall(callId);
     return Future.value();
   }
 
@@ -66,11 +69,11 @@ class MockWebtritCallkeepPlatformInterfacePlatform with MockPlatformInterfaceMix
     return Future.value();
   }
 
-  @override
-  Future<void> reportEndCall(String callId, CallkeepEndCallReason reason) {
-    _callkeepDelegate?.performEndCall(callId);
-    return Future.value();
-  }
+  // @override
+  // Future<void> reportEndCall(String callId, CallkeepEndCallReason reason) {
+  //   _callkeepDelegate?.performEndCall(callId);
+  //   return Future.value();
+  // }
 
   @override
   Future<CallkeepIncomingCallError?> reportNewIncomingCall(

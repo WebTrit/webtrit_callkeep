@@ -20,6 +20,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   // APIs for working with the background service isolates.
   final _backgroundSignalingIsolateApi = PHostBackgroundSignalingIsolateApi();
   final _backgroundPushNotificationIsolateApi = PHostBackgroundPushNotificationIsolateApi();
+  final _pHostSmsReceptionApi = PHostSmsReceptionConfigApi();
 
   final _pushRegistryApi = PPushRegistryHostApi();
   final _api = PHostApi();
@@ -334,7 +335,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
 // Android background push notification service
 // ------------------------------------------------------------------------------------------------
   @override
-  Future<void> initializePushNotificationCallback(CallKeepPushNotificationSyncStatusHandle onNotificationSync) async {
+  Future<void> initializePushNotificationCallback(CallKeepPushNotificationSyncStatusHandle onSync) async {
     // Initialization callback handle for the isolate plugin only once;
     _pushNotificationIsolatePluginCallbackHandle = _pushNotificationIsolatePluginCallbackHandle ??
         PluginUtilities.getCallbackHandle(
@@ -343,7 +344,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
 
     _onPushNotificationNotificationSync = _onPushNotificationNotificationSync ??
         PluginUtilities.getCallbackHandle(
-          onNotificationSync,
+          onSync,
         )?.toRawHandle();
 
     if (_pushNotificationIsolatePluginCallbackHandle != null && _onPushNotificationNotificationSync != null) {
@@ -387,6 +388,32 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
 
 // ------------------------------------------------------------------------------------------------
 // Android background push notification service
+
+  // ------------------------------------------------------------------------------------------------
+// Android SMS reception section
+// ------------------------------------------------------------------------------------------------
+
+  /// Initializes SMS reception with the given prefix used to filter messages.
+  ///
+  /// Only messages that begin with [messagePrefix] will be delivered to the Dart handler.
+  /// Initializes SMS reception with the given prefix and regex pattern used to filter and parse messages.
+  ///
+  /// Only messages that begin with [messagePrefix] and match [regexPattern] will be delivered and parsed.
+  @override
+  Future<void> initializeSmsReception({
+    /// Prefix to match incoming SMS messages (e.g. "<#> WEBTRIT:")
+    required String messagePrefix,
+
+    /// Regex pattern with 4 capture groups: callId, handle, displayName, hasVideo
+    required String regexPattern,
+  }) {
+    return _pHostSmsReceptionApi.initializeSmsReception(
+      messagePrefix: messagePrefix,
+      regexPattern: regexPattern,
+    );
+  }
+
+// ------------------------------------------------------------------------------------------------
 }
 
 class _CallkeepDelegateRelay implements PDelegateFlutterApi {
