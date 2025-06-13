@@ -13,8 +13,8 @@ void main() {
   const displayName = 'Display Name';
   const hasVideoMock = false;
 
-  const initialMainRout = '/main';
-  const initialCallRout = '/main/call';
+  // const initialMainRout = '/main';
+  // const initialCallRout = '/main/call';
 
   test('$WebtritCallkeepPlatform is the default instance', () {
     expect(WebtritCallkeepPlatform.instance, isInstanceOf<WebtritCallkeepPlatform>());
@@ -121,7 +121,7 @@ void main() {
       performEndCallListener: completerUUID.complete,
     );
     WebtritCallkeepPlatform.instance.setDelegate(callkeepRelayMock);
-    await WebtritCallkeepPlatform.instance.reportEndCall(callId, CallkeepEndCallReason.answeredElsewhere);
+    await WebtritCallkeepPlatform.instance.reportEndCall(callId, '', CallkeepEndCallReason.answeredElsewhere);
 
     expect(await completerUUID.future, equals(callId));
   });
@@ -219,10 +219,7 @@ void main() {
             maximumCallsPerCallGroup: 1,
             supportedHandleTypes: {CallkeepHandleType.number},
           ),
-          android: CallkeepAndroidOptions(
-            incomingPath: initialCallRout,
-            rootPath: initialMainRout,
-          ),
+          android: CallkeepAndroidOptions(),
         ),
       ),
       isA<void>(),
