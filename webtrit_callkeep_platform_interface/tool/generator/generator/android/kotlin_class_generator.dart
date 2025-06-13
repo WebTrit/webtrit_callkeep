@@ -1,6 +1,6 @@
 // ignore_for_file: cascade_invocations, avoid_redundant_argument_values
 
-import 'package:analyzer/dart/element/element.dart';
+import 'package:analyzer/dart/element/element2.dart';
 
 import '../../../common/common.dart';
 import '../contact/platform_class_generator.dart';
@@ -24,14 +24,17 @@ class KotlinClassGenerator implements PlatformClassGenerator {
 
   @override
   String generateClass(
-    List<FieldElement> fields,
+    List<FieldElement2> fields,
   ) {
-    final package = outputDirname?.replaceAll(_androidDirStructure, '').replaceAll('/', '.') ?? '';
+    final package = outputDirname
+            ?.replaceAll(_androidDirStructure, '')
+            .replaceAll('/', '.') ??
+        '';
     return _buildClass(fields, package);
   }
 
   String _buildClass(
-    List<FieldElement> fields,
+    List<FieldElement2> fields,
     String package,
   ) {
     final outputClass = StringBuffer();
@@ -45,10 +48,11 @@ class KotlinClassGenerator implements PlatformClassGenerator {
     return outputClass.toString();
   }
 
-  List<String> _buildConstFields(List<FieldElement> fields) {
+  List<String> _buildConstFields(List<FieldElement2> fields) {
     return fields.map((element) {
       final value = element.computeConstantValue()?.toStringValue();
-      final key = element.name.splitPascalCase(separator: '-').constantCase();
+      final key =
+          (element.name3 ?? '').splitPascalCase(separator: '-').constantCase();
       return _buildConstField(key, value);
     }).toList();
   }

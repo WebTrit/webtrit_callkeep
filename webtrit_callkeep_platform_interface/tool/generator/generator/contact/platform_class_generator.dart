@@ -1,4 +1,4 @@
-import 'package:analyzer/dart/element/element.dart';
+import 'package:analyzer/dart/element/element2.dart';
 
 abstract class PlatformClassGenerator {
   PlatformClassGenerator initialize(
@@ -7,6 +7,6 @@ abstract class PlatformClassGenerator {
   );
 
   String generateClass(
-    List<FieldElement> fields,
+    List<FieldElement2> fields,
   );
 }

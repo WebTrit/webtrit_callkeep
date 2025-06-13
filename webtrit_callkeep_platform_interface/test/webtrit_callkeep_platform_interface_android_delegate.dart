@@ -1,6 +1,7 @@
+import 'package:mockito/mockito.dart';
 import 'package:webtrit_callkeep_platform_interface/src/delegate/delegate.dart';
 
-class WebtritCallkeepDelegateAndroidRelayMock implements CallkeepBackgroundServiceDelegate {
+class WebtritCallkeepDelegateAndroidRelayMock extends Mock implements CallkeepBackgroundServiceDelegate {
   WebtritCallkeepDelegateAndroidRelayMock({this.performServiceEndCallListener, this.endCallReceivedListener});
 
   final void Function(
@@ -16,14 +17,12 @@ class WebtritCallkeepDelegateAndroidRelayMock implements CallkeepBackgroundServi
     DateTime? hungUpTime,
   )? endCallReceivedListener;
 
-  @override
   void performServiceEndCall(
     String callId,
   ) {
     performServiceEndCallListener?.call(callId);
   }
 
-  @override
   void endCallReceived(
     String callId,
     String number,
