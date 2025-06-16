@@ -25,8 +25,7 @@ jobs:
         !brick/**/*.md
         .*/**/*.md
       modified_files_only: false
-      custom_dictionary: .github/dictionary.txt
-
+      
   build:
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/flutter_package.yml@v1
     with:
