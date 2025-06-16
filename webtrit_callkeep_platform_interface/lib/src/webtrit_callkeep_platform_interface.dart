@@ -350,4 +350,44 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
 
 // ------------------------------------------------------------------------------------------------
 // Android background push notification service
+
+// ------------------------------------------------------------------------------------------------
+// Android SMS reception section
+// ------------------------------------------------------------------------------------------------
+
+  /// Initializes the SMS reception system with a prefix and a regular expression pattern.
+  ///
+  /// This function sets up a native Android SMS listener that will parse incoming messages
+  /// and extract call metadata if both conditions are met:
+  ///
+  /// 1. The message starts with the specified [messagePrefix].
+  /// 2. The message matches the [regexPattern], which must contain exactly 4 capturing groups
+  ///    in the following order: `callId`, `handle`, `displayName`, and `hasVideo`.
+  ///
+  /// The parsed result will be passed to the Dart handler registered via [setSmsHandler].
+  ///
+  /// Throws [ArgumentError] if [regexPattern] is not ICU-compliant or lacks the required groups.
+  ///
+  /// Example:
+  /// ```dart
+  /// await initializeSmsReception(
+  ///   messagePrefix: "<#> WEBTRIT:",
+  ///   regexPattern: r'\{"type":"incoming","handle":"([^"]+)","callID":"([^"]+)","displayName":"([^"]+)","hasVideo":(true|false)\}',
+  /// );
+  /// ```
+  Future<void> initializeSmsReception({
+    /// Prefix to match at the beginning of the SMS message.
+    ///
+    /// Example: `<#> WEBTRIT:`
+    required String messagePrefix,
+
+    /// ICU-compatible regular expression to extract call parameters from the message.
+    ///
+    /// Must contain exactly 4 capturing groups: `callId`, `handle`, `displayName`, `hasVideo`.
+    required String regexPattern,
+  }) {
+    throw UnimplementedError('initializeSmsReception() is not implemented');
+  }
+
+// ------------------------------------------------------------------------------------------------
 }

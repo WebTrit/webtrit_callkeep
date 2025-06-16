@@ -29,6 +29,23 @@ Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
       AndroidCallkeepServices.backgroundPushNotificationBootstrapService
           .configurePushNotificationSignalingService(launchBackgroundIsolateEvenIfAppIsOpen: true);
 
+      // Configures how incoming SMS messages should be parsed on the Android side.
+      //
+      // Parameters:
+      // - prefix: A required SMS message prefix used to filter out irrelevant messages.
+      //           Only messages starting with this prefix will be parsed.
+      // - regexPattern: ICU-compatible regular expression that extracts the required
+      //           call metadata from the SMS body. Must contain exactly four capturing
+      //           groups in the following order: callId, handle, displayName (URL-encoded), and hasVideo (true|false).
+      //
+      // Example accepted message format:
+      // "<#> CALLHOME: https://app.webtrit.com/call?callId=abc123&handle=380971112233&displayName=John%20Doe&hasVideo=true"
+      await AndroidCallkeepServices.smsReceptionConfig.configureReceivedSms(
+        prefix: "<#> CALLHOME:",
+        regexPattern:
+            r'https:\/\/app\.webtrit\.com\/call\?callId=([^&]+)&handle=([^&]+)&displayName=([^&]+)&hasVideo=(true|false)',
+      );
+
       FlutterError.onError = (details) {
         logger.severe('FlutterError', details.exception, details.stack);
       };

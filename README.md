@@ -110,6 +110,57 @@ await Callkeep().startCall(
 );
 ```
 
+## 📩 SMS-triggered Incoming Call (Regex-based)
+
+Webtrit CallKeep supports triggering an incoming call via specially formatted SMS messages. This is useful for
+white-label apps that need to handle calls even when push notifications are unavailable.
+
+### When to Use
+
+* When push delivery is unreliable (e.g., in background-restricted environments)
+* When SMS can serve as a fallback mechanism to notify of incoming calls
+
+### How It Works
+
+* he SMS is parsed on the Android side using a regular expression (regex) provided from Flutter. The message must begin
+  with a strict prefix '<#> WEBTRIT:', which is used to filter only trusted SMS messages originating from your backend.
+  This prefix is essential for security and must be retained to help pass Play Store review for sensitive SMS
+  permissions.
+* If the regex matches a predefined structure and captures all required fields, the call is triggered via
+  `PhoneConnectionService`
+
+### Android Permissions Required
+
+* `RECEIVE_SMS`
+* `BROADCAST_SMS` (used for `SmsReceiver`)
+* Additional runtime permissions for SMS reception may be needed
+
+> ⚠️ **Important**: SMS access is considered a sensitive permission in the Play Store. You must justify its use and
+> clearly describe the flow (i.e., receiving formatted SMS to trigger VoIP calls). The regex must only match SMS from
+> your
+> backend service.
+
+### Regex Requirements
+
+You must define a valid ICU-compatible regex that extracts 4 fields in the expected order:
+
+1. `callId`
+2. `handle`
+3. `displayName` (URL-encoded if needed)
+4. `hasVideo` (`true` or `false`)
+
+Regex pattern and full requirements are described in this document:
+
+👉 **[Regex Requirements for SMS Triggering](docs/sms_trigger_regex_requirements.md)**
+
+### Sample ADB SMS Command
+
+```bash
+adb emu sms send 5554 '<#> CALLHOME: {"type":"incoming","handle":"380971112233","callID":"abc123","displayName":"John%20Doe","hasVideo":true} Do not share.'
+```
+
+---
+
 ## 🔄 Event Communication Between Flutter and Platform
 
 Webtrit CallKeep provides a robust two-way communication system between the Flutter layer and native platforms (iOS and
@@ -310,7 +361,7 @@ class SignalingForegroundIsolateManager implements CallkeepBackgroundServiceDele
   void performServiceEndCall(String callId) async {
     await _signalingManager.declineCall(callId);
   }
-  
+
   void anwserCall(String callId) {
     BackgroundPushNotificationServicee.answerCall(callId);
   }
@@ -413,7 +464,7 @@ Ensure the following permissions are declared:
 
 ## 🧪 Example Project
 
-To see **Webtrit CallKeep** in action, check out the official open-source demo app:
+To see **Webtrit CallKeep** in action, check out the official open framework demo app:
 
 ### 🔗 [`webtrit_phone`](https://github.com/WebTrit/webtrit_phone)
 
