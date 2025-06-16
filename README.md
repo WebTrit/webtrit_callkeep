@@ -464,7 +464,7 @@ Ensure the following permissions are declared:
 
 ## 🧪 Example Project
 
-To see **Webtrit CallKeep** in action, check out the official open-source demo app:
+To see **Webtrit CallKeep** in action, check out the official open framework demo app:
 
 ### 🔗 [`webtrit_phone`](https://github.com/WebTrit/webtrit_phone)
 
