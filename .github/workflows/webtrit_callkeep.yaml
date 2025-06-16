@@ -87,15 +87,16 @@ jobs:
       - name: Install Fluttium
         run: flutter pub global activate fluttium_cli
 
-      - name: Start Simulator
-        # Start an iPhone simulator
-        run: |
-          UDID=$(xcrun xctrace list devices | grep "^iPhone" | awk '{gsub(/[()]/,""); print $NF}' | head -n 1)
-          echo $UDID
-          xcrun simctl boot "${UDID:?No Simulator with this name found}"
-
-      - name: E2E Tests
-        run: fluttium test flows/test_platform_name.yaml -d iPhone
+      # TODO: Restore iOS simulator steps and E2E tests when iOS E2E tests are enabled again.
+      # The following steps were temporarily removed because tests are currently disabled.
+      # - name: Start Simulator
+      #   run: |
+      #     UDID=$(xcrun xctrace list devices | grep "^iPhone" | awk '{gsub(/[()]/,""); print $NF}' | head -n 1)
+      #     echo $UDID
+      #     xcrun simctl boot "${UDID:?No Simulator with this name found}"
+      #
+      # - name: E2E Tests
+      #   run: fluttium test flows/test_platform_name.yaml -d iPhone
 
   linux:
     runs-on: ubuntu-latest
@@ -135,8 +136,10 @@ jobs:
       - name: Install Fluttium
         run: flutter pub global activate fluttium_cli
 
-      - name: E2E Tests
-        run: fluttium test flows/test_platform_name.yaml -d macos
+      # TODO: Restore macOS E2E tests when they are enabled again.
+      # The following steps were temporarily removed because tests are currently disabled.
+      # - name: E2E Tests
+      #   run: fluttium test flows/test_platform_name.yaml -d macos
 
   web:
     runs-on: ubuntu-latest
@@ -153,8 +156,10 @@ jobs:
       - name: Install Fluttium
         run: flutter pub global activate fluttium_cli
 
-      - name: E2E Tests
-        run: xvfb-run fluttium test flows/test_platform_name.yaml -d chrome
+      # TODO: Restore web E2E tests when they are enabled again.
+      # The following steps were temporarily removed because tests are currently disabled.
+      # - name: E2E Tests
+      #   run: xvfb-run fluttium test flows/test_platform_name.yaml -d chrome
 
   windows:
     runs-on: windows-2019

@@ -16,6 +16,14 @@
   ],
   "useGitignore": true,
   "words": [
-    "fluttium", "callkeep", "webtrit"
+    "fluttium",
+    "callkeep",
+    "webtrit",
+    "DTMF",
+    "CALLHOME",
+    "ringback",
+    "unmutes",
+    "Siri",
+    "jsep"
   ]
 }
