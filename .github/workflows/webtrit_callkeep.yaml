@@ -25,15 +25,6 @@ jobs:
         !brick/**/*.md
         .*/**/*.md
       modified_files_only: false
-      
-  build:
-    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/flutter_package.yml@v1
-    with:
-      flutter_channel: stable
-      flutter_version: 3.32.0
-      working_directory: webtrit_callkeep
-
-
   android:
     runs-on: macos-latest
 
