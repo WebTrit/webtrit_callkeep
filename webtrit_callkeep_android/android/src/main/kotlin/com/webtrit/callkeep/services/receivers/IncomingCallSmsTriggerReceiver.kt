@@ -22,8 +22,13 @@ class IncomingCallSmsTriggerReceiver : BroadcastReceiver() {
             return
         }
 
-        extractValidSmsMessages(context, intent, prefix, regex).forEach {
-            tryStartCall(context, it)
+        val validMessages = extractValidSmsMessages(context, intent, prefix, regex)
+        if (validMessages.isEmpty()) {
+            Log.e(TAG, "No valid SMS messages found with prefix: $prefix and regex: $regex")
+        } else {
+            validMessages.forEach {
+                tryStartCall(context, it)
+            }
         }
     }
 
@@ -44,22 +49,22 @@ class IncomingCallSmsTriggerReceiver : BroadcastReceiver() {
     ): List<CallMetadata> {
         val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent) ?: return emptyList()
 
-        return messages.mapNotNull { message ->
-            val body = message.messageBody ?: return@mapNotNull null
-            if (!body.startsWith(prefix)) return@mapNotNull null
+        val fullBody = messages.joinToString(separator = "") { it.messageBody ?: "" }
+        if (!fullBody.contains(prefix)) return emptyList()
 
-            val match = regex.find(body) ?: return@mapNotNull null
-            val (callId, handle, displayNameEncoded, hasVideoStr) = match.destructured
-            val displayName = URLDecoder.decode(displayNameEncoded, "UTF-8")
+        val match = regex.find(fullBody) ?: return emptyList()
 
+        val (callId, handleValue, displayNameEncoded, hasVideoStr) = match.destructured
+
+        return listOf(
             CallMetadata(
                 callId = callId,
-                handle = CallHandle(handle),
-                displayName = displayName,
+                handle = CallHandle(handleValue),
+                displayName = URLDecoder.decode(displayNameEncoded, "UTF-8"),
                 hasVideo = hasVideoStr == "true",
                 ringtonePath = StorageDelegate.Sound.getRingtonePath(context)
             )
-        }
+        )
     }
 
     companion object {
