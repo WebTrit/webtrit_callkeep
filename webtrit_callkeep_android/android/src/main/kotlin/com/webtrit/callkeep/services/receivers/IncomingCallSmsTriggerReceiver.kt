@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
+import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.models.CallHandle
@@ -14,6 +15,8 @@ import java.net.URLDecoder
 class IncomingCallSmsTriggerReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
+
+        ContextHolder.init(context)
 
         val prefix = StorageDelegate.IncomingCallSmsConfig.getSmsPrefix(context) ?: return
         val pattern = StorageDelegate.IncomingCallSmsConfig.getRegexPattern(context) ?: return
