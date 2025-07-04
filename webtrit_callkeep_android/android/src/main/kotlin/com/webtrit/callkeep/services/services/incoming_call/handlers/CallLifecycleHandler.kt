@@ -34,7 +34,12 @@ class CallLifecycleHandler(
     // Connection service event for answering the call, synchronized with Flutter if the app is in the background
     fun performAnswerCall(metadata: CallMetadata) {
         IsolateSelector.executeIfBackground {
-            answerCallByBackground(metadata)
+            flutterApi?.performAnswer(metadata.callId, onSuccess = {
+                connectionController.answer(metadata)
+            }, onFailure = {
+                Log.d(TAG, "Tear down connection due to answer failure: $it")
+                connectionController.tearDown()
+            })
         }
     }
 
@@ -43,14 +48,6 @@ class CallLifecycleHandler(
         flutterApi?.performEndCall(metadata.callId, onSuccess = { release() }, onFailure = { release() })
     }
 
-
-    fun answerCallByBackground(metadata: CallMetadata) {
-        flutterApi?.performAnswer(metadata.callId, onSuccess = {
-            connectionController.answer(metadata)
-        }, onFailure = {
-            connectionController.tearDown()
-        })
-    }
 
     fun terminateCall(metadata: CallMetadata, source: DeclineSource) {
         IsolateSelector.executeBasedOnIsolate(
