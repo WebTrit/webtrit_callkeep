@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../bloc/actions_cubit.dart';
@@ -102,15 +103,15 @@ class ActionsScreen extends StatelessWidget {
                           onPressed: () => context.read<ActionsCubit>().endCall(),
                         ),
                         OutlinedButton(
-                          child: Text("Set held"),
+                          child: Text(state.isHold ? "Unhold" : "Hold"),
                           onPressed: () => context.read<ActionsCubit>().setHeld(),
                         ),
                         OutlinedButton(
-                          child: Text("Set muted"),
+                          child: Text(state.isMuted ? "Unmute" : "Mute"),
                           onPressed: () => context.read<ActionsCubit>().setMuted(),
                         ),
                         OutlinedButton(
-                          child: Text("Set speaker"),
+                          child: Text(state.speakerEnabled ? "Disable speaker" : "Enable speaker"),
                           onPressed: () => context.read<ActionsCubit>().setSpeaker(),
                         ),
                         OutlinedButton(

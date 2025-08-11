@@ -1,27 +1,19 @@
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:meta/meta.dart';
 
 import 'package:webtrit_callkeep/webtrit_callkeep.dart';
-
-import '../../../app/constants.dart';
+import 'package:webtrit_callkeep_example/app/constants.dart';
 
 part 'actions_state.dart';
 
 part 'actions_cubit.freezed.dart';
 
 class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, CallkeepBackgroundServiceDelegate {
-  ActionsCubit(
-    this._callkeep,
-  ) : super(const ActionsState(actions: [])) {
+  ActionsCubit(this._callkeep) : super(const ActionsState(actions: [])) {
     _callkeep.setDelegate(this);
   }
 
   final Callkeep _callkeep;
-
-  bool _speakerEnabled = false;
-  bool _isMuted = false;
-  bool _isHold = false;
 
   @override
   Future<void> close() {
@@ -71,7 +63,9 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
   void tearDown() async {
     try {
       await _callkeep.tearDown();
-      emit(state.addAction("Tear down success"));
+      emit(
+        state.copyWith(speakerEnabled: false, isMuted: false, isHold: false).addAction("Tear down success"),
+      );
     } catch (error) {
       emit(state.addAction("Error tear down: $error"));
     }
@@ -196,8 +190,11 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   void setHeld() async {
     try {
-      await _callkeep.setHeld(call1Identifier, onHold: !_isHold);
-      emit(state.addAction("Held action sent"));
+      final onHold = !state.isHold;
+      await _callkeep.setHeld(call1Identifier, onHold: onHold);
+      emit(
+        state.copyWith(isHold: onHold).addAction("Held action sent (onHold: $onHold)"),
+      );
     } catch (error) {
       emit(state.addAction("Error set held  error: $error"));
     }
@@ -205,9 +202,11 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   void setMuted() async {
     try {
-      final muted = !_isMuted;
+      final muted = !state.isMuted;
       await _callkeep.setMuted(call1Identifier, muted: muted);
-      emit(state.addAction("Mute action sent (muted: $muted)"));
+      emit(
+        state.copyWith(isMuted: muted).addAction("Mute action sent (muted: $muted)"),
+      );
     } catch (error) {
       emit(state.addAction("Error set muted  error: $error"));
     }
@@ -215,8 +214,11 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   void setSpeaker() async {
     try {
-      await _callkeep.setSpeaker(call1Identifier, enabled: !_speakerEnabled);
-      emit(state.addAction("Speaker action sent"));
+      final enabled = !state.speakerEnabled;
+      await _callkeep.setSpeaker(call1Identifier, enabled: enabled);
+      emit(
+        state.copyWith(speakerEnabled: enabled).addAction("Speaker action sent (enabled: $enabled)"),
+      );
     } catch (error) {
       emit(state.addAction("Error  set speaker  error: $error"));
     }
@@ -248,13 +250,20 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   @override
   void didPushIncomingCall(
-      CallkeepHandle handle, String? displayName, bool video, String callId, CallkeepIncomingCallError? error) {
+    CallkeepHandle handle,
+    String? displayName,
+    bool video,
+    String callId,
+    CallkeepIncomingCallError? error,
+  ) {
     emit(state.addAction("Perform did push incoming call"));
   }
 
   @override
   void didReset() {
-    emit(state.addAction("Perform did reset"));
+    emit(
+      state.copyWith(speakerEnabled: false, isMuted: false, isHold: false).addAction("Perform did reset"),
+    );
   }
 
   @override
@@ -277,15 +286,17 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   @override
   Future<bool> performSetHeld(String callId, bool onHold) {
-    _isHold = onHold;
-    emit(state.addAction("Delegate held: $onHold"));
+    emit(
+      state.copyWith(isHold: onHold).addAction("Delegate held: $onHold"),
+    );
     return Future.value(true);
   }
 
   @override
   Future<bool> performSetMuted(String callId, bool muted) {
-    _isMuted = muted;
-    emit(state.addAction("Delegate muted: $muted"));
+    emit(
+      state.copyWith(isMuted: muted).addAction("Delegate muted: $muted"),
+    );
     return Future.value(true);
   }
 
@@ -302,8 +313,9 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   @override
   Future<bool> performSetSpeaker(String callId, bool enabled) {
-    _speakerEnabled = enabled;
-    emit(state.addAction("Delegate set speaker: $enabled"));
+    emit(
+      state.copyWith(speakerEnabled: enabled).addAction("Delegate set speaker: $enabled"),
+    );
     return Future.value(true);
   }
 

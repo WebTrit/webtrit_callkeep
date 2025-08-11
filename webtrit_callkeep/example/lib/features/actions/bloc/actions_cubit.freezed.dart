@@ -17,6 +17,9 @@ final _privateConstructorUsedError = UnsupportedError(
 /// @nodoc
 mixin _$ActionsState {
   List<String> get actions => throw _privateConstructorUsedError;
+  bool get speakerEnabled => throw _privateConstructorUsedError;
+  bool get isMuted => throw _privateConstructorUsedError;
+  bool get isHold => throw _privateConstructorUsedError;
 
   /// Create a copy of ActionsState
   /// with the given fields replaced by the non-null parameter values.
@@ -31,7 +34,8 @@ abstract class $ActionsStateCopyWith<$Res> {
           ActionsState value, $Res Function(ActionsState) then) =
       _$ActionsStateCopyWithImpl<$Res, ActionsState>;
   @useResult
-  $Res call({List<String> actions});
+  $Res call(
+      {List<String> actions, bool speakerEnabled, bool isMuted, bool isHold});
 }
 
 /// @nodoc
@@ -50,12 +54,27 @@ class _$ActionsStateCopyWithImpl<$Res, $Val extends ActionsState>
   @override
   $Res call({
     Object? actions = null,
+    Object? speakerEnabled = null,
+    Object? isMuted = null,
+    Object? isHold = null,
   }) {
     return _then(_value.copyWith(
       actions: null == actions
           ? _value.actions
           : actions // ignore: cast_nullable_to_non_nullable
               as List<String>,
+      speakerEnabled: null == speakerEnabled
+          ? _value.speakerEnabled
+          : speakerEnabled // ignore: cast_nullable_to_non_nullable
+              as bool,
+      isMuted: null == isMuted
+          ? _value.isMuted
+          : isMuted // ignore: cast_nullable_to_non_nullable
+              as bool,
+      isHold: null == isHold
+          ? _value.isHold
+          : isHold // ignore: cast_nullable_to_non_nullable
+              as bool,
     ) as $Val);
   }
 }
@@ -68,7 +87,8 @@ abstract class _$$ActionsStateImplCopyWith<$Res>
       __$$ActionsStateImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({List<String> actions});
+  $Res call(
+      {List<String> actions, bool speakerEnabled, bool isMuted, bool isHold});
 }
 
 /// @nodoc
@@ -85,12 +105,27 @@ class __$$ActionsStateImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? actions = null,
+    Object? speakerEnabled = null,
+    Object? isMuted = null,
+    Object? isHold = null,
   }) {
     return _then(_$ActionsStateImpl(
       actions: null == actions
           ? _value._actions
           : actions // ignore: cast_nullable_to_non_nullable
               as List<String>,
+      speakerEnabled: null == speakerEnabled
+          ? _value.speakerEnabled
+          : speakerEnabled // ignore: cast_nullable_to_non_nullable
+              as bool,
+      isMuted: null == isMuted
+          ? _value.isMuted
+          : isMuted // ignore: cast_nullable_to_non_nullable
+              as bool,
+      isHold: null == isHold
+          ? _value.isHold
+          : isHold // ignore: cast_nullable_to_non_nullable
+              as bool,
     ));
   }
 }
@@ -98,7 +133,11 @@ class __$$ActionsStateImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$ActionsStateImpl extends _ActionsState {
-  const _$ActionsStateImpl({required final List<String> actions})
+  const _$ActionsStateImpl(
+      {required final List<String> actions,
+      this.speakerEnabled = false,
+      this.isMuted = false,
+      this.isHold = false})
       : _actions = actions,
         super._();
 
@@ -111,8 +150,18 @@ class _$ActionsStateImpl extends _ActionsState {
   }
 
   @override
+  @JsonKey()
+  final bool speakerEnabled;
+  @override
+  @JsonKey()
+  final bool isMuted;
+  @override
+  @JsonKey()
+  final bool isHold;
+
+  @override
   String toString() {
-    return 'ActionsState(actions: $actions)';
+    return 'ActionsState(actions: $actions, speakerEnabled: $speakerEnabled, isMuted: $isMuted, isHold: $isHold)';
   }
 
   @override
@@ -120,12 +169,20 @@ class _$ActionsStateImpl extends _ActionsState {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$ActionsStateImpl &&
-            const DeepCollectionEquality().equals(other._actions, _actions));
+            const DeepCollectionEquality().equals(other._actions, _actions) &&
+            (identical(other.speakerEnabled, speakerEnabled) ||
+                other.speakerEnabled == speakerEnabled) &&
+            (identical(other.isMuted, isMuted) || other.isMuted == isMuted) &&
+            (identical(other.isHold, isHold) || other.isHold == isHold));
   }
 
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, const DeepCollectionEquality().hash(_actions));
+  int get hashCode => Object.hash(
+      runtimeType,
+      const DeepCollectionEquality().hash(_actions),
+      speakerEnabled,
+      isMuted,
+      isHold);
 
   /// Create a copy of ActionsState
   /// with the given fields replaced by the non-null parameter values.
@@ -137,12 +194,21 @@ class _$ActionsStateImpl extends _ActionsState {
 }
 
 abstract class _ActionsState extends ActionsState {
-  const factory _ActionsState({required final List<String> actions}) =
-      _$ActionsStateImpl;
+  const factory _ActionsState(
+      {required final List<String> actions,
+      final bool speakerEnabled,
+      final bool isMuted,
+      final bool isHold}) = _$ActionsStateImpl;
   const _ActionsState._() : super._();
 
   @override
   List<String> get actions;
+  @override
+  bool get speakerEnabled;
+  @override
+  bool get isMuted;
+  @override
+  bool get isHold;
 
   /// Create a copy of ActionsState
   /// with the given fields replaced by the non-null parameter values.
