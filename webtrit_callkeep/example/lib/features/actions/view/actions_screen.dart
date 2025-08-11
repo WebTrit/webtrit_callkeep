@@ -9,11 +9,7 @@ class ActionsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<ActionsCubit, ActionsState>(
-      listener: (context, state) {
-        if (state is ActionsUpdate) {
-          _showMessage(context, state.lastAction);
-        }
-      },
+      listener: (context, state) {},
       builder: (context, state) => Scaffold(
         body: SafeArea(
           child: Container(
@@ -58,7 +54,7 @@ class ActionsScreen extends StatelessWidget {
                     Wrap(
                       children: [
                         OutlinedButton(
-                          child: Text("Is Setup"),
+                          child: Text("Setup"),
                           onPressed: () => context.read<ActionsCubit>().setup(),
                         ),
                         OutlinedButton(
@@ -131,20 +127,5 @@ class ActionsScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  void _showMessage(
-    BuildContext context,
-    String message,
-  ) {
-    final snackBar = SnackBar(
-      content: Text(message),
-      action: SnackBarAction(
-        label: 'Dismiss',
-        onPressed: () => ScaffoldMessenger.of(context).clearSnackBars(),
-      ),
-    );
-
-    ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 }

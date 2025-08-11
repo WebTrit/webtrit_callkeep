@@ -1,24 +1,16 @@
 part of 'actions_cubit.dart';
 
-@immutable
-class ActionsState {
-  final List<String> actions;
+@freezed
+class ActionsState with _$ActionsState {
+  const factory ActionsState({
+    required List<String> actions,
+  }) = _ActionsState;
 
-  const ActionsState(this.actions);
+  const ActionsState._();
 
-  ActionsUpdate get update => ActionsUpdate(actions);
-}
+  /// Returns a copy with the new action appended
+  ActionsState addAction(String action) => copyWith(actions: [...actions, action]);
 
-class ActionsUpdate extends ActionsState {
-  const ActionsUpdate(super.actions);
-
-  ActionsUpdate addAction({
-    required String action,
-  }) {
-    return ActionsUpdate(
-      [...actions, action],
-    );
-  }
-
+  /// Returns the last action or throws if empty
   String get lastAction => actions.last;
 }
