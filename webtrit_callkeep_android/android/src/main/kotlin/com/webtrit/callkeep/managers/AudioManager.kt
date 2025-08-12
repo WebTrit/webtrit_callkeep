@@ -10,7 +10,8 @@ import android.media.RingtoneManager
 import com.webtrit.callkeep.common.*
 
 class AudioManager(val context: Context) {
-    private val audioManager = requireNotNull(context.getSystemService(Context.AUDIO_SERVICE) as AudioManager)
+    private val audioManager =
+        requireNotNull(context.getSystemService(Context.AUDIO_SERVICE) as AudioManager)
     private var ringtone: Ringtone? = null
     private var ringBack: MediaPlayer? = null
 
@@ -20,10 +21,20 @@ class AudioManager(val context: Context) {
     }
 
     /**
-     * Set the microphone mute state.
+     * Sets the system-wide microphone mute state.
      *
-     * @param isMicrophoneMute True to mute the microphone, false to unmute it.
+     * @deprecated Not reliable for self-managed VoIP calls.
+     * The system may override this when the audio route changes,
+     * it affects all apps globally, and can desync the UI from
+     * the actual media state. Instead, mute in your media engine
+     * and track the state internally.
+     *
+     * @param isMicrophoneMute true to mute, false to unmute.
      */
+    @Deprecated(
+        message = "Avoid in self-managed VoIP. Use media engine mute instead.",
+        level = DeprecationLevel.WARNING
+    )
     fun setMicrophoneMute(isMicrophoneMute: Boolean) {
         audioManager.isMicrophoneMute = isMicrophoneMute
     }
@@ -57,7 +68,10 @@ class AudioManager(val context: Context) {
     }
 
     private fun getDefaultRingtone(): Ringtone {
-        return RingtoneManager.getRingtone(context, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))
+        return RingtoneManager.getRingtone(
+            context,
+            RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+        )
     }
 
     private fun getRingtone(asset: String): Ringtone {
@@ -98,7 +112,8 @@ class AudioManager(val context: Context) {
     private fun createRingback(asset: String): MediaPlayer {
         val path = AssetHolder.flutterAssetManager.getAsset(asset)
         val attributes =
-            AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING).build()
+            AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING)
+                .build()
         val session = audioManager.generateAudioSessionId()
         return MediaPlayer.create(context, path, null, attributes, session).apply {
             isLooping = true
