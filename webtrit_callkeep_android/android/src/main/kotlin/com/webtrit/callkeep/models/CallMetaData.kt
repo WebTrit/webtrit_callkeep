@@ -9,6 +9,8 @@ data class CallMetadata(
     val handle: CallHandle? = null,
     val hasVideo: Boolean = false,
     val hasSpeaker: Boolean = false,
+    val audioDevice: AudioDevice? = null,
+    val audioDevices: List<AudioDevice> = emptyList(),
     val proximityEnabled: Boolean = false,
     val hasMute: Boolean = false,
     val hasHold: Boolean = false,
@@ -24,6 +26,12 @@ data class CallMetadata(
         putString(CallDataConst.CALL_ID, callId)
         putBoolean(CallDataConst.HAS_VIDEO, hasVideo)
         putBoolean(CallDataConst.HAS_SPEAKER, hasSpeaker)
+        audioDevice?.let { putBundle(CallDataConst.AUDIO_DEVICE, it.toBundle()) }
+        putBundle(CallDataConst.AUDIO_DEVICES, Bundle().apply {
+            audioDevices.forEachIndexed { index, device ->
+                putBundle("device_$index", device.toBundle())
+            }
+        })
         putBoolean(CallDataConst.PROXIMITY_ENABLED, proximityEnabled)
         putBoolean(CallDataConst.HAS_MUTE, hasMute)
         putBoolean(CallDataConst.HAS_HOLD, hasHold)
@@ -42,6 +50,8 @@ data class CallMetadata(
             handle = other?.handle ?: handle,
             hasVideo = other?.hasVideo ?: hasVideo,
             hasSpeaker = other?.hasSpeaker ?: hasSpeaker,
+            audioDevice = other?.audioDevice ?: audioDevice,
+            audioDevices = other?.audioDevices ?: audioDevices,
             proximityEnabled = other?.proximityEnabled ?: proximityEnabled,
             hasMute = other?.hasMute ?: hasMute,
             hasHold = other?.hasHold ?: hasHold,
@@ -75,6 +85,12 @@ data class CallMetadata(
                 handle = bundle.getBundle(CallDataConst.NUMBER)?.let { CallHandle.fromBundle(it) },
                 hasVideo = bundle.getBoolean(CallDataConst.HAS_VIDEO, false),
                 hasSpeaker = bundle.getBoolean(CallDataConst.HAS_SPEAKER, false),
+                audioDevice = bundle.getBundle(CallDataConst.AUDIO_DEVICE)?.let { AudioDevice.fromBundle(it) },
+                audioDevices = bundle.getBundle(CallDataConst.AUDIO_DEVICES)?.let { audioDevicesBundle ->
+                    audioDevicesBundle.keySet().mapNotNull { key ->
+                        audioDevicesBundle.getBundle(key)?.let { AudioDevice.fromBundle(it) }
+                    }
+                } ?: emptyList(),
                 proximityEnabled = bundle.getBoolean(CallDataConst.PROXIMITY_ENABLED, false),
                 hasMute = bundle.getBoolean(CallDataConst.HAS_MUTE, false),
                 hasHold = bundle.getBoolean(CallDataConst.HAS_HOLD, false),

@@ -231,4 +231,16 @@ class TestsCubit extends Cubit<TestsState> implements CallkeepDelegate, Callkeep
     DateTime? hungUpTime, {
     bool video = false,
   }) {}
+
+  @override
+  Future<bool> performAudioDeviceSet(String callId, CallkeepAudioDevice device) {
+    emit(state.update.addAction(action: "Delegate audio device set: ${device.name}"));
+    return Future.value(true);
+  }
+
+  @override
+  Future<bool> performAudioDevicesUpdate(String callId, List<CallkeepAudioDevice> devices) {
+    emit(state.update.addAction(action: "Delegate audio devices update: ${devices.map((d) => d.name).join(", ")}"));
+    return Future.value(true);
+  }
 }

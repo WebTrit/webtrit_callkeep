@@ -1,6 +1,8 @@
 package com.webtrit.callkeep.models
 
 import android.telecom.DisconnectCause
+import com.webtrit.callkeep.PAudioDevice
+import com.webtrit.callkeep.PAudioDeviceType
 import com.webtrit.callkeep.PCallkeepConnection
 import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PCallkeepDisconnectCause
@@ -28,7 +30,40 @@ fun PhoneConnection.toPConnection(): PCallkeepConnection? {
     }
 
     val callkeepDisconnectCause =
-        PCallkeepDisconnectCause(callkeepDisconnectCauseType, disconnectCause.reason ?: "Unknown reason")
+        PCallkeepDisconnectCause(
+            callkeepDisconnectCauseType,
+            disconnectCause.reason ?: "Unknown reason"
+        )
 
     return PCallkeepConnection(metadata.callId, callkeepStatus, callkeepDisconnectCause)
+}
+
+fun PAudioDevice.toAudioDevice(): AudioDevice {
+    return AudioDevice(
+        type = when (this.type) {
+            PAudioDeviceType.EARPIECE -> AudioDeviceType.EARPIECE
+            PAudioDeviceType.SPEAKER -> AudioDeviceType.SPEAKER
+            PAudioDeviceType.BLUETOOTH -> AudioDeviceType.BLUETOOTH
+            PAudioDeviceType.WIRED_HEADSET -> AudioDeviceType.WIRED_HEADSET
+            PAudioDeviceType.STREAMING -> AudioDeviceType.STREAMING
+            PAudioDeviceType.UNKNOWN -> AudioDeviceType.UNKNOWN
+        },
+        name = this.name,
+        id = this.id,
+    )
+}
+
+fun AudioDevice.toPAudioDevice(): PAudioDevice {
+    return PAudioDevice (
+        type = when (this.type) {
+            AudioDeviceType.EARPIECE -> PAudioDeviceType.EARPIECE
+            AudioDeviceType.SPEAKER -> PAudioDeviceType.SPEAKER
+            AudioDeviceType.BLUETOOTH -> PAudioDeviceType.BLUETOOTH
+            AudioDeviceType.WIRED_HEADSET -> PAudioDeviceType.WIRED_HEADSET
+            AudioDeviceType.STREAMING -> PAudioDeviceType.STREAMING
+            AudioDeviceType.UNKNOWN -> PAudioDeviceType.UNKNOWN
+        },
+        name = this.name,
+        id = this.id,
+    )
 }

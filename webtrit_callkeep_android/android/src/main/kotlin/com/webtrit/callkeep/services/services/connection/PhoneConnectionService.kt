@@ -280,6 +280,10 @@ class PhoneConnectionService : ConnectionService() {
             communicate(context, ServiceAction.Speaker, metadata)
         }
 
+        fun setAudioDevice(context: Context, metadata: CallMetadata) {
+            communicate(context, ServiceAction.AudioDeviceSet, metadata)
+        }
+
         fun tearDown(context: Context) {
             communicate(context, ServiceAction.TearDown, null)
         }
