@@ -298,7 +298,7 @@ class _PHostAndroidServiceApiCodec extends StandardMessageCodec {
   @override
   Object? readValueOfType(int type, ReadBuffer buffer) {
     switch (type) {
-      case 128: 
+      case 128:
         return PHandle.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -310,8 +310,7 @@ class PHostAndroidServiceApi {
   /// Constructor for [PHostAndroidServiceApi].  The [binaryMessenger] named argument is
   /// available for dependency injection.  If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
-  PHostAndroidServiceApi({BinaryMessenger? binaryMessenger})
-      : __pigeon_binaryMessenger = binaryMessenger;
+  PHostAndroidServiceApi({BinaryMessenger? binaryMessenger}) : __pigeon_binaryMessenger = binaryMessenger;
   final BinaryMessenger? __pigeon_binaryMessenger;
 
   static const MessageCodec<Object?> pigeonChannelCodec = _PHostAndroidServiceApiCodec();
@@ -338,7 +337,8 @@ class PHostAndroidServiceApi {
     }
   }
 
-  Future<void> incomingCall(String callId, String uuidString, PHandle handle, String? displayName, bool hasVideo) async {
+  Future<void> incomingCall(
+      String callId, String uuidString, PHandle handle, String? displayName, bool hasVideo) async {
     const String __pigeon_channelName = 'dev.flutter.pigeon.webtrit_callkeep_ios.PHostAndroidServiceApi.incomingCall';
     final BasicMessageChannel<Object?> __pigeon_channel = BasicMessageChannel<Object?>(
       __pigeon_channelName,
@@ -397,21 +397,21 @@ class _PHostApiCodec extends StandardMessageCodec {
   @override
   Object? readValueOfType(int type, ReadBuffer buffer) {
     switch (type) {
-      case 128: 
+      case 128:
         return PAndroidOptions.decode(readValue(buffer)!);
-      case 129: 
+      case 129:
         return PCallRequestError.decode(readValue(buffer)!);
-      case 130: 
+      case 130:
         return PEndCallReason.decode(readValue(buffer)!);
-      case 131: 
+      case 131:
         return PHandle.decode(readValue(buffer)!);
-      case 132: 
+      case 132:
         return PHandle.decode(readValue(buffer)!);
-      case 133: 
+      case 133:
         return PIOSOptions.decode(readValue(buffer)!);
-      case 134: 
+      case 134:
         return PIncomingCallError.decode(readValue(buffer)!);
-      case 135: 
+      case 135:
         return POptions.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -423,8 +423,7 @@ class PHostApi {
   /// Constructor for [PHostApi].  The [binaryMessenger] named argument is
   /// available for dependency injection.  If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
-  PHostApi({BinaryMessenger? binaryMessenger})
-      : __pigeon_binaryMessenger = binaryMessenger;
+  PHostApi({BinaryMessenger? binaryMessenger}) : __pigeon_binaryMessenger = binaryMessenger;
   final BinaryMessenger? __pigeon_binaryMessenger;
 
   static const MessageCodec<Object?> pigeonChannelCodec = _PHostApiCodec();
@@ -436,8 +435,7 @@ class PHostApi {
       pigeonChannelCodec,
       binaryMessenger: __pigeon_binaryMessenger,
     );
-    final List<Object?>? __pigeon_replyList =
-        await __pigeon_channel.send(null) as List<Object?>?;
+    final List<Object?>? __pigeon_replyList = await __pigeon_channel.send(null) as List<Object?>?;
     if (__pigeon_replyList == null) {
       throw _createConnectionError(__pigeon_channelName);
     } else if (__pigeon_replyList.length > 1) {
@@ -463,8 +461,7 @@ class PHostApi {
       pigeonChannelCodec,
       binaryMessenger: __pigeon_binaryMessenger,
     );
-    final List<Object?>? __pigeon_replyList =
-        await __pigeon_channel.send(<Object?>[options]) as List<Object?>?;
+    final List<Object?>? __pigeon_replyList = await __pigeon_channel.send(<Object?>[options]) as List<Object?>?;
     if (__pigeon_replyList == null) {
       throw _createConnectionError(__pigeon_channelName);
     } else if (__pigeon_replyList.length > 1) {
@@ -485,8 +482,7 @@ class PHostApi {
       pigeonChannelCodec,
       binaryMessenger: __pigeon_binaryMessenger,
     );
-    final List<Object?>? __pigeon_replyList =
-        await __pigeon_channel.send(null) as List<Object?>?;
+    final List<Object?>? __pigeon_replyList = await __pigeon_channel.send(null) as List<Object?>?;
     if (__pigeon_replyList == null) {
       throw _createConnectionError(__pigeon_channelName);
     } else if (__pigeon_replyList.length > 1) {
@@ -500,7 +496,8 @@ class PHostApi {
     }
   }
 
-  Future<PIncomingCallError?> reportNewIncomingCall(String uuidString, PHandle handle, String? displayName, bool hasVideo) async {
+  Future<PIncomingCallError?> reportNewIncomingCall(
+      String uuidString, PHandle handle, String? displayName, bool hasVideo) async {
     const String __pigeon_channelName = 'dev.flutter.pigeon.webtrit_callkeep_ios.PHostApi.reportNewIncomingCall';
     final BasicMessageChannel<Object?> __pigeon_channel = BasicMessageChannel<Object?>(
       __pigeon_channelName,
@@ -529,8 +526,7 @@ class PHostApi {
       pigeonChannelCodec,
       binaryMessenger: __pigeon_binaryMessenger,
     );
-    final List<Object?>? __pigeon_replyList =
-        await __pigeon_channel.send(<Object?>[uuidString]) as List<Object?>?;
+    final List<Object?>? __pigeon_replyList = await __pigeon_channel.send(<Object?>[uuidString]) as List<Object?>?;
     if (__pigeon_replyList == null) {
       throw _createConnectionError(__pigeon_channelName);
     } else if (__pigeon_replyList.length > 1) {
@@ -551,8 +547,7 @@ class PHostApi {
       pigeonChannelCodec,
       binaryMessenger: __pigeon_binaryMessenger,
     );
-    final List<Object?>? __pigeon_replyList =
-        await __pigeon_channel.send(<Object?>[uuidString]) as List<Object?>?;
+    final List<Object?>? __pigeon_replyList = await __pigeon_channel.send(<Object?>[uuidString]) as List<Object?>?;
     if (__pigeon_replyList == null) {
       throw _createConnectionError(__pigeon_channelName);
     } else if (__pigeon_replyList.length > 1) {
@@ -566,15 +561,16 @@ class PHostApi {
     }
   }
 
-  Future<void> reportUpdateCall(String uuidString, PHandle? handle, String? displayName, bool? hasVideo, bool? proximityEnabled) async {
+  Future<void> reportUpdateCall(
+      String uuidString, PHandle? handle, String? displayName, bool? hasVideo, bool? proximityEnabled) async {
     const String __pigeon_channelName = 'dev.flutter.pigeon.webtrit_callkeep_ios.PHostApi.reportUpdateCall';
     final BasicMessageChannel<Object?> __pigeon_channel = BasicMessageChannel<Object?>(
       __pigeon_channelName,
       pigeonChannelCodec,
       binaryMessenger: __pigeon_binaryMessenger,
     );
-    final List<Object?>? __pigeon_replyList =
-        await __pigeon_channel.send(<Object?>[uuidString, handle, displayName, hasVideo, proximityEnabled]) as List<Object?>?;
+    final List<Object?>? __pigeon_replyList = await __pigeon_channel
+        .send(<Object?>[uuidString, handle, displayName, hasVideo, proximityEnabled]) as List<Object?>?;
     if (__pigeon_replyList == null) {
       throw _createConnectionError(__pigeon_channelName);
     } else if (__pigeon_replyList.length > 1) {
@@ -610,15 +606,16 @@ class PHostApi {
     }
   }
 
-  Future<PCallRequestError?> startCall(String uuidString, PHandle handle, String? displayNameOrContactIdentifier, bool video, bool proximityEnabled) async {
+  Future<PCallRequestError?> startCall(String uuidString, PHandle handle, String? displayNameOrContactIdentifier,
+      bool video, bool proximityEnabled) async {
     const String __pigeon_channelName = 'dev.flutter.pigeon.webtrit_callkeep_ios.PHostApi.startCall';
     final BasicMessageChannel<Object?> __pigeon_channel = BasicMessageChannel<Object?>(
       __pigeon_channelName,
       pigeonChannelCodec,
       binaryMessenger: __pigeon_binaryMessenger,
     );
-    final List<Object?>? __pigeon_replyList =
-        await __pigeon_channel.send(<Object?>[uuidString, handle, displayNameOrContactIdentifier, video, proximityEnabled]) as List<Object?>?;
+    final List<Object?>? __pigeon_replyList = await __pigeon_channel
+        .send(<Object?>[uuidString, handle, displayNameOrContactIdentifier, video, proximityEnabled]) as List<Object?>?;
     if (__pigeon_replyList == null) {
       throw _createConnectionError(__pigeon_channelName);
     } else if (__pigeon_replyList.length > 1) {
@@ -639,8 +636,7 @@ class PHostApi {
       pigeonChannelCodec,
       binaryMessenger: __pigeon_binaryMessenger,
     );
-    final List<Object?>? __pigeon_replyList =
-        await __pigeon_channel.send(<Object?>[uuidString]) as List<Object?>?;
+    final List<Object?>? __pigeon_replyList = await __pigeon_channel.send(<Object?>[uuidString]) as List<Object?>?;
     if (__pigeon_replyList == null) {
       throw _createConnectionError(__pigeon_channelName);
     } else if (__pigeon_replyList.length > 1) {
@@ -661,8 +657,7 @@ class PHostApi {
       pigeonChannelCodec,
       binaryMessenger: __pigeon_binaryMessenger,
     );
-    final List<Object?>? __pigeon_replyList =
-        await __pigeon_channel.send(<Object?>[uuidString]) as List<Object?>?;
+    final List<Object?>? __pigeon_replyList = await __pigeon_channel.send(<Object?>[uuidString]) as List<Object?>?;
     if (__pigeon_replyList == null) {
       throw _createConnectionError(__pigeon_channelName);
     } else if (__pigeon_replyList.length > 1) {
@@ -749,8 +744,7 @@ class PHostApi {
       pigeonChannelCodec,
       binaryMessenger: __pigeon_binaryMessenger,
     );
-    final List<Object?>? __pigeon_replyList =
-        await __pigeon_channel.send(<Object?>[uuidString, key]) as List<Object?>?;
+    final List<Object?>? __pigeon_replyList = await __pigeon_channel.send(<Object?>[uuidString, key]) as List<Object?>?;
     if (__pigeon_replyList == null) {
       throw _createConnectionError(__pigeon_channelName);
     } else if (__pigeon_replyList.length > 1) {
@@ -783,9 +777,9 @@ class _PDelegateFlutterApiCodec extends StandardMessageCodec {
   @override
   Object? readValueOfType(int type, ReadBuffer buffer) {
     switch (type) {
-      case 128: 
+      case 128:
         return PHandle.decode(readValue(buffer)!);
-      case 129: 
+      case 129:
         return PIncomingCallError.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -798,7 +792,8 @@ abstract class PDelegateFlutterApi {
 
   void continueStartCallIntent(PHandle handle, String? displayName, bool video);
 
-  void didPushIncomingCall(PHandle handle, String? displayName, bool video, String callId, String uuidString, PIncomingCallError? error);
+  void didPushIncomingCall(
+      PHandle handle, String? displayName, bool video, String callId, String uuidString, PIncomingCallError? error);
 
   Future<bool> performStartCall(String uuidString, PHandle handle, String? displayNameOrContactIdentifier, bool video);
 
@@ -830,7 +825,7 @@ abstract class PDelegateFlutterApi {
       } else {
         __pigeon_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-          'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.continueStartCallIntent was null.');
+              'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.continueStartCallIntent was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final PHandle? arg_handle = (args[0] as PHandle?);
           assert(arg_handle != null,
@@ -844,7 +839,7 @@ abstract class PDelegateFlutterApi {
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
+          } catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -859,7 +854,7 @@ abstract class PDelegateFlutterApi {
       } else {
         __pigeon_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-          'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.didPushIncomingCall was null.');
+              'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.didPushIncomingCall was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final PHandle? arg_handle = (args[0] as PHandle?);
           assert(arg_handle != null,
@@ -880,7 +875,7 @@ abstract class PDelegateFlutterApi {
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
+          } catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -895,7 +890,7 @@ abstract class PDelegateFlutterApi {
       } else {
         __pigeon_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-          'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.performStartCall was null.');
+              'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.performStartCall was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final String? arg_uuidString = (args[0] as String?);
           assert(arg_uuidString != null,
@@ -908,11 +903,12 @@ abstract class PDelegateFlutterApi {
           assert(arg_video != null,
               'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.performStartCall was null, expected non-null bool.');
           try {
-            final bool output = await api.performStartCall(arg_uuidString!, arg_handle!, arg_displayNameOrContactIdentifier, arg_video!);
+            final bool output = await api.performStartCall(
+                arg_uuidString!, arg_handle!, arg_displayNameOrContactIdentifier, arg_video!);
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
+          } catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -927,7 +923,7 @@ abstract class PDelegateFlutterApi {
       } else {
         __pigeon_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-          'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.performAnswerCall was null.');
+              'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.performAnswerCall was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final String? arg_uuidString = (args[0] as String?);
           assert(arg_uuidString != null,
@@ -937,7 +933,7 @@ abstract class PDelegateFlutterApi {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
+          } catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -952,7 +948,7 @@ abstract class PDelegateFlutterApi {
       } else {
         __pigeon_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-          'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.performEndCall was null.');
+              'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.performEndCall was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final String? arg_uuidString = (args[0] as String?);
           assert(arg_uuidString != null,
@@ -962,7 +958,7 @@ abstract class PDelegateFlutterApi {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
+          } catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -977,7 +973,7 @@ abstract class PDelegateFlutterApi {
       } else {
         __pigeon_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-          'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.performSetHeld was null.');
+              'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.performSetHeld was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final String? arg_uuidString = (args[0] as String?);
           assert(arg_uuidString != null,
@@ -990,7 +986,7 @@ abstract class PDelegateFlutterApi {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
+          } catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -1005,7 +1001,7 @@ abstract class PDelegateFlutterApi {
       } else {
         __pigeon_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-          'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.performSetMuted was null.');
+              'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.performSetMuted was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final String? arg_uuidString = (args[0] as String?);
           assert(arg_uuidString != null,
@@ -1018,7 +1014,7 @@ abstract class PDelegateFlutterApi {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
+          } catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -1033,7 +1029,7 @@ abstract class PDelegateFlutterApi {
       } else {
         __pigeon_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-          'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.performSetSpeaker was null.');
+              'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.performSetSpeaker was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final String? arg_uuidString = (args[0] as String?);
           assert(arg_uuidString != null,
@@ -1046,7 +1042,7 @@ abstract class PDelegateFlutterApi {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
+          } catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -1061,7 +1057,7 @@ abstract class PDelegateFlutterApi {
       } else {
         __pigeon_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-          'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.performSendDTMF was null.');
+              'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.performSendDTMF was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final String? arg_uuidString = (args[0] as String?);
           assert(arg_uuidString != null,
@@ -1074,7 +1070,7 @@ abstract class PDelegateFlutterApi {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
+          } catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -1093,7 +1089,7 @@ abstract class PDelegateFlutterApi {
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
+          } catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -1112,7 +1108,7 @@ abstract class PDelegateFlutterApi {
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
+          } catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -1131,7 +1127,7 @@ abstract class PDelegateFlutterApi {
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
+          } catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -1148,14 +1144,15 @@ abstract class PDelegateAndroidServiceFlutterApi {
   static void setup(PDelegateAndroidServiceFlutterApi? api, {BinaryMessenger? binaryMessenger}) {
     {
       final BasicMessageChannel<Object?> __pigeon_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateAndroidServiceFlutterApi.performEndCall', pigeonChannelCodec,
+          'dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateAndroidServiceFlutterApi.performEndCall',
+          pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         __pigeon_channel.setMessageHandler(null);
       } else {
         __pigeon_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-          'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateAndroidServiceFlutterApi.performEndCall was null.');
+              'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateAndroidServiceFlutterApi.performEndCall was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final String? arg_uuidString = (args[0] as String?);
           assert(arg_uuidString != null,
@@ -1165,7 +1162,7 @@ abstract class PDelegateAndroidServiceFlutterApi {
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
+          } catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -1178,21 +1175,20 @@ class PPushRegistryHostApi {
   /// Constructor for [PPushRegistryHostApi].  The [binaryMessenger] named argument is
   /// available for dependency injection.  If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
-  PPushRegistryHostApi({BinaryMessenger? binaryMessenger})
-      : __pigeon_binaryMessenger = binaryMessenger;
+  PPushRegistryHostApi({BinaryMessenger? binaryMessenger}) : __pigeon_binaryMessenger = binaryMessenger;
   final BinaryMessenger? __pigeon_binaryMessenger;
 
   static const MessageCodec<Object?> pigeonChannelCodec = StandardMessageCodec();
 
   Future<String?> pushTokenForPushTypeVoIP() async {
-    const String __pigeon_channelName = 'dev.flutter.pigeon.webtrit_callkeep_ios.PPushRegistryHostApi.pushTokenForPushTypeVoIP';
+    const String __pigeon_channelName =
+        'dev.flutter.pigeon.webtrit_callkeep_ios.PPushRegistryHostApi.pushTokenForPushTypeVoIP';
     final BasicMessageChannel<Object?> __pigeon_channel = BasicMessageChannel<Object?>(
       __pigeon_channelName,
       pigeonChannelCodec,
       binaryMessenger: __pigeon_binaryMessenger,
     );
-    final List<Object?>? __pigeon_replyList =
-        await __pigeon_channel.send(null) as List<Object?>?;
+    final List<Object?>? __pigeon_replyList = await __pigeon_channel.send(null) as List<Object?>?;
     if (__pigeon_replyList == null) {
       throw _createConnectionError(__pigeon_channelName);
     } else if (__pigeon_replyList.length > 1) {
@@ -1215,14 +1211,15 @@ abstract class PPushRegistryDelegateFlutterApi {
   static void setup(PPushRegistryDelegateFlutterApi? api, {BinaryMessenger? binaryMessenger}) {
     {
       final BasicMessageChannel<Object?> __pigeon_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.webtrit_callkeep_ios.PPushRegistryDelegateFlutterApi.didUpdatePushTokenForPushTypeVoIP', pigeonChannelCodec,
+          'dev.flutter.pigeon.webtrit_callkeep_ios.PPushRegistryDelegateFlutterApi.didUpdatePushTokenForPushTypeVoIP',
+          pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         __pigeon_channel.setMessageHandler(null);
       } else {
         __pigeon_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-          'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PPushRegistryDelegateFlutterApi.didUpdatePushTokenForPushTypeVoIP was null.');
+              'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PPushRegistryDelegateFlutterApi.didUpdatePushTokenForPushTypeVoIP was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final String? arg_token = (args[0] as String?);
           try {
@@ -1230,7 +1227,7 @@ abstract class PPushRegistryDelegateFlutterApi {
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
+          } catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -1243,8 +1240,7 @@ class AndroidHelperHostApi {
   /// Constructor for [AndroidHelperHostApi].  The [binaryMessenger] named argument is
   /// available for dependency injection.  If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
-  AndroidHelperHostApi({BinaryMessenger? binaryMessenger})
-      : __pigeon_binaryMessenger = binaryMessenger;
+  AndroidHelperHostApi({BinaryMessenger? binaryMessenger}) : __pigeon_binaryMessenger = binaryMessenger;
   final BinaryMessenger? __pigeon_binaryMessenger;
 
   static const MessageCodec<Object?> pigeonChannelCodec = StandardMessageCodec();
@@ -1256,8 +1252,7 @@ class AndroidHelperHostApi {
       pigeonChannelCodec,
       binaryMessenger: __pigeon_binaryMessenger,
     );
-    final List<Object?>? __pigeon_replyList =
-        await __pigeon_channel.send(<Object?>[path]) as List<Object?>?;
+    final List<Object?>? __pigeon_replyList = await __pigeon_channel.send(<Object?>[path]) as List<Object?>?;
     if (__pigeon_replyList == null) {
       throw _createConnectionError(__pigeon_channelName);
     } else if (__pigeon_replyList.length > 1) {
@@ -1278,8 +1273,7 @@ class AndroidHelperHostApi {
       pigeonChannelCodec,
       binaryMessenger: __pigeon_binaryMessenger,
     );
-    final List<Object?>? __pigeon_replyList =
-        await __pigeon_channel.send(null) as List<Object?>?;
+    final List<Object?>? __pigeon_replyList = await __pigeon_channel.send(null) as List<Object?>?;
     if (__pigeon_replyList == null) {
       throw _createConnectionError(__pigeon_channelName);
     } else if (__pigeon_replyList.length > 1) {
@@ -1303,8 +1297,7 @@ class PHostSoundApi {
   /// Constructor for [PHostSoundApi].  The [binaryMessenger] named argument is
   /// available for dependency injection.  If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
-  PHostSoundApi({BinaryMessenger? binaryMessenger})
-      : __pigeon_binaryMessenger = binaryMessenger;
+  PHostSoundApi({BinaryMessenger? binaryMessenger}) : __pigeon_binaryMessenger = binaryMessenger;
   final BinaryMessenger? __pigeon_binaryMessenger;
 
   static const MessageCodec<Object?> pigeonChannelCodec = StandardMessageCodec();
@@ -1316,8 +1309,7 @@ class PHostSoundApi {
       pigeonChannelCodec,
       binaryMessenger: __pigeon_binaryMessenger,
     );
-    final List<Object?>? __pigeon_replyList =
-        await __pigeon_channel.send(null) as List<Object?>?;
+    final List<Object?>? __pigeon_replyList = await __pigeon_channel.send(null) as List<Object?>?;
     if (__pigeon_replyList == null) {
       throw _createConnectionError(__pigeon_channelName);
     } else if (__pigeon_replyList.length > 1) {
@@ -1338,8 +1330,7 @@ class PHostSoundApi {
       pigeonChannelCodec,
       binaryMessenger: __pigeon_binaryMessenger,
     );
-    final List<Object?>? __pigeon_replyList =
-        await __pigeon_channel.send(null) as List<Object?>?;
+    final List<Object?>? __pigeon_replyList = await __pigeon_channel.send(null) as List<Object?>?;
     if (__pigeon_replyList == null) {
       throw _createConnectionError(__pigeon_channelName);
     } else if (__pigeon_replyList.length > 1) {

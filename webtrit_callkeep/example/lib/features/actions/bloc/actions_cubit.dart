@@ -1,24 +1,19 @@
 import 'package:bloc/bloc.dart';
-import 'package:meta/meta.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'package:webtrit_callkeep/webtrit_callkeep.dart';
-
-import '../../../app/constants.dart';
+import 'package:webtrit_callkeep_example/app/constants.dart';
 
 part 'actions_state.dart';
 
+part 'actions_cubit.freezed.dart';
+
 class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, CallkeepBackgroundServiceDelegate {
-  ActionsCubit(
-    this._callkeep,
-  ) : super(const ActionsUpdate([])) {
+  ActionsCubit(this._callkeep) : super(const ActionsState(actions: [])) {
     _callkeep.setDelegate(this);
   }
 
   final Callkeep _callkeep;
-
-  bool _speakerEnabled = false;
-  bool _isMuted = false;
-  bool _isHold = false;
 
   @override
   Future<void> close() {
@@ -37,18 +32,18 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
         ),
         android: CallkeepAndroidOptions(),
       ));
-      emit(state.update.addAction(action: "Setup success"));
+      emit(state.addAction("Setup success"));
     } catch (error) {
-      emit(state.update.addAction(action: "Setup error: $error"));
+      emit(state.addAction("Setup error: $error"));
     }
   }
 
   void isSetup() async {
     try {
-      var result = await _callkeep.isSetUp();
-      emit(state.update.addAction(action: "Is setup: $result"));
+      final result = await _callkeep.isSetUp();
+      emit(state.addAction("Is setup: $result"));
     } catch (error) {
-      emit(state.update.addAction(action: "Is setup error: $error"));
+      emit(state.addAction("Is setup error: $error"));
     }
   }
 
@@ -59,222 +54,249 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
         call1Number,
         displayName: 'User Name',
       );
-
-      emit(state.update.addAction(action: "[Android]: Incoming  cal"));
+      emit(state.addAction("[Android]: Incoming  cal"));
     } catch (error) {
-      emit(state.update.addAction(action: "[Android]: Is setup error: $error"));
+      emit(state.addAction("[Android]: Is setup error: $error"));
     }
   }
 
   void tearDown() async {
     try {
       await _callkeep.tearDown();
-      emit(state.update.addAction(action: "Tear down success"));
+      emit(
+        state.copyWith(speakerEnabled: false, isMuted: false, isHold: false).addAction("Tear down success"),
+      );
     } catch (error) {
-      emit(state.update.addAction(action: "Error tear down: $error"));
+      emit(state.addAction("Error tear down: $error"));
     }
   }
 
   void reportNewIncomingCall() async {
     try {
-      var result = await _callkeep.reportNewIncomingCall(
+      final result = await _callkeep.reportNewIncomingCall(
         call1Identifier,
         call1Number,
         displayName: 'User Name',
         hasVideo: true,
       );
       if (result != null) {
-        emit(state.update.addAction(action: "Error report new incoming call error: ${result.name}"));
+        emit(state.addAction("Error report new incoming call error: ${result.name}"));
       } else {
-        emit(state.update.addAction(action: "Success  report new incoming call"));
+        emit(state.addAction("Success  report new incoming call"));
       }
     } catch (error) {
-      emit(state.update.addAction(action: "Error report new incoming call error: $error"));
+      emit(state.addAction("Error report new incoming call error: $error"));
     }
   }
 
   void reportNewIncomingCallV2() async {
     try {
-      var result = await _callkeep.reportNewIncomingCall(
+      final result = await _callkeep.reportNewIncomingCall(
         call2Identifier,
         call2Number,
         displayName: 'User Name 1',
         hasVideo: true,
       );
       if (result != null) {
-        emit(state.update.addAction(action: "Error report new incoming call error: ${result.name}"));
+        emit(state.addAction("Error report new incoming call error: ${result.name}"));
       } else {
-        emit(state.update.addAction(action: "Success  report new incoming call"));
+        emit(state.addAction("Success  report new incoming call"));
       }
     } catch (error) {
-      emit(state.update.addAction(action: "Error report new incoming call error: $error"));
+      emit(state.addAction("Error report new incoming call error: $error"));
     }
   }
 
   void startOutgoingCall() async {
     try {
-      var result = await _callkeep.startCall(
+      final result = await _callkeep.startCall(
         call1Identifier,
         call1Number,
         displayNameOrContactIdentifier: 'User Name',
         hasVideo: true,
       );
       if (result != null) {
-        emit(state.update.addAction(action: "Error start outgoing call error: ${result.name}"));
+        emit(state.addAction("Error start outgoing call error: ${result.name}"));
       } else {
-        emit(state.update.addAction(action: "Success start outgoing call"));
+        emit(state.addAction("Success start outgoing call"));
       }
     } catch (error) {
-      emit(state.update.addAction(action: "Error start outgoing call error: $error"));
+      emit(state.addAction("Error start outgoing call error: $error"));
     }
   }
 
   void reportConnectedOutgoingCall() async {
     try {
       await _callkeep.reportConnectedOutgoingCall(call1Identifier);
-      emit(state.update.addAction(action: "Success report connected outgoing call"));
+      emit(state.addAction("Success report connected outgoing call"));
     } catch (error) {
-      emit(state.update.addAction(action: "Error report connected outgoing call error: $error"));
+      emit(state.addAction("Error report connected outgoing call error: $error"));
     }
   }
 
   void reportConnectingOutgoingCall() async {
     try {
       await _callkeep.reportConnectingOutgoingCall(call1Identifier);
-      emit(state.update.addAction(action: "Success report connecting outgoing call"));
+      emit(state.addAction("Success report connecting outgoing call"));
     } catch (error) {
-      emit(state.update.addAction(action: "Error report connecting outgoing call error: $error"));
+      emit(state.addAction("Error report connecting outgoing call error: $error"));
     }
   }
 
   void reportUpdateCall() async {
     try {
-      await _callkeep.reportUpdateCall(call1Identifier, handle: call1Number, displayName: 'User Name', hasVideo: true);
-
-      emit(state.update.addAction(action: "Success report update call"));
+      await _callkeep.reportUpdateCall(
+        call1Identifier,
+        handle: call1Number,
+        displayName: 'User Name',
+        hasVideo: true,
+      );
+      emit(state.addAction("Success report update call"));
     } catch (error) {
-      emit(state.update.addAction(action: "Error report update  error: $error"));
+      emit(state.addAction("Error report update  error: $error"));
     }
   }
 
   void reportEndCall() async {
     try {
-      await _callkeep.reportEndCall(call1Identifier, "Display Name", CallkeepEndCallReason.declinedElsewhere);
-      emit(state.update.addAction(action: "Success report end call"));
+      await _callkeep.reportEndCall(
+        call1Identifier,
+        "Display Name",
+        CallkeepEndCallReason.declinedElsewhere,
+      );
+      emit(state.addAction("Success report end call"));
     } catch (error) {
-      emit(state.update.addAction(action: "Error eeport  end  error: $error"));
+      emit(state.addAction("Error eeport  end  error: $error"));
     }
   }
 
   void answerCall() async {
     try {
       await _callkeep.answerCall(call1Identifier);
-      emit(state.update.addAction(action: "Success report answer call"));
+      emit(state.addAction("Success report answer call"));
     } catch (error) {
-      emit(state.update.addAction(action: "Error answer  error: $error"));
+      emit(state.addAction("Error answer  error: $error"));
     }
   }
 
   void endCall() async {
     try {
       await _callkeep.endCall(call1Identifier);
-      emit(state.update.addAction(action: "Success end call"));
+      emit(state.addAction("Success end call"));
     } catch (error) {
-      emit(state.update.addAction(action: "Error end  error: $error"));
+      emit(state.addAction("Error end  error: $error"));
     }
   }
 
   void setHeld() async {
     try {
-      await _callkeep.setHeld(call1Identifier, onHold: !_isHold);
-      emit(state.update.addAction(action: "Held action sent"));
+      final onHold = !state.isHold;
+      await _callkeep.setHeld(call1Identifier, onHold: onHold);
+      emit(
+        state.copyWith(isHold: onHold).addAction("Held action sent (onHold: $onHold)"),
+      );
     } catch (error) {
-      emit(state.update.addAction(action: "Error set held  error: $error"));
+      emit(state.addAction("Error set held  error: $error"));
     }
   }
 
   void setMuted() async {
     try {
-      await _callkeep.setMuted(call1Identifier, muted: !_isMuted);
-      emit(state.update.addAction(action: "Mute action sent"));
+      final muted = !state.isMuted;
+      await _callkeep.setMuted(call1Identifier, muted: muted);
+      emit(
+        state.copyWith(isMuted: muted).addAction("Mute action sent (muted: $muted)"),
+      );
     } catch (error) {
-      emit(state.update.addAction(action: "Error set muted  error: $error"));
+      emit(state.addAction("Error set muted  error: $error"));
     }
   }
 
   void setSpeaker() async {
     try {
-      await _callkeep.setSpeaker(call1Identifier, enabled: !_speakerEnabled);
-      emit(state.update.addAction(action: "Speaker action sent"));
+      final enabled = !state.speakerEnabled;
+      await _callkeep.setSpeaker(call1Identifier, enabled: enabled);
+      emit(
+        state.copyWith(speakerEnabled: enabled).addAction("Speaker action sent (enabled: $enabled)"),
+      );
     } catch (error) {
-      emit(state.update.addAction(action: "Error  set speaker  error: $error"));
+      emit(state.addAction("Error  set speaker  error: $error"));
     }
   }
 
   void setDTMF() async {
     try {
       await _callkeep.sendDTMF(call1Identifier, "A");
-      emit(state.update.addAction(action: "DTMF action sent"));
+      emit(state.addAction("DTMF action sent"));
     } catch (error) {
-      emit(state.update.addAction(action: "Error set DTMF  error: $error"));
+      emit(state.addAction("Error set DTMF  error: $error"));
     }
   }
 
   @override
   void continueStartCallIntent(CallkeepHandle handle, String? displayName, bool video) {
-    emit(state.update.addAction(action: "Perform continue start call intent"));
+    emit(state.addAction("Perform continue start call intent"));
   }
 
   @override
   void didActivateAudioSession() {
-    emit(state.update.addAction(action: "Perform did activate audio session"));
+    emit(state.addAction("Perform did activate audio session"));
   }
 
   @override
   void didDeactivateAudioSession() {
-    emit(state.update.addAction(action: "Perform did deactivate audio session"));
+    emit(state.addAction("Perform did deactivate audio session"));
   }
 
   @override
   void didPushIncomingCall(
-      CallkeepHandle handle, String? displayName, bool video, String callId, CallkeepIncomingCallError? error) {
-    emit(state.update.addAction(action: "Perform did push incoming call"));
+    CallkeepHandle handle,
+    String? displayName,
+    bool video,
+    String callId,
+    CallkeepIncomingCallError? error,
+  ) {
+    emit(state.addAction("Perform did push incoming call"));
   }
 
   @override
   void didReset() {
-    emit(state.update.addAction(action: "Perform did reset"));
+    emit(
+      state.copyWith(speakerEnabled: false, isMuted: false, isHold: false).addAction("Perform did reset"),
+    );
   }
 
   @override
   Future<bool> performAnswerCall(String callId) {
-    emit(state.update.addAction(action: "Delegate answer call"));
+    emit(state.addAction("Delegate answer call"));
     return Future.value(true);
   }
 
   @override
   Future<bool> performEndCall(String callId) {
-    emit(state.update.addAction(action: "Delegate end call"));
+    emit(state.addAction("Delegate end call"));
     return Future.value(true);
   }
 
   @override
   Future<bool> performSendDTMF(String callId, String key) {
-    emit(state.update.addAction(action: "Delegate dtmf pressed: $key"));
+    emit(state.addAction("Delegate dtmf pressed: $key"));
     return Future.value(true);
   }
 
   @override
   Future<bool> performSetHeld(String callId, bool onHold) {
-    _isHold = onHold;
-    emit(state.update.addAction(action: "Delegate held: $onHold"));
+    emit(
+      state.copyWith(isHold: onHold).addAction("Delegate held: $onHold"),
+    );
     return Future.value(true);
   }
 
   @override
   Future<bool> performSetMuted(String callId, bool muted) {
-    _isMuted = muted;
-    emit(state.update.addAction(action: "Delegate muted: $muted"));
+    emit(
+      state.copyWith(isMuted: muted).addAction("Delegate muted: $muted"),
+    );
     return Future.value(true);
   }
 
@@ -285,15 +307,15 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
     String? displayNameOrContactIdentifier,
     bool video,
   ) {
-    emit(state.update.addAction(action: "Perform start call"));
+    emit(state.addAction("Perform start call"));
     return Future.value(true);
   }
 
   @override
   Future<bool> performSetSpeaker(String callId, bool enabled) {
-    _speakerEnabled = enabled;
-    emit(state.update.addAction(action: "Delegate set speaker: $enabled"));
-
+    emit(
+      state.copyWith(speakerEnabled: enabled).addAction("Delegate set speaker: $enabled"),
+    );
     return Future.value(true);
   }
 
@@ -307,18 +329,18 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
     DateTime? hungUpTime, {
     bool video = false,
   }) {
-    emit(state.update.addAction(action: "End call received"));
+    emit(state.addAction("End call received"));
   }
 
   @override
   Future<bool> performAudioDeviceSet(String callId, CallkeepAudioDevice device) {
-    emit(state.update.addAction(action: "Delegate audio device set: ${device.name}"));
+    emit(state.addAction("Delegate audio device set: ${device.name}"));
     return Future.value(true);
   }
 
   @override
   Future<bool> performAudioDevicesUpdate(String callId, List<CallkeepAudioDevice> devices) {
-    emit(state.update.addAction(action: "Delegate audio devices update: ${devices.map((d) => d.name).join(", ")}"));
+    emit(state.addAction("Delegate audio devices update: ${devices.map((d) => d.name).join(", ")}"));
     return Future.value(true);
   }
 }
