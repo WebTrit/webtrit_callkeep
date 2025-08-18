@@ -11,6 +11,8 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import androidx.annotation.Keep
+import com.webtrit.callkeep.PAudioDevice
+import com.webtrit.callkeep.PAudioDeviceType
 import com.webtrit.callkeep.PCallRequestError
 import com.webtrit.callkeep.PCallRequestErrorEnum
 import com.webtrit.callkeep.PDelegateFlutterApi
@@ -30,7 +32,9 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.EmergencyNumberException
 import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.models.OutgoingFailureType
+import com.webtrit.callkeep.models.toAudioDevice
 import com.webtrit.callkeep.models.toCallHandle
+import com.webtrit.callkeep.models.toPAudioDevice
 import com.webtrit.callkeep.models.toPHandle
 import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
@@ -77,6 +81,8 @@ class ForegroundService : Service(), PHostApi {
                 ConnectionPerform.AnswerCall.name -> handleCSReportAnswerCall(intent.extras)
                 ConnectionPerform.OngoingCall.name -> handleCSReportOngoingCall(intent.extras)
                 ConnectionPerform.ConnectionHasSpeaker.name -> handleCSReportConnectionHasSpeaker(intent.extras)
+                ConnectionPerform.AudioDeviceSet.name -> handleCSReportAudioDeviceSet(intent.extras)
+                ConnectionPerform.AudioDevicesUpdate.name -> handleCsReportAudioDevicesUpdate(intent.extras)
                 ConnectionPerform.AudioMuting.name -> handleCSReportAudioMuting(intent.extras)
                 ConnectionPerform.ConnectionHolding.name -> handleCSReportConnectionHolding(intent.extras)
                 ConnectionPerform.SentDTMF.name -> handleCSReportSentDTMF(intent.extras)
@@ -276,6 +282,19 @@ class ForegroundService : Service(), PHostApi {
         callback.invoke(Result.success(null))
     }
 
+    override fun setAudioDevice(
+        callId: String,
+        device: PAudioDevice,
+        callback: (Result<PCallRequestError?>) -> Unit
+    ) {
+        val metadata = CallMetadata(
+            callId = callId,
+            audioDevice = device.toAudioDevice()
+        )
+        PhoneConnectionService.Companion.setAudioDevice(baseContext, metadata)
+        callback.invoke(Result.success(null))
+    }
+
     // --------------------------------
     // Handlers for ConnectionService reports to communicate with the Flutter side
     // --------------------------------
@@ -333,6 +352,24 @@ class ForegroundService : Service(), PHostApi {
             val callMetaData = CallMetadata.Companion.fromBundle(it)
             flutterDelegateApi?.performSetSpeaker(
                 callMetaData.callId, callMetaData.hasSpeaker
+            ) {}
+        }
+    }
+
+    private fun handleCSReportAudioDeviceSet(extras: Bundle?) {
+        extras?.let {
+            val callMetaData = CallMetadata.Companion.fromBundle(it)
+            flutterDelegateApi?.performAudioDeviceSet(
+                callMetaData.callId, callMetaData.audioDevice!!.toPAudioDevice()
+            ) {}
+        }
+    }
+
+    private fun handleCsReportAudioDevicesUpdate(extras: Bundle?) {
+        extras?.let {
+            val callMetaData = CallMetadata.Companion.fromBundle(it)
+            flutterDelegateApi?.performAudioDevicesUpdate(
+                callMetaData.callId, callMetaData.audioDevices.map { audioDevice -> audioDevice.toPAudioDevice() }
             ) {}
         }
     }

@@ -331,4 +331,16 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
   }) {
     emit(state.addAction("End call received"));
   }
+
+  @override
+  Future<bool> performAudioDeviceSet(String callId, CallkeepAudioDevice device) {
+    emit(state.addAction("Delegate audio device set: ${device.name}"));
+    return Future.value(true);
+  }
+
+  @override
+  Future<bool> performAudioDevicesUpdate(String callId, List<CallkeepAudioDevice> devices) {
+    emit(state.addAction("Delegate audio devices update: ${devices.map((d) => d.name).join(", ")}"));
+    return Future.value(true);
+  }
 }

@@ -50,6 +50,7 @@ class PhoneConnectionServiceDispatcher(
             ServiceAction.UpdateCall -> metadata?.let { handleUpdateCall(it) }
             ServiceAction.SendDTMF -> metadata?.let { handleSendDTMF(it) }
             ServiceAction.Speaker -> metadata?.let { handleSpeaker(it) }
+            ServiceAction.AudioDeviceSet -> metadata?.let { handleAudioDeviceSet(it) }
             ServiceAction.TearDown -> handleTearDown()
         }
     }
@@ -115,6 +116,12 @@ class PhoneConnectionServiceDispatcher(
 
     private fun handleSpeaker(metadata: CallMetadata) {
         connectionManager.getConnection(metadata.callId)?.changeSpeakerState(metadata.hasSpeaker) ?: dispatcher(
+            ConnectionPerform.ConnectionNotFound, metadata
+        )
+    }
+
+    private fun handleAudioDeviceSet(metadata: CallMetadata) {
+        connectionManager.getConnection(metadata.callId)?.setAudioDevice(metadata.audioDevice!!) ?: dispatcher(
             ConnectionPerform.ConnectionNotFound, metadata
         )
     }

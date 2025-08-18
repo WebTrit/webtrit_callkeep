@@ -37,6 +37,12 @@ class POptions {
   late PAndroidOptions android;
 }
 
+class PAudioDevice {
+  late PAudioDeviceType type;
+  late String? id;
+  late String? name;
+}
+
 enum PLogTypeEnum {
   debug,
   error,
@@ -88,6 +94,15 @@ enum PEndCallReasonEnum {
 // TODO: See https://github.com/flutter/flutter/issues/87307
 class PEndCallReason {
   late PEndCallReasonEnum value;
+}
+
+enum PAudioDeviceType {
+  earpiece,
+  speaker,
+  bluetooth,
+  wiredHeadset,
+  streaming,
+  unknown,
 }
 
 enum PIncomingCallErrorEnum {
@@ -370,6 +385,10 @@ abstract class PHostApi {
   @async
   PCallRequestError? setSpeaker(String callId, bool enabled);
 
+  @ObjCSelector('setAudioDevice:device:')
+  @async
+  PCallRequestError? setAudioDevice(String callId, PAudioDevice device);
+
   @ObjCSelector('sendDTMF:key:')
   @async
   PCallRequestError? sendDTMF(String callId, String key);
@@ -441,6 +460,14 @@ abstract class PDelegateFlutterApi {
   @ObjCSelector('performSendDTMF:key:')
   @async
   bool performSendDTMF(String callId, String key);
+
+  @ObjCSelector('audioDeviceSet:device:')
+  @async
+  bool performAudioDeviceSet(String callId, PAudioDevice device);
+
+  @ObjCSelector('performAudioDevicesUpdate:devices:')
+  @async
+  bool performAudioDevicesUpdate(String callId, List<PAudioDevice> devices);
 
   @ObjCSelector('didActivateAudioSession')
   void didActivateAudioSession();

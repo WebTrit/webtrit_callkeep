@@ -189,6 +189,23 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
+  Future<CallkeepCallRequestError?> setAudioDevice(
+    String callId,
+    CallkeepAudioDevice device,
+  ) {
+    return _api
+        .setAudioDevice(
+          callId,
+          PAudioDevice(
+            type: PAudioDeviceType.values.byName(device.type.name),
+            id: device.id,
+            name: device.name,
+          ),
+        )
+        .then((value) => value?.value.toCallkeep());
+  }
+
+  @override
   Future<CallkeepCallRequestError?> sendDTMF(
     String callId,
     String key,
@@ -490,6 +507,46 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
   }
 
   @override
+  Future<bool> performSetSpeaker(
+    String callId,
+    bool enabled,
+  ) {
+    return _delegate.performSetSpeaker(callId, enabled);
+  }
+
+  @override
+  Future<bool> performAudioDeviceSet(
+    String callId,
+    PAudioDevice device,
+  ) {
+    return _delegate.performAudioDeviceSet(
+      callId,
+      CallkeepAudioDevice(
+        type: CallkeepAudioDeviceType.values.byName(device.type.name),
+        id: device.id,
+        name: device.name,
+      ),
+    );
+  }
+
+  @override
+  Future<bool> performAudioDevicesUpdate(
+    String callId,
+    List<PAudioDevice> devices,
+  ) {
+    return _delegate.performAudioDevicesUpdate(
+      callId,
+      devices.map((device) {
+        return CallkeepAudioDevice(
+          type: CallkeepAudioDeviceType.values.byName(device.type.name),
+          id: device.id,
+          name: device.name,
+        );
+      }).toList(),
+    );
+  }
+
+  @override
   void didActivateAudioSession() {
     _delegate.didActivateAudioSession();
   }
@@ -502,14 +559,6 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
   @override
   void didReset() {
     _delegate.didReset();
-  }
-
-  @override
-  Future<bool> performSetSpeaker(
-    String callId,
-    bool enabled,
-  ) {
-    return _delegate.performSetSpeaker(callId, enabled);
   }
 }
 

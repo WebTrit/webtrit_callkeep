@@ -661,7 +661,7 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
     NSError *error = nil;
 
     BOOL success = [session setCategory:AVAudioSessionCategoryPlayAndRecord
-                            withOptions:AVAudioSessionCategoryOptionAllowBluetooth | AVAudioSessionCategoryOptionDefaultToSpeaker
+                            withOptions:AVAudioSessionCategoryOptionAllowBluetooth
                                   error:&error];
     if (!success) {
         NSLog(@"[Callkeep] Failed to set category: %@", error);
