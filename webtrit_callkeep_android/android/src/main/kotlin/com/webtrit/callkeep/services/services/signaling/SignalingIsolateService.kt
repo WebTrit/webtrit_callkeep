@@ -98,6 +98,8 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
     override fun onCreate() {
         super.onCreate()
         ContextHolder.init(applicationContext)
+
+        Log.d(TAG, "SignalingIsolateService onCreate")
         // Register the service to receive signaling status updates
         latestSignalingStatus = SignalingStatusBroadcaster.currentValue
         SignalingStatusBroadcaster.register(this, signalingStatusReceiver)
@@ -124,6 +126,8 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
     }
 
     override fun onDestroy() {
+        Log.d(TAG, "SignalingIsolateService onDestroy")
+
         // Unregister the service from receiving signaling status updates
         SignalingStatusBroadcaster.unregister(this, signalingStatusReceiver)
         latestSignalingStatus = null
@@ -195,6 +199,8 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d(TAG, "SignalingIsolateService onStartCommand: $intent")
+
         val action = intent?.action
         val metadata = intent?.extras?.let(CallMetadata::fromBundleOrNull)
 
@@ -262,6 +268,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
+        Log.d(TAG, "SignalingIsolateService onTaskRemoved: $rootIntent")
         if (StorageDelegate.SignalingService.isSignalingServiceEnabled(context = applicationContext)) {
             SignalingServiceBootWorker.Companion.enqueue(applicationContext, 1000)
         }
@@ -334,6 +341,8 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
         @SuppressLint("ImplicitSamInstance")
         fun stop(context: Context) {
+            Log.d(TAG, "Stopping SignalingIsolateService")
+
             SignalingServiceBootWorker.Companion.remove(context)
 
             context.stopService(Intent(context, SignalingIsolateService::class.java))

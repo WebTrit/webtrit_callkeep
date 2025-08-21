@@ -64,6 +64,9 @@ class IncomingCallService : Service() {
         super.onCreate()
         setRunning(true)
         ContextHolder.init(applicationContext)
+
+        Log.d(TAG, "IncomingCallService created")
+
         // Register the service to receive connection service perform events
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
             connectionService, this, connectionServicePerformReceiver
@@ -116,6 +119,8 @@ class IncomingCallService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        Log.d(TAG, "onDestroy called")
+
         setRunning(false)
         // Unregister the service from receiving connection service perform events
         ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(this, connectionServicePerformReceiver)
@@ -194,6 +199,7 @@ class IncomingCallService : Service() {
         }
 
         fun start(context: Context, metadata: CallMetadata) {
+            Log.d(TAG, "Starting IncomingCallService with metadata: $metadata")
             context.startForegroundService(Intent(context, IncomingCallService::class.java).apply {
                 this.action = PushNotificationServiceEnums.IC_INITIALIZE.name
                 metadata.toBundle().let(::putExtras)
@@ -209,6 +215,7 @@ class IncomingCallService : Service() {
         fun release(context: Context, type: IncomingCallRelease) {
             if (isRunning) {
                 context.startService(Intent(context, IncomingCallService::class.java).apply { this.action = type.name })
+                Log.d(TAG, "Service is running. Release action $type initiated.")
             } else {
                 Log.w(TAG, "Service is not running. Release action $type ignored.")
             }

@@ -54,6 +54,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         AssetHolder.init(context, assets)
 
         delegateLogsFlutterApi = PDelegateLogsFlutterApi(messenger).also { Log.add(it) }
+        Log.i(TAG, "onAttachedToEngine id:${flutterPluginBinding.hashCode()}")
 
         // Bootstrap isolate APIs
         BackgroundSignalingIsolateBootstrapApi(context).let {
@@ -79,6 +80,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        Log.i(TAG, "onDetachedFromEngine id:${binding.hashCode()}")
         delegateLogsFlutterApi?.let { Log.remove(it) }
         delegateLogsFlutterApi = null
 
@@ -95,6 +97,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+        Log.i(TAG, "onAttachedToActivity id:${binding.hashCode()}")
         this.activityPluginBinding = binding
 
         ActivityHolder.setActivity(binding.activity)
@@ -112,6 +115,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
                 try {
                     val intent = Intent(binding.activity, SignalingIsolateService::class.java)
                     context.startForegroundService(intent)
+                    Log.i(TAG, "SignalingIsolateService started successfully")
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to start SignalingIsolateService: ${e.message}")
                 }
@@ -121,6 +125,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     }
 
     override fun onDetachedFromActivity() {
+        Log.i(TAG, "onDetachedFromActivity id:${activityPluginBinding?.hashCode()}")
         ActivityHolder.setActivity(null)
 
         this.lifeCycle?.removeObserver(this)
@@ -133,8 +138,10 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     }
 
     override fun onAttachedToService(binding: ServicePluginBinding) {
+        Log.i(TAG, "onAttachedToService id:${binding.hashCode()}")
         // Create communication bridge between the service and the push notification isolate
         if (binding.service is IncomingCallService) {
+            Log.i(TAG, "IncomingCallService detected, setting up communication bridge")
             pushNotificationIsolateService = binding.service as? IncomingCallService
 
             pushNotificationIsolateService?.establishFlutterCommunication(
@@ -150,6 +157,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
 
         // Create communication bridge between the service and the signaling isolate
         if (binding.service is SignalingIsolateService) {
+            Log.i(TAG, "SignalingIsolateService detected, setting up communication bridge")
             this.signalingIsolateService = binding.service as SignalingIsolateService
 
             PDelegateBackgroundServiceFlutterApi(messenger).let {
@@ -165,6 +173,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     }
 
     override fun onDetachedFromService() {
+        Log.i(TAG, "onDetachedFromService id:${activityPluginBinding?.hashCode()}")
         PHostBackgroundSignalingIsolateApi.setUp(messenger, null)
         PHostBackgroundPushNotificationIsolateApi.setUp(messenger, null)
 
@@ -173,10 +182,12 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     }
 
     override fun onDetachedFromActivityForConfigChanges() {
+        Log.i(TAG, "onDetachedFromActivityForConfigChanges id:${activityPluginBinding?.hashCode()}")
         this.lifeCycle?.removeObserver(this)
     }
 
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
+        Log.i(TAG, "onReattachedToActivityForConfigChanges id:${binding.hashCode()}")
         lifeCycle = (binding.lifecycle as HiddenLifecycleReference).lifecycle
         lifeCycle!!.addObserver(this)
     }
@@ -204,6 +215,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         val intent = Intent(activity, ForegroundService::class.java)
         serviceConnection = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                Log.i(TAG, "ForegroundService connected: ${service?.javaClass?.name}")
                 val binder = service as ForegroundService.LocalBinder
                 foregroundService = binder.getService()
                 foregroundService?.flutterDelegateApi = PDelegateFlutterApi(messenger)
@@ -211,6 +223,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
+                Log.w(TAG, "ForegroundService disconnected")
                 foregroundService = null
             }
         }
@@ -223,6 +236,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
                 activity.unbindService(conn)
                 val stopIntent = Intent(activity, ForegroundService::class.java)
                 activity.stopService(stopIntent)
+                Log.i(TAG, "unbindAndStopForegroundService: ForegroundService unbound and stopped")
             } catch (e: IllegalArgumentException) {
                 Log.e(TAG, "unbindAndStopForegroundService: Service not registered - ${e.message}")
             }
