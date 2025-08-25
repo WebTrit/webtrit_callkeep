@@ -62,6 +62,9 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         BackgroundPushNotificationIsolateBootstrapApi(context).let {
             PHostBackgroundPushNotificationIsolateBootstrapApi.setUp(messenger, it)
         }
+        SmsReceptionConfigBootstrapApi(context).let {
+            PHostSmsReceptionConfigApi.setUp(messenger, it)
+        }
 
         // Helper APIs
         PermissionsApi(context).let {

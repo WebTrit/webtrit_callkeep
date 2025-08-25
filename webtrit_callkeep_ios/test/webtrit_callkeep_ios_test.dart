@@ -20,10 +20,7 @@ void main() {
           maximumCallsPerCallGroup: 1,
           supportedHandleTypes: {CallkeepHandleType.number},
         ),
-        android: CallkeepAndroidOptions(
-          incomingPath: CallPathKeyConst.callPath,
-          rootPath: CallPathKeyConst.mainPath,
-        ),
+        android: CallkeepAndroidOptions(),
       ),
     );
   });

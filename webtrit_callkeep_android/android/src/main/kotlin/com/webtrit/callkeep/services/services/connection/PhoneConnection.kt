@@ -31,6 +31,14 @@ class PhoneConnection internal constructor(
     var timeout: ConnectionTimeout? = null,
     var onDisconnectCallback: (connection: PhoneConnection) -> Unit,
 ) : Connection() {
+    /**
+     * Indicates whether the call's outgoing audio is currently muted.
+     *
+     * This property reflects only the application's internal mute state in
+     * self-managed calls. It may not match the global microphone mute state
+     * reported by the system, as it is not synchronized with
+     * {@link android.media.AudioManager#isMicrophoneMute()}.
+     */
     private var isMute = false
     private var isHasSpeaker = false
     private var answer = false
@@ -71,24 +79,19 @@ class PhoneConnection internal constructor(
     }
 
     /**
-     * Change the mute state of the call.
+     * Changes the mute state of the call.
      *
-     * @param isMute True to mute the call, false to unmute it.
+     * This method updates the internal mute flag and notifies the application about
+     * the change. For self-managed calls, this does not affect the system-wide
+     * microphone state; mute should be applied directly in the media engine
+     * (e.g., disabling the WebRTC audio track). The method is used to keep the UI
+     * and application state in sync with the actual mute status of the call's audio.
+     *
+     * @param isMute True to mute the call's outgoing audio, false to unmute it.
      */
     fun changeMuteState(isMute: Boolean) {
-        this@PhoneConnection.audioManager.setMicrophoneMute(isMute)
-        /**
-         * There are known issues in Android 8.1 related to onCallAudioStateChanged, specifically,
-         * it does not get triggered when we change the microphone mute state using audioManager.isMicrophoneMute.
-         *
-         *
-         * To address this issue, we need trigger locally.
-         */
-        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.O_MR1) {
-            //TODO: DO SINGLE ENDPOINT METHOD FOR SET STATE
-            this.isMute = isMute
-            dispatcher(ConnectionPerform.AudioMuting, metadata.copy(hasMute = this.isMute))
-        }
+        this.isMute = isMute
+        dispatcher(ConnectionPerform.AudioMuting, metadata.copy(hasMute = this.isMute))
     }
 
     /**
@@ -238,34 +241,44 @@ class PhoneConnection internal constructor(
     }
 
     /**
-     * Called when the audio state of the call changes.
+     * Called when the audio route of the call changes.
      *
-     * This method handles audio state changes, including muting and audio routing.
-     * It addresses known issues in Android 8.1 related to onCallAudioStateChanged.
-     * Depending on the Android version, it locally handles changes in microphone mute state
-     * and audio route changes, and notifies the application about these changes.
+     * For SELF_MANAGED connections we ignore {@code state.isMuted} entirely,
+     * since mute state is managed internally by our own audio engine and
+     * {@link CallAudioState} is not a reliable source of truth on any API level.
      *
-     * @param state The new audio state of the call.
+     * This method now only handles audio route changes (e.g., earpiece ↔ speaker)
+     * and dispatches them to the application.
+     *
+     * Note: As of API 34, {@link #onCallAudioStateChanged} is deprecated in favor of
+     * {@link #onCallEndpointChanged(CallEndpoint)} and {@link #onMuteStateChanged(boolean)}.
+     *
+     * @param state The new audio state of the call, may be {@code null}.
      */
     @Deprecated("Deprecated in Java")
     override fun onCallAudioStateChanged(state: CallAudioState?) {
         super.onCallAudioStateChanged(state)
 
-        // Check if the device is running Android version higher than O_MR1 (Android 8.1)
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O_MR1) {
-            state?.isMuted?.let {
-                // Update the mute state locally
-                this.isMute = it
-                dispatcher(ConnectionPerform.AudioMuting, metadata.copy(hasMute = this.isMute))
-            }
-        }
-
         state?.route?.let {
-            // Update the audio route state
             this.isHasSpeaker = it == CallAudioState.ROUTE_SPEAKER
             dispatcher(
-                ConnectionPerform.ConnectionHasSpeaker, metadata.copy(hasSpeaker = this.isHasSpeaker)
+                ConnectionPerform.ConnectionHasSpeaker,
+                metadata.copy(hasSpeaker = this.isHasSpeaker)
             )
+        }
+    }
+
+    /**
+     * API 34+: Invoked when the system mute state changes externally
+     * (e.g., via Bluetooth controls or system InCall UI).
+     * Updates the local mute flag, microphone state, and notifies the app.
+     *
+     * @param isMuted True if muted, false otherwise.
+     */
+    override fun onMuteStateChanged(isMuted: Boolean) {
+        if (isMuted != this.isMute) {
+            this.isMute = isMuted
+            dispatcher(ConnectionPerform.AudioMuting, metadata.copy(hasMute = isMuted))
         }
     }
 

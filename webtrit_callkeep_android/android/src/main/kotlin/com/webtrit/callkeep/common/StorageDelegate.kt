@@ -156,4 +156,30 @@ object StorageDelegate {
             }
         }
     }
+
+    object IncomingCallSmsConfig {
+        private const val SMS_PREFIX = "SMS_PREFIX"
+        private const val SMS_REGEX_PATTERN = "SMS_REGEX_PATTERN"
+        fun setSmsPrefix(context: Context, prefix: String) {
+            getSharedPreferences(context)?.edit()?.apply {
+                putString(SMS_PREFIX, prefix)
+                apply()
+            }
+        }
+
+        fun getSmsPrefix(context: Context): String? {
+            return getSharedPreferences(context)?.getString(SMS_PREFIX, null)
+        }
+
+        fun setRegexPattern(context: Context, pattern: String) {
+            getSharedPreferences(context)?.edit()?.apply {
+                putString(SMS_REGEX_PATTERN, pattern)
+                apply()
+            }
+        }
+
+        fun getRegexPattern(context: Context): String? {
+            return getSharedPreferences(context)?.getString(SMS_REGEX_PATTERN, null)
+        }
+    }
 }

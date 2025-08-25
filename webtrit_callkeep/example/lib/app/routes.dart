@@ -8,6 +8,4 @@ class AppRoute {
   static const incoming = 'incoming';
   static const outgoing = 'outgoing';
   static const tests = 'tests';
-
 }
-

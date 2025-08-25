@@ -37,8 +37,7 @@ class CallkeepIOSOptions extends Equatable {
   final bool driveIdleTimerDisabled;
 
   @override
-  List<Object?> get props =>
-      [
+  List<Object?> get props => [
         localizedName,
         ringtoneSound,
         ringbackSound,
@@ -62,8 +61,7 @@ class CallkeepAndroidOptions extends Equatable {
   final String? ringbackSound;
 
   @override
-  List<Object?> get props =>
-      [
+  List<Object?> get props => [
         ringtoneSound,
         ringbackSound,
       ];

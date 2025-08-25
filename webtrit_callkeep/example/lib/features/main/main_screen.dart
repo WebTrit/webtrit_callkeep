@@ -57,11 +57,16 @@ class _MainScreenState extends State<MainScreen> {
                 children: [
                   ElevatedButton(
                     child: Text("Request all permissions", textAlign: TextAlign.center),
-                    onPressed: () async {},
+                    onPressed: () => _requestPermissions([
+                      Permission.notification,
+                      Permission.ignoreBatteryOptimizations,
+                      Permission.microphone,
+                      Permission.camera,
+                    ]),
                   ),
                   ElevatedButton(
                     child: Text("Check all permissions", textAlign: TextAlign.center),
-                    onPressed: () async {},
+                    onPressed: () {},
                   ),
                 ],
               ),
@@ -172,6 +177,17 @@ class _MainScreenState extends State<MainScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _requestPermissions(List<Permission> permissions) async {
+    final statuses = await permissions.request();
+    statuses.forEach((permission, status) {
+      print('$permission: $status');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$permission: $status')),
+      );
+    });
   }
 }
 
