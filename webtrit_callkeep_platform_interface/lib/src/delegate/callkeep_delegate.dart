@@ -45,6 +45,12 @@ abstract class CallkeepDelegate {
   /// Perform reject call
   Future<bool> performSetSpeaker(String callId, bool enabled);
 
+  /// Perform audio device changed
+  Future<bool> performAudioDeviceSet(String callId, CallkeepAudioDevice device);
+
+  /// Perform audio devices update
+  Future<bool> performAudioDevicesUpdate(String callId, List<CallkeepAudioDevice> devices);
+
   /// Audio session activated
   void didActivateAudioSession();
 

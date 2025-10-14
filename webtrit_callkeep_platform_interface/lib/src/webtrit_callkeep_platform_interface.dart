@@ -166,6 +166,13 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('setSpeaker() has not been implemented.');
   }
 
+  /// Set the audio device for the given [callId] and [device] flag.
+  ///
+  /// Returns [CallkeepCallRequestError] if there is an error.
+  Future<CallkeepCallRequestError?> setAudioDevice(String callId, CallkeepAudioDevice device) {
+    throw UnimplementedError('setAudioDevice() has not been implemented.');
+  }
+
   // Permissions section
 
   /// Check if the permission for full screen intent is available.

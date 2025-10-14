@@ -17,6 +17,7 @@ class IncomingCallHandler(
     private var lastMetadata: CallMetadata? = null
 
     fun handle(metadata: CallMetadata) {
+        Log.d(TAG, "Handling incoming call: ${metadata.callId}, ${metadata.handle}, ${metadata.displayName}, ${metadata.hasVideo}")
         lastMetadata = metadata
         showNotification(metadata)
         maybeInitBackgroundHandling()

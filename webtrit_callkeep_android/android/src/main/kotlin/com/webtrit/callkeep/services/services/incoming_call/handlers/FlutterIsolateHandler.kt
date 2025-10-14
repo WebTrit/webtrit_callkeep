@@ -21,6 +21,8 @@ class FlutterIsolateHandler(
     private var wakeLock: PowerManager.WakeLock? = null
 
     override fun start() {
+        Log.d(TAG, "Starting Flutter isolate handler")
+
         acquireWakeLock()
 
         if (flutterEngineHelper == null) {
@@ -38,6 +40,8 @@ class FlutterIsolateHandler(
         get() = flutterEngineHelper?.isEngineAttached == true
 
     fun cleanup() {
+        Log.d(TAG, "Cleaning up Flutter isolate handler")
+
         wakeLock?.takeIf { it.isHeld }?.release()
         wakeLock = null
 
