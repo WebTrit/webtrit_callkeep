@@ -7,6 +7,7 @@ import android.app.Person
 import android.content.Intent
 import android.graphics.drawable.Icon
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.webtrit.callkeep.R
@@ -80,6 +81,35 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
             builder.addAction(createNotificationAction(icAnswer, answerButton, answerIntent))
             builder.build().apply { flags = flags or NotificationCompat.FLAG_INSISTENT }
         }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun buildSilent(): Notification {
+        Log.d(TAG, "Updating incoming call notification to silent mode.")
+
+        val meta =
+            requireNotNull(callMetaData) { "Call metadata must be set before updating the notification." }
+
+        val title = context.getString(R.string.incoming_call_title)
+        val description = context.getString(R.string.incoming_call_description, meta.name)
+
+        return NotificationCompat.Builder(context, INCOMING_CALL_NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setContentTitle(title)
+            .setContentText(description)
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .setAutoCancel(false)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setDefaults(0)
+            .setSound(null)
+            .setVibrate(null)
+            .setFullScreenIntent(null, false)
+            .build().apply {
+                flags = flags and Notification.FLAG_INSISTENT.inv()
+            }
     }
 
     fun buildReleaseNotification(): Notification {

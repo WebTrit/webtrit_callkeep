@@ -174,7 +174,7 @@ class IncomingCallService : Service() {
 
     // Handles the RELEASE action and cancels the timeout
     private fun handleRelease(answered: Boolean = false): Int {
-        if (!answered) incomingCallHandler.releaseIncomingCallNotification()
+        incomingCallHandler.releaseIncomingCallNotification(answered)
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
         timeoutHandler.postDelayed(stopTimeoutRunnable, SERVICE_TIMEOUT_MS)
         callLifecycleHandler.release()

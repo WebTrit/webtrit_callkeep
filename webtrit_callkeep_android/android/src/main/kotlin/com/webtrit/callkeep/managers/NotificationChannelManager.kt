@@ -15,7 +15,7 @@ object NotificationChannelManager {
 
     // Constants for notification channel IDs
     const val MISSED_CALL_NOTIFICATION_CHANNEL_ID = "MISSED_CALL_NOTIFICATION_CHANNEL_ID"
-    const val INCOMING_CALL_NOTIFICATION_CHANNEL_ID = "INCOMING_CALL_NOTIFICATION_SILENT_CHANNEL_ID"
+    const val INCOMING_CALL_NOTIFICATION_CHANNEL_ID = "INCOMING_CALL_NOTIFICATION_CHANNEL_ID"
     const val FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID = "FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID"
     const val NOTIFICATION_ACTIVE_CALL_CHANNEL_ID = "NOTIFICATION_ACTIVE_CALL_CHANNEL_ID"
 
@@ -131,5 +131,4 @@ object NotificationChannelManager {
             if (customSound) setSound(null, null)
         }
         NotificationManagerCompat.from(ContextHolder.context).createNotificationChannel(notificationChannel)
-    }
-}
+    }}
