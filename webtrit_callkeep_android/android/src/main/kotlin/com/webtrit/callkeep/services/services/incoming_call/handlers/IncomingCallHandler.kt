@@ -1,50 +1,118 @@
 package com.webtrit.callkeep.services.services.incoming_call.handlers
 
 import android.annotation.SuppressLint
+import android.app.Notification
 import android.app.Service
+import android.os.Build
 import android.util.Log
+import androidx.core.app.NotificationManagerCompat
 import com.webtrit.callkeep.common.startForegroundServiceCompat
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
 import com.webtrit.callkeep.services.common.IsolateLaunchPolicy
 
+/**
+ * Handles the lifecycle of an incoming call within a foreground Service:
+ *  - shows the initial high-priority incoming-call notification
+ *  - optionally launches background handling (isolate) according to policy
+ *  - transitions the notification to silent (ring muted) or releases it after answer
+ *
+ * This class is intentionally side-effectful and **does not** own Service lifecycle;
+ * it only delegates to Service foreground APIs and the Notification builder.
+ *
+ * Thread-safety: methods are expected to be called on the main thread (Service thread).
+ */
 class IncomingCallHandler(
     private val service: Service,
     private val notificationBuilder: IncomingCallNotificationBuilder,
     private val isolateLaunchPolicy: IsolateLaunchPolicy,
     private val isolateInitializer: IsolateInitializer
 ) {
-    private var lastMetadata: CallMetadata? = null
 
+    private var lastMetadata: CallMetadata? = null
+    private val notifier by lazy { NotificationManagerCompat.from(service) }
+
+    /**
+     * Entry point to process a fresh incoming call.
+     * Shows the ringing notification and (if policy permits) starts background handling.
+     */
     fun handle(metadata: CallMetadata) {
-        Log.d(TAG, "Handling incoming call: ${metadata.callId}, ${metadata.handle}, ${metadata.displayName}, ${metadata.hasVideo}")
+        Log.d(
+            TAG,
+            "Handling incoming call: id=${metadata.callId}, handle=${metadata.handle}, " + "name=${metadata.displayName}, video=${metadata.hasVideo}"
+        )
         lastMetadata = metadata
         showNotification(metadata)
         maybeInitBackgroundHandling()
     }
 
+    /**
+     * Updates the notification based on call answer state:
+     *  - answered=true  -> release incoming-call notification (builder-specific behavior)
+     *  - answered=false -> mute: replace with a silent ongoing notification
+     */
+    @SuppressLint("MissingPermission")
+    fun releaseIncomingCallNotification(answered: Boolean) {
+        if (answered) muteIncomingCallNotification()
+        else notificationBuilder.updateToReleaseIncomingCallNotification()
+    }
+
+    /**
+     * Transitions the foreground Service to a silent call notification
+     * (keeps the service in foreground, but cancels the loud ringing one).
+     */
+    @SuppressLint("MissingPermission")
+    fun muteIncomingCallNotification() {
+        stopForegroundDetach()
+        notifier.cancel(IncomingCallNotificationBuilder.NOTIFICATION_ID)
+        startForegroundCompat(notificationBuilder.buildSilent())
+    }
+
     private fun showNotification(metadata: CallMetadata) {
+        // Build a high-priority incoming call notification and elevate the Service to foreground.
+        val notification = notificationBuilder.apply { setCallMetaData(metadata) }.build()
         service.startForegroundServiceCompat(
-            service,
-            IncomingCallNotificationBuilder.Companion.NOTIFICATION_ID,
-            notificationBuilder.apply { setCallMetaData(metadata) }.build()
+            service, IncomingCallNotificationBuilder.NOTIFICATION_ID, notification
         )
     }
 
-    @SuppressLint("MissingPermission")
-    fun releaseIncomingCallNotification() {
-        notificationBuilder.updateToReleaseIncomingCallNotification()
-    }
-
     private fun maybeInitBackgroundHandling() {
-        if (isolateLaunchPolicy.shouldLaunch()) {
-            Log.d(TAG, "Launching isolate for callId: ${lastMetadata?.callId}")
+        val shouldLaunch = isolateLaunchPolicy.shouldLaunch()
+        if (shouldLaunch) {
+            val callId = lastMetadata?.callId
+            Log.d(TAG, "Launching isolate for callId: $callId")
             isolateInitializer.start()
         } else {
             Log.d(
-                TAG,
-                "Skipped launching isolate for callId: ${lastMetadata?.callId} isolateLaunchPolicy: ${isolateLaunchPolicy.shouldLaunch()} isolateInitializer: $isolateInitializer"
+                TAG, "Skipped launching isolate.initializer=$isolateInitializer"
             )
+        }
+    }
+
+    /**
+     * Starts foreground respecting SDK level to avoid deprecated API warnings.
+     */
+    private fun startForegroundCompat(notification: Notification) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            service.startForeground(
+                IncomingCallNotificationBuilder.NOTIFICATION_ID,
+                notification,
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
+            )
+        } else {
+            service.startForeground(IncomingCallNotificationBuilder.NOTIFICATION_ID, notification)
+        }
+    }
+
+    /**
+     * Stops foreground without fully removing the Service (detach mode on Q+).
+     * Keeps the Service running while detaching the old notification.
+     */
+    private fun stopForegroundDetach() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            service.stopForeground(Service.STOP_FOREGROUND_DETACH)
+        } else {
+            @Suppress("DEPRECATION") service.stopForeground(false)
         }
     }
 
