@@ -1,4 +1,8 @@
-import 'package:webtrit_callkeep/src/android/android.dart';
+import 'package:webtrit_callkeep/src/android/services/background_push_notification_bootstrap_service.dart';
+import 'package:webtrit_callkeep/src/android/services/background_push_notification_service.dart';
+import 'package:webtrit_callkeep/src/android/services/background_signaling_bootstrap_service.dart';
+import 'package:webtrit_callkeep/src/android/services/background_signaling_service.dart';
+import 'package:webtrit_callkeep/src/android/utils/sms_bootstrap_reception_config.dart';
 
 /// Provides access to various Android Callkeep-related services.
 ///
@@ -22,11 +26,6 @@ abstract class AndroidCallkeepServices {
   /// This is not a background service, but a bootstrap interface for the
   /// internal `BroadcastReceiver` used to receive specially formatted SMS messages
   /// that trigger incoming call flows (e.g. when push notifications are unavailable).
+  @Deprecated('Use smsReceptionConfig from AndroidCallkeepUtils instead.')
   static final smsReceptionConfig = SmsBootstrapReceptionConfig();
-
-  /// Provides access to Android-specific Activity controls.
-  ///
-  /// This includes methods for managing behavior over the lock screen,
-  /// waking the screen, moving the task to the back, and checking the device lock state.
-  static final activityControl = ActivityControl();
 }

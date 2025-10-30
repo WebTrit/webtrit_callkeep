@@ -13,7 +13,7 @@ class ActivityControlScreen extends StatefulWidget {
 }
 
 class _ActivityControlScreenState extends State<ActivityControlScreen> {
-  final _activityControl = AndroidCallkeepServices.activityControl;
+  final _activityControl = AndroidCallkeepUtils.activityControl;
 
   bool _showOverLockscreen = false;
   bool _wakeScreenOnShow = false;

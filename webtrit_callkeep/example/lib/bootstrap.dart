@@ -40,7 +40,7 @@ Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
       //
       // Example accepted message format:
       // "<#> CALLHOME: https://app.webtrit.com/call?callId=abc123&handle=380971112233&displayName=John%20Doe&hasVideo=true"
-      await AndroidCallkeepServices.smsReceptionConfig.configureReceivedSms(
+      await AndroidCallkeepUtils.smsReceptionConfig.configureReceivedSms(
         prefix: "<#> CALLHOME:",
         regexPattern:
             r'https:\/\/app\.webtrit\.com\/call\?callId=([^&]+)&handle=([^&]+)&displayName=([^&]+)&hasVideo=(true|false)',
