@@ -67,6 +67,11 @@ class _AppState extends State<App> {
               child: const TestsScreen(),
             ),
           ),
+          GoRoute(
+            name: AppRoute.activityControl,
+            path: '/activity-control',
+            builder: (context, state) => ActivityControlScreen(),
+          ),
         ],
       ),
     ],

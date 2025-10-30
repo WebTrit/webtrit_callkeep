@@ -27,6 +27,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
 
   final _soundApi = PHostSoundApi();
   final _connectionsApi = PHostConnectionsApi();
+  final _activityControlApi = PHostActivityControlApi();
 
   int? _signalingIsolatePluginCallbackHandle;
   int? _pushNotificationIsolatePluginCallbackHandle;
@@ -431,6 +432,42 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
 // ------------------------------------------------------------------------------------------------
+// Android Activity Control section
+// ------------------------------------------------------------------------------------------------
+
+  /// Allows the app's activity to be shown over the device lock screen.
+  ///
+  /// This is an Android-only feature.
+  @override
+  Future<void> showOverLockscreen([bool enable = true]) {
+    return _activityControlApi.showOverLockscreen(enable);
+  }
+
+  /// Turns the screen on when the app's window is shown.
+  ///
+  /// Typically used in conjunction with [showOverLockscreen].
+  /// This is an Android-only feature.
+  @override
+  Future<void> wakeScreenOnShow([bool enable = true]) {
+    return _activityControlApi.wakeScreenOnShow(enable);
+  }
+
+  /// Moves the entire task (app) to the background.
+  ///
+  /// This is an Android-only feature.
+  /// Returns `true` if successful.
+  @override
+  Future<bool> sendToBackground() {
+    return _activityControlApi.sendToBackground();
+  }
+
+  /// Checks if the device screen is currently locked (keyguard is active).
+  ///
+  /// Returns `false` on non-Android platforms.
+  @override
+  Future<bool> isDeviceLocked() {
+    return _activityControlApi.isDeviceLocked();
+  }
 }
 
 class _CallkeepDelegateRelay implements PDelegateFlutterApi {

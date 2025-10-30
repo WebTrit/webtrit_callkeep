@@ -102,6 +102,10 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
 
         ActivityHolder.setActivity(binding.activity)
 
+        ActivityControlApi(binding.activity).let {
+            PHostActivityControlApi.setUp(messenger, it)
+        }
+
         lifeCycle = (binding.lifecycle as HiddenLifecycleReference).lifecycle
         lifeCycle!!.addObserver(this)
 
@@ -132,6 +136,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
 
         activityPluginBinding?.activity?.let { unbindAndStopForegroundService(it) }
         PHostApi.setUp(messenger, null)
+        PHostActivityControlApi.setUp(messenger, null)
 
         foregroundService = null
         serviceConnection = null
@@ -150,8 +155,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
             )
 
             PHostBackgroundPushNotificationIsolateApi.setUp(
-                messenger,
-                pushNotificationIsolateService?.getCallLifecycleHandler()
+                messenger, pushNotificationIsolateService?.getCallLifecycleHandler()
             )
         }
 

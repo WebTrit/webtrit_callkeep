@@ -240,8 +240,9 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('getConnection() has not been implemented.');
   }
 
-// Android background signaling service
-// ------------------------------------------------------------------------------------------------
+  // ------------------------------------------------------------------------------------------------
+  // Android background signaling service
+  // ------------------------------------------------------------------------------------------------
 
   /// Sets up the  service callback with optional handlers and configurations.
   ///
@@ -305,11 +306,9 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('incomingCallAndroidService() has not been implemented.');
   }
 
-// ------------------------------------------------------------------------------------------------
-// Android background signaling service
-
-// Android background push notification service
-// ------------------------------------------------------------------------------------------------
+  // ------------------------------------------------------------------------------------------------
+  // Android background push notification service
+  // ------------------------------------------------------------------------------------------------
   /// Initializes the push notification callback.
   ///
   /// This method sets up a callback function that gets triggered when there is a change
@@ -330,9 +329,7 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
   /// the background isolate even if the app is open. Defaults to false.
   ///
   /// Throws an [UnimplementedError] if this method is not yet implemented.
-  Future<void> configurePushNotificationSignalingService({
-    bool launchBackgroundIsolateEvenIfAppIsOpen = false,
-  }) {
+  Future<void> configurePushNotificationSignalingService({bool launchBackgroundIsolateEvenIfAppIsOpen = false}) {
     throw UnimplementedError('configurePushNotificationSignalingService() is not implemented');
   }
 
@@ -355,12 +352,9 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('hungUpAndroidService() has not been implemented.');
   }
 
-// ------------------------------------------------------------------------------------------------
-// Android background push notification service
-
-// ------------------------------------------------------------------------------------------------
-// Android SMS reception section
-// ------------------------------------------------------------------------------------------------
+  // ------------------------------------------------------------------------------------------------
+  // Android SMS reception section
+  // ------------------------------------------------------------------------------------------------
 
   /// Initializes the SMS reception system with a prefix and a regular expression pattern.
   ///
@@ -396,5 +390,37 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('initializeSmsReception() is not implemented');
   }
 
-// ------------------------------------------------------------------------------------------------
+  // ------------------------------------------------------------------------------------------------
+  // Android Activity Control section
+  // ------------------------------------------------------------------------------------------------
+
+  /// Allows the app's activity to be shown over the device lock screen.
+  ///
+  /// This is an Android-only feature.
+  Future<void> showOverLockscreen([bool enable = true]) {
+    throw UnimplementedError('showOverLockscreen() has not been implemented.');
+  }
+
+  /// Turns the screen on when the app's window is shown.
+  ///
+  /// Typically used in conjunction with [showOverLockscreen].
+  /// This is an Android-only feature.
+  Future<void> wakeScreenOnShow([bool enable = true]) {
+    throw UnimplementedError('wakeScreenOnShow() has not been implemented.');
+  }
+
+  /// Moves the entire task (app) to the background.
+  ///
+  /// This is an Android-only feature.
+  /// Returns `true` if successful.
+  Future<bool> sendToBackground() {
+    throw UnimplementedError('sendToBackground() has not been implemented.');
+  }
+
+  /// Checks if the device screen is currently locked (keyguard is active).
+  ///
+  /// Returns `false` on non-Android platforms.
+  Future<bool> isDeviceLocked() {
+    throw UnimplementedError('isDeviceLocked() has not been implemented.');
+  }
 }
