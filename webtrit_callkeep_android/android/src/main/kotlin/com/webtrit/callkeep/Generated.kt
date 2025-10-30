@@ -2198,3 +2198,118 @@ interface PHostSmsReceptionConfigApi {
     }
   }
 }
+/** Generated interface from Pigeon that represents a handler of messages from Flutter. */
+interface PHostActivityControlApi {
+  /**
+   * Allows the app's activity to be shown over the device lock screen.
+   *
+   * This is an Android-only feature.
+   */
+  fun showOverLockscreen(enable: Boolean, callback: (Result<Unit>) -> Unit)
+  /**
+   * Turns the screen on when the app's window is shown.
+   *
+   * Typically used in conjunction with [showOverLockscreen].
+   * This is an Android-only feature.
+   */
+  fun wakeScreenOnShow(enable: Boolean, callback: (Result<Unit>) -> Unit)
+  /**
+   * Moves the entire task (app) to the background.
+   *
+   * This is an Android-only feature.
+   * Returns `true` if successful.
+   */
+  fun sendToBackground(callback: (Result<Boolean>) -> Unit)
+  /**
+   * Checks if the device screen is currently locked (keyguard is active).
+   *
+   * Returns `false` on non-Android platforms.
+   */
+  fun isDeviceLocked(callback: (Result<Boolean>) -> Unit)
+
+  companion object {
+    /** The codec used by PHostActivityControlApi. */
+    val codec: MessageCodec<Any?> by lazy {
+      GeneratedPigeonCodec()
+    }
+    /** Sets up an instance of `PHostActivityControlApi` to handle messages through the `binaryMessenger`. */
+    @JvmOverloads
+    fun setUp(binaryMessenger: BinaryMessenger, api: PHostActivityControlApi?, messageChannelSuffix: String = "") {
+      val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostActivityControlApi.showOverLockscreen$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val enableArg = args[0] as Boolean
+            api.showOverLockscreen(enableArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostActivityControlApi.wakeScreenOnShow$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val enableArg = args[0] as Boolean
+            api.wakeScreenOnShow(enableArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostActivityControlApi.sendToBackground$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.sendToBackground{ result: Result<Boolean> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostActivityControlApi.isDeviceLocked$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.isDeviceLocked{ result: Result<Boolean> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+    }
+  }
+}

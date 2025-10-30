@@ -23,4 +23,10 @@ abstract class AndroidCallkeepServices {
   /// internal `BroadcastReceiver` used to receive specially formatted SMS messages
   /// that trigger incoming call flows (e.g. when push notifications are unavailable).
   static final smsReceptionConfig = SmsBootstrapReceptionConfig();
+
+  /// Provides access to Android-specific Activity controls.
+  ///
+  /// This includes methods for managing behavior over the lock screen,
+  /// waking the screen, moving the task to the back, and checking the device lock state.
+  static final activityControl = ActivityControl();
 }

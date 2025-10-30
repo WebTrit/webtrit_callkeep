@@ -3,6 +3,7 @@ class AppRoute {
 
   static const main = 'main';
   static const actions = 'actions';
+  static const activityControl = 'activity_control';
   static const simulation = 'simulation';
   static const contacts = 'contacts';
   static const incoming = 'incoming';
