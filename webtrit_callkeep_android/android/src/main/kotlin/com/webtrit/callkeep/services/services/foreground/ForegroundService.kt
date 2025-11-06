@@ -26,6 +26,7 @@ import com.webtrit.callkeep.common.PigeonCallback
 import com.webtrit.callkeep.common.Platform
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.TelephonyUtils
+import com.webtrit.callkeep.common.isCallPhoneSecurityException
 import com.webtrit.callkeep.managers.NotificationChannelManager
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.EmergencyNumberException
@@ -161,6 +162,15 @@ class ForegroundService : Service(), PHostApi {
             handler.removeCallbacks(timeoutRunnable)
             outgoingCallback?.invoke(Result.success(PCallRequestError(PCallRequestErrorEnum.EMERGENCY_NUMBER)))
             outgoingCallback = null
+        } catch (e: SecurityException) {
+            Log.e(TAG, "startCall failed: ${e.message}")
+            if (e.isCallPhoneSecurityException()) {
+                outgoingCallback?.invoke(Result.success(PCallRequestError(PCallRequestErrorEnum.SELF_MANAGED_PHONE_ACCOUNT_NOT_REGISTERED)))
+            } else {
+                outgoingCallback?.invoke(Result.failure(e))
+            }
+            outgoingCallback = null
+
         } catch (e: Exception) {
             // Handle any other unexpected exceptions
             handler.removeCallbacks(timeoutRunnable)
@@ -178,6 +188,7 @@ class ForegroundService : Service(), PHostApi {
         hasVideo: Boolean,
         callback: (Result<PIncomingCallError?>) -> Unit
     ) {
+
         val ringtonePath = StorageDelegate.Sound.getRingtonePath(baseContext)
 
         val metadata = CallMetadata(
@@ -465,6 +476,9 @@ class ForegroundService : Service(), PHostApi {
 
     companion object {
         private const val TAG = "ForegroundService"
+
+        private val logger = Log(TAG)
+
         const val CALLBACK_TIMEOUT_MS = 5000L
 
         var isRunning = false

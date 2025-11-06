@@ -7,38 +7,35 @@ package com.webtrit.callkeep
 import android.util.Log
 import io.flutter.plugin.common.BasicMessageChannel
 import io.flutter.plugin.common.BinaryMessenger
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MessageCodec
+import io.flutter.plugin.common.StandardMethodCodec
 import io.flutter.plugin.common.StandardMessageCodec
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 
 private fun wrapResult(result: Any?): List<Any?> {
-    return listOf(result)
+  return listOf(result)
 }
 
 private fun wrapError(exception: Throwable): List<Any?> {
-    return if (exception is FlutterError) {
-        listOf(
-            exception.code,
-            exception.message,
-            exception.details
-        )
-    } else {
-        listOf(
-            exception.javaClass.simpleName,
-            exception.toString(),
-            "Cause: " + exception.cause + ", Stacktrace: " + Log.getStackTraceString(exception)
-        )
-    }
+  return if (exception is FlutterError) {
+    listOf(
+      exception.code,
+      exception.message,
+      exception.details
+    )
+  } else {
+    listOf(
+      exception.javaClass.simpleName,
+      exception.toString(),
+      "Cause: " + exception.cause + ", Stacktrace: " + Log.getStackTraceString(exception)
+    )
+  }
 }
 
 private fun createConnectionError(channelName: String): FlutterError {
-    return FlutterError(
-        "channel-error",
-        "Unable to establish connection on channel: '$channelName'.",
-        ""
-    )
-}
+  return FlutterError("channel-error",  "Unable to establish connection on channel: '$channelName'.", "")}
 
 /**
  * Error class for passing custom error details to Flutter via a thrown PlatformException.
@@ -46,3107 +43,2283 @@ private fun createConnectionError(channelName: String): FlutterError {
  * @property message The error message.
  * @property details The error details. Must be a datatype supported by the api codec.
  */
-class FlutterError(
-    val code: String,
-    override val message: String? = null,
-    val details: Any? = null
+class FlutterError (
+  val code: String,
+  override val message: String? = null,
+  val details: Any? = null
 ) : Throwable()
 
 enum class PLogTypeEnum(val raw: Int) {
-    DEBUG(0),
-    ERROR(1),
-    INFO(2),
-    VERBOSE(3),
-    WARN(4);
+  DEBUG(0),
+  ERROR(1),
+  INFO(2),
+  VERBOSE(3),
+  WARN(4);
 
-    companion object {
-        fun ofRaw(raw: Int): PLogTypeEnum? {
-            return values().firstOrNull { it.raw == raw }
-        }
+  companion object {
+    fun ofRaw(raw: Int): PLogTypeEnum? {
+      return values().firstOrNull { it.raw == raw }
     }
+  }
 }
 
 enum class PSpecialPermissionStatusTypeEnum(val raw: Int) {
-    DENIED(0),
-    GRANTED(1);
+  DENIED(0),
+  GRANTED(1);
 
-    companion object {
-        fun ofRaw(raw: Int): PSpecialPermissionStatusTypeEnum? {
-            return values().firstOrNull { it.raw == raw }
-        }
+  companion object {
+    fun ofRaw(raw: Int): PSpecialPermissionStatusTypeEnum? {
+      return values().firstOrNull { it.raw == raw }
     }
+  }
 }
 
 enum class PCallkeepAndroidBatteryMode(val raw: Int) {
-    UNRESTRICTED(0),
-    OPTIMIZED(1),
-    RESTRICTED(2),
-    UNKNOWN(3);
+  UNRESTRICTED(0),
+  OPTIMIZED(1),
+  RESTRICTED(2),
+  UNKNOWN(3);
 
-    companion object {
-        fun ofRaw(raw: Int): PCallkeepAndroidBatteryMode? {
-            return values().firstOrNull { it.raw == raw }
-        }
+  companion object {
+    fun ofRaw(raw: Int): PCallkeepAndroidBatteryMode? {
+      return values().firstOrNull { it.raw == raw }
     }
+  }
 }
 
 enum class PHandleTypeEnum(val raw: Int) {
-    GENERIC(0),
-    NUMBER(1),
-    EMAIL(2);
+  GENERIC(0),
+  NUMBER(1),
+  EMAIL(2);
 
-    companion object {
-        fun ofRaw(raw: Int): PHandleTypeEnum? {
-            return values().firstOrNull { it.raw == raw }
-        }
+  companion object {
+    fun ofRaw(raw: Int): PHandleTypeEnum? {
+      return values().firstOrNull { it.raw == raw }
     }
+  }
 }
 
 enum class PCallInfoConsts(val raw: Int) {
-    UUID(0),
-    DTMF(1),
-    IS_VIDEO(2),
-    NUMBER(3),
-    NAME(4);
+  UUID(0),
+  DTMF(1),
+  IS_VIDEO(2),
+  NUMBER(3),
+  NAME(4);
 
-    companion object {
-        fun ofRaw(raw: Int): PCallInfoConsts? {
-            return values().firstOrNull { it.raw == raw }
-        }
+  companion object {
+    fun ofRaw(raw: Int): PCallInfoConsts? {
+      return values().firstOrNull { it.raw == raw }
     }
+  }
 }
 
 enum class PEndCallReasonEnum(val raw: Int) {
-    FAILED(0),
-    REMOTE_ENDED(1),
-    UNANSWERED(2),
-    ANSWERED_ELSEWHERE(3),
-    DECLINED_ELSEWHERE(4),
-    MISSED(5);
+  FAILED(0),
+  REMOTE_ENDED(1),
+  UNANSWERED(2),
+  ANSWERED_ELSEWHERE(3),
+  DECLINED_ELSEWHERE(4),
+  MISSED(5);
 
-    companion object {
-        fun ofRaw(raw: Int): PEndCallReasonEnum? {
-            return values().firstOrNull { it.raw == raw }
-        }
+  companion object {
+    fun ofRaw(raw: Int): PEndCallReasonEnum? {
+      return values().firstOrNull { it.raw == raw }
     }
+  }
 }
 
 enum class PAudioDeviceType(val raw: Int) {
-    EARPIECE(0),
-    SPEAKER(1),
-    BLUETOOTH(2),
-    WIRED_HEADSET(3),
-    STREAMING(4),
-    UNKNOWN(5);
+  EARPIECE(0),
+  SPEAKER(1),
+  BLUETOOTH(2),
+  WIRED_HEADSET(3),
+  STREAMING(4),
+  UNKNOWN(5);
 
-    companion object {
-        fun ofRaw(raw: Int): PAudioDeviceType? {
-            return values().firstOrNull { it.raw == raw }
-        }
+  companion object {
+    fun ofRaw(raw: Int): PAudioDeviceType? {
+      return values().firstOrNull { it.raw == raw }
     }
+  }
 }
 
 enum class PIncomingCallErrorEnum(val raw: Int) {
-    UNKNOWN(0),
-    UNENTITLED(1),
-    CALL_ID_ALREADY_EXISTS(2),
-    CALL_ID_ALREADY_EXISTS_AND_ANSWERED(3),
-    CALL_ID_ALREADY_TERMINATED(4),
-    FILTERED_BY_DO_NOT_DISTURB(5),
-    FILTERED_BY_BLOCK_LIST(6),
-    INTERNAL(7);
+  UNKNOWN(0),
+  UNENTITLED(1),
+  CALL_ID_ALREADY_EXISTS(2),
+  CALL_ID_ALREADY_EXISTS_AND_ANSWERED(3),
+  CALL_ID_ALREADY_TERMINATED(4),
+  FILTERED_BY_DO_NOT_DISTURB(5),
+  FILTERED_BY_BLOCK_LIST(6),
+  INTERNAL(7);
 
-    companion object {
-        fun ofRaw(raw: Int): PIncomingCallErrorEnum? {
-            return values().firstOrNull { it.raw == raw }
-        }
+  companion object {
+    fun ofRaw(raw: Int): PIncomingCallErrorEnum? {
+      return values().firstOrNull { it.raw == raw }
     }
+  }
 }
 
 enum class PCallRequestErrorEnum(val raw: Int) {
-    UNKNOWN(0),
-    UNENTITLED(1),
-    UNKNOWN_CALL_UUID(2),
-    CALL_UUID_ALREADY_EXISTS(3),
-    MAXIMUM_CALL_GROUPS_REACHED(4),
-    INTERNAL(5),
-    EMERGENCY_NUMBER(6);
+  UNKNOWN(0),
+  UNENTITLED(1),
+  UNKNOWN_CALL_UUID(2),
+  CALL_UUID_ALREADY_EXISTS(3),
+  MAXIMUM_CALL_GROUPS_REACHED(4),
+  INTERNAL(5),
+  EMERGENCY_NUMBER(6),
+  /**
+   * Android only.
+   *
+   * Triggered when the phone is not registered as a self-managed
+   * [PhoneAccount]. As a result, the `ConnectionService` cannot create
+   * a connection, and the system throws an exception such as
+   * `CALL_PHONE permission required to place calls`, because it attempts
+   * to use the GSM dialer instead of VoIP.
+   */
+  SELF_MANAGED_PHONE_ACCOUNT_NOT_REGISTERED(7);
 
-    companion object {
-        fun ofRaw(raw: Int): PCallRequestErrorEnum? {
-            return values().firstOrNull { it.raw == raw }
-        }
+  companion object {
+    fun ofRaw(raw: Int): PCallRequestErrorEnum? {
+      return values().firstOrNull { it.raw == raw }
     }
+  }
 }
 
 enum class PCallkeepLifecycleEvent(val raw: Int) {
-    ON_CREATE(0),
-    ON_START(1),
-    ON_RESUME(2),
-    ON_PAUSE(3),
-    ON_STOP(4),
-    ON_DESTROY(5),
-    ON_ANY(6);
+  ON_CREATE(0),
+  ON_START(1),
+  ON_RESUME(2),
+  ON_PAUSE(3),
+  ON_STOP(4),
+  ON_DESTROY(5),
+  ON_ANY(6);
 
-    companion object {
-        fun ofRaw(raw: Int): PCallkeepLifecycleEvent? {
-            return values().firstOrNull { it.raw == raw }
-        }
+  companion object {
+    fun ofRaw(raw: Int): PCallkeepLifecycleEvent? {
+      return values().firstOrNull { it.raw == raw }
     }
+  }
 }
 
 enum class PCallkeepPushNotificationSyncStatus(val raw: Int) {
-    SYNCHRONIZE_CALL_STATUS(0),
-    RELEASE_RESOURCES(1);
+  SYNCHRONIZE_CALL_STATUS(0),
+  RELEASE_RESOURCES(1);
 
-    companion object {
-        fun ofRaw(raw: Int): PCallkeepPushNotificationSyncStatus? {
-            return values().firstOrNull { it.raw == raw }
-        }
+  companion object {
+    fun ofRaw(raw: Int): PCallkeepPushNotificationSyncStatus? {
+      return values().firstOrNull { it.raw == raw }
     }
+  }
 }
 
 enum class PCallkeepConnectionState(val raw: Int) {
-    STATE_INITIALIZING(0),
-    STATE_NEW(1),
-    STATE_RINGING(2),
-    STATE_DIALING(3),
-    STATE_ACTIVE(4),
-    STATE_HOLDING(5),
-    STATE_DISCONNECTED(6),
-    STATE_PULLING_CALL(7);
+  STATE_INITIALIZING(0),
+  STATE_NEW(1),
+  STATE_RINGING(2),
+  STATE_DIALING(3),
+  STATE_ACTIVE(4),
+  STATE_HOLDING(5),
+  STATE_DISCONNECTED(6),
+  STATE_PULLING_CALL(7);
 
-    companion object {
-        fun ofRaw(raw: Int): PCallkeepConnectionState? {
-            return values().firstOrNull { it.raw == raw }
-        }
+  companion object {
+    fun ofRaw(raw: Int): PCallkeepConnectionState? {
+      return values().firstOrNull { it.raw == raw }
     }
+  }
 }
 
 enum class PCallkeepDisconnectCauseType(val raw: Int) {
-    UNKNOWN(0),
-    ERROR(1),
-    LOCAL(2),
-    REMOTE(3),
-    CANCELED(4),
-    MISSED(5),
-    REJECTED(6),
-    BUSY(7),
-    RESTRICTED(8),
-    OTHER(9),
-    CONNECTION_MANAGER_NOT_SUPPORTED(10),
-    ANSWERED_ELSEWHERE(11),
-    CALL_PULLED(12);
+  UNKNOWN(0),
+  ERROR(1),
+  LOCAL(2),
+  REMOTE(3),
+  CANCELED(4),
+  MISSED(5),
+  REJECTED(6),
+  BUSY(7),
+  RESTRICTED(8),
+  OTHER(9),
+  CONNECTION_MANAGER_NOT_SUPPORTED(10),
+  ANSWERED_ELSEWHERE(11),
+  CALL_PULLED(12);
 
-    companion object {
-        fun ofRaw(raw: Int): PCallkeepDisconnectCauseType? {
-            return values().firstOrNull { it.raw == raw }
-        }
+  companion object {
+    fun ofRaw(raw: Int): PCallkeepDisconnectCauseType? {
+      return values().firstOrNull { it.raw == raw }
     }
+  }
 }
 
 enum class PCallkeepSignalingStatus(val raw: Int) {
-    DISCONNECTING(0),
-    DISCONNECT(1),
-    CONNECTING(2),
-    CONNECT(3),
-    FAILURE(4);
+  DISCONNECTING(0),
+  DISCONNECT(1),
+  CONNECTING(2),
+  CONNECT(3),
+  FAILURE(4);
 
-    companion object {
-        fun ofRaw(raw: Int): PCallkeepSignalingStatus? {
-            return values().firstOrNull { it.raw == raw }
-        }
+  companion object {
+    fun ofRaw(raw: Int): PCallkeepSignalingStatus? {
+      return values().firstOrNull { it.raw == raw }
     }
+  }
 }
 
 /** Generated class from Pigeon that represents data sent in messages. */
-data class PIOSOptions(
-    val localizedName: String,
-    val ringtoneSound: String? = null,
-    val ringbackSound: String? = null,
-    val iconTemplateImageAssetName: String? = null,
-    val maximumCallGroups: Long,
-    val maximumCallsPerCallGroup: Long,
-    val supportsHandleTypeGeneric: Boolean? = null,
-    val supportsHandleTypePhoneNumber: Boolean? = null,
-    val supportsHandleTypeEmailAddress: Boolean? = null,
-    val supportsVideo: Boolean,
-    val includesCallsInRecents: Boolean,
-    val driveIdleTimerDisabled: Boolean
-) {
-    companion object {
-        fun fromList(pigeonVar_list: List<Any?>): PIOSOptions {
-            val localizedName = pigeonVar_list[0] as String
-            val ringtoneSound = pigeonVar_list[1] as String?
-            val ringbackSound = pigeonVar_list[2] as String?
-            val iconTemplateImageAssetName = pigeonVar_list[3] as String?
-            val maximumCallGroups = pigeonVar_list[4] as Long
-            val maximumCallsPerCallGroup = pigeonVar_list[5] as Long
-            val supportsHandleTypeGeneric = pigeonVar_list[6] as Boolean?
-            val supportsHandleTypePhoneNumber = pigeonVar_list[7] as Boolean?
-            val supportsHandleTypeEmailAddress = pigeonVar_list[8] as Boolean?
-            val supportsVideo = pigeonVar_list[9] as Boolean
-            val includesCallsInRecents = pigeonVar_list[10] as Boolean
-            val driveIdleTimerDisabled = pigeonVar_list[11] as Boolean
-            return PIOSOptions(
-                localizedName,
-                ringtoneSound,
-                ringbackSound,
-                iconTemplateImageAssetName,
-                maximumCallGroups,
-                maximumCallsPerCallGroup,
-                supportsHandleTypeGeneric,
-                supportsHandleTypePhoneNumber,
-                supportsHandleTypeEmailAddress,
-                supportsVideo,
-                includesCallsInRecents,
-                driveIdleTimerDisabled
-            )
-        }
+data class PIOSOptions (
+  val localizedName: String,
+  val ringtoneSound: String? = null,
+  val ringbackSound: String? = null,
+  val iconTemplateImageAssetName: String? = null,
+  val maximumCallGroups: Long,
+  val maximumCallsPerCallGroup: Long,
+  val supportsHandleTypeGeneric: Boolean? = null,
+  val supportsHandleTypePhoneNumber: Boolean? = null,
+  val supportsHandleTypeEmailAddress: Boolean? = null,
+  val supportsVideo: Boolean,
+  val includesCallsInRecents: Boolean,
+  val driveIdleTimerDisabled: Boolean
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): PIOSOptions {
+      val localizedName = pigeonVar_list[0] as String
+      val ringtoneSound = pigeonVar_list[1] as String?
+      val ringbackSound = pigeonVar_list[2] as String?
+      val iconTemplateImageAssetName = pigeonVar_list[3] as String?
+      val maximumCallGroups = pigeonVar_list[4] as Long
+      val maximumCallsPerCallGroup = pigeonVar_list[5] as Long
+      val supportsHandleTypeGeneric = pigeonVar_list[6] as Boolean?
+      val supportsHandleTypePhoneNumber = pigeonVar_list[7] as Boolean?
+      val supportsHandleTypeEmailAddress = pigeonVar_list[8] as Boolean?
+      val supportsVideo = pigeonVar_list[9] as Boolean
+      val includesCallsInRecents = pigeonVar_list[10] as Boolean
+      val driveIdleTimerDisabled = pigeonVar_list[11] as Boolean
+      return PIOSOptions(localizedName, ringtoneSound, ringbackSound, iconTemplateImageAssetName, maximumCallGroups, maximumCallsPerCallGroup, supportsHandleTypeGeneric, supportsHandleTypePhoneNumber, supportsHandleTypeEmailAddress, supportsVideo, includesCallsInRecents, driveIdleTimerDisabled)
     }
-
-    fun toList(): List<Any?> {
-        return listOf(
-            localizedName,
-            ringtoneSound,
-            ringbackSound,
-            iconTemplateImageAssetName,
-            maximumCallGroups,
-            maximumCallsPerCallGroup,
-            supportsHandleTypeGeneric,
-            supportsHandleTypePhoneNumber,
-            supportsHandleTypeEmailAddress,
-            supportsVideo,
-            includesCallsInRecents,
-            driveIdleTimerDisabled,
-        )
-    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      localizedName,
+      ringtoneSound,
+      ringbackSound,
+      iconTemplateImageAssetName,
+      maximumCallGroups,
+      maximumCallsPerCallGroup,
+      supportsHandleTypeGeneric,
+      supportsHandleTypePhoneNumber,
+      supportsHandleTypeEmailAddress,
+      supportsVideo,
+      includesCallsInRecents,
+      driveIdleTimerDisabled,
+    )
+  }
 }
 
 /** Generated class from Pigeon that represents data sent in messages. */
-data class PAndroidOptions(
-    val ringtoneSound: String? = null,
-    val ringbackSound: String? = null
-) {
-    companion object {
-        fun fromList(pigeonVar_list: List<Any?>): PAndroidOptions {
-            val ringtoneSound = pigeonVar_list[0] as String?
-            val ringbackSound = pigeonVar_list[1] as String?
-            return PAndroidOptions(ringtoneSound, ringbackSound)
-        }
+data class PAndroidOptions (
+  val ringtoneSound: String? = null,
+  val ringbackSound: String? = null
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): PAndroidOptions {
+      val ringtoneSound = pigeonVar_list[0] as String?
+      val ringbackSound = pigeonVar_list[1] as String?
+      return PAndroidOptions(ringtoneSound, ringbackSound)
     }
-
-    fun toList(): List<Any?> {
-        return listOf(
-            ringtoneSound,
-            ringbackSound,
-        )
-    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      ringtoneSound,
+      ringbackSound,
+    )
+  }
 }
 
 /** Generated class from Pigeon that represents data sent in messages. */
-data class POptions(
-    val ios: PIOSOptions,
-    val android: PAndroidOptions
-) {
-    companion object {
-        fun fromList(pigeonVar_list: List<Any?>): POptions {
-            val ios = pigeonVar_list[0] as PIOSOptions
-            val android = pigeonVar_list[1] as PAndroidOptions
-            return POptions(ios, android)
-        }
+data class POptions (
+  val ios: PIOSOptions,
+  val android: PAndroidOptions
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): POptions {
+      val ios = pigeonVar_list[0] as PIOSOptions
+      val android = pigeonVar_list[1] as PAndroidOptions
+      return POptions(ios, android)
     }
-
-    fun toList(): List<Any?> {
-        return listOf(
-            ios,
-            android,
-        )
-    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      ios,
+      android,
+    )
+  }
 }
 
 /** Generated class from Pigeon that represents data sent in messages. */
-data class PAudioDevice(
-    val type: PAudioDeviceType,
-    val id: String? = null,
-    val name: String? = null
-) {
-    companion object {
-        fun fromList(pigeonVar_list: List<Any?>): PAudioDevice {
-            val type = pigeonVar_list[0] as PAudioDeviceType
-            val id = pigeonVar_list[1] as String?
-            val name = pigeonVar_list[2] as String?
-            return PAudioDevice(type, id, name)
-        }
+data class PAudioDevice (
+  val type: PAudioDeviceType,
+  val id: String? = null,
+  val name: String? = null
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): PAudioDevice {
+      val type = pigeonVar_list[0] as PAudioDeviceType
+      val id = pigeonVar_list[1] as String?
+      val name = pigeonVar_list[2] as String?
+      return PAudioDevice(type, id, name)
     }
-
-    fun toList(): List<Any?> {
-        return listOf(
-            type,
-            id,
-            name,
-        )
-    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      type,
+      id,
+      name,
+    )
+  }
 }
 
 /** Generated class from Pigeon that represents data sent in messages. */
-data class PHandle(
-    val type: PHandleTypeEnum,
-    val value: String
-) {
-    companion object {
-        fun fromList(pigeonVar_list: List<Any?>): PHandle {
-            val type = pigeonVar_list[0] as PHandleTypeEnum
-            val value = pigeonVar_list[1] as String
-            return PHandle(type, value)
-        }
+data class PHandle (
+  val type: PHandleTypeEnum,
+  val value: String
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): PHandle {
+      val type = pigeonVar_list[0] as PHandleTypeEnum
+      val value = pigeonVar_list[1] as String
+      return PHandle(type, value)
     }
-
-    fun toList(): List<Any?> {
-        return listOf(
-            type,
-            value,
-        )
-    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      type,
+      value,
+    )
+  }
 }
 
 /** Generated class from Pigeon that represents data sent in messages. */
-data class PEndCallReason(
-    val value: PEndCallReasonEnum
-) {
-    companion object {
-        fun fromList(pigeonVar_list: List<Any?>): PEndCallReason {
-            val value = pigeonVar_list[0] as PEndCallReasonEnum
-            return PEndCallReason(value)
-        }
+data class PEndCallReason (
+  val value: PEndCallReasonEnum
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): PEndCallReason {
+      val value = pigeonVar_list[0] as PEndCallReasonEnum
+      return PEndCallReason(value)
     }
-
-    fun toList(): List<Any?> {
-        return listOf(
-            value,
-        )
-    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      value,
+    )
+  }
 }
 
 /** Generated class from Pigeon that represents data sent in messages. */
-data class PIncomingCallError(
-    val value: PIncomingCallErrorEnum
-) {
-    companion object {
-        fun fromList(pigeonVar_list: List<Any?>): PIncomingCallError {
-            val value = pigeonVar_list[0] as PIncomingCallErrorEnum
-            return PIncomingCallError(value)
-        }
+data class PIncomingCallError (
+  val value: PIncomingCallErrorEnum
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): PIncomingCallError {
+      val value = pigeonVar_list[0] as PIncomingCallErrorEnum
+      return PIncomingCallError(value)
     }
-
-    fun toList(): List<Any?> {
-        return listOf(
-            value,
-        )
-    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      value,
+    )
+  }
 }
 
 /** Generated class from Pigeon that represents data sent in messages. */
-data class PCallRequestError(
-    val value: PCallRequestErrorEnum
-) {
-    companion object {
-        fun fromList(pigeonVar_list: List<Any?>): PCallRequestError {
-            val value = pigeonVar_list[0] as PCallRequestErrorEnum
-            return PCallRequestError(value)
-        }
+data class PCallRequestError (
+  val value: PCallRequestErrorEnum
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): PCallRequestError {
+      val value = pigeonVar_list[0] as PCallRequestErrorEnum
+      return PCallRequestError(value)
     }
-
-    fun toList(): List<Any?> {
-        return listOf(
-            value,
-        )
-    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      value,
+    )
+  }
 }
 
 /** Generated class from Pigeon that represents data sent in messages. */
-data class PCallkeepServiceStatus(
-    val lifecycleEvent: PCallkeepLifecycleEvent,
-    val mainSignalingStatus: PCallkeepSignalingStatus? = null
-) {
-    companion object {
-        fun fromList(pigeonVar_list: List<Any?>): PCallkeepServiceStatus {
-            val lifecycleEvent = pigeonVar_list[0] as PCallkeepLifecycleEvent
-            val mainSignalingStatus = pigeonVar_list[1] as PCallkeepSignalingStatus?
-            return PCallkeepServiceStatus(lifecycleEvent, mainSignalingStatus)
-        }
+data class PCallkeepServiceStatus (
+  val lifecycleEvent: PCallkeepLifecycleEvent,
+  val mainSignalingStatus: PCallkeepSignalingStatus? = null
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): PCallkeepServiceStatus {
+      val lifecycleEvent = pigeonVar_list[0] as PCallkeepLifecycleEvent
+      val mainSignalingStatus = pigeonVar_list[1] as PCallkeepSignalingStatus?
+      return PCallkeepServiceStatus(lifecycleEvent, mainSignalingStatus)
     }
-
-    fun toList(): List<Any?> {
-        return listOf(
-            lifecycleEvent,
-            mainSignalingStatus,
-        )
-    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      lifecycleEvent,
+      mainSignalingStatus,
+    )
+  }
 }
 
 /** Generated class from Pigeon that represents data sent in messages. */
-data class PCallkeepDisconnectCause(
-    val type: PCallkeepDisconnectCauseType,
-    val reason: String? = null
-) {
-    companion object {
-        fun fromList(pigeonVar_list: List<Any?>): PCallkeepDisconnectCause {
-            val type = pigeonVar_list[0] as PCallkeepDisconnectCauseType
-            val reason = pigeonVar_list[1] as String?
-            return PCallkeepDisconnectCause(type, reason)
-        }
+data class PCallkeepDisconnectCause (
+  val type: PCallkeepDisconnectCauseType,
+  val reason: String? = null
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): PCallkeepDisconnectCause {
+      val type = pigeonVar_list[0] as PCallkeepDisconnectCauseType
+      val reason = pigeonVar_list[1] as String?
+      return PCallkeepDisconnectCause(type, reason)
     }
-
-    fun toList(): List<Any?> {
-        return listOf(
-            type,
-            reason,
-        )
-    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      type,
+      reason,
+    )
+  }
 }
 
 /** Generated class from Pigeon that represents data sent in messages. */
-data class PCallkeepConnection(
-    val callId: String,
-    val state: PCallkeepConnectionState,
-    val disconnectCause: PCallkeepDisconnectCause
-) {
-    companion object {
-        fun fromList(pigeonVar_list: List<Any?>): PCallkeepConnection {
-            val callId = pigeonVar_list[0] as String
-            val state = pigeonVar_list[1] as PCallkeepConnectionState
-            val disconnectCause = pigeonVar_list[2] as PCallkeepDisconnectCause
-            return PCallkeepConnection(callId, state, disconnectCause)
-        }
+data class PCallkeepConnection (
+  val callId: String,
+  val state: PCallkeepConnectionState,
+  val disconnectCause: PCallkeepDisconnectCause
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): PCallkeepConnection {
+      val callId = pigeonVar_list[0] as String
+      val state = pigeonVar_list[1] as PCallkeepConnectionState
+      val disconnectCause = pigeonVar_list[2] as PCallkeepDisconnectCause
+      return PCallkeepConnection(callId, state, disconnectCause)
     }
-
-    fun toList(): List<Any?> {
-        return listOf(
-            callId,
-            state,
-            disconnectCause,
-        )
-    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      callId,
+      state,
+      disconnectCause,
+    )
+  }
 }
-
 private open class GeneratedPigeonCodec : StandardMessageCodec() {
-    override fun readValueOfType(type: Byte, buffer: ByteBuffer): Any? {
-        return when (type) {
-            129.toByte() -> {
-                return (readValue(buffer) as Long?)?.let {
-                    PLogTypeEnum.ofRaw(it.toInt())
-                }
-            }
-
-            130.toByte() -> {
-                return (readValue(buffer) as Long?)?.let {
-                    PSpecialPermissionStatusTypeEnum.ofRaw(it.toInt())
-                }
-            }
-
-            131.toByte() -> {
-                return (readValue(buffer) as Long?)?.let {
-                    PCallkeepAndroidBatteryMode.ofRaw(it.toInt())
-                }
-            }
-
-            132.toByte() -> {
-                return (readValue(buffer) as Long?)?.let {
-                    PHandleTypeEnum.ofRaw(it.toInt())
-                }
-            }
-
-            133.toByte() -> {
-                return (readValue(buffer) as Long?)?.let {
-                    PCallInfoConsts.ofRaw(it.toInt())
-                }
-            }
-
-            134.toByte() -> {
-                return (readValue(buffer) as Long?)?.let {
-                    PEndCallReasonEnum.ofRaw(it.toInt())
-                }
-            }
-
-            135.toByte() -> {
-                return (readValue(buffer) as Long?)?.let {
-                    PAudioDeviceType.ofRaw(it.toInt())
-                }
-            }
-
-            136.toByte() -> {
-                return (readValue(buffer) as Long?)?.let {
-                    PIncomingCallErrorEnum.ofRaw(it.toInt())
-                }
-            }
-
-            137.toByte() -> {
-                return (readValue(buffer) as Long?)?.let {
-                    PCallRequestErrorEnum.ofRaw(it.toInt())
-                }
-            }
-
-            138.toByte() -> {
-                return (readValue(buffer) as Long?)?.let {
-                    PCallkeepLifecycleEvent.ofRaw(it.toInt())
-                }
-            }
-
-            139.toByte() -> {
-                return (readValue(buffer) as Long?)?.let {
-                    PCallkeepPushNotificationSyncStatus.ofRaw(it.toInt())
-                }
-            }
-
-            140.toByte() -> {
-                return (readValue(buffer) as Long?)?.let {
-                    PCallkeepConnectionState.ofRaw(it.toInt())
-                }
-            }
-
-            141.toByte() -> {
-                return (readValue(buffer) as Long?)?.let {
-                    PCallkeepDisconnectCauseType.ofRaw(it.toInt())
-                }
-            }
-
-            142.toByte() -> {
-                return (readValue(buffer) as Long?)?.let {
-                    PCallkeepSignalingStatus.ofRaw(it.toInt())
-                }
-            }
-
-            143.toByte() -> {
-                return (readValue(buffer) as? List<Any?>)?.let {
-                    PIOSOptions.fromList(it)
-                }
-            }
-
-            144.toByte() -> {
-                return (readValue(buffer) as? List<Any?>)?.let {
-                    PAndroidOptions.fromList(it)
-                }
-            }
-
-            145.toByte() -> {
-                return (readValue(buffer) as? List<Any?>)?.let {
-                    POptions.fromList(it)
-                }
-            }
-
-            146.toByte() -> {
-                return (readValue(buffer) as? List<Any?>)?.let {
-                    PAudioDevice.fromList(it)
-                }
-            }
-
-            147.toByte() -> {
-                return (readValue(buffer) as? List<Any?>)?.let {
-                    PHandle.fromList(it)
-                }
-            }
-
-            148.toByte() -> {
-                return (readValue(buffer) as? List<Any?>)?.let {
-                    PEndCallReason.fromList(it)
-                }
-            }
-
-            149.toByte() -> {
-                return (readValue(buffer) as? List<Any?>)?.let {
-                    PIncomingCallError.fromList(it)
-                }
-            }
-
-            150.toByte() -> {
-                return (readValue(buffer) as? List<Any?>)?.let {
-                    PCallRequestError.fromList(it)
-                }
-            }
-
-            151.toByte() -> {
-                return (readValue(buffer) as? List<Any?>)?.let {
-                    PCallkeepServiceStatus.fromList(it)
-                }
-            }
-
-            152.toByte() -> {
-                return (readValue(buffer) as? List<Any?>)?.let {
-                    PCallkeepDisconnectCause.fromList(it)
-                }
-            }
-
-            153.toByte() -> {
-                return (readValue(buffer) as? List<Any?>)?.let {
-                    PCallkeepConnection.fromList(it)
-                }
-            }
-
-            else -> super.readValueOfType(type, buffer)
+  override fun readValueOfType(type: Byte, buffer: ByteBuffer): Any? {
+    return when (type) {
+      129.toByte() -> {
+        return (readValue(buffer) as Long?)?.let {
+          PLogTypeEnum.ofRaw(it.toInt())
         }
-    }
-
-    override fun writeValue(stream: ByteArrayOutputStream, value: Any?) {
-        when (value) {
-            is PLogTypeEnum -> {
-                stream.write(129)
-                writeValue(stream, value.raw)
-            }
-
-            is PSpecialPermissionStatusTypeEnum -> {
-                stream.write(130)
-                writeValue(stream, value.raw)
-            }
-
-            is PCallkeepAndroidBatteryMode -> {
-                stream.write(131)
-                writeValue(stream, value.raw)
-            }
-
-            is PHandleTypeEnum -> {
-                stream.write(132)
-                writeValue(stream, value.raw)
-            }
-
-            is PCallInfoConsts -> {
-                stream.write(133)
-                writeValue(stream, value.raw)
-            }
-
-            is PEndCallReasonEnum -> {
-                stream.write(134)
-                writeValue(stream, value.raw)
-            }
-
-            is PAudioDeviceType -> {
-                stream.write(135)
-                writeValue(stream, value.raw)
-            }
-
-            is PIncomingCallErrorEnum -> {
-                stream.write(136)
-                writeValue(stream, value.raw)
-            }
-
-            is PCallRequestErrorEnum -> {
-                stream.write(137)
-                writeValue(stream, value.raw)
-            }
-
-            is PCallkeepLifecycleEvent -> {
-                stream.write(138)
-                writeValue(stream, value.raw)
-            }
-
-            is PCallkeepPushNotificationSyncStatus -> {
-                stream.write(139)
-                writeValue(stream, value.raw)
-            }
-
-            is PCallkeepConnectionState -> {
-                stream.write(140)
-                writeValue(stream, value.raw)
-            }
-
-            is PCallkeepDisconnectCauseType -> {
-                stream.write(141)
-                writeValue(stream, value.raw)
-            }
-
-            is PCallkeepSignalingStatus -> {
-                stream.write(142)
-                writeValue(stream, value.raw)
-            }
-
-            is PIOSOptions -> {
-                stream.write(143)
-                writeValue(stream, value.toList())
-            }
-
-            is PAndroidOptions -> {
-                stream.write(144)
-                writeValue(stream, value.toList())
-            }
-
-            is POptions -> {
-                stream.write(145)
-                writeValue(stream, value.toList())
-            }
-
-            is PAudioDevice -> {
-                stream.write(146)
-                writeValue(stream, value.toList())
-            }
-
-            is PHandle -> {
-                stream.write(147)
-                writeValue(stream, value.toList())
-            }
-
-            is PEndCallReason -> {
-                stream.write(148)
-                writeValue(stream, value.toList())
-            }
-
-            is PIncomingCallError -> {
-                stream.write(149)
-                writeValue(stream, value.toList())
-            }
-
-            is PCallRequestError -> {
-                stream.write(150)
-                writeValue(stream, value.toList())
-            }
-
-            is PCallkeepServiceStatus -> {
-                stream.write(151)
-                writeValue(stream, value.toList())
-            }
-
-            is PCallkeepDisconnectCause -> {
-                stream.write(152)
-                writeValue(stream, value.toList())
-            }
-
-            is PCallkeepConnection -> {
-                stream.write(153)
-                writeValue(stream, value.toList())
-            }
-
-            else -> super.writeValue(stream, value)
+      }
+      130.toByte() -> {
+        return (readValue(buffer) as Long?)?.let {
+          PSpecialPermissionStatusTypeEnum.ofRaw(it.toInt())
         }
+      }
+      131.toByte() -> {
+        return (readValue(buffer) as Long?)?.let {
+          PCallkeepAndroidBatteryMode.ofRaw(it.toInt())
+        }
+      }
+      132.toByte() -> {
+        return (readValue(buffer) as Long?)?.let {
+          PHandleTypeEnum.ofRaw(it.toInt())
+        }
+      }
+      133.toByte() -> {
+        return (readValue(buffer) as Long?)?.let {
+          PCallInfoConsts.ofRaw(it.toInt())
+        }
+      }
+      134.toByte() -> {
+        return (readValue(buffer) as Long?)?.let {
+          PEndCallReasonEnum.ofRaw(it.toInt())
+        }
+      }
+      135.toByte() -> {
+        return (readValue(buffer) as Long?)?.let {
+          PAudioDeviceType.ofRaw(it.toInt())
+        }
+      }
+      136.toByte() -> {
+        return (readValue(buffer) as Long?)?.let {
+          PIncomingCallErrorEnum.ofRaw(it.toInt())
+        }
+      }
+      137.toByte() -> {
+        return (readValue(buffer) as Long?)?.let {
+          PCallRequestErrorEnum.ofRaw(it.toInt())
+        }
+      }
+      138.toByte() -> {
+        return (readValue(buffer) as Long?)?.let {
+          PCallkeepLifecycleEvent.ofRaw(it.toInt())
+        }
+      }
+      139.toByte() -> {
+        return (readValue(buffer) as Long?)?.let {
+          PCallkeepPushNotificationSyncStatus.ofRaw(it.toInt())
+        }
+      }
+      140.toByte() -> {
+        return (readValue(buffer) as Long?)?.let {
+          PCallkeepConnectionState.ofRaw(it.toInt())
+        }
+      }
+      141.toByte() -> {
+        return (readValue(buffer) as Long?)?.let {
+          PCallkeepDisconnectCauseType.ofRaw(it.toInt())
+        }
+      }
+      142.toByte() -> {
+        return (readValue(buffer) as Long?)?.let {
+          PCallkeepSignalingStatus.ofRaw(it.toInt())
+        }
+      }
+      143.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          PIOSOptions.fromList(it)
+        }
+      }
+      144.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          PAndroidOptions.fromList(it)
+        }
+      }
+      145.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          POptions.fromList(it)
+        }
+      }
+      146.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          PAudioDevice.fromList(it)
+        }
+      }
+      147.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          PHandle.fromList(it)
+        }
+      }
+      148.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          PEndCallReason.fromList(it)
+        }
+      }
+      149.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          PIncomingCallError.fromList(it)
+        }
+      }
+      150.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          PCallRequestError.fromList(it)
+        }
+      }
+      151.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          PCallkeepServiceStatus.fromList(it)
+        }
+      }
+      152.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          PCallkeepDisconnectCause.fromList(it)
+        }
+      }
+      153.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          PCallkeepConnection.fromList(it)
+        }
+      }
+      else -> super.readValueOfType(type, buffer)
     }
+  }
+  override fun writeValue(stream: ByteArrayOutputStream, value: Any?)   {
+    when (value) {
+      is PLogTypeEnum -> {
+        stream.write(129)
+        writeValue(stream, value.raw)
+      }
+      is PSpecialPermissionStatusTypeEnum -> {
+        stream.write(130)
+        writeValue(stream, value.raw)
+      }
+      is PCallkeepAndroidBatteryMode -> {
+        stream.write(131)
+        writeValue(stream, value.raw)
+      }
+      is PHandleTypeEnum -> {
+        stream.write(132)
+        writeValue(stream, value.raw)
+      }
+      is PCallInfoConsts -> {
+        stream.write(133)
+        writeValue(stream, value.raw)
+      }
+      is PEndCallReasonEnum -> {
+        stream.write(134)
+        writeValue(stream, value.raw)
+      }
+      is PAudioDeviceType -> {
+        stream.write(135)
+        writeValue(stream, value.raw)
+      }
+      is PIncomingCallErrorEnum -> {
+        stream.write(136)
+        writeValue(stream, value.raw)
+      }
+      is PCallRequestErrorEnum -> {
+        stream.write(137)
+        writeValue(stream, value.raw)
+      }
+      is PCallkeepLifecycleEvent -> {
+        stream.write(138)
+        writeValue(stream, value.raw)
+      }
+      is PCallkeepPushNotificationSyncStatus -> {
+        stream.write(139)
+        writeValue(stream, value.raw)
+      }
+      is PCallkeepConnectionState -> {
+        stream.write(140)
+        writeValue(stream, value.raw)
+      }
+      is PCallkeepDisconnectCauseType -> {
+        stream.write(141)
+        writeValue(stream, value.raw)
+      }
+      is PCallkeepSignalingStatus -> {
+        stream.write(142)
+        writeValue(stream, value.raw)
+      }
+      is PIOSOptions -> {
+        stream.write(143)
+        writeValue(stream, value.toList())
+      }
+      is PAndroidOptions -> {
+        stream.write(144)
+        writeValue(stream, value.toList())
+      }
+      is POptions -> {
+        stream.write(145)
+        writeValue(stream, value.toList())
+      }
+      is PAudioDevice -> {
+        stream.write(146)
+        writeValue(stream, value.toList())
+      }
+      is PHandle -> {
+        stream.write(147)
+        writeValue(stream, value.toList())
+      }
+      is PEndCallReason -> {
+        stream.write(148)
+        writeValue(stream, value.toList())
+      }
+      is PIncomingCallError -> {
+        stream.write(149)
+        writeValue(stream, value.toList())
+      }
+      is PCallRequestError -> {
+        stream.write(150)
+        writeValue(stream, value.toList())
+      }
+      is PCallkeepServiceStatus -> {
+        stream.write(151)
+        writeValue(stream, value.toList())
+      }
+      is PCallkeepDisconnectCause -> {
+        stream.write(152)
+        writeValue(stream, value.toList())
+      }
+      is PCallkeepConnection -> {
+        stream.write(153)
+        writeValue(stream, value.toList())
+      }
+      else -> super.writeValue(stream, value)
+    }
+  }
 }
 
 
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface PHostBackgroundSignalingIsolateBootstrapApi {
-    fun initializeSignalingServiceCallback(
-        callbackDispatcher: Long,
-        onSync: Long,
-        callback: (Result<Unit>) -> Unit
-    )
+  fun initializeSignalingServiceCallback(callbackDispatcher: Long, onSync: Long, callback: (Result<Unit>) -> Unit)
+  fun configureSignalingService(androidNotificationName: String?, androidNotificationDescription: String?, callback: (Result<Unit>) -> Unit)
+  fun startService(callback: (Result<Unit>) -> Unit)
+  fun stopService(callback: (Result<Unit>) -> Unit)
 
-    fun configureSignalingService(
-        androidNotificationName: String?,
-        androidNotificationDescription: String?,
-        callback: (Result<Unit>) -> Unit
-    )
-
-    fun startService(callback: (Result<Unit>) -> Unit)
-    fun stopService(callback: (Result<Unit>) -> Unit)
-
-    companion object {
-        /** The codec used by PHostBackgroundSignalingIsolateBootstrapApi. */
-        val codec: MessageCodec<Any?> by lazy {
-            GeneratedPigeonCodec()
-        }
-
-        /** Sets up an instance of `PHostBackgroundSignalingIsolateBootstrapApi` to handle messages through the `binaryMessenger`. */
-        @JvmOverloads
-        fun setUp(
-            binaryMessenger: BinaryMessenger,
-            api: PHostBackgroundSignalingIsolateBootstrapApi?,
-            messageChannelSuffix: String = ""
-        ) {
-            val separatedMessageChannelSuffix =
-                if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateBootstrapApi.initializeSignalingServiceCallback$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val callbackDispatcherArg = args[0] as Long
-                        val onSyncArg = args[1] as Long
-                        api.initializeSignalingServiceCallback(
-                            callbackDispatcherArg,
-                            onSyncArg
-                        ) { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateBootstrapApi.configureSignalingService$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val androidNotificationNameArg = args[0] as String?
-                        val androidNotificationDescriptionArg = args[1] as String?
-                        api.configureSignalingService(
-                            androidNotificationNameArg,
-                            androidNotificationDescriptionArg
-                        ) { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateBootstrapApi.startService$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { _, reply ->
-                        api.startService { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateBootstrapApi.stopService$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { _, reply ->
-                        api.stopService { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-        }
+  companion object {
+    /** The codec used by PHostBackgroundSignalingIsolateBootstrapApi. */
+    val codec: MessageCodec<Any?> by lazy {
+      GeneratedPigeonCodec()
     }
+    /** Sets up an instance of `PHostBackgroundSignalingIsolateBootstrapApi` to handle messages through the `binaryMessenger`. */
+    @JvmOverloads
+    fun setUp(binaryMessenger: BinaryMessenger, api: PHostBackgroundSignalingIsolateBootstrapApi?, messageChannelSuffix: String = "") {
+      val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateBootstrapApi.initializeSignalingServiceCallback$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val callbackDispatcherArg = args[0] as Long
+            val onSyncArg = args[1] as Long
+            api.initializeSignalingServiceCallback(callbackDispatcherArg, onSyncArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateBootstrapApi.configureSignalingService$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val androidNotificationNameArg = args[0] as String?
+            val androidNotificationDescriptionArg = args[1] as String?
+            api.configureSignalingService(androidNotificationNameArg, androidNotificationDescriptionArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateBootstrapApi.startService$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.startService{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateBootstrapApi.stopService$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.stopService{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+    }
+  }
 }
-
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface PHostBackgroundSignalingIsolateApi {
-    fun incomingCall(
-        callId: String,
-        handle: PHandle,
-        displayName: String?,
-        hasVideo: Boolean,
-        callback: (Result<Unit>) -> Unit
-    )
+  fun incomingCall(callId: String, handle: PHandle, displayName: String?, hasVideo: Boolean, callback: (Result<Unit>) -> Unit)
+  fun endCall(callId: String, callback: (Result<Unit>) -> Unit)
+  fun endAllCalls(callback: (Result<Unit>) -> Unit)
 
-    fun endCall(callId: String, callback: (Result<Unit>) -> Unit)
-    fun endAllCalls(callback: (Result<Unit>) -> Unit)
-
-    companion object {
-        /** The codec used by PHostBackgroundSignalingIsolateApi. */
-        val codec: MessageCodec<Any?> by lazy {
-            GeneratedPigeonCodec()
-        }
-
-        /** Sets up an instance of `PHostBackgroundSignalingIsolateApi` to handle messages through the `binaryMessenger`. */
-        @JvmOverloads
-        fun setUp(
-            binaryMessenger: BinaryMessenger,
-            api: PHostBackgroundSignalingIsolateApi?,
-            messageChannelSuffix: String = ""
-        ) {
-            val separatedMessageChannelSuffix =
-                if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateApi.incomingCall$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val callIdArg = args[0] as String
-                        val handleArg = args[1] as PHandle
-                        val displayNameArg = args[2] as String?
-                        val hasVideoArg = args[3] as Boolean
-                        api.incomingCall(
-                            callIdArg,
-                            handleArg,
-                            displayNameArg,
-                            hasVideoArg
-                        ) { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateApi.endCall$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val callIdArg = args[0] as String
-                        api.endCall(callIdArg) { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateApi.endAllCalls$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { _, reply ->
-                        api.endAllCalls { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-        }
+  companion object {
+    /** The codec used by PHostBackgroundSignalingIsolateApi. */
+    val codec: MessageCodec<Any?> by lazy {
+      GeneratedPigeonCodec()
     }
+    /** Sets up an instance of `PHostBackgroundSignalingIsolateApi` to handle messages through the `binaryMessenger`. */
+    @JvmOverloads
+    fun setUp(binaryMessenger: BinaryMessenger, api: PHostBackgroundSignalingIsolateApi?, messageChannelSuffix: String = "") {
+      val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateApi.incomingCall$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val callIdArg = args[0] as String
+            val handleArg = args[1] as PHandle
+            val displayNameArg = args[2] as String?
+            val hasVideoArg = args[3] as Boolean
+            api.incomingCall(callIdArg, handleArg, displayNameArg, hasVideoArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateApi.endCall$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val callIdArg = args[0] as String
+            api.endCall(callIdArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateApi.endAllCalls$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.endAllCalls{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+    }
+  }
 }
-
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface PHostBackgroundPushNotificationIsolateBootstrapApi {
-    fun initializePushNotificationCallback(
-        callbackDispatcher: Long,
-        onNotificationSync: Long,
-        callback: (Result<Unit>) -> Unit
-    )
+  fun initializePushNotificationCallback(callbackDispatcher: Long, onNotificationSync: Long, callback: (Result<Unit>) -> Unit)
+  fun configureSignalingService(launchBackgroundIsolateEvenIfAppIsOpen: Boolean, callback: (Result<Unit>) -> Unit)
+  fun reportNewIncomingCall(callId: String, handle: PHandle, displayName: String?, hasVideo: Boolean, callback: (Result<PIncomingCallError?>) -> Unit)
 
-    fun configureSignalingService(
-        launchBackgroundIsolateEvenIfAppIsOpen: Boolean,
-        callback: (Result<Unit>) -> Unit
-    )
-
-    fun reportNewIncomingCall(
-        callId: String,
-        handle: PHandle,
-        displayName: String?,
-        hasVideo: Boolean,
-        callback: (Result<PIncomingCallError?>) -> Unit
-    )
-
-    companion object {
-        /** The codec used by PHostBackgroundPushNotificationIsolateBootstrapApi. */
-        val codec: MessageCodec<Any?> by lazy {
-            GeneratedPigeonCodec()
-        }
-
-        /** Sets up an instance of `PHostBackgroundPushNotificationIsolateBootstrapApi` to handle messages through the `binaryMessenger`. */
-        @JvmOverloads
-        fun setUp(
-            binaryMessenger: BinaryMessenger,
-            api: PHostBackgroundPushNotificationIsolateBootstrapApi?,
-            messageChannelSuffix: String = ""
-        ) {
-            val separatedMessageChannelSuffix =
-                if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundPushNotificationIsolateBootstrapApi.initializePushNotificationCallback$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val callbackDispatcherArg = args[0] as Long
-                        val onNotificationSyncArg = args[1] as Long
-                        api.initializePushNotificationCallback(
-                            callbackDispatcherArg,
-                            onNotificationSyncArg
-                        ) { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundPushNotificationIsolateBootstrapApi.configureSignalingService$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val launchBackgroundIsolateEvenIfAppIsOpenArg = args[0] as Boolean
-                        api.configureSignalingService(launchBackgroundIsolateEvenIfAppIsOpenArg) { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundPushNotificationIsolateBootstrapApi.reportNewIncomingCall$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val callIdArg = args[0] as String
-                        val handleArg = args[1] as PHandle
-                        val displayNameArg = args[2] as String?
-                        val hasVideoArg = args[3] as Boolean
-                        api.reportNewIncomingCall(
-                            callIdArg,
-                            handleArg,
-                            displayNameArg,
-                            hasVideoArg
-                        ) { result: Result<PIncomingCallError?> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                val data = result.getOrNull()
-                                reply.reply(wrapResult(data))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-        }
+  companion object {
+    /** The codec used by PHostBackgroundPushNotificationIsolateBootstrapApi. */
+    val codec: MessageCodec<Any?> by lazy {
+      GeneratedPigeonCodec()
     }
+    /** Sets up an instance of `PHostBackgroundPushNotificationIsolateBootstrapApi` to handle messages through the `binaryMessenger`. */
+    @JvmOverloads
+    fun setUp(binaryMessenger: BinaryMessenger, api: PHostBackgroundPushNotificationIsolateBootstrapApi?, messageChannelSuffix: String = "") {
+      val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundPushNotificationIsolateBootstrapApi.initializePushNotificationCallback$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val callbackDispatcherArg = args[0] as Long
+            val onNotificationSyncArg = args[1] as Long
+            api.initializePushNotificationCallback(callbackDispatcherArg, onNotificationSyncArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundPushNotificationIsolateBootstrapApi.configureSignalingService$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val launchBackgroundIsolateEvenIfAppIsOpenArg = args[0] as Boolean
+            api.configureSignalingService(launchBackgroundIsolateEvenIfAppIsOpenArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundPushNotificationIsolateBootstrapApi.reportNewIncomingCall$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val callIdArg = args[0] as String
+            val handleArg = args[1] as PHandle
+            val displayNameArg = args[2] as String?
+            val hasVideoArg = args[3] as Boolean
+            api.reportNewIncomingCall(callIdArg, handleArg, displayNameArg, hasVideoArg) { result: Result<PIncomingCallError?> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+    }
+  }
 }
-
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface PHostBackgroundPushNotificationIsolateApi {
-    fun endCall(callId: String, callback: (Result<Unit>) -> Unit)
-    fun endAllCalls(callback: (Result<Unit>) -> Unit)
+  fun endCall(callId: String, callback: (Result<Unit>) -> Unit)
+  fun endAllCalls(callback: (Result<Unit>) -> Unit)
 
-    companion object {
-        /** The codec used by PHostBackgroundPushNotificationIsolateApi. */
-        val codec: MessageCodec<Any?> by lazy {
-            GeneratedPigeonCodec()
-        }
-
-        /** Sets up an instance of `PHostBackgroundPushNotificationIsolateApi` to handle messages through the `binaryMessenger`. */
-        @JvmOverloads
-        fun setUp(
-            binaryMessenger: BinaryMessenger,
-            api: PHostBackgroundPushNotificationIsolateApi?,
-            messageChannelSuffix: String = ""
-        ) {
-            val separatedMessageChannelSuffix =
-                if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundPushNotificationIsolateApi.endCall$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val callIdArg = args[0] as String
-                        api.endCall(callIdArg) { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundPushNotificationIsolateApi.endAllCalls$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { _, reply ->
-                        api.endAllCalls { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-        }
+  companion object {
+    /** The codec used by PHostBackgroundPushNotificationIsolateApi. */
+    val codec: MessageCodec<Any?> by lazy {
+      GeneratedPigeonCodec()
     }
+    /** Sets up an instance of `PHostBackgroundPushNotificationIsolateApi` to handle messages through the `binaryMessenger`. */
+    @JvmOverloads
+    fun setUp(binaryMessenger: BinaryMessenger, api: PHostBackgroundPushNotificationIsolateApi?, messageChannelSuffix: String = "") {
+      val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundPushNotificationIsolateApi.endCall$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val callIdArg = args[0] as String
+            api.endCall(callIdArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundPushNotificationIsolateApi.endAllCalls$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.endAllCalls{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+    }
+  }
 }
-
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface PHostPermissionsApi {
-    fun getFullScreenIntentPermissionStatus(callback: (Result<PSpecialPermissionStatusTypeEnum>) -> Unit)
-    fun openFullScreenIntentSettings(callback: (Result<Unit>) -> Unit)
-    fun openSettings(callback: (Result<Unit>) -> Unit)
-    fun getBatteryMode(callback: (Result<PCallkeepAndroidBatteryMode>) -> Unit)
+  fun getFullScreenIntentPermissionStatus(callback: (Result<PSpecialPermissionStatusTypeEnum>) -> Unit)
+  fun openFullScreenIntentSettings(callback: (Result<Unit>) -> Unit)
+  fun openSettings(callback: (Result<Unit>) -> Unit)
+  fun getBatteryMode(callback: (Result<PCallkeepAndroidBatteryMode>) -> Unit)
 
-    companion object {
-        /** The codec used by PHostPermissionsApi. */
-        val codec: MessageCodec<Any?> by lazy {
-            GeneratedPigeonCodec()
-        }
-
-        /** Sets up an instance of `PHostPermissionsApi` to handle messages through the `binaryMessenger`. */
-        @JvmOverloads
-        fun setUp(
-            binaryMessenger: BinaryMessenger,
-            api: PHostPermissionsApi?,
-            messageChannelSuffix: String = ""
-        ) {
-            val separatedMessageChannelSuffix =
-                if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.getFullScreenIntentPermissionStatus$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { _, reply ->
-                        api.getFullScreenIntentPermissionStatus { result: Result<PSpecialPermissionStatusTypeEnum> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                val data = result.getOrNull()
-                                reply.reply(wrapResult(data))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.openFullScreenIntentSettings$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { _, reply ->
-                        api.openFullScreenIntentSettings { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.openSettings$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { _, reply ->
-                        api.openSettings { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.getBatteryMode$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { _, reply ->
-                        api.getBatteryMode { result: Result<PCallkeepAndroidBatteryMode> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                val data = result.getOrNull()
-                                reply.reply(wrapResult(data))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-        }
+  companion object {
+    /** The codec used by PHostPermissionsApi. */
+    val codec: MessageCodec<Any?> by lazy {
+      GeneratedPigeonCodec()
     }
+    /** Sets up an instance of `PHostPermissionsApi` to handle messages through the `binaryMessenger`. */
+    @JvmOverloads
+    fun setUp(binaryMessenger: BinaryMessenger, api: PHostPermissionsApi?, messageChannelSuffix: String = "") {
+      val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.getFullScreenIntentPermissionStatus$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.getFullScreenIntentPermissionStatus{ result: Result<PSpecialPermissionStatusTypeEnum> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.openFullScreenIntentSettings$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.openFullScreenIntentSettings{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.openSettings$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.openSettings{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.getBatteryMode$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.getBatteryMode{ result: Result<PCallkeepAndroidBatteryMode> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+    }
+  }
 }
-
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface PHostSoundApi {
-    fun playRingbackSound(callback: (Result<Unit>) -> Unit)
-    fun stopRingbackSound(callback: (Result<Unit>) -> Unit)
+  fun playRingbackSound(callback: (Result<Unit>) -> Unit)
+  fun stopRingbackSound(callback: (Result<Unit>) -> Unit)
 
-    companion object {
-        /** The codec used by PHostSoundApi. */
-        val codec: MessageCodec<Any?> by lazy {
-            GeneratedPigeonCodec()
-        }
-
-        /** Sets up an instance of `PHostSoundApi` to handle messages through the `binaryMessenger`. */
-        @JvmOverloads
-        fun setUp(
-            binaryMessenger: BinaryMessenger,
-            api: PHostSoundApi?,
-            messageChannelSuffix: String = ""
-        ) {
-            val separatedMessageChannelSuffix =
-                if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostSoundApi.playRingbackSound$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { _, reply ->
-                        api.playRingbackSound { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostSoundApi.stopRingbackSound$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { _, reply ->
-                        api.stopRingbackSound { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-        }
+  companion object {
+    /** The codec used by PHostSoundApi. */
+    val codec: MessageCodec<Any?> by lazy {
+      GeneratedPigeonCodec()
     }
+    /** Sets up an instance of `PHostSoundApi` to handle messages through the `binaryMessenger`. */
+    @JvmOverloads
+    fun setUp(binaryMessenger: BinaryMessenger, api: PHostSoundApi?, messageChannelSuffix: String = "") {
+      val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostSoundApi.playRingbackSound$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.playRingbackSound{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostSoundApi.stopRingbackSound$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.stopRingbackSound{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+    }
+  }
 }
-
 /** Generated class from Pigeon that represents Flutter messages that can be called from Kotlin. */
-class PDelegateBackgroundRegisterFlutterApi(
-    private val binaryMessenger: BinaryMessenger,
-    private val messageChannelSuffix: String = ""
-) {
-    companion object {
-        /** The codec used by PDelegateBackgroundRegisterFlutterApi. */
-        val codec: MessageCodec<Any?> by lazy {
-            GeneratedPigeonCodec()
-        }
+class PDelegateBackgroundRegisterFlutterApi(private val binaryMessenger: BinaryMessenger, private val messageChannelSuffix: String = "") {
+  companion object {
+    /** The codec used by PDelegateBackgroundRegisterFlutterApi. */
+    val codec: MessageCodec<Any?> by lazy {
+      GeneratedPigeonCodec()
     }
-
-    fun onWakeUpBackgroundHandler(
-        userCallbackHandleArg: Long,
-        statusArg: PCallkeepServiceStatus,
-        callback: (Result<Unit>) -> Unit
-    ) {
-        val separatedMessageChannelSuffix =
-            if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-        val channelName =
-            "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onWakeUpBackgroundHandler$separatedMessageChannelSuffix"
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(listOf(userCallbackHandleArg, statusArg)) {
-            if (it is List<*>) {
-                if (it.size > 1) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                it[0] as String,
-                                it[1] as String,
-                                it[2] as String?
-                            )
-                        )
-                    )
-                } else {
-                    callback(Result.success(Unit))
-                }
-            } else {
-                callback(Result.failure(createConnectionError(channelName)))
-            }
+  }
+  fun onWakeUpBackgroundHandler(userCallbackHandleArg: Long, statusArg: PCallkeepServiceStatus, callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onWakeUpBackgroundHandler$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(userCallbackHandleArg, statusArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
         }
+      } else {
+        callback(Result.failure(createConnectionError(channelName)))
+      } 
     }
-
-    fun onApplicationStatusChanged(
-        applicationStatusCallbackHandleArg: Long,
-        statusArg: PCallkeepServiceStatus,
-        callback: (Result<Unit>) -> Unit
-    ) {
-        val separatedMessageChannelSuffix =
-            if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-        val channelName =
-            "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onApplicationStatusChanged$separatedMessageChannelSuffix"
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(listOf(applicationStatusCallbackHandleArg, statusArg)) {
-            if (it is List<*>) {
-                if (it.size > 1) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                it[0] as String,
-                                it[1] as String,
-                                it[2] as String?
-                            )
-                        )
-                    )
-                } else {
-                    callback(Result.success(Unit))
-                }
-            } else {
-                callback(Result.failure(createConnectionError(channelName)))
-            }
+  }
+  fun onApplicationStatusChanged(applicationStatusCallbackHandleArg: Long, statusArg: PCallkeepServiceStatus, callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onApplicationStatusChanged$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(applicationStatusCallbackHandleArg, statusArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
         }
+      } else {
+        callback(Result.failure(createConnectionError(channelName)))
+      } 
     }
-
-    fun onNotificationSync(
-        pushNotificationSyncStatusHandleArg: Long,
-        statusArg: PCallkeepPushNotificationSyncStatus,
-        callback: (Result<Unit>) -> Unit
-    ) {
-        val separatedMessageChannelSuffix =
-            if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-        val channelName =
-            "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onNotificationSync$separatedMessageChannelSuffix"
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(listOf(pushNotificationSyncStatusHandleArg, statusArg)) {
-            if (it is List<*>) {
-                if (it.size > 1) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                it[0] as String,
-                                it[1] as String,
-                                it[2] as String?
-                            )
-                        )
-                    )
-                } else {
-                    callback(Result.success(Unit))
-                }
-            } else {
-                callback(Result.failure(createConnectionError(channelName)))
-            }
+  }
+  fun onNotificationSync(pushNotificationSyncStatusHandleArg: Long, statusArg: PCallkeepPushNotificationSyncStatus, callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onNotificationSync$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(pushNotificationSyncStatusHandleArg, statusArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
         }
+      } else {
+        callback(Result.failure(createConnectionError(channelName)))
+      } 
     }
+  }
 }
-
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface PHostApi {
-    fun isSetUp(): Boolean
-    fun setUp(options: POptions, callback: (Result<Unit>) -> Unit)
-    fun tearDown(callback: (Result<Unit>) -> Unit)
-    fun reportNewIncomingCall(
-        callId: String,
-        handle: PHandle,
-        displayName: String?,
-        hasVideo: Boolean,
-        callback: (Result<PIncomingCallError?>) -> Unit
-    )
+  fun isSetUp(): Boolean
+  fun setUp(options: POptions, callback: (Result<Unit>) -> Unit)
+  fun tearDown(callback: (Result<Unit>) -> Unit)
+  fun reportNewIncomingCall(callId: String, handle: PHandle, displayName: String?, hasVideo: Boolean, callback: (Result<PIncomingCallError?>) -> Unit)
+  fun reportConnectingOutgoingCall(callId: String, callback: (Result<Unit>) -> Unit)
+  fun reportConnectedOutgoingCall(callId: String, callback: (Result<Unit>) -> Unit)
+  fun reportUpdateCall(callId: String, handle: PHandle?, displayName: String?, hasVideo: Boolean?, proximityEnabled: Boolean?, callback: (Result<Unit>) -> Unit)
+  fun reportEndCall(callId: String, displayName: String, reason: PEndCallReason, callback: (Result<Unit>) -> Unit)
+  fun startCall(callId: String, handle: PHandle, displayNameOrContactIdentifier: String?, video: Boolean, proximityEnabled: Boolean, callback: (Result<PCallRequestError?>) -> Unit)
+  fun answerCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit)
+  fun endCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit)
+  fun setHeld(callId: String, onHold: Boolean, callback: (Result<PCallRequestError?>) -> Unit)
+  fun setMuted(callId: String, muted: Boolean, callback: (Result<PCallRequestError?>) -> Unit)
+  fun setSpeaker(callId: String, enabled: Boolean, callback: (Result<PCallRequestError?>) -> Unit)
+  fun setAudioDevice(callId: String, device: PAudioDevice, callback: (Result<PCallRequestError?>) -> Unit)
+  fun sendDTMF(callId: String, key: String, callback: (Result<PCallRequestError?>) -> Unit)
 
-    fun reportConnectingOutgoingCall(callId: String, callback: (Result<Unit>) -> Unit)
-    fun reportConnectedOutgoingCall(callId: String, callback: (Result<Unit>) -> Unit)
-    fun reportUpdateCall(
-        callId: String,
-        handle: PHandle?,
-        displayName: String?,
-        hasVideo: Boolean?,
-        proximityEnabled: Boolean?,
-        callback: (Result<Unit>) -> Unit
-    )
-
-    fun reportEndCall(
-        callId: String,
-        displayName: String,
-        reason: PEndCallReason,
-        callback: (Result<Unit>) -> Unit
-    )
-
-    fun startCall(
-        callId: String,
-        handle: PHandle,
-        displayNameOrContactIdentifier: String?,
-        video: Boolean,
-        proximityEnabled: Boolean,
-        callback: (Result<PCallRequestError?>) -> Unit
-    )
-
-    fun answerCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit)
-    fun endCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit)
-    fun setHeld(callId: String, onHold: Boolean, callback: (Result<PCallRequestError?>) -> Unit)
-    fun setMuted(callId: String, muted: Boolean, callback: (Result<PCallRequestError?>) -> Unit)
-    fun setSpeaker(callId: String, enabled: Boolean, callback: (Result<PCallRequestError?>) -> Unit)
-    fun setAudioDevice(
-        callId: String,
-        device: PAudioDevice,
-        callback: (Result<PCallRequestError?>) -> Unit
-    )
-
-    fun sendDTMF(callId: String, key: String, callback: (Result<PCallRequestError?>) -> Unit)
-
-    companion object {
-        /** The codec used by PHostApi. */
-        val codec: MessageCodec<Any?> by lazy {
-            GeneratedPigeonCodec()
-        }
-
-        /** Sets up an instance of `PHostApi` to handle messages through the `binaryMessenger`. */
-        @JvmOverloads
-        fun setUp(
-            binaryMessenger: BinaryMessenger,
-            api: PHostApi?,
-            messageChannelSuffix: String = ""
-        ) {
-            val separatedMessageChannelSuffix =
-                if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.isSetUp$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { _, reply ->
-                        val wrapped: List<Any?> = try {
-                            listOf(api.isSetUp())
-                        } catch (exception: Throwable) {
-                            wrapError(exception)
-                        }
-                        reply.reply(wrapped)
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.setUp$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val optionsArg = args[0] as POptions
-                        api.setUp(optionsArg) { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.tearDown$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { _, reply ->
-                        api.tearDown { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.reportNewIncomingCall$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val callIdArg = args[0] as String
-                        val handleArg = args[1] as PHandle
-                        val displayNameArg = args[2] as String?
-                        val hasVideoArg = args[3] as Boolean
-                        api.reportNewIncomingCall(
-                            callIdArg,
-                            handleArg,
-                            displayNameArg,
-                            hasVideoArg
-                        ) { result: Result<PIncomingCallError?> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                val data = result.getOrNull()
-                                reply.reply(wrapResult(data))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.reportConnectingOutgoingCall$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val callIdArg = args[0] as String
-                        api.reportConnectingOutgoingCall(callIdArg) { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.reportConnectedOutgoingCall$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val callIdArg = args[0] as String
-                        api.reportConnectedOutgoingCall(callIdArg) { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.reportUpdateCall$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val callIdArg = args[0] as String
-                        val handleArg = args[1] as PHandle?
-                        val displayNameArg = args[2] as String?
-                        val hasVideoArg = args[3] as Boolean?
-                        val proximityEnabledArg = args[4] as Boolean?
-                        api.reportUpdateCall(
-                            callIdArg,
-                            handleArg,
-                            displayNameArg,
-                            hasVideoArg,
-                            proximityEnabledArg
-                        ) { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.reportEndCall$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val callIdArg = args[0] as String
-                        val displayNameArg = args[1] as String
-                        val reasonArg = args[2] as PEndCallReason
-                        api.reportEndCall(
-                            callIdArg,
-                            displayNameArg,
-                            reasonArg
-                        ) { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.startCall$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val callIdArg = args[0] as String
-                        val handleArg = args[1] as PHandle
-                        val displayNameOrContactIdentifierArg = args[2] as String?
-                        val videoArg = args[3] as Boolean
-                        val proximityEnabledArg = args[4] as Boolean
-                        api.startCall(
-                            callIdArg,
-                            handleArg,
-                            displayNameOrContactIdentifierArg,
-                            videoArg,
-                            proximityEnabledArg
-                        ) { result: Result<PCallRequestError?> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                val data = result.getOrNull()
-                                reply.reply(wrapResult(data))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.answerCall$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val callIdArg = args[0] as String
-                        api.answerCall(callIdArg) { result: Result<PCallRequestError?> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                val data = result.getOrNull()
-                                reply.reply(wrapResult(data))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.endCall$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val callIdArg = args[0] as String
-                        api.endCall(callIdArg) { result: Result<PCallRequestError?> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                val data = result.getOrNull()
-                                reply.reply(wrapResult(data))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.setHeld$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val callIdArg = args[0] as String
-                        val onHoldArg = args[1] as Boolean
-                        api.setHeld(callIdArg, onHoldArg) { result: Result<PCallRequestError?> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                val data = result.getOrNull()
-                                reply.reply(wrapResult(data))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.setMuted$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val callIdArg = args[0] as String
-                        val mutedArg = args[1] as Boolean
-                        api.setMuted(callIdArg, mutedArg) { result: Result<PCallRequestError?> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                val data = result.getOrNull()
-                                reply.reply(wrapResult(data))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.setSpeaker$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val callIdArg = args[0] as String
-                        val enabledArg = args[1] as Boolean
-                        api.setSpeaker(
-                            callIdArg,
-                            enabledArg
-                        ) { result: Result<PCallRequestError?> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                val data = result.getOrNull()
-                                reply.reply(wrapResult(data))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.setAudioDevice$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val callIdArg = args[0] as String
-                        val deviceArg = args[1] as PAudioDevice
-                        api.setAudioDevice(
-                            callIdArg,
-                            deviceArg
-                        ) { result: Result<PCallRequestError?> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                val data = result.getOrNull()
-                                reply.reply(wrapResult(data))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.sendDTMF$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val callIdArg = args[0] as String
-                        val keyArg = args[1] as String
-                        api.sendDTMF(callIdArg, keyArg) { result: Result<PCallRequestError?> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                val data = result.getOrNull()
-                                reply.reply(wrapResult(data))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-        }
+  companion object {
+    /** The codec used by PHostApi. */
+    val codec: MessageCodec<Any?> by lazy {
+      GeneratedPigeonCodec()
     }
+    /** Sets up an instance of `PHostApi` to handle messages through the `binaryMessenger`. */
+    @JvmOverloads
+    fun setUp(binaryMessenger: BinaryMessenger, api: PHostApi?, messageChannelSuffix: String = "") {
+      val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.isSetUp$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              listOf(api.isSetUp())
+            } catch (exception: Throwable) {
+              wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.setUp$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val optionsArg = args[0] as POptions
+            api.setUp(optionsArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.tearDown$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.tearDown{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.reportNewIncomingCall$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val callIdArg = args[0] as String
+            val handleArg = args[1] as PHandle
+            val displayNameArg = args[2] as String?
+            val hasVideoArg = args[3] as Boolean
+            api.reportNewIncomingCall(callIdArg, handleArg, displayNameArg, hasVideoArg) { result: Result<PIncomingCallError?> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.reportConnectingOutgoingCall$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val callIdArg = args[0] as String
+            api.reportConnectingOutgoingCall(callIdArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.reportConnectedOutgoingCall$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val callIdArg = args[0] as String
+            api.reportConnectedOutgoingCall(callIdArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.reportUpdateCall$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val callIdArg = args[0] as String
+            val handleArg = args[1] as PHandle?
+            val displayNameArg = args[2] as String?
+            val hasVideoArg = args[3] as Boolean?
+            val proximityEnabledArg = args[4] as Boolean?
+            api.reportUpdateCall(callIdArg, handleArg, displayNameArg, hasVideoArg, proximityEnabledArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.reportEndCall$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val callIdArg = args[0] as String
+            val displayNameArg = args[1] as String
+            val reasonArg = args[2] as PEndCallReason
+            api.reportEndCall(callIdArg, displayNameArg, reasonArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.startCall$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val callIdArg = args[0] as String
+            val handleArg = args[1] as PHandle
+            val displayNameOrContactIdentifierArg = args[2] as String?
+            val videoArg = args[3] as Boolean
+            val proximityEnabledArg = args[4] as Boolean
+            api.startCall(callIdArg, handleArg, displayNameOrContactIdentifierArg, videoArg, proximityEnabledArg) { result: Result<PCallRequestError?> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.answerCall$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val callIdArg = args[0] as String
+            api.answerCall(callIdArg) { result: Result<PCallRequestError?> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.endCall$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val callIdArg = args[0] as String
+            api.endCall(callIdArg) { result: Result<PCallRequestError?> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.setHeld$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val callIdArg = args[0] as String
+            val onHoldArg = args[1] as Boolean
+            api.setHeld(callIdArg, onHoldArg) { result: Result<PCallRequestError?> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.setMuted$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val callIdArg = args[0] as String
+            val mutedArg = args[1] as Boolean
+            api.setMuted(callIdArg, mutedArg) { result: Result<PCallRequestError?> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.setSpeaker$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val callIdArg = args[0] as String
+            val enabledArg = args[1] as Boolean
+            api.setSpeaker(callIdArg, enabledArg) { result: Result<PCallRequestError?> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.setAudioDevice$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val callIdArg = args[0] as String
+            val deviceArg = args[1] as PAudioDevice
+            api.setAudioDevice(callIdArg, deviceArg) { result: Result<PCallRequestError?> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.sendDTMF$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val callIdArg = args[0] as String
+            val keyArg = args[1] as String
+            api.sendDTMF(callIdArg, keyArg) { result: Result<PCallRequestError?> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+    }
+  }
 }
-
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface PHostConnectionsApi {
-    fun getConnection(callId: String, callback: (Result<PCallkeepConnection?>) -> Unit)
-    fun getConnections(callback: (Result<List<PCallkeepConnection>>) -> Unit)
-    fun cleanConnections(callback: (Result<Unit>) -> Unit)
-    fun updateActivitySignalingStatus(
-        status: PCallkeepSignalingStatus,
-        callback: (Result<Unit>) -> Unit
-    )
+  fun getConnection(callId: String, callback: (Result<PCallkeepConnection?>) -> Unit)
+  fun getConnections(callback: (Result<List<PCallkeepConnection>>) -> Unit)
+  fun cleanConnections(callback: (Result<Unit>) -> Unit)
+  fun updateActivitySignalingStatus(status: PCallkeepSignalingStatus, callback: (Result<Unit>) -> Unit)
 
-    companion object {
-        /** The codec used by PHostConnectionsApi. */
-        val codec: MessageCodec<Any?> by lazy {
-            GeneratedPigeonCodec()
-        }
-
-        /** Sets up an instance of `PHostConnectionsApi` to handle messages through the `binaryMessenger`. */
-        @JvmOverloads
-        fun setUp(
-            binaryMessenger: BinaryMessenger,
-            api: PHostConnectionsApi?,
-            messageChannelSuffix: String = ""
-        ) {
-            val separatedMessageChannelSuffix =
-                if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostConnectionsApi.getConnection$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val callIdArg = args[0] as String
-                        api.getConnection(callIdArg) { result: Result<PCallkeepConnection?> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                val data = result.getOrNull()
-                                reply.reply(wrapResult(data))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostConnectionsApi.getConnections$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { _, reply ->
-                        api.getConnections { result: Result<List<PCallkeepConnection>> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                val data = result.getOrNull()
-                                reply.reply(wrapResult(data))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostConnectionsApi.cleanConnections$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { _, reply ->
-                        api.cleanConnections { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostConnectionsApi.updateActivitySignalingStatus$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val statusArg = args[0] as PCallkeepSignalingStatus
-                        api.updateActivitySignalingStatus(statusArg) { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-        }
+  companion object {
+    /** The codec used by PHostConnectionsApi. */
+    val codec: MessageCodec<Any?> by lazy {
+      GeneratedPigeonCodec()
     }
+    /** Sets up an instance of `PHostConnectionsApi` to handle messages through the `binaryMessenger`. */
+    @JvmOverloads
+    fun setUp(binaryMessenger: BinaryMessenger, api: PHostConnectionsApi?, messageChannelSuffix: String = "") {
+      val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostConnectionsApi.getConnection$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val callIdArg = args[0] as String
+            api.getConnection(callIdArg) { result: Result<PCallkeepConnection?> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostConnectionsApi.getConnections$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.getConnections{ result: Result<List<PCallkeepConnection>> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostConnectionsApi.cleanConnections$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.cleanConnections{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostConnectionsApi.updateActivitySignalingStatus$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val statusArg = args[0] as PCallkeepSignalingStatus
+            api.updateActivitySignalingStatus(statusArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+    }
+  }
 }
-
 /** Generated class from Pigeon that represents Flutter messages that can be called from Kotlin. */
-class PDelegateFlutterApi(
-    private val binaryMessenger: BinaryMessenger,
-    private val messageChannelSuffix: String = ""
-) {
-    companion object {
-        /** The codec used by PDelegateFlutterApi. */
-        val codec: MessageCodec<Any?> by lazy {
-            GeneratedPigeonCodec()
-        }
+class PDelegateFlutterApi(private val binaryMessenger: BinaryMessenger, private val messageChannelSuffix: String = "") {
+  companion object {
+    /** The codec used by PDelegateFlutterApi. */
+    val codec: MessageCodec<Any?> by lazy {
+      GeneratedPigeonCodec()
     }
-
-    fun continueStartCallIntent(
-        handleArg: PHandle,
-        displayNameArg: String?,
-        videoArg: Boolean,
-        callback: (Result<Unit>) -> Unit
-    ) {
-        val separatedMessageChannelSuffix =
-            if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-        val channelName =
-            "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.continueStartCallIntent$separatedMessageChannelSuffix"
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(listOf(handleArg, displayNameArg, videoArg)) {
-            if (it is List<*>) {
-                if (it.size > 1) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                it[0] as String,
-                                it[1] as String,
-                                it[2] as String?
-                            )
-                        )
-                    )
-                } else {
-                    callback(Result.success(Unit))
-                }
-            } else {
-                callback(Result.failure(createConnectionError(channelName)))
-            }
+  }
+  fun continueStartCallIntent(handleArg: PHandle, displayNameArg: String?, videoArg: Boolean, callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.continueStartCallIntent$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(handleArg, displayNameArg, videoArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
         }
+      } else {
+        callback(Result.failure(createConnectionError(channelName)))
+      } 
     }
-
-    fun didPushIncomingCall(
-        handleArg: PHandle,
-        displayNameArg: String?,
-        videoArg: Boolean,
-        callIdArg: String,
-        errorArg: PIncomingCallError?,
-        callback: (Result<Unit>) -> Unit
-    ) {
-        val separatedMessageChannelSuffix =
-            if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-        val channelName =
-            "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.didPushIncomingCall$separatedMessageChannelSuffix"
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(listOf(handleArg, displayNameArg, videoArg, callIdArg, errorArg)) {
-            if (it is List<*>) {
-                if (it.size > 1) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                it[0] as String,
-                                it[1] as String,
-                                it[2] as String?
-                            )
-                        )
-                    )
-                } else {
-                    callback(Result.success(Unit))
-                }
-            } else {
-                callback(Result.failure(createConnectionError(channelName)))
-            }
+  }
+  fun didPushIncomingCall(handleArg: PHandle, displayNameArg: String?, videoArg: Boolean, callIdArg: String, errorArg: PIncomingCallError?, callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.didPushIncomingCall$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(handleArg, displayNameArg, videoArg, callIdArg, errorArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
         }
+      } else {
+        callback(Result.failure(createConnectionError(channelName)))
+      } 
     }
-
-    fun performStartCall(
-        callIdArg: String,
-        handleArg: PHandle,
-        displayNameOrContactIdentifierArg: String?,
-        videoArg: Boolean,
-        callback: (Result<Boolean>) -> Unit
-    ) {
-        val separatedMessageChannelSuffix =
-            if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-        val channelName =
-            "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performStartCall$separatedMessageChannelSuffix"
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(listOf(callIdArg, handleArg, displayNameOrContactIdentifierArg, videoArg)) {
-            if (it is List<*>) {
-                if (it.size > 1) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                it[0] as String,
-                                it[1] as String,
-                                it[2] as String?
-                            )
-                        )
-                    )
-                } else if (it[0] == null) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                "null-error",
-                                "Flutter api returned null value for non-null return value.",
-                                ""
-                            )
-                        )
-                    )
-                } else {
-                    val output = it[0] as Boolean
-                    callback(Result.success(output))
-                }
-            } else {
-                callback(Result.failure(createConnectionError(channelName)))
-            }
+  }
+  fun performStartCall(callIdArg: String, handleArg: PHandle, displayNameOrContactIdentifierArg: String?, videoArg: Boolean, callback: (Result<Boolean>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performStartCall$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(callIdArg, handleArg, displayNameOrContactIdentifierArg, videoArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else if (it[0] == null) {
+          callback(Result.failure(FlutterError("null-error", "Flutter api returned null value for non-null return value.", "")))
+        } else {
+          val output = it[0] as Boolean
+          callback(Result.success(output))
         }
+      } else {
+        callback(Result.failure(createConnectionError(channelName)))
+      } 
     }
-
-    fun performAnswerCall(callIdArg: String, callback: (Result<Boolean>) -> Unit) {
-        val separatedMessageChannelSuffix =
-            if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-        val channelName =
-            "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performAnswerCall$separatedMessageChannelSuffix"
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(listOf(callIdArg)) {
-            if (it is List<*>) {
-                if (it.size > 1) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                it[0] as String,
-                                it[1] as String,
-                                it[2] as String?
-                            )
-                        )
-                    )
-                } else if (it[0] == null) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                "null-error",
-                                "Flutter api returned null value for non-null return value.",
-                                ""
-                            )
-                        )
-                    )
-                } else {
-                    val output = it[0] as Boolean
-                    callback(Result.success(output))
-                }
-            } else {
-                callback(Result.failure(createConnectionError(channelName)))
-            }
+  }
+  fun performAnswerCall(callIdArg: String, callback: (Result<Boolean>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performAnswerCall$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(callIdArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else if (it[0] == null) {
+          callback(Result.failure(FlutterError("null-error", "Flutter api returned null value for non-null return value.", "")))
+        } else {
+          val output = it[0] as Boolean
+          callback(Result.success(output))
         }
+      } else {
+        callback(Result.failure(createConnectionError(channelName)))
+      } 
     }
-
-    fun performEndCall(callIdArg: String, callback: (Result<Boolean>) -> Unit) {
-        val separatedMessageChannelSuffix =
-            if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-        val channelName =
-            "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performEndCall$separatedMessageChannelSuffix"
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(listOf(callIdArg)) {
-            if (it is List<*>) {
-                if (it.size > 1) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                it[0] as String,
-                                it[1] as String,
-                                it[2] as String?
-                            )
-                        )
-                    )
-                } else if (it[0] == null) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                "null-error",
-                                "Flutter api returned null value for non-null return value.",
-                                ""
-                            )
-                        )
-                    )
-                } else {
-                    val output = it[0] as Boolean
-                    callback(Result.success(output))
-                }
-            } else {
-                callback(Result.failure(createConnectionError(channelName)))
-            }
+  }
+  fun performEndCall(callIdArg: String, callback: (Result<Boolean>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performEndCall$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(callIdArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else if (it[0] == null) {
+          callback(Result.failure(FlutterError("null-error", "Flutter api returned null value for non-null return value.", "")))
+        } else {
+          val output = it[0] as Boolean
+          callback(Result.success(output))
         }
+      } else {
+        callback(Result.failure(createConnectionError(channelName)))
+      } 
     }
-
-    fun performSetHeld(callIdArg: String, onHoldArg: Boolean, callback: (Result<Boolean>) -> Unit) {
-        val separatedMessageChannelSuffix =
-            if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-        val channelName =
-            "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performSetHeld$separatedMessageChannelSuffix"
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(listOf(callIdArg, onHoldArg)) {
-            if (it is List<*>) {
-                if (it.size > 1) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                it[0] as String,
-                                it[1] as String,
-                                it[2] as String?
-                            )
-                        )
-                    )
-                } else if (it[0] == null) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                "null-error",
-                                "Flutter api returned null value for non-null return value.",
-                                ""
-                            )
-                        )
-                    )
-                } else {
-                    val output = it[0] as Boolean
-                    callback(Result.success(output))
-                }
-            } else {
-                callback(Result.failure(createConnectionError(channelName)))
-            }
+  }
+  fun performSetHeld(callIdArg: String, onHoldArg: Boolean, callback: (Result<Boolean>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performSetHeld$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(callIdArg, onHoldArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else if (it[0] == null) {
+          callback(Result.failure(FlutterError("null-error", "Flutter api returned null value for non-null return value.", "")))
+        } else {
+          val output = it[0] as Boolean
+          callback(Result.success(output))
         }
+      } else {
+        callback(Result.failure(createConnectionError(channelName)))
+      } 
     }
-
-    fun performSetMuted(callIdArg: String, mutedArg: Boolean, callback: (Result<Boolean>) -> Unit) {
-        val separatedMessageChannelSuffix =
-            if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-        val channelName =
-            "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performSetMuted$separatedMessageChannelSuffix"
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(listOf(callIdArg, mutedArg)) {
-            if (it is List<*>) {
-                if (it.size > 1) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                it[0] as String,
-                                it[1] as String,
-                                it[2] as String?
-                            )
-                        )
-                    )
-                } else if (it[0] == null) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                "null-error",
-                                "Flutter api returned null value for non-null return value.",
-                                ""
-                            )
-                        )
-                    )
-                } else {
-                    val output = it[0] as Boolean
-                    callback(Result.success(output))
-                }
-            } else {
-                callback(Result.failure(createConnectionError(channelName)))
-            }
+  }
+  fun performSetMuted(callIdArg: String, mutedArg: Boolean, callback: (Result<Boolean>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performSetMuted$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(callIdArg, mutedArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else if (it[0] == null) {
+          callback(Result.failure(FlutterError("null-error", "Flutter api returned null value for non-null return value.", "")))
+        } else {
+          val output = it[0] as Boolean
+          callback(Result.success(output))
         }
+      } else {
+        callback(Result.failure(createConnectionError(channelName)))
+      } 
     }
-
-    fun performSetSpeaker(
-        callIdArg: String,
-        enabledArg: Boolean,
-        callback: (Result<Boolean>) -> Unit
-    ) {
-        val separatedMessageChannelSuffix =
-            if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-        val channelName =
-            "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performSetSpeaker$separatedMessageChannelSuffix"
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(listOf(callIdArg, enabledArg)) {
-            if (it is List<*>) {
-                if (it.size > 1) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                it[0] as String,
-                                it[1] as String,
-                                it[2] as String?
-                            )
-                        )
-                    )
-                } else if (it[0] == null) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                "null-error",
-                                "Flutter api returned null value for non-null return value.",
-                                ""
-                            )
-                        )
-                    )
-                } else {
-                    val output = it[0] as Boolean
-                    callback(Result.success(output))
-                }
-            } else {
-                callback(Result.failure(createConnectionError(channelName)))
-            }
+  }
+  fun performSetSpeaker(callIdArg: String, enabledArg: Boolean, callback: (Result<Boolean>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performSetSpeaker$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(callIdArg, enabledArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else if (it[0] == null) {
+          callback(Result.failure(FlutterError("null-error", "Flutter api returned null value for non-null return value.", "")))
+        } else {
+          val output = it[0] as Boolean
+          callback(Result.success(output))
         }
+      } else {
+        callback(Result.failure(createConnectionError(channelName)))
+      } 
     }
-
-    fun performSendDTMF(callIdArg: String, keyArg: String, callback: (Result<Boolean>) -> Unit) {
-        val separatedMessageChannelSuffix =
-            if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-        val channelName =
-            "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performSendDTMF$separatedMessageChannelSuffix"
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(listOf(callIdArg, keyArg)) {
-            if (it is List<*>) {
-                if (it.size > 1) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                it[0] as String,
-                                it[1] as String,
-                                it[2] as String?
-                            )
-                        )
-                    )
-                } else if (it[0] == null) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                "null-error",
-                                "Flutter api returned null value for non-null return value.",
-                                ""
-                            )
-                        )
-                    )
-                } else {
-                    val output = it[0] as Boolean
-                    callback(Result.success(output))
-                }
-            } else {
-                callback(Result.failure(createConnectionError(channelName)))
-            }
+  }
+  fun performSendDTMF(callIdArg: String, keyArg: String, callback: (Result<Boolean>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performSendDTMF$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(callIdArg, keyArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else if (it[0] == null) {
+          callback(Result.failure(FlutterError("null-error", "Flutter api returned null value for non-null return value.", "")))
+        } else {
+          val output = it[0] as Boolean
+          callback(Result.success(output))
         }
+      } else {
+        callback(Result.failure(createConnectionError(channelName)))
+      } 
     }
-
-    fun performAudioDeviceSet(
-        callIdArg: String,
-        deviceArg: PAudioDevice,
-        callback: (Result<Boolean>) -> Unit
-    ) {
-        val separatedMessageChannelSuffix =
-            if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-        val channelName =
-            "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performAudioDeviceSet$separatedMessageChannelSuffix"
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(listOf(callIdArg, deviceArg)) {
-            if (it is List<*>) {
-                if (it.size > 1) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                it[0] as String,
-                                it[1] as String,
-                                it[2] as String?
-                            )
-                        )
-                    )
-                } else if (it[0] == null) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                "null-error",
-                                "Flutter api returned null value for non-null return value.",
-                                ""
-                            )
-                        )
-                    )
-                } else {
-                    val output = it[0] as Boolean
-                    callback(Result.success(output))
-                }
-            } else {
-                callback(Result.failure(createConnectionError(channelName)))
-            }
+  }
+  fun performAudioDeviceSet(callIdArg: String, deviceArg: PAudioDevice, callback: (Result<Boolean>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performAudioDeviceSet$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(callIdArg, deviceArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else if (it[0] == null) {
+          callback(Result.failure(FlutterError("null-error", "Flutter api returned null value for non-null return value.", "")))
+        } else {
+          val output = it[0] as Boolean
+          callback(Result.success(output))
         }
+      } else {
+        callback(Result.failure(createConnectionError(channelName)))
+      } 
     }
-
-    fun performAudioDevicesUpdate(
-        callIdArg: String,
-        devicesArg: List<PAudioDevice>,
-        callback: (Result<Boolean>) -> Unit
-    ) {
-        val separatedMessageChannelSuffix =
-            if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-        val channelName =
-            "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performAudioDevicesUpdate$separatedMessageChannelSuffix"
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(listOf(callIdArg, devicesArg)) {
-            if (it is List<*>) {
-                if (it.size > 1) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                it[0] as String,
-                                it[1] as String,
-                                it[2] as String?
-                            )
-                        )
-                    )
-                } else if (it[0] == null) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                "null-error",
-                                "Flutter api returned null value for non-null return value.",
-                                ""
-                            )
-                        )
-                    )
-                } else {
-                    val output = it[0] as Boolean
-                    callback(Result.success(output))
-                }
-            } else {
-                callback(Result.failure(createConnectionError(channelName)))
-            }
+  }
+  fun performAudioDevicesUpdate(callIdArg: String, devicesArg: List<PAudioDevice>, callback: (Result<Boolean>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performAudioDevicesUpdate$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(callIdArg, devicesArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else if (it[0] == null) {
+          callback(Result.failure(FlutterError("null-error", "Flutter api returned null value for non-null return value.", "")))
+        } else {
+          val output = it[0] as Boolean
+          callback(Result.success(output))
         }
+      } else {
+        callback(Result.failure(createConnectionError(channelName)))
+      } 
     }
-
-    fun didActivateAudioSession(callback: (Result<Unit>) -> Unit) {
-        val separatedMessageChannelSuffix =
-            if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-        val channelName =
-            "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.didActivateAudioSession$separatedMessageChannelSuffix"
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(null) {
-            if (it is List<*>) {
-                if (it.size > 1) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                it[0] as String,
-                                it[1] as String,
-                                it[2] as String?
-                            )
-                        )
-                    )
-                } else {
-                    callback(Result.success(Unit))
-                }
-            } else {
-                callback(Result.failure(createConnectionError(channelName)))
-            }
+  }
+  fun didActivateAudioSession(callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.didActivateAudioSession$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(null) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
         }
+      } else {
+        callback(Result.failure(createConnectionError(channelName)))
+      } 
     }
-
-    fun didDeactivateAudioSession(callback: (Result<Unit>) -> Unit) {
-        val separatedMessageChannelSuffix =
-            if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-        val channelName =
-            "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.didDeactivateAudioSession$separatedMessageChannelSuffix"
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(null) {
-            if (it is List<*>) {
-                if (it.size > 1) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                it[0] as String,
-                                it[1] as String,
-                                it[2] as String?
-                            )
-                        )
-                    )
-                } else {
-                    callback(Result.success(Unit))
-                }
-            } else {
-                callback(Result.failure(createConnectionError(channelName)))
-            }
+  }
+  fun didDeactivateAudioSession(callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.didDeactivateAudioSession$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(null) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
         }
+      } else {
+        callback(Result.failure(createConnectionError(channelName)))
+      } 
     }
-
-    fun didReset(callback: (Result<Unit>) -> Unit) {
-        val separatedMessageChannelSuffix =
-            if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-        val channelName =
-            "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.didReset$separatedMessageChannelSuffix"
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(null) {
-            if (it is List<*>) {
-                if (it.size > 1) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                it[0] as String,
-                                it[1] as String,
-                                it[2] as String?
-                            )
-                        )
-                    )
-                } else {
-                    callback(Result.success(Unit))
-                }
-            } else {
-                callback(Result.failure(createConnectionError(channelName)))
-            }
+  }
+  fun didReset(callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.didReset$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(null) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
         }
+      } else {
+        callback(Result.failure(createConnectionError(channelName)))
+      } 
     }
+  }
 }
-
 /** Generated class from Pigeon that represents Flutter messages that can be called from Kotlin. */
-class PDelegateBackgroundServiceFlutterApi(
-    private val binaryMessenger: BinaryMessenger,
-    private val messageChannelSuffix: String = ""
-) {
-    companion object {
-        /** The codec used by PDelegateBackgroundServiceFlutterApi. */
-        val codec: MessageCodec<Any?> by lazy {
-            GeneratedPigeonCodec()
-        }
+class PDelegateBackgroundServiceFlutterApi(private val binaryMessenger: BinaryMessenger, private val messageChannelSuffix: String = "") {
+  companion object {
+    /** The codec used by PDelegateBackgroundServiceFlutterApi. */
+    val codec: MessageCodec<Any?> by lazy {
+      GeneratedPigeonCodec()
     }
-
-    fun performAnswerCall(callIdArg: String, callback: (Result<Unit>) -> Unit) {
-        val separatedMessageChannelSuffix =
-            if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-        val channelName =
-            "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi.performAnswerCall$separatedMessageChannelSuffix"
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(listOf(callIdArg)) {
-            if (it is List<*>) {
-                if (it.size > 1) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                it[0] as String,
-                                it[1] as String,
-                                it[2] as String?
-                            )
-                        )
-                    )
-                } else {
-                    callback(Result.success(Unit))
-                }
-            } else {
-                callback(Result.failure(createConnectionError(channelName)))
-            }
+  }
+  fun performAnswerCall(callIdArg: String, callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi.performAnswerCall$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(callIdArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
         }
+      } else {
+        callback(Result.failure(createConnectionError(channelName)))
+      } 
     }
-
-    fun performEndCall(callIdArg: String, callback: (Result<Unit>) -> Unit) {
-        val separatedMessageChannelSuffix =
-            if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-        val channelName =
-            "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi.performEndCall$separatedMessageChannelSuffix"
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(listOf(callIdArg)) {
-            if (it is List<*>) {
-                if (it.size > 1) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                it[0] as String,
-                                it[1] as String,
-                                it[2] as String?
-                            )
-                        )
-                    )
-                } else {
-                    callback(Result.success(Unit))
-                }
-            } else {
-                callback(Result.failure(createConnectionError(channelName)))
-            }
+  }
+  fun performEndCall(callIdArg: String, callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi.performEndCall$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(callIdArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
         }
+      } else {
+        callback(Result.failure(createConnectionError(channelName)))
+      } 
     }
-
-    fun performReceivedCall(
-        callIdArg: String,
-        numberArg: String,
-        videoArg: Boolean,
-        createdTimeArg: Long,
-        displayNameArg: String?,
-        acceptedTimeArg: Long?,
-        hungUpTimeArg: Long?,
-        callback: (Result<Unit>) -> Unit
-    ) {
-        val separatedMessageChannelSuffix =
-            if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-        val channelName =
-            "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi.performReceivedCall$separatedMessageChannelSuffix"
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(
-            listOf(
-                callIdArg,
-                numberArg,
-                videoArg,
-                createdTimeArg,
-                displayNameArg,
-                acceptedTimeArg,
-                hungUpTimeArg
-            )
-        ) {
-            if (it is List<*>) {
-                if (it.size > 1) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                it[0] as String,
-                                it[1] as String,
-                                it[2] as String?
-                            )
-                        )
-                    )
-                } else {
-                    callback(Result.success(Unit))
-                }
-            } else {
-                callback(Result.failure(createConnectionError(channelName)))
-            }
+  }
+  fun performReceivedCall(callIdArg: String, numberArg: String, videoArg: Boolean, createdTimeArg: Long, displayNameArg: String?, acceptedTimeArg: Long?, hungUpTimeArg: Long?, callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi.performReceivedCall$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(callIdArg, numberArg, videoArg, createdTimeArg, displayNameArg, acceptedTimeArg, hungUpTimeArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
         }
+      } else {
+        callback(Result.failure(createConnectionError(channelName)))
+      } 
     }
+  }
 }
-
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface PPushRegistryHostApi {
-    fun pushTokenForPushTypeVoIP(): String?
+  fun pushTokenForPushTypeVoIP(): String?
 
-    companion object {
-        /** The codec used by PPushRegistryHostApi. */
-        val codec: MessageCodec<Any?> by lazy {
-            GeneratedPigeonCodec()
-        }
-
-        /** Sets up an instance of `PPushRegistryHostApi` to handle messages through the `binaryMessenger`. */
-        @JvmOverloads
-        fun setUp(
-            binaryMessenger: BinaryMessenger,
-            api: PPushRegistryHostApi?,
-            messageChannelSuffix: String = ""
-        ) {
-            val separatedMessageChannelSuffix =
-                if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PPushRegistryHostApi.pushTokenForPushTypeVoIP$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { _, reply ->
-                        val wrapped: List<Any?> = try {
-                            listOf(api.pushTokenForPushTypeVoIP())
-                        } catch (exception: Throwable) {
-                            wrapError(exception)
-                        }
-                        reply.reply(wrapped)
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-        }
+  companion object {
+    /** The codec used by PPushRegistryHostApi. */
+    val codec: MessageCodec<Any?> by lazy {
+      GeneratedPigeonCodec()
     }
+    /** Sets up an instance of `PPushRegistryHostApi` to handle messages through the `binaryMessenger`. */
+    @JvmOverloads
+    fun setUp(binaryMessenger: BinaryMessenger, api: PPushRegistryHostApi?, messageChannelSuffix: String = "") {
+      val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PPushRegistryHostApi.pushTokenForPushTypeVoIP$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              listOf(api.pushTokenForPushTypeVoIP())
+            } catch (exception: Throwable) {
+              wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+    }
+  }
 }
-
 /** Generated class from Pigeon that represents Flutter messages that can be called from Kotlin. */
-class PPushRegistryDelegateFlutterApi(
-    private val binaryMessenger: BinaryMessenger,
-    private val messageChannelSuffix: String = ""
-) {
-    companion object {
-        /** The codec used by PPushRegistryDelegateFlutterApi. */
-        val codec: MessageCodec<Any?> by lazy {
-            GeneratedPigeonCodec()
-        }
+class PPushRegistryDelegateFlutterApi(private val binaryMessenger: BinaryMessenger, private val messageChannelSuffix: String = "") {
+  companion object {
+    /** The codec used by PPushRegistryDelegateFlutterApi. */
+    val codec: MessageCodec<Any?> by lazy {
+      GeneratedPigeonCodec()
     }
-
-    fun didUpdatePushTokenForPushTypeVoIP(tokenArg: String?, callback: (Result<Unit>) -> Unit) {
-        val separatedMessageChannelSuffix =
-            if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-        val channelName =
-            "dev.flutter.pigeon.webtrit_callkeep_android.PPushRegistryDelegateFlutterApi.didUpdatePushTokenForPushTypeVoIP$separatedMessageChannelSuffix"
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(listOf(tokenArg)) {
-            if (it is List<*>) {
-                if (it.size > 1) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                it[0] as String,
-                                it[1] as String,
-                                it[2] as String?
-                            )
-                        )
-                    )
-                } else {
-                    callback(Result.success(Unit))
-                }
-            } else {
-                callback(Result.failure(createConnectionError(channelName)))
-            }
+  }
+  fun didUpdatePushTokenForPushTypeVoIP(tokenArg: String?, callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PPushRegistryDelegateFlutterApi.didUpdatePushTokenForPushTypeVoIP$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(tokenArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
         }
+      } else {
+        callback(Result.failure(createConnectionError(channelName)))
+      } 
     }
+  }
 }
-
 /** Generated class from Pigeon that represents Flutter messages that can be called from Kotlin. */
-class PDelegateLogsFlutterApi(
-    private val binaryMessenger: BinaryMessenger,
-    private val messageChannelSuffix: String = ""
-) {
-    companion object {
-        /** The codec used by PDelegateLogsFlutterApi. */
-        val codec: MessageCodec<Any?> by lazy {
-            GeneratedPigeonCodec()
-        }
+class PDelegateLogsFlutterApi(private val binaryMessenger: BinaryMessenger, private val messageChannelSuffix: String = "") {
+  companion object {
+    /** The codec used by PDelegateLogsFlutterApi. */
+    val codec: MessageCodec<Any?> by lazy {
+      GeneratedPigeonCodec()
     }
-
-    fun onLog(
-        typeArg: PLogTypeEnum,
-        tagArg: String,
-        messageArg: String,
-        callback: (Result<Unit>) -> Unit
-    ) {
-        val separatedMessageChannelSuffix =
-            if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-        val channelName =
-            "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateLogsFlutterApi.onLog$separatedMessageChannelSuffix"
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(listOf(typeArg, tagArg, messageArg)) {
-            if (it is List<*>) {
-                if (it.size > 1) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                it[0] as String,
-                                it[1] as String,
-                                it[2] as String?
-                            )
-                        )
-                    )
-                } else {
-                    callback(Result.success(Unit))
-                }
-            } else {
-                callback(Result.failure(createConnectionError(channelName)))
-            }
+  }
+  fun onLog(typeArg: PLogTypeEnum, tagArg: String, messageArg: String, callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateLogsFlutterApi.onLog$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(typeArg, tagArg, messageArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
         }
+      } else {
+        callback(Result.failure(createConnectionError(channelName)))
+      } 
     }
+  }
 }
-
 /** Generated class from Pigeon that represents Flutter messages that can be called from Kotlin. */
-class PDelegateSmsReceiverFlutterApi(
-    private val binaryMessenger: BinaryMessenger,
-    private val messageChannelSuffix: String = ""
-) {
-    companion object {
-        /** The codec used by PDelegateSmsReceiverFlutterApi. */
-        val codec: MessageCodec<Any?> by lazy {
-            GeneratedPigeonCodec()
-        }
+class PDelegateSmsReceiverFlutterApi(private val binaryMessenger: BinaryMessenger, private val messageChannelSuffix: String = "") {
+  companion object {
+    /** The codec used by PDelegateSmsReceiverFlutterApi. */
+    val codec: MessageCodec<Any?> by lazy {
+      GeneratedPigeonCodec()
     }
-
-    /** Called by native side when a matching SMS is received */
-    fun onSmsReceived(textArg: String, callback: (Result<Unit>) -> Unit) {
-        val separatedMessageChannelSuffix =
-            if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-        val channelName =
-            "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateSmsReceiverFlutterApi.onSmsReceived$separatedMessageChannelSuffix"
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(listOf(textArg)) {
-            if (it is List<*>) {
-                if (it.size > 1) {
-                    callback(
-                        Result.failure(
-                            FlutterError(
-                                it[0] as String,
-                                it[1] as String,
-                                it[2] as String?
-                            )
-                        )
-                    )
-                } else {
-                    callback(Result.success(Unit))
-                }
-            } else {
-                callback(Result.failure(createConnectionError(channelName)))
-            }
+  }
+  /** Called by native side when a matching SMS is received */
+  fun onSmsReceived(textArg: String, callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateSmsReceiverFlutterApi.onSmsReceived$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(textArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
         }
+      } else {
+        callback(Result.failure(createConnectionError(channelName)))
+      } 
     }
+  }
 }
-
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface PHostSmsReceptionConfigApi {
-    /**
-     * Initializes the SMS receiver on Android and sets a prefix and regex to filter and parse messages.
-     *
-     * Only SMS messages starting with [messagePrefix] and matching [regexPattern]
-     * will be processed. The [regexPattern] must contain exactly 4 capturing groups
-     * in the following order:
-     * 1. callId
-     * 2. handle
-     * 3. displayName
-     * 4. hasVideo (true|false)
-     *
-     * Example:
-     * messagePrefix: "<#> WEBTRIT:"
-     * regexPattern: r'\{"type":"incoming","handle":"([^"]+)","callID":"([^"]+)","displayName":"([^"]+)","hasVideo":(true|false)\}'
-     */
-    fun initializeSmsReception(
-        messagePrefix: String,
-        regexPattern: String,
-        callback: (Result<Unit>) -> Unit
-    )
+  /**
+   * Initializes the SMS receiver on Android and sets a prefix and regex to filter and parse messages.
+   *
+   * Only SMS messages starting with [messagePrefix] and matching [regexPattern]
+   * will be processed. The [regexPattern] must contain exactly 4 capturing groups
+   * in the following order:
+   * 1. callId
+   * 2. handle
+   * 3. displayName
+   * 4. hasVideo (true|false)
+   *
+   * Example:
+   * messagePrefix: "<#> WEBTRIT:"
+   * regexPattern: r'\{"type":"incoming","handle":"([^"]+)","callID":"([^"]+)","displayName":"([^"]+)","hasVideo":(true|false)\}'
+   */
+  fun initializeSmsReception(messagePrefix: String, regexPattern: String, callback: (Result<Unit>) -> Unit)
 
-    companion object {
-        /** The codec used by PHostSmsReceptionConfigApi. */
-        val codec: MessageCodec<Any?> by lazy {
-            GeneratedPigeonCodec()
-        }
-
-        /** Sets up an instance of `PHostSmsReceptionConfigApi` to handle messages through the `binaryMessenger`. */
-        @JvmOverloads
-        fun setUp(
-            binaryMessenger: BinaryMessenger,
-            api: PHostSmsReceptionConfigApi?,
-            messageChannelSuffix: String = ""
-        ) {
-            val separatedMessageChannelSuffix =
-                if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostSmsReceptionConfigApi.initializeSmsReception$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val messagePrefixArg = args[0] as String
-                        val regexPatternArg = args[1] as String
-                        api.initializeSmsReception(
-                            messagePrefixArg,
-                            regexPatternArg
-                        ) { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-        }
+  companion object {
+    /** The codec used by PHostSmsReceptionConfigApi. */
+    val codec: MessageCodec<Any?> by lazy {
+      GeneratedPigeonCodec()
     }
+    /** Sets up an instance of `PHostSmsReceptionConfigApi` to handle messages through the `binaryMessenger`. */
+    @JvmOverloads
+    fun setUp(binaryMessenger: BinaryMessenger, api: PHostSmsReceptionConfigApi?, messageChannelSuffix: String = "") {
+      val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostSmsReceptionConfigApi.initializeSmsReception$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val messagePrefixArg = args[0] as String
+            val regexPatternArg = args[1] as String
+            api.initializeSmsReception(messagePrefixArg, regexPatternArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+    }
+  }
 }
-
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface PHostActivityControlApi {
-    /**
-     * Allows the app's activity to be shown over the device lock screen.
-     *
-     * This is an Android-only feature.
-     */
-    fun showOverLockscreen(enable: Boolean, callback: (Result<Unit>) -> Unit)
+  /**
+   * Allows the app's activity to be shown over the device lock screen.
+   *
+   * This is an Android-only feature.
+   */
+  fun showOverLockscreen(enable: Boolean, callback: (Result<Unit>) -> Unit)
+  /**
+   * Turns the screen on when the app's window is shown.
+   *
+   * Typically used in conjunction with [showOverLockscreen].
+   * This is an Android-only feature.
+   */
+  fun wakeScreenOnShow(enable: Boolean, callback: (Result<Unit>) -> Unit)
+  /**
+   * Moves the entire task (app) to the background.
+   *
+   * This is an Android-only feature.
+   * Returns `true` if successful.
+   */
+  fun sendToBackground(callback: (Result<Boolean>) -> Unit)
+  /**
+   * Checks if the device screen is currently locked (keyguard is active).
+   *
+   * Returns `false` on non-Android platforms.
+   */
+  fun isDeviceLocked(callback: (Result<Boolean>) -> Unit)
 
-    /**
-     * Turns the screen on when the app's window is shown.
-     *
-     * Typically used in conjunction with [showOverLockscreen].
-     * This is an Android-only feature.
-     */
-    fun wakeScreenOnShow(enable: Boolean, callback: (Result<Unit>) -> Unit)
-
-    /**
-     * Moves the entire task (app) to the background.
-     *
-     * This is an Android-only feature.
-     * Returns `true` if successful.
-     */
-    fun sendToBackground(callback: (Result<Boolean>) -> Unit)
-
-    /**
-     * Checks if the device screen is currently locked (keyguard is active).
-     *
-     * Returns `false` on non-Android platforms.
-     */
-    fun isDeviceLocked(callback: (Result<Boolean>) -> Unit)
-
-    companion object {
-        /** The codec used by PHostActivityControlApi. */
-        val codec: MessageCodec<Any?> by lazy {
-            GeneratedPigeonCodec()
-        }
-
-        /** Sets up an instance of `PHostActivityControlApi` to handle messages through the `binaryMessenger`. */
-        @JvmOverloads
-        fun setUp(
-            binaryMessenger: BinaryMessenger,
-            api: PHostActivityControlApi?,
-            messageChannelSuffix: String = ""
-        ) {
-            val separatedMessageChannelSuffix =
-                if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostActivityControlApi.showOverLockscreen$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val enableArg = args[0] as Boolean
-                        api.showOverLockscreen(enableArg) { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostActivityControlApi.wakeScreenOnShow$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val enableArg = args[0] as Boolean
-                        api.wakeScreenOnShow(enableArg) { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                reply.reply(wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostActivityControlApi.sendToBackground$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { _, reply ->
-                        api.sendToBackground { result: Result<Boolean> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                val data = result.getOrNull()
-                                reply.reply(wrapResult(data))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(
-                    binaryMessenger,
-                    "dev.flutter.pigeon.webtrit_callkeep_android.PHostActivityControlApi.isDeviceLocked$separatedMessageChannelSuffix",
-                    codec
-                )
-                if (api != null) {
-                    channel.setMessageHandler { _, reply ->
-                        api.isDeviceLocked { result: Result<Boolean> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(wrapError(error))
-                            } else {
-                                val data = result.getOrNull()
-                                reply.reply(wrapResult(data))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-        }
+  companion object {
+    /** The codec used by PHostActivityControlApi. */
+    val codec: MessageCodec<Any?> by lazy {
+      GeneratedPigeonCodec()
     }
+    /** Sets up an instance of `PHostActivityControlApi` to handle messages through the `binaryMessenger`. */
+    @JvmOverloads
+    fun setUp(binaryMessenger: BinaryMessenger, api: PHostActivityControlApi?, messageChannelSuffix: String = "") {
+      val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostActivityControlApi.showOverLockscreen$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val enableArg = args[0] as Boolean
+            api.showOverLockscreen(enableArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostActivityControlApi.wakeScreenOnShow$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val enableArg = args[0] as Boolean
+            api.wakeScreenOnShow(enableArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                reply.reply(wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostActivityControlApi.sendToBackground$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.sendToBackground{ result: Result<Boolean> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostActivityControlApi.isDeviceLocked$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.isDeviceLocked{ result: Result<Boolean> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+    }
+  }
 }

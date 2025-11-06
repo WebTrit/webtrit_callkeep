@@ -222,3 +222,20 @@ fun Context.isDeviceLockedCompat(): Boolean {
     val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
     return keyguardManager.isKeyguardLocked
 }
+
+/**
+ * Checks whether this [SecurityException] was caused
+ * by a missing CALL_PHONE permission.
+ */
+fun SecurityException?.isCallPhoneSecurityException(): Boolean {
+    // If the exception itself is null, return false
+    if (this == null) {
+        return false
+    }
+
+    // Get the error message or use an empty string if null
+    val msg = this.message ?: ""
+
+    // Check for key phrases that indicate a missing CALL_PHONE permission
+    return msg.contains("CALL_PHONE permission required") || msg.contains("android.permission.CALL_PHONE")
+}
