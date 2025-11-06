@@ -29,9 +29,9 @@ class CallkeepHandle extends Equatable {
 
   @override
   List<Object?> get props => [
-        type,
-        value,
-      ];
+    type,
+    value,
+  ];
 
   @override
   bool operator ==(Object other) =>

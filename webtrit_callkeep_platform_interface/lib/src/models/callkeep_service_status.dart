@@ -14,7 +14,7 @@ class CallkeepServiceStatus extends Equatable {
 
   @override
   List<Object?> get props => [
-        lifecycleEvent,
-        mainSignalingStatus,
-      ];
+    lifecycleEvent,
+    mainSignalingStatus,
+  ];
 }
