@@ -164,7 +164,7 @@ enum PCallkeepConnectionState {
   stateActive,
   stateHolding,
   stateDisconnected,
-  statePullingCall;
+  statePullingCall,
 }
 
 enum PCallkeepDisconnectCauseType {

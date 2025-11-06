@@ -12,7 +12,8 @@ class ActionsState with _$ActionsState {
   const ActionsState._();
 
   /// Returns a copy with the new action appended
-  ActionsState addAction(String action) => copyWith(actions: [...actions, action]);
+  ActionsState addAction(String action) =>
+      copyWith(actions: [...actions, action]);
 
   /// Returns the last action or throws if empty
   String get lastAction => actions.last;

@@ -15,13 +15,15 @@ Future<void> onStartForegroundService(CallkeepServiceStatus status) async {
 
   _log.info('Starting call after 3 seconds');
   Future.delayed(Duration(seconds: 3), () {
-    Fluttertoast.showToast(msg: "Starting incoming call", toastLength: Toast.LENGTH_SHORT);
+    Fluttertoast.showToast(
+        msg: "Starting incoming call", toastLength: Toast.LENGTH_SHORT);
     BackgroundSignalingService().incomingCall(call1Identifier, call1Number);
   });
 
   _log.info('Starting call after 5 seconds');
   Future.delayed(Duration(seconds: 8), () {
-    Fluttertoast.showToast(msg: "End incoming call", toastLength: Toast.LENGTH_SHORT);
+    Fluttertoast.showToast(
+        msg: "End incoming call", toastLength: Toast.LENGTH_SHORT);
     BackgroundSignalingService().endCall(call1Identifier);
   });
 
@@ -41,7 +43,8 @@ Future<void> onChangedLifecycle(CallkeepServiceStatus status) async {
 }
 
 @pragma('vm:entry-point')
-Future<void> onPushNotificationCallback(CallkeepPushNotificationSyncStatus status) async {
+Future<void> onPushNotificationCallback(
+    CallkeepPushNotificationSyncStatus status) async {
   initializeLogs();
   _log.info('onPushNotificationCallback: $status');
 

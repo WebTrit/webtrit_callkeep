@@ -8,7 +8,7 @@ enum CallkeepConnectionState {
   stateActive, // A connection is active. Both parties are connected to the call and can actively communicate.
   stateHolding, // A connection is on hold.
   stateDisconnected, // A connection has been disconnected. This is the final state once the user has been disconnected from a call either locally, remotely or by an error in the service
-  statePullingCall; // The state of an external connection which is in the process of being pulled from a remote device to the local device.
+  statePullingCall, // The state of an external connection which is in the process of being pulled from a remote device to the local device.
 }
 
 enum CallkeepDisconnectCauseType {

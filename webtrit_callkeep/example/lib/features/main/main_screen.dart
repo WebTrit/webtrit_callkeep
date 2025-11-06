@@ -36,7 +36,8 @@ class _MainScreenState extends State<MainScreen> {
             children: [
               ElevatedButton(
                 child: const Text('Callkeep API'),
-                onPressed: () => GoRouter.of(context).pushNamed(AppRoute.actions),
+                onPressed: () =>
+                    GoRouter.of(context).pushNamed(AppRoute.actions),
               ),
               ElevatedButton(
                 child: const Text('Tests API'),
@@ -45,7 +46,8 @@ class _MainScreenState extends State<MainScreen> {
               // New button to navigate to ActivityControlScreen
               ElevatedButton(
                 child: const Text('Activity Control API'),
-                onPressed: () => GoRouter.of(context).pushNamed(AppRoute.activityControl),
+                onPressed: () =>
+                    GoRouter.of(context).pushNamed(AppRoute.activityControl),
               ),
             ],
           ),
@@ -68,7 +70,8 @@ class _MainScreenState extends State<MainScreen> {
                 onPressed: () {
                   // TODO: Implement permission check logic
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Check logic not implemented yet.')),
+                    const SnackBar(
+                        content: Text('Check logic not implemented yet.')),
                   );
                 },
               ),
@@ -82,7 +85,8 @@ class _MainScreenState extends State<MainScreen> {
               ElevatedButton(
                 child: const Text('Full Screen Intent Status'),
                 onPressed: () async {
-                  var status = await WebtritCallkeepPermissions().getFullScreenIntentPermissionStatus();
+                  var status = await WebtritCallkeepPermissions()
+                      .getFullScreenIntentPermissionStatus();
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Permission status: $status')),
@@ -91,12 +95,14 @@ class _MainScreenState extends State<MainScreen> {
               ),
               ElevatedButton(
                 child: const Text('Open Full Screen Settings'),
-                onPressed: () => WebtritCallkeepPermissions().openFullScreenIntentSettings(),
+                onPressed: () =>
+                    WebtritCallkeepPermissions().openFullScreenIntentSettings(),
               ),
               ElevatedButton(
                 child: const Text('Battery Optimization Status'),
                 onPressed: () async {
-                  var status = await WebtritCallkeepPermissions().getBatteryMode();
+                  var status =
+                      await WebtritCallkeepPermissions().getBatteryMode();
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Permission status: $status')),
@@ -115,7 +121,9 @@ class _MainScreenState extends State<MainScreen> {
                 onPressed: () {
                   Permission.notification.request().then((value) {
                     if (value.isGranted) {
-                      AndroidCallkeepServices.backgroundSignalingBootstrapService.startService();
+                      AndroidCallkeepServices
+                          .backgroundSignalingBootstrapService
+                          .startService();
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -129,7 +137,8 @@ class _MainScreenState extends State<MainScreen> {
               ElevatedButton(
                 child: const Text('Stop Foreground Service'),
                 onPressed: () {
-                  AndroidCallkeepServices.backgroundSignalingBootstrapService.stopService();
+                  AndroidCallkeepServices.backgroundSignalingBootstrapService
+                      .stopService();
                 },
               ),
             ],
@@ -143,7 +152,9 @@ class _MainScreenState extends State<MainScreen> {
                 child: const Text('Trigger Incoming Call (Push)'),
                 onPressed: () {
                   CallkeepConnections().cleanConnections();
-                  AndroidCallkeepServices.backgroundPushNotificationBootstrapService.reportNewIncomingCall(
+                  AndroidCallkeepServices
+                      .backgroundPushNotificationBootstrapService
+                      .reportNewIncomingCall(
                     call1Identifier,
                     call1Number,
                     displayName: call1Name,
@@ -160,8 +171,9 @@ class _MainScreenState extends State<MainScreen> {
             children: [
               ElevatedButton(
                 child: const Text('Report Incoming Call'),
-                onPressed: () => Callkeep()
-                    .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Name, hasVideo: false),
+                onPressed: () => Callkeep().reportNewIncomingCall(
+                    call1Identifier, call1Number,
+                    displayName: call1Name, hasVideo: false),
               ),
               ElevatedButton(
                 child: const Text('Hangup Incoming Call'),

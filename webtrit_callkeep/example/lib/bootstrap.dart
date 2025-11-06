@@ -21,13 +21,15 @@ Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
 
       await Permission.notification.request();
 
-      AndroidCallkeepServices.backgroundSignalingBootstrapService.initializeCallback(isolate.onStartForegroundService);
+      AndroidCallkeepServices.backgroundSignalingBootstrapService
+          .initializeCallback(isolate.onStartForegroundService);
 
       AndroidCallkeepServices.backgroundPushNotificationBootstrapService
           .initializeCallback(isolate.onPushNotificationCallback);
 
       AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .configurePushNotificationSignalingService(launchBackgroundIsolateEvenIfAppIsOpen: true);
+          .configurePushNotificationSignalingService(
+              launchBackgroundIsolateEvenIfAppIsOpen: true);
 
       // Configures how incoming SMS messages should be parsed on the Android side.
       //
@@ -74,7 +76,8 @@ void initializeLogs() {
   Logger.root.level = Level.ALL;
 
   Logger.root.onRecord.listen((record) {
-    debugPrint('${record.time} [${record.level.name}] ${record.loggerName}: ${record.message}');
+    debugPrint(
+        '${record.time} [${record.level.name}] ${record.loggerName}: ${record.message}');
     if (record.error != null) {
       debugPrint('Error: ${record.error}');
     }
