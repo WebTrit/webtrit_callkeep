@@ -10,9 +10,9 @@ import '../routes.dart';
 
 class App extends StatefulWidget {
   const App({
-    Key? key,
+    super.key,
     required this.callkeepBackgroundService,
-  }) : super(key: key);
+  });
 
   final BackgroundPushNotificationService callkeepBackgroundService;
 
@@ -25,7 +25,7 @@ class _AppState extends State<App> {
   Widget build(BuildContext context) {
     final materialApp = MaterialApp.router(
       restorationScopeId: 'App',
-      title: "Sample",
+      title: 'Sample',
       routerConfig: _router,
     );
 

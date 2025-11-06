@@ -10,8 +10,7 @@ import '../../../app/constants.dart';
 
 part 'tests_state.dart';
 
-class TestsCubit extends Cubit<TestsState>
-    implements CallkeepDelegate, CallkeepBackgroundServiceDelegate {
+class TestsCubit extends Cubit<TestsState> implements CallkeepDelegate, CallkeepBackgroundServiceDelegate {
   TestsCubit(
     this._callkeep,
     this._callkeepBackgroundService,
@@ -43,57 +42,45 @@ class TestsCubit extends Cubit<TestsState>
     try {
       await _callkeep.setUp(const CallkeepOptions(
         ios: CallkeepIOSOptions(
-          localizedName: "en",
+          localizedName: 'en',
           maximumCallGroups: 2,
           maximumCallsPerCallGroup: 1,
           supportedHandleTypes: {CallkeepHandleType.number},
         ),
         android: CallkeepAndroidOptions(),
       ));
-      emit(state.update.addAction(action: "Setup success"));
+      emit(state.update.addAction(action: 'Setup success'));
     } catch (error) {
-      emit(state.update.addAction(action: "Setup error: $error"));
+      emit(state.update.addAction(action: 'Setup error: $error'));
     }
   }
 
   void spamSameIncomingCalls() async {
     await setup();
     try {
-      await _callkeep.reportNewIncomingCall(call1Identifier, call1Number,
-          displayName: 'User Name');
-      _callkeep.reportNewIncomingCall(call1Identifier, call1Number,
-          displayName: 'User Name');
-      await _callkeep.reportNewIncomingCall(call1Identifier, call1Number,
-          displayName: 'User Name');
-      _callkeep.reportNewIncomingCall(call1Identifier, call1Number,
-          displayName: 'User Name');
+      await _callkeep.reportNewIncomingCall(call1Identifier, call1Number, displayName: 'User Name');
+      _callkeep.reportNewIncomingCall(call1Identifier, call1Number, displayName: 'User Name');
+      await _callkeep.reportNewIncomingCall(call1Identifier, call1Number, displayName: 'User Name');
+      _callkeep.reportNewIncomingCall(call1Identifier, call1Number, displayName: 'User Name');
 
-      emit(state.update
-          .addAction(action: "twiceIncomingCallWithSameId success"));
+      emit(state.update.addAction(action: 'twiceIncomingCallWithSameId success'));
     } catch (error) {
-      emit(state.update
-          .addAction(action: "twiceIncomingCallWithSameId error: $error"));
+      emit(state.update.addAction(action: 'twiceIncomingCallWithSameId error: $error'));
     }
   }
 
   void spamDifferentIncomingCalls() async {
     await setup();
     try {
-      await _callkeep.reportNewIncomingCall(call1Identifier, call1Number,
-          displayName: call1Identifier);
-      _callkeep.reportNewIncomingCall(call1Identifier, call1Number,
-          displayName: call1Identifier);
+      await _callkeep.reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
+      _callkeep.reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
 
-      await _callkeep.reportNewIncomingCall(call2Identifier, call1Number,
-          displayName: call2Identifier);
-      _callkeep.reportNewIncomingCall(call2Identifier, call2Number,
-          displayName: call2Identifier);
+      await _callkeep.reportNewIncomingCall(call2Identifier, call1Number, displayName: call2Identifier);
+      _callkeep.reportNewIncomingCall(call2Identifier, call2Number, displayName: call2Identifier);
 
-      emit(
-          state.update.addAction(action: "spamDifferentIncomingCalls success"));
+      emit(state.update.addAction(action: 'spamDifferentIncomingCalls success'));
     } catch (error) {
-      emit(state.update
-          .addAction(action: "spamDifferentIncomingCalls error: $error"));
+      emit(state.update.addAction(action: 'spamDifferentIncomingCalls error: $error'));
     }
   }
 
@@ -101,31 +88,23 @@ class TestsCubit extends Cubit<TestsState>
     await setup();
     try {
       await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(call1Identifier, call1Number,
-              displayName: call1Identifier);
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
       AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(call1Identifier, call1Number,
-              displayName: call1Identifier);
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
 
       AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(call1Identifier, call1Number,
-              displayName: call1Identifier);
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
       AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(call1Identifier, call1Number,
-              displayName: call1Identifier);
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
 
       AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(call1Identifier, call1Number,
-              displayName: call1Identifier);
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
       AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(call1Identifier, call1Number,
-              displayName: call1Identifier);
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
 
-      emit(state.update
-          .addAction(action: "twiceIncomingCallWithSameId success"));
+      emit(state.update.addAction(action: 'twiceIncomingCallWithSameId success'));
     } catch (error) {
-      emit(state.update
-          .addAction(action: "twiceIncomingCallWithSameId error: $error"));
+      emit(state.update.addAction(action: 'twiceIncomingCallWithSameId error: $error'));
     }
   }
 
@@ -133,108 +112,94 @@ class TestsCubit extends Cubit<TestsState>
     await setup();
     try {
       await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(call1Identifier, call1Number,
-              displayName: call1Identifier);
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
       AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(call1Identifier, call1Number,
-              displayName: call1Identifier);
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
 
-      await _callkeep.reportNewIncomingCall(call1Identifier, call1Number,
-          displayName: 'User Name');
-      _callkeep.reportNewIncomingCall(call1Identifier, call1Number,
-          displayName: 'User Name');
+      await _callkeep.reportNewIncomingCall(call1Identifier, call1Number, displayName: 'User Name');
+      _callkeep.reportNewIncomingCall(call1Identifier, call1Number, displayName: 'User Name');
 
       await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(call1Identifier, call1Number,
-              displayName: call1Identifier);
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
       AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(call1Identifier, call1Number,
-              displayName: call1Identifier);
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
 
-      await _callkeep.reportNewIncomingCall(call1Identifier, call1Number,
-          displayName: 'User Name');
-      _callkeep.reportNewIncomingCall(call1Identifier, call1Number,
-          displayName: 'User Name');
+      await _callkeep.reportNewIncomingCall(call1Identifier, call1Number, displayName: 'User Name');
+      _callkeep.reportNewIncomingCall(call1Identifier, call1Number, displayName: 'User Name');
 
       await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(call1Identifier, call1Number,
-              displayName: call1Identifier);
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
       AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(call1Identifier, call1Number,
-              displayName: call1Identifier);
+          .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Identifier);
 
-      emit(state.update
-          .addAction(action: "twiceIncomingCallWithSameId success"));
+      emit(state.update.addAction(action: 'twiceIncomingCallWithSameId success'));
     } catch (error) {
-      emit(state.update
-          .addAction(action: "twiceIncomingCallWithSameId error: $error"));
+      emit(state.update.addAction(action: 'twiceIncomingCallWithSameId error: $error'));
     }
   }
 
   void tearDown() async {
     try {
       await _callkeep.tearDown();
-      emit(state.update.addAction(action: "Tear down success"));
+      emit(state.update.addAction(action: 'Tear down success'));
     } catch (error) {
-      emit(state.update.addAction(action: "Error tear down: $error"));
+      emit(state.update.addAction(action: 'Error tear down: $error'));
     }
   }
 
   @override
-  void continueStartCallIntent(
-      CallkeepHandle handle, String? displayName, bool video) {
-    emit(state.update.addAction(action: "Perform continue start call intent"));
+  void continueStartCallIntent(CallkeepHandle handle, String? displayName, bool video) {
+    emit(state.update.addAction(action: 'Perform continue start call intent'));
   }
 
   @override
   void didActivateAudioSession() {
-    emit(state.update.addAction(action: "Perform did activate audio session"));
+    emit(state.update.addAction(action: 'Perform did activate audio session'));
   }
 
   @override
   void didDeactivateAudioSession() {
-    emit(
-        state.update.addAction(action: "Perform did deactivate audio session"));
+    emit(state.update.addAction(action: 'Perform did deactivate audio session'));
   }
 
   @override
-  void didPushIncomingCall(CallkeepHandle handle, String? displayName,
-      bool video, String callId, CallkeepIncomingCallError? error) {
-    emit(state.update.addAction(action: "Perform did push incoming call"));
+  void didPushIncomingCall(
+      CallkeepHandle handle, String? displayName, bool video, String callId, CallkeepIncomingCallError? error) {
+    emit(state.update.addAction(action: 'Perform did push incoming call'));
   }
 
   @override
   void didReset() {
-    emit(state.update.addAction(action: "Perform did reset"));
+    emit(state.update.addAction(action: 'Perform did reset'));
   }
 
   @override
   Future<bool> performAnswerCall(String callId) {
-    emit(state.update.addAction(action: "Delegate answer call"));
+    emit(state.update.addAction(action: 'Delegate answer call'));
     return Future.value(true);
   }
 
   @override
   Future<bool> performEndCall(String callId) {
-    emit(state.update.addAction(action: "Delegate end call"));
+    emit(state.update.addAction(action: 'Delegate end call'));
     return Future.value(true);
   }
 
   @override
   Future<bool> performSendDTMF(String callId, String key) {
-    emit(state.update.addAction(action: "Delegate dtmf pressed: $key"));
+    emit(state.update.addAction(action: 'Delegate dtmf pressed: $key'));
     return Future.value(true);
   }
 
   @override
   Future<bool> performSetHeld(String callId, bool onHold) {
-    emit(state.update.addAction(action: "Delegate held: $onHold"));
+    emit(state.update.addAction(action: 'Delegate held: $onHold'));
     return Future.value(true);
   }
 
   @override
   Future<bool> performSetMuted(String callId, bool muted) {
-    emit(state.update.addAction(action: "Delegate muted: $muted"));
+    emit(state.update.addAction(action: 'Delegate muted: $muted'));
     return Future.value(true);
   }
 
@@ -245,13 +210,13 @@ class TestsCubit extends Cubit<TestsState>
     String? displayNameOrContactIdentifier,
     bool video,
   ) {
-    emit(state.update.addAction(action: "Perform start call"));
+    emit(state.update.addAction(action: 'Perform start call'));
     return Future.value(true);
   }
 
   @override
   Future<bool> performSetSpeaker(String callId, bool enabled) {
-    emit(state.update.addAction(action: "Delegate set speaker: $enabled"));
+    emit(state.update.addAction(action: 'Delegate set speaker: $enabled'));
 
     return Future.value(true);
   }
@@ -268,19 +233,14 @@ class TestsCubit extends Cubit<TestsState>
   }) {}
 
   @override
-  Future<bool> performAudioDeviceSet(
-      String callId, CallkeepAudioDevice device) {
-    emit(state.update
-        .addAction(action: "Delegate audio device set: ${device.name}"));
+  Future<bool> performAudioDeviceSet(String callId, CallkeepAudioDevice device) {
+    emit(state.update.addAction(action: 'Delegate audio device set: ${device.name}'));
     return Future.value(true);
   }
 
   @override
-  Future<bool> performAudioDevicesUpdate(
-      String callId, List<CallkeepAudioDevice> devices) {
-    emit(state.update.addAction(
-        action:
-            "Delegate audio devices update: ${devices.map((d) => d.name).join(", ")}"));
+  Future<bool> performAudioDevicesUpdate(String callId, List<CallkeepAudioDevice> devices) {
+    emit(state.update.addAction(action: "Delegate audio devices update: ${devices.map((d) => d.name).join(", ")}"));
     return Future.value(true);
   }
 }

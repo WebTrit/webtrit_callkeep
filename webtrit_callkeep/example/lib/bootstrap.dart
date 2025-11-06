@@ -21,15 +21,13 @@ Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
 
       await Permission.notification.request();
 
-      AndroidCallkeepServices.backgroundSignalingBootstrapService
-          .initializeCallback(isolate.onStartForegroundService);
+      AndroidCallkeepServices.backgroundSignalingBootstrapService.initializeCallback(isolate.onStartForegroundService);
 
       AndroidCallkeepServices.backgroundPushNotificationBootstrapService
           .initializeCallback(isolate.onPushNotificationCallback);
 
       AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .configurePushNotificationSignalingService(
-              launchBackgroundIsolateEvenIfAppIsOpen: true);
+          .configurePushNotificationSignalingService(launchBackgroundIsolateEvenIfAppIsOpen: true);
 
       // Configures how incoming SMS messages should be parsed on the Android side.
       //
@@ -43,7 +41,7 @@ Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
       // Example accepted message format:
       // "<#> CALLHOME: https://app.webtrit.com/call?callId=abc123&handle=380971112233&displayName=John%20Doe&hasVideo=true"
       await AndroidCallkeepUtils.smsReceptionConfig.configureReceivedSms(
-        prefix: "<#> CALLHOME:",
+        prefix: '<#> CALLHOME:',
         regexPattern:
             r'https:\/\/app\.webtrit\.com\/call\?callId=([^&]+)&handle=([^&]+)&displayName=([^&]+)&hasVideo=(true|false)',
       );
@@ -76,8 +74,7 @@ void initializeLogs() {
   Logger.root.level = Level.ALL;
 
   Logger.root.onRecord.listen((record) {
-    debugPrint(
-        '${record.time} [${record.level.name}] ${record.loggerName}: ${record.message}');
+    debugPrint('${record.time} [${record.level.name}] ${record.loggerName}: ${record.message}');
     if (record.error != null) {
       debugPrint('Error: ${record.error}');
     }

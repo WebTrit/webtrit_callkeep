@@ -23,8 +23,7 @@ class _ActivityControlScreenState extends State<ActivityControlScreen> {
   Future<void> _checkDeviceLockState() async {
     if (!Platform.isAndroid) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('This feature is only available on Android.')),
+        const SnackBar(content: Text('This feature is only available on Android.')),
       );
       return;
     }
@@ -110,8 +109,7 @@ class _ActivityControlScreenState extends State<ActivityControlScreen> {
                               ? 'Status: LOCKED'
                               : 'Status: UNLOCKED',
                       style: TextStyle(
-                        color:
-                            _isLockedStatus == true ? Colors.red : Colors.green,
+                        color: _isLockedStatus == true ? Colors.red : Colors.green,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

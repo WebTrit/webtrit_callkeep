@@ -5,7 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/actions_cubit.dart';
 
 class ActionsScreen extends StatelessWidget {
-  const ActionsScreen({Key? key}) : super(key: key);
+  const ActionsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +18,7 @@ class ActionsScreen extends StatelessWidget {
             child: ListView(
               children: [
                 Text(
-                  "Callkeep features",
+                  'Callkeep features',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(
@@ -36,11 +36,8 @@ class ActionsScreen extends StatelessWidget {
                             padding: const EdgeInsets.all(8),
                             child: ListView(
                               children: state.actions
-                                  .map((e) => Text(e,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium
-                                          ?.copyWith(height: 1.4)))
+                                  .map((e) =>
+                                      Text(e, style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4)))
                                   .toList(),
                             )),
                       ),
@@ -49,7 +46,7 @@ class ActionsScreen extends StatelessWidget {
                       height: 24,
                     ),
                     Text(
-                      "General",
+                      'General',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(
@@ -58,89 +55,68 @@ class ActionsScreen extends StatelessWidget {
                     Wrap(
                       children: [
                         OutlinedButton(
-                          child: Text("Setup"),
+                          child: Text('Setup'),
                           onPressed: () => context.read<ActionsCubit>().setup(),
                         ),
                         OutlinedButton(
-                          child: Text("Is setup"),
-                          onPressed: () =>
-                              context.read<ActionsCubit>().isSetup(),
+                          child: Text('Is setup'),
+                          onPressed: () => context.read<ActionsCubit>().isSetup(),
                         ),
                         OutlinedButton(
-                          child: Text("Tear down"),
-                          onPressed: () =>
-                              context.read<ActionsCubit>().tearDown(),
+                          child: Text('Tear down'),
+                          onPressed: () => context.read<ActionsCubit>().tearDown(),
                         ),
                         OutlinedButton(
-                          child: Text("Report new incoming call"),
-                          onPressed: () => context
-                              .read<ActionsCubit>()
-                              .reportNewIncomingCall(),
+                          child: Text('Report new incoming call'),
+                          onPressed: () => context.read<ActionsCubit>().reportNewIncomingCall(),
                         ),
                         OutlinedButton(
-                          child: Text("Report new incoming call another id"),
-                          onPressed: () => context
-                              .read<ActionsCubit>()
-                              .reportNewIncomingCallV2(),
+                          child: Text('Report new incoming call another id'),
+                          onPressed: () => context.read<ActionsCubit>().reportNewIncomingCallV2(),
                         ),
                         OutlinedButton(
-                          child: Text("Report connecting outgoing call"),
-                          onPressed: () => context
-                              .read<ActionsCubit>()
-                              .reportConnectingOutgoingCall(),
+                          child: Text('Report connecting outgoing call'),
+                          onPressed: () => context.read<ActionsCubit>().reportConnectingOutgoingCall(),
                         ),
                         OutlinedButton(
-                          child: Text("Report connected outgoing call"),
-                          onPressed: () => context
-                              .read<ActionsCubit>()
-                              .reportConnectedOutgoingCall(),
+                          child: Text('Report connected outgoing call'),
+                          onPressed: () => context.read<ActionsCubit>().reportConnectedOutgoingCall(),
                         ),
                         OutlinedButton(
-                          child: Text("Report update call"),
-                          onPressed: () =>
-                              context.read<ActionsCubit>().reportUpdateCall(),
+                          child: Text('Report update call'),
+                          onPressed: () => context.read<ActionsCubit>().reportUpdateCall(),
                         ),
                         OutlinedButton(
-                          child: Text("Report end call"),
-                          onPressed: () =>
-                              context.read<ActionsCubit>().reportEndCall(),
+                          child: Text('Report end call'),
+                          onPressed: () => context.read<ActionsCubit>().reportEndCall(),
                         ),
                         OutlinedButton(
-                          child: Text("Start call"),
-                          onPressed: () =>
-                              context.read<ActionsCubit>().startOutgoingCall(),
+                          child: Text('Start call'),
+                          onPressed: () => context.read<ActionsCubit>().startOutgoingCall(),
                         ),
                         OutlinedButton(
-                          child: Text("Answer call"),
-                          onPressed: () =>
-                              context.read<ActionsCubit>().answerCall(),
+                          child: Text('Answer call'),
+                          onPressed: () => context.read<ActionsCubit>().answerCall(),
                         ),
                         OutlinedButton(
-                          child: Text("End call"),
-                          onPressed: () =>
-                              context.read<ActionsCubit>().endCall(),
+                          child: Text('End call'),
+                          onPressed: () => context.read<ActionsCubit>().endCall(),
                         ),
                         OutlinedButton(
-                          child: Text(state.isHold ? "Unhold" : "Hold"),
-                          onPressed: () =>
-                              context.read<ActionsCubit>().setHeld(),
+                          child: Text(state.isHold ? 'Unhold' : 'Hold'),
+                          onPressed: () => context.read<ActionsCubit>().setHeld(),
                         ),
                         OutlinedButton(
-                          child: Text(state.isMuted ? "Unmute" : "Mute"),
-                          onPressed: () =>
-                              context.read<ActionsCubit>().setMuted(),
+                          child: Text(state.isMuted ? 'Unmute' : 'Mute'),
+                          onPressed: () => context.read<ActionsCubit>().setMuted(),
                         ),
                         OutlinedButton(
-                          child: Text(state.speakerEnabled
-                              ? "Disable speaker"
-                              : "Enable speaker"),
-                          onPressed: () =>
-                              context.read<ActionsCubit>().setSpeaker(),
+                          child: Text(state.speakerEnabled ? 'Disable speaker' : 'Enable speaker'),
+                          onPressed: () => context.read<ActionsCubit>().setSpeaker(),
                         ),
                         OutlinedButton(
-                          child: Text("Set DTMF"),
-                          onPressed: () =>
-                              context.read<ActionsCubit>().setDTMF(),
+                          child: Text('Set DTMF'),
+                          onPressed: () => context.read<ActionsCubit>().setDTMF(),
                         ),
                       ],
                     ),
