@@ -3,8 +3,7 @@ package com.webtrit.callkeep.services.services.connection
 import android.content.Context
 
 class ProximitySensorManager(
-    private val context: Context,
-    private val state: PhoneConnectionConsts
+    private val context: Context, private val state: PhoneConnectionConsts
 ) {
     private val sensorListener = PhoneSensorListener()
 

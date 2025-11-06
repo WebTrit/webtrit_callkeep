@@ -16,7 +16,10 @@ abstract class NotificationBuilder() {
         }
 
         return PendingIntent.getActivity(
-            context, R.integer.notification_incoming_call_id, hostAppActivity, PendingIntent.FLAG_IMMUTABLE
+            context,
+            R.integer.notification_incoming_call_id,
+            hostAppActivity,
+            PendingIntent.FLAG_IMMUTABLE
         )
     }
 

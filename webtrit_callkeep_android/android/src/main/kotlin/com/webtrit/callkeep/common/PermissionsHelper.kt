@@ -1,17 +1,18 @@
 package com.webtrit.callkeep.common
 
+import android.Manifest
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
-import android.Manifest
 import io.flutter.Log
 
 class PermissionsHelper(private val context: Context) {
     fun canUseFullScreenIntent(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val notificationManager =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.canUseFullScreenIntent()
         } else {
             Log.i(TAG, "Can't check full screen intent permission on this device")
@@ -32,7 +33,7 @@ class PermissionsHelper(private val context: Context) {
         }
         context.startActivity(intent)
     }
-    
+
     fun hasCameraPermission(): Boolean {
         val cameraPermission = context.checkSelfPermission(Manifest.permission.CAMERA)
         return cameraPermission == PackageManager.PERMISSION_GRANTED

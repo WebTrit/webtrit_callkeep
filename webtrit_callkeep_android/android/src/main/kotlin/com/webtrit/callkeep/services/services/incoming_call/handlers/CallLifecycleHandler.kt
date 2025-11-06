@@ -5,9 +5,9 @@ import android.os.Looper
 import android.util.Log
 import com.webtrit.callkeep.PHostBackgroundPushNotificationIsolateApi
 import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.services.common.IsolateSelector
 import com.webtrit.callkeep.services.services.incoming_call.CallConnectionController
 import com.webtrit.callkeep.services.services.incoming_call.FlutterIsolateCommunicator
-import com.webtrit.callkeep.services.common.IsolateSelector
 
 enum class DeclineSource {
     USER, SERVER
@@ -45,7 +45,10 @@ class CallLifecycleHandler(
 
     fun performEndCall(metadata: CallMetadata) {
         Log.d(TAG, "Resources released")
-        flutterApi?.performEndCall(metadata.callId, onSuccess = { release() }, onFailure = { release() })
+        flutterApi?.performEndCall(
+            metadata.callId,
+            onSuccess = { release() },
+            onFailure = { release() })
     }
 
 

@@ -7,7 +7,9 @@ import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.Ringtone
 import android.media.RingtoneManager
-import com.webtrit.callkeep.common.*
+import com.webtrit.callkeep.common.AssetHolder
+import com.webtrit.callkeep.common.Log
+import com.webtrit.callkeep.common.setLoopingCompat
 
 class AudioManager(val context: Context) {
     private val audioManager =
@@ -69,8 +71,7 @@ class AudioManager(val context: Context) {
 
     private fun getDefaultRingtone(): Ringtone {
         return RingtoneManager.getRingtone(
-            context,
-            RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+            context, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
         )
     }
 

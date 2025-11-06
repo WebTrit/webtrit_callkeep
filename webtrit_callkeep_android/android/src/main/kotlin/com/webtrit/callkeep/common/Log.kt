@@ -2,9 +2,9 @@ package com.webtrit.callkeep.common
 
 import android.os.Handler
 import android.os.Looper
-import android.util.Log as AndroidLog
 import com.webtrit.callkeep.PDelegateLogsFlutterApi
 import com.webtrit.callkeep.PLogTypeEnum
+import android.util.Log as AndroidLog
 
 /**
  * A logging utility that can be instantiated with a specific tag or used statically.

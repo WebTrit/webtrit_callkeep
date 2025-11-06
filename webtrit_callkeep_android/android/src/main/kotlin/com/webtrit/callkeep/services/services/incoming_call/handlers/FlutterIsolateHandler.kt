@@ -51,9 +51,10 @@ class FlutterIsolateHandler(
 
     private fun createWakeLockIfNeeded() {
         if (wakeLock == null) {
-            wakeLock = (context.getSystemService(Context.POWER_SERVICE) as PowerManager)
-                .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "com.webtrit.callkeep:Isolate.WakeLock")
-                .apply { setReferenceCounted(false) }
+            wakeLock =
+                (context.getSystemService(Context.POWER_SERVICE) as PowerManager).newWakeLock(
+                        PowerManager.PARTIAL_WAKE_LOCK, "com.webtrit.callkeep:Isolate.WakeLock"
+                    ).apply { setReferenceCounted(false) }
         }
     }
 

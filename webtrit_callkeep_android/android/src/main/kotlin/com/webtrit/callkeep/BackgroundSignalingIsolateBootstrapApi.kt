@@ -9,9 +9,7 @@ class BackgroundSignalingIsolateBootstrapApi(
     private val context: Context
 ) : PHostBackgroundSignalingIsolateBootstrapApi {
     override fun initializeSignalingServiceCallback(
-        callbackDispatcher: Long,
-        onSync: Long,
-        callback: (Result<Unit>) -> Unit
+        callbackDispatcher: Long, onSync: Long, callback: (Result<Unit>) -> Unit
     ) {
         StorageDelegate.SignalingService.setCallbackDispatcher(context, callbackDispatcher)
         StorageDelegate.SignalingService.setOnSyncHandler(context, onSync)
@@ -25,7 +23,9 @@ class BackgroundSignalingIsolateBootstrapApi(
         callback: (Result<Unit>) -> Unit
     ) {
         StorageDelegate.SignalingService.setNotificationTitle(context, androidNotificationName)
-        StorageDelegate.SignalingService.setNotificationDescription(context, androidNotificationDescription)
+        StorageDelegate.SignalingService.setNotificationDescription(
+            context, androidNotificationDescription
+        )
 
         callback(Result.success(Unit))
     }

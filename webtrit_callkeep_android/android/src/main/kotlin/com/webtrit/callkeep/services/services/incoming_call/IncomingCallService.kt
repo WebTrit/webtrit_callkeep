@@ -1,6 +1,5 @@
 package com.webtrit.callkeep.services.services.incoming_call
 
-import android.annotation.SuppressLint
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -123,7 +122,9 @@ class IncomingCallService : Service() {
 
         setRunning(false)
         // Unregister the service from receiving connection service perform events
-        ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(this, connectionServicePerformReceiver)
+        ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(
+            this, connectionServicePerformReceiver
+        )
 
         stopForeground(STOP_FOREGROUND_REMOVE)
         isolateHandler.cleanup()
@@ -131,10 +132,12 @@ class IncomingCallService : Service() {
     }
 
     fun establishFlutterCommunication(
-        serviceApi: PDelegateBackgroundServiceFlutterApi, registerApi: PDelegateBackgroundRegisterFlutterApi
+        serviceApi: PDelegateBackgroundServiceFlutterApi,
+        registerApi: PDelegateBackgroundRegisterFlutterApi
     ) {
         callLifecycleHandler.apply {
-            flutterApi = DefaultFlutterIsolateCommunicator(this@IncomingCallService, serviceApi, registerApi)
+            flutterApi =
+                DefaultFlutterIsolateCommunicator(this@IncomingCallService, serviceApi, registerApi)
         }
     }
 
@@ -193,7 +196,7 @@ class IncomingCallService : Service() {
 
         @Volatile
         private var isRunning = false
-        
+
         private fun setRunning(running: Boolean) {
             isRunning = running
         }
@@ -214,7 +217,10 @@ class IncomingCallService : Service() {
         // using IncomingCallNotificationBuilder.buildReleaseNotification to inform the user that the call is being finalized.
         fun release(context: Context, type: IncomingCallRelease) {
             if (isRunning) {
-                context.startService(Intent(context, IncomingCallService::class.java).apply { this.action = type.name })
+                context.startService(
+                    Intent(
+                        context, IncomingCallService::class.java
+                    ).apply { this.action = type.name })
                 Log.d(TAG, "Service is running. Release action $type initiated.")
             } else {
                 Log.w(TAG, "Service is not running. Release action $type ignored.")

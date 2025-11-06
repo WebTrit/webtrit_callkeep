@@ -130,5 +130,7 @@ object NotificationChannelManager {
             setShowBadge(showBadge)
             if (customSound) setSound(null, null)
         }
-        NotificationManagerCompat.from(ContextHolder.context).createNotificationChannel(notificationChannel)
-    }}
+        NotificationManagerCompat.from(ContextHolder.context)
+            .createNotificationChannel(notificationChannel)
+    }
+}

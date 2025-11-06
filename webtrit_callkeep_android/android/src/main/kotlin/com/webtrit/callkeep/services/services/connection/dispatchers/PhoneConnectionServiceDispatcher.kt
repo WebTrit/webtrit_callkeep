@@ -84,9 +84,10 @@ class PhoneConnectionServiceDispatcher(
     }
 
     private fun handleMute(metadata: CallMetadata) {
-        connectionManager.getConnection(metadata.callId)?.changeMuteState(metadata.hasMute) ?: dispatcher(
-            ConnectionPerform.ConnectionNotFound, metadata
-        )
+        connectionManager.getConnection(metadata.callId)?.changeMuteState(metadata.hasMute)
+            ?: dispatcher(
+                ConnectionPerform.ConnectionNotFound, metadata
+            )
     }
 
     private fun handleHold(metadata: CallMetadata) {
@@ -115,15 +116,17 @@ class PhoneConnectionServiceDispatcher(
     }
 
     private fun handleSpeaker(metadata: CallMetadata) {
-        connectionManager.getConnection(metadata.callId)?.changeSpeakerState(metadata.hasSpeaker) ?: dispatcher(
-            ConnectionPerform.ConnectionNotFound, metadata
-        )
+        connectionManager.getConnection(metadata.callId)?.changeSpeakerState(metadata.hasSpeaker)
+            ?: dispatcher(
+                ConnectionPerform.ConnectionNotFound, metadata
+            )
     }
 
     private fun handleAudioDeviceSet(metadata: CallMetadata) {
-        connectionManager.getConnection(metadata.callId)?.setAudioDevice(metadata.audioDevice!!) ?: dispatcher(
-            ConnectionPerform.ConnectionNotFound, metadata
-        )
+        connectionManager.getConnection(metadata.callId)?.setAudioDevice(metadata.audioDevice!!)
+            ?: dispatcher(
+                ConnectionPerform.ConnectionNotFound, metadata
+            )
     }
 
     private fun handleTearDown() {

@@ -30,18 +30,19 @@ class ForegroundCallNotificationBuilder() : NotificationBuilder() {
             context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notificationBuilder = Notification.Builder(context, FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID).apply {
-            setSmallIcon(R.drawable.call_foreground_icon)
-            setContentTitle(title)
-            setContentText(content)
-            setAutoCancel(false)
-            setOngoing(true)
-            setDeleteIntent(deleteIntent)
-            setCategory(Notification.CATEGORY_CALL)
-            setVisibility(Notification.VISIBILITY_PUBLIC)
-            setFullScreenIntent(buildOpenAppIntent(context), true)
-            setContentIntent(buildOpenAppIntent(context))
-        }
+        val notificationBuilder =
+            Notification.Builder(context, FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID).apply {
+                setSmallIcon(R.drawable.call_foreground_icon)
+                setContentTitle(title)
+                setContentText(content)
+                setAutoCancel(false)
+                setOngoing(true)
+                setDeleteIntent(deleteIntent)
+                setCategory(Notification.CATEGORY_CALL)
+                setVisibility(Notification.VISIBILITY_PUBLIC)
+                setFullScreenIntent(buildOpenAppIntent(context), true)
+                setContentIntent(buildOpenAppIntent(context))
+            }
         val notification = notificationBuilder.build()
         notification.flags = notification.flags or Notification.FLAG_ONGOING_EVENT
         return notification

@@ -1,8 +1,6 @@
 package com.webtrit.callkeep.services.services.connection
 
-enum class ProximityStateEnum {
-    NEAR, DISTANCE
-}
+enum class ProximityStateEnum { NEAR, DISTANCE }
 
 class PhoneConnectionConsts {
     private var proximity: ProximityStateEnum = ProximityStateEnum.DISTANCE

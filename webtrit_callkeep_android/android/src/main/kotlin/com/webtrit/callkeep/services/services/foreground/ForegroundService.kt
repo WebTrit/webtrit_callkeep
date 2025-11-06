@@ -12,7 +12,6 @@ import android.os.IBinder
 import android.os.Looper
 import androidx.annotation.Keep
 import com.webtrit.callkeep.PAudioDevice
-import com.webtrit.callkeep.PAudioDeviceType
 import com.webtrit.callkeep.PCallRequestError
 import com.webtrit.callkeep.PCallRequestErrorEnum
 import com.webtrit.callkeep.PDelegateFlutterApi
@@ -75,12 +74,18 @@ class ForegroundService : Service(), PHostApi {
     private val connectionServicePerformReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
-                ConnectionPerform.DidPushIncomingCall.name -> handleCSReportDidPushIncomingCall(intent.extras)
+                ConnectionPerform.DidPushIncomingCall.name -> handleCSReportDidPushIncomingCall(
+                    intent.extras
+                )
+
                 ConnectionPerform.DeclineCall.name -> handleCSReportDeclineCall(intent.extras)
                 ConnectionPerform.HungUp.name -> handleCSReportDeclineCall(intent.extras)
                 ConnectionPerform.AnswerCall.name -> handleCSReportAnswerCall(intent.extras)
                 ConnectionPerform.OngoingCall.name -> handleCSReportOngoingCall(intent.extras)
-                ConnectionPerform.ConnectionHasSpeaker.name -> handleCSReportConnectionHasSpeaker(intent.extras)
+                ConnectionPerform.ConnectionHasSpeaker.name -> handleCSReportConnectionHasSpeaker(
+                    intent.extras
+                )
+
                 ConnectionPerform.AudioDeviceSet.name -> handleCSReportAudioDeviceSet(intent.extras)
                 ConnectionPerform.AudioDevicesUpdate.name -> handleCsReportAudioDevicesUpdate(intent.extras)
                 ConnectionPerform.AudioMuting.name -> handleCSReportAudioMuting(intent.extras)
@@ -183,7 +188,7 @@ class ForegroundService : Service(), PHostApi {
             ringtonePath = ringtonePath
         )
 
-        PhoneConnectionService.Companion.startIncomingCall(
+        PhoneConnectionService.startIncomingCall(
             context = baseContext,
             metadata = metadata,
             onSuccess = { callback(Result.success(null)) },
@@ -193,7 +198,7 @@ class ForegroundService : Service(), PHostApi {
     override fun isSetUp(): Boolean = true
 
     override fun tearDown(callback: (Result<Unit>) -> Unit) {
-        PhoneConnectionService.Companion.tearDown(baseContext)
+        PhoneConnectionService.tearDown(baseContext)
         callback.invoke(Result.success(Unit))
     }
 
@@ -206,7 +211,7 @@ class ForegroundService : Service(), PHostApi {
 
     override fun reportConnectedOutgoingCall(callId: String, callback: (Result<Unit>) -> Unit) {
         val metadata = CallMetadata(callId = callId)
-        PhoneConnectionService.Companion.startEstablishCall(baseContext, metadata)
+        PhoneConnectionService.startEstablishCall(baseContext, metadata)
         callback.invoke(Result.success(Unit))
     }
 
@@ -225,27 +230,31 @@ class ForegroundService : Service(), PHostApi {
             hasVideo = hasVideo == true,
             proximityEnabled = proximityEnabled == true,
         )
-        PhoneConnectionService.Companion.startUpdateCall(baseContext, metadata)
+        PhoneConnectionService.startUpdateCall(baseContext, metadata)
         callback.invoke(Result.success(Unit))
     }
 
     override fun reportEndCall(
-        callId: String, displayName: String, reason: PEndCallReason, callback: (Result<Unit>) -> Unit
+        callId: String,
+        displayName: String,
+        reason: PEndCallReason,
+        callback: (Result<Unit>) -> Unit
     ) {
         val callMetaData = CallMetadata(callId = callId, displayName = displayName)
-        PhoneConnectionService.Companion.startDeclineCall(baseContext, callMetaData)
+        PhoneConnectionService.startDeclineCall(baseContext, callMetaData)
         callback.invoke(Result.success(Unit))
     }
 
     override fun answerCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit) {
         val metadata = CallMetadata(callId = callId)
-        if (PhoneConnectionService.Companion.connectionManager.isConnectionAlreadyExists(metadata.callId)) {
+        if (PhoneConnectionService.connectionManager.isConnectionAlreadyExists(metadata.callId)) {
             Log.i(TAG, "answerCall ${metadata.callId}.")
-            PhoneConnectionService.Companion.startAnswerCall(baseContext, metadata)
+            PhoneConnectionService.startAnswerCall(baseContext, metadata)
             callback.invoke(Result.success(null))
         } else {
             Log.e(
-                TAG, "Error response as there is no connection with such ${metadata.callId} in the list."
+                TAG,
+                "Error response as there is no connection with such ${metadata.callId} in the list."
             )
             callback.invoke(Result.success(PCallRequestError(PCallRequestErrorEnum.INTERNAL)))
         }
@@ -254,44 +263,49 @@ class ForegroundService : Service(), PHostApi {
     override fun endCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit) {
         Log.i(TAG, "endCall $callId.")
         val metadata = CallMetadata(callId = callId)
-        PhoneConnectionService.Companion.startHungUpCall(baseContext, metadata)
+        PhoneConnectionService.startHungUpCall(baseContext, metadata)
         callback.invoke(Result.success(null))
     }
 
-    override fun sendDTMF(callId: String, key: String, callback: (Result<PCallRequestError?>) -> Unit) {
+    override fun sendDTMF(
+        callId: String, key: String, callback: (Result<PCallRequestError?>) -> Unit
+    ) {
         val metadata = CallMetadata(callId = callId, dualToneMultiFrequency = key.getOrNull(0))
-        PhoneConnectionService.Companion.startSendDtmfCall(baseContext, metadata)
+        PhoneConnectionService.startSendDtmfCall(baseContext, metadata)
         callback.invoke(Result.success(null))
     }
 
-    override fun setMuted(callId: String, muted: Boolean, callback: (Result<PCallRequestError?>) -> Unit) {
+    override fun setMuted(
+        callId: String, muted: Boolean, callback: (Result<PCallRequestError?>) -> Unit
+    ) {
         val metadata = CallMetadata(callId = callId, hasMute = muted)
-        PhoneConnectionService.Companion.startMutingCall(baseContext, metadata)
+        PhoneConnectionService.startMutingCall(baseContext, metadata)
         callback.invoke(Result.success(null))
     }
 
-    override fun setHeld(callId: String, onHold: Boolean, callback: (Result<PCallRequestError?>) -> Unit) {
+    override fun setHeld(
+        callId: String, onHold: Boolean, callback: (Result<PCallRequestError?>) -> Unit
+    ) {
         val metadata = CallMetadata(callId = callId, hasHold = onHold)
-        PhoneConnectionService.Companion.startHoldingCall(baseContext, metadata)
+        PhoneConnectionService.startHoldingCall(baseContext, metadata)
         callback.invoke(Result.success(null))
     }
 
-    override fun setSpeaker(callId: String, enabled: Boolean, callback: (Result<PCallRequestError?>) -> Unit) {
+    override fun setSpeaker(
+        callId: String, enabled: Boolean, callback: (Result<PCallRequestError?>) -> Unit
+    ) {
         val metadata = CallMetadata(callId = callId, hasSpeaker = enabled)
-        PhoneConnectionService.Companion.startSpeaker(baseContext, metadata)
+        PhoneConnectionService.startSpeaker(baseContext, metadata)
         callback.invoke(Result.success(null))
     }
 
     override fun setAudioDevice(
-        callId: String,
-        device: PAudioDevice,
-        callback: (Result<PCallRequestError?>) -> Unit
+        callId: String, device: PAudioDevice, callback: (Result<PCallRequestError?>) -> Unit
     ) {
         val metadata = CallMetadata(
-            callId = callId,
-            audioDevice = device.toAudioDevice()
+            callId = callId, audioDevice = device.toAudioDevice()
         )
-        PhoneConnectionService.Companion.setAudioDevice(baseContext, metadata)
+        PhoneConnectionService.setAudioDevice(baseContext, metadata)
         callback.invoke(Result.success(null))
     }
 
@@ -302,7 +316,7 @@ class ForegroundService : Service(), PHostApi {
 
     private fun handleCSReportDidPushIncomingCall(extras: Bundle?) {
         extras?.let {
-            val metadata = CallMetadata.Companion.fromBundle(it)
+            val metadata = CallMetadata.fromBundle(it)
             flutterDelegateApi?.didPushIncomingCall(
                 handleArg = metadata.handle!!.toPHandle(),
                 displayNameArg = metadata.displayName,
@@ -315,7 +329,7 @@ class ForegroundService : Service(), PHostApi {
 
     private fun handleCSReportDeclineCall(extras: Bundle?) {
         extras?.let {
-            val callMetaData = CallMetadata.Companion.fromBundle(it)
+            val callMetaData = CallMetadata.fromBundle(it)
             flutterDelegateApi?.performEndCall(callMetaData.callId) {}
             flutterDelegateApi?.didDeactivateAudioSession {}
 
@@ -327,7 +341,7 @@ class ForegroundService : Service(), PHostApi {
 
     private fun handleCSReportAnswerCall(extras: Bundle?) {
         extras?.let {
-            val callMetaData = CallMetadata.Companion.fromBundle(it)
+            val callMetaData = CallMetadata.fromBundle(it)
             flutterDelegateApi?.performAnswerCall(callMetaData.callId) {}
             flutterDelegateApi?.didActivateAudioSession {}
         }
@@ -335,7 +349,7 @@ class ForegroundService : Service(), PHostApi {
 
     private fun handleCSReportOngoingCall(extras: Bundle?) {
         extras?.let {
-            val callMetaData = CallMetadata.Companion.fromBundle(it)
+            val callMetaData = CallMetadata.fromBundle(it)
             outgoingCallback?.invoke(Result.success(null))
             outgoingCallback = null
             flutterDelegateApi?.performStartCall(
@@ -349,7 +363,7 @@ class ForegroundService : Service(), PHostApi {
 
     private fun handleCSReportConnectionHasSpeaker(extras: Bundle?) {
         extras?.let {
-            val callMetaData = CallMetadata.Companion.fromBundle(it)
+            val callMetaData = CallMetadata.fromBundle(it)
             flutterDelegateApi?.performSetSpeaker(
                 callMetaData.callId, callMetaData.hasSpeaker
             ) {}
@@ -358,7 +372,7 @@ class ForegroundService : Service(), PHostApi {
 
     private fun handleCSReportAudioDeviceSet(extras: Bundle?) {
         extras?.let {
-            val callMetaData = CallMetadata.Companion.fromBundle(it)
+            val callMetaData = CallMetadata.fromBundle(it)
             flutterDelegateApi?.performAudioDeviceSet(
                 callMetaData.callId, callMetaData.audioDevice!!.toPAudioDevice()
             ) {}
@@ -367,16 +381,16 @@ class ForegroundService : Service(), PHostApi {
 
     private fun handleCsReportAudioDevicesUpdate(extras: Bundle?) {
         extras?.let {
-            val callMetaData = CallMetadata.Companion.fromBundle(it)
+            val callMetaData = CallMetadata.fromBundle(it)
             flutterDelegateApi?.performAudioDevicesUpdate(
-                callMetaData.callId, callMetaData.audioDevices.map { audioDevice -> audioDevice.toPAudioDevice() }
-            ) {}
+                callMetaData.callId,
+                callMetaData.audioDevices.map { audioDevice -> audioDevice.toPAudioDevice() }) {}
         }
     }
 
     private fun handleCSReportAudioMuting(extras: Bundle?) {
         extras?.let {
-            val callMetaData = CallMetadata.Companion.fromBundle(it)
+            val callMetaData = CallMetadata.fromBundle(it)
             flutterDelegateApi?.performSetMuted(
                 callMetaData.callId, callMetaData.hasMute
             ) {}
@@ -385,7 +399,7 @@ class ForegroundService : Service(), PHostApi {
 
     private fun handleCSReportConnectionHolding(extras: Bundle?) {
         extras?.let {
-            val callMetaData = CallMetadata.Companion.fromBundle(it)
+            val callMetaData = CallMetadata.fromBundle(it)
             flutterDelegateApi?.performSetHeld(
                 callMetaData.callId, callMetaData.hasHold
             ) {}
@@ -394,7 +408,7 @@ class ForegroundService : Service(), PHostApi {
 
     private fun handleCSReportSentDTMF(extras: Bundle?) {
         extras?.let {
-            val callMetaData = CallMetadata.Companion.fromBundle(it)
+            val callMetaData = CallMetadata.fromBundle(it)
             flutterDelegateApi?.performSendDTMF(
                 callMetaData.callId, callMetaData.dualToneMultiFrequency.toString()
             ) {}
@@ -403,7 +417,7 @@ class ForegroundService : Service(), PHostApi {
 
     private fun handleCSReportOutgoingFailure(extras: Bundle?) {
         extras?.let {
-            val failureMetaData = FailureMetadata.Companion.fromBundle(it)
+            val failureMetaData = FailureMetadata.fromBundle(it)
             Log.e(TAG, "handleCSReportOutgoingFailure: ${failureMetaData.outgoingFailureType}")
             outgoingCallback = when (failureMetaData.outgoingFailureType) {
                 OutgoingFailureType.UNENTITLED -> {

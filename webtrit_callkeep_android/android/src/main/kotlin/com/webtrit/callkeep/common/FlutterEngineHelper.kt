@@ -40,7 +40,8 @@ class FlutterEngineHelper(
             flutterLoader.ensureInitializationComplete(context.applicationContext, null)
 
             backgroundEngine = FlutterEngine(context.applicationContext).also { engine ->
-                val callbackInformation = FlutterCallbackInformation.lookupCallbackInformation(callbackHandle)
+                val callbackInformation =
+                    FlutterCallbackInformation.lookupCallbackInformation(callbackHandle)
 
                 if (callbackInformation != null) {
                     val dartCallback = DartCallback(
