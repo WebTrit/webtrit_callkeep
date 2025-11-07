@@ -24,6 +24,9 @@ import com.webtrit.callkeep.POptions
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.Platform
+import com.webtrit.callkeep.common.RetryConfig
+import com.webtrit.callkeep.common.RetryDecider
+import com.webtrit.callkeep.common.RetryManager
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.TelephonyUtils
 import com.webtrit.callkeep.common.isCallPhoneSecurityException
@@ -59,6 +62,8 @@ import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
  */
 @Keep
 class ForegroundService : Service(), PHostApi {
+    private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
+
     /**
      * Manages all pending outgoing call callbacks and their associated timeouts.
      *
@@ -77,7 +82,26 @@ class ForegroundService : Service(), PHostApi {
      * The manager runs on the main thread using a [Handler] backed by [Looper.getMainLooper],
      * and applies CALLBACK_TIMEOUT_MS as the default timeout duration for each outgoing call.
      */
-    private val outgoingCallbacksManager by lazy { OutgoingCallbacksManager(Handler(Looper.getMainLooper())) }
+    private val outgoingCallbacksManager by lazy { OutgoingCallbacksManager(mainHandler) }
+
+    /**
+     * Manages retry logic for outgoing call operations that may temporarily fail
+     * due to unregistered or inactive self-managed PhoneAccount.
+     *
+     * This manager is responsible for automatically retrying `startOutgoingCall`
+     * when a {@link SecurityException} occurs with a CALL_PHONE permission message —
+     * a typical sign that the PhoneAccount is not yet fully registered in Telecom.
+     *
+     * Behavior:
+     * - Uses [CallPhoneSecurityRetryDecider] to decide whether a retry is allowed.
+     * - Applies exponential backoff between attempts (configured via [RetryConfig]).
+     * - Cancels all pending retries when the call succeeds or fails permanently.
+     *
+     * The [RetryManager] runs on the main thread via [mainHandler].
+     */
+    private val retryManager by lazy {
+        RetryManager<String>(mainHandler, CallPhoneSecurityRetryDecider)
+    }
 
     private val binder = LocalBinder()
 
@@ -146,15 +170,17 @@ class ForegroundService : Service(), PHostApi {
         proximityEnabled: Boolean,
         callback: (Result<PCallRequestError?>) -> Unit
     ) {
-        Log.i(TAG, "startCall $callId")
+        Log.i(TAG, "startCall callId=$callId")
 
-        // Clean up any stale state for this callId.
+        // reset any previous pending callback for this call
         outgoingCallbacksManager.remove(callId)
 
-        // Register callback and schedule timeout
+        // register callback + a global timeout for the whole outgoing flow
         outgoingCallbacksManager.put(callId, callback) { cb ->
-            Log.w(TAG, "startCall timeout for $callId")
+            Log.w(TAG, "startCall: overall timeout reached for callId=$callId")
             cb(Result.success(PCallRequestError(PCallRequestErrorEnum.INTERNAL)))
+            // ensure retry is stopped
+            retryManager.cancel(callId)
         }
 
         val metadata = CallMetadata(
@@ -165,24 +191,62 @@ class ForegroundService : Service(), PHostApi {
             proximityEnabled = proximityEnabled
         )
 
-        try {
-            PhoneConnectionService.startOutgoingCall(baseContext, metadata)
-        } catch (_: EmergencyNumberException) {
-            outgoingCallbacksManager.invokeAndRemove(
-                callId, Result.success(PCallRequestError(PCallRequestErrorEnum.EMERGENCY_NUMBER))
+        // Kick off retry loop that wraps the "start outgoing call" attempt + PA re-registration on SecurityException(CALL_PHONE)
+        retryManager.run(key = callId, config = OUTGOING_RETRY_CONFIG, onAttemptStart = { attempt ->
+            Log.i(
+                TAG, "startCall attempt $attempt/${OUTGOING_REGISTER_RETRY_MAX} for callId=$callId"
             )
-        } catch (e: SecurityException) {
-            Log.e(TAG, "startCall failed: ${e.message}")
-            outgoingCallbacksManager.remove(callId)?.let { cb ->
-                if (e.isCallPhoneSecurityException()) {
-                    cb(Result.success(PCallRequestError(PCallRequestErrorEnum.SELF_MANAGED_PHONE_ACCOUNT_NOT_REGISTERED)))
-                } else {
-                    cb(Result.failure(e))
-                }
+            outgoingCallbacksManager.rescheduleTimeout(callId)
+        }, onSuccess = {
+            // The client callback is not invoked here — it will be triggered
+            // asynchronously later from handleCSReportOngoingCall
+            // via invokeAndRemove(...).
+            Log.i(
+                TAG,
+                "startCall: operation succeeded for callId=$callId (will be confirmed by CS report)"
+            )
+        }, onFinalFailure = { err ->
+            Log.w(
+                TAG,
+                "startCall: give up for callId=$callId after retries. reason=${err.javaClass.simpleName}: ${err.message}",
+                err
+            )
+            outgoingCallbacksManager.invokeAndRemove(
+                callId, Result.success(
+                    when (err) {
+                        is EmergencyNumberException -> PCallRequestError(PCallRequestErrorEnum.EMERGENCY_NUMBER)
+                        is SecurityException if err.isCallPhoneSecurityException() -> PCallRequestError(
+                            PCallRequestErrorEnum.SELF_MANAGED_PHONE_ACCOUNT_NOT_REGISTERED
+                        )
+
+                        else -> PCallRequestError(PCallRequestErrorEnum.INTERNAL)
+                    }
+                )
+            )
+        }) { attempt ->
+            // Skip registration on the first attempt since the PhoneAccount is expected
+            // to have been registered during the initial setup (setUp()).
+            // Re-register the self-managed PhoneAccount only on subsequent attempts
+            // in case the initial registration wasn't yet active in the Telecom service.
+            if (attempt > 1) TelephonyUtils(baseContext).registerPhoneAccount()
+
+            try {
+                PhoneConnectionService.startOutgoingCall(baseContext, metadata)
+                // If start succeeded synchronously, just return; success will be confirmed by CS report.
+                // We do NOT throw -> RetryManager treats as success and stops scheduling more attempts.
+            } catch (e: EmergencyNumberException) {
+                Log.e(TAG, "startCall failed: emergency number for callId=$callId", e)
+                throw e
+            } catch (e: SecurityException) {
+                Log.e(TAG, "startCall SecurityException for callId=$callId: ${e.message}", e)
+                // let RetryManager decide: retry only if CALL_PHONE flavor and attempts remain
+                throw e
+            } catch (e: Exception) {
+                Log.e(
+                    TAG, "startCall failed on attempt $attempt for callId=$callId: ${e.message}", e
+                )
+                throw e
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "startCall failed: ${e.message}")
-            outgoingCallbacksManager.invokeAndRemove(callId, Result.failure(e))
         }
     }
 
@@ -368,6 +432,7 @@ class ForegroundService : Service(), PHostApi {
     private fun handleCSReportOngoingCall(extras: Bundle?) {
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
+            retryManager.cancel(callMetaData.callId)
             outgoingCallbacksManager.invokeAndRemove(callMetaData.callId, Result.success(null))
 
             flutterDelegateApi?.performStartCall(
@@ -438,7 +503,10 @@ class ForegroundService : Service(), PHostApi {
             val failureMetaData = FailureMetadata.fromBundle(failure)
             Log.e(TAG, "handleCSReportOutgoingFailure: ${failureMetaData.outgoingFailureType}")
 
+
             val callId = failureMetaData.callMetadata?.callId ?: return
+            retryManager.cancel(callId)
+
             val cb = outgoingCallbacksManager.remove(callId)
 
             when (failureMetaData.outgoingFailureType) {
@@ -472,7 +540,10 @@ class ForegroundService : Service(), PHostApi {
         ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(
             baseContext, connectionServicePerformReceiver
         )
+
+        retryManager.clear()
         outgoingCallbacksManager.clear()
+        
         isRunning = false
     }
 
@@ -483,6 +554,20 @@ class ForegroundService : Service(), PHostApi {
     companion object {
         private const val TAG = "ForegroundService"
 
+        // Maximum number of retries if PhoneAccount is not yet registered
+        private const val OUTGOING_REGISTER_RETRY_MAX = 5
+
+        // Delay between retries (milliseconds)
+        private const val OUTGOING_REGISTER_RETRY_DELAY_MS = 750L
+
+        // Unified retry configuration for outgoing calls
+        val OUTGOING_RETRY_CONFIG = RetryConfig(
+            maxAttempts = OUTGOING_REGISTER_RETRY_MAX,
+            initialDelayMs = OUTGOING_REGISTER_RETRY_DELAY_MS,
+            backoffMultiplier = 1.5,
+            maxDelayMs = 5_000L
+        )
+
         var isRunning = false
     }
 }
@@ -492,24 +577,21 @@ private class OutgoingCallbacksManager(
 ) {
     private val callbacks = mutableMapOf<String, (Result<PCallRequestError?>) -> Unit>()
     private val timeouts = mutableMapOf<String, Runnable>()
+    private val timeoutHandlers =
+        mutableMapOf<String, ((Result<PCallRequestError?>) -> Unit) -> Unit>()
 
-    /**
-     * Registers a callback for the given callId and schedules a timeout.
-     * When the timeout expires, [onTimeout] is called with the removed callback.
-     */
     fun put(
         callId: String,
         callback: (Result<PCallRequestError?>) -> Unit,
         onTimeout: ((Result<PCallRequestError?>) -> Unit) -> Unit
     ) {
-        // Remove any previous callback for the same callId
         remove(callId)
-
         callbacks[callId] = callback
+        timeoutHandlers[callId] = onTimeout
 
         val runnable = Runnable {
-            // If timeout reached, remove and notify via onTimeout
-            remove(callId)?.let { cb -> onTimeout(cb) }
+            val cb = remove(callId) ?: return@Runnable
+            onTimeout(cb)
         }
         timeouts[callId] = runnable
 
@@ -521,34 +603,52 @@ private class OutgoingCallbacksManager(
     }
 
     /**
-     * Removes both callback and timeout for the given callId.
-     * Returns the callback if it existed.
+     * Reschedules the existing timeout for the given callId.
+     * Useful when retrying a call to prevent premature timeout firing.
      */
+    fun rescheduleTimeout(callId: String) {
+        val onTimeout = timeoutHandlers[callId] ?: return
+        timeouts.remove(callId)?.let { handler.removeCallbacks(it) }
+
+        val runnable = Runnable {
+            val cb = remove(callId) ?: return@Runnable
+            onTimeout(cb)
+        }
+        timeouts[callId] = runnable
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            handler.postDelayed(runnable, callId, timeoutMs)
+        } else {
+            handler.postDelayed(runnable, timeoutMs)
+        }
+    }
+
     fun remove(callId: String): ((Result<PCallRequestError?>) -> Unit)? {
         timeouts.remove(callId)?.let { handler.removeCallbacks(it) }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            handler.removeCallbacksAndMessages(callId)
-        }
+        timeoutHandlers.remove(callId)
         return callbacks.remove(callId)
     }
 
-    /**
-     * Removes and invokes the callback with the given [result].
-     */
     fun invokeAndRemove(callId: String, result: Result<PCallRequestError?>) {
         remove(callId)?.invoke(result)
     }
 
-    /**
-     * Clears all callbacks and timeouts.
-     */
     fun clear() {
         timeouts.values.forEach { handler.removeCallbacks(it) }
         callbacks.clear()
         timeouts.clear()
+        timeoutHandlers.clear()
     }
 
     companion object {
         const val CALLBACK_TIMEOUT_MS = 5000L
+    }
+}
+
+/** Retry policy: retries only when a SecurityException indicates CALL_PHONE permission issue. */
+private object CallPhoneSecurityRetryDecider : RetryDecider {
+    override fun shouldRetry(attempt: Int, error: Throwable, maxAttempts: Int): Boolean {
+        if (attempt >= maxAttempts) return false
+        return error is SecurityException && error.isCallPhoneSecurityException()
     }
 }

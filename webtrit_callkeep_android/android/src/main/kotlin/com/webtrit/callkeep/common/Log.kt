@@ -76,7 +76,8 @@ class Log(private val tag: String) {
          * Logs an error message. (Static version)
          */
         @JvmStatic
-        fun e(tag: String, message: String) = log(PLogTypeEnum.ERROR, tag, message)
+        fun e(tag: String, message: String, throwable: Throwable? = null) =
+            log(PLogTypeEnum.ERROR, tag, "$message\n$throwable")
 
         /**
          * Logs a debug message. (Static version)
@@ -94,6 +95,7 @@ class Log(private val tag: String) {
          * Logs a warning message. (Static version)
          */
         @JvmStatic
-        fun w(tag: String, message: String) = log(PLogTypeEnum.WARN, tag, message)
+        fun w(tag: String, message: String, throwable: Throwable? = null) =
+            log(PLogTypeEnum.WARN, tag, "$message\n$throwable")
     }
 }
