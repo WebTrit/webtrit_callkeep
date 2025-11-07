@@ -149,6 +149,8 @@ class ForegroundService : Service(), PHostApi {
     }
 
     override fun setUp(options: POptions, callback: (Result<Unit>) -> Unit) {
+        logger.i("setUp")
+
         // Registers all necessary notification channels for the application.
         // This includes channels for active calls, incoming calls, missed calls, and foreground calls.
         NotificationChannelManager.registerNotificationChannels(baseContext)
@@ -170,14 +172,15 @@ class ForegroundService : Service(), PHostApi {
         proximityEnabled: Boolean,
         callback: (Result<PCallRequestError?>) -> Unit
     ) {
-        Log.i(TAG, "startCall callId=$callId")
+        val logContext = "startCall($callId|$handle)"
+        logger.i("$logContext: trying to start call")
 
         // reset any previous pending callback for this call
         outgoingCallbacksManager.remove(callId)
 
         // register callback + a global timeout for the whole outgoing flow
         outgoingCallbacksManager.put(callId, callback) { cb ->
-            Log.w(TAG, "startCall: overall timeout reached for callId=$callId")
+            logger.w("$logContext: overall timeout reached")
             cb(Result.success(PCallRequestError(PCallRequestErrorEnum.INTERNAL)))
             // ensure retry is stopped
             retryManager.cancel(callId)
@@ -193,24 +196,15 @@ class ForegroundService : Service(), PHostApi {
 
         // Kick off retry loop that wraps the "start outgoing call" attempt + PA re-registration on SecurityException(CALL_PHONE)
         retryManager.run(key = callId, config = OUTGOING_RETRY_CONFIG, onAttemptStart = { attempt ->
-            Log.i(
-                TAG, "startCall attempt $attempt/${OUTGOING_REGISTER_RETRY_MAX} for callId=$callId"
-            )
+            logger.i("$logContext attempt $attempt/${OUTGOING_REGISTER_RETRY_MAX}")
             outgoingCallbacksManager.rescheduleTimeout(callId)
         }, onSuccess = {
             // The client callback is not invoked here — it will be triggered
             // asynchronously later from handleCSReportOngoingCall
             // via invokeAndRemove(...).
-            Log.i(
-                TAG,
-                "startCall: operation succeeded for callId=$callId (will be confirmed by CS report)"
-            )
+            logger.i("$logContext: operation succeeded(will be confirmed by CS report)")
         }, onFinalFailure = { err ->
-            Log.w(
-                TAG,
-                "startCall: give up for callId=$callId after retries. reason=${err.javaClass.simpleName}: ${err.message}",
-                err
-            )
+            logger.w("$logContext: give up after retries. reason=${err.javaClass.simpleName}: ${err.message}")
             outgoingCallbacksManager.invokeAndRemove(
                 callId, Result.success(
                     when (err) {
@@ -235,16 +229,14 @@ class ForegroundService : Service(), PHostApi {
                 // If start succeeded synchronously, just return; success will be confirmed by CS report.
                 // We do NOT throw -> RetryManager treats as success and stops scheduling more attempts.
             } catch (e: EmergencyNumberException) {
-                Log.e(TAG, "startCall failed: emergency number for callId=$callId", e)
+                logger.e("$logContext failed: emergency number", e)
                 throw e
             } catch (e: SecurityException) {
-                Log.e(TAG, "startCall SecurityException for callId=$callId: ${e.message}", e)
+                logger.e("$logContext SecurityException ${e.message}", e)
                 // let RetryManager decide: retry only if CALL_PHONE flavor and attempts remain
                 throw e
             } catch (e: Exception) {
-                Log.e(
-                    TAG, "startCall failed on attempt $attempt for callId=$callId: ${e.message}", e
-                )
+                logger.e("$logContext failed on attempt $attempt: ${e.message}", e)
                 throw e
             }
         }
@@ -330,20 +322,17 @@ class ForegroundService : Service(), PHostApi {
     override fun answerCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit) {
         val metadata = CallMetadata(callId = callId)
         if (PhoneConnectionService.connectionManager.isConnectionAlreadyExists(metadata.callId)) {
-            Log.i(TAG, "answerCall ${metadata.callId}.")
+            logger.i("answerCall ${metadata.callId}.")
             PhoneConnectionService.startAnswerCall(baseContext, metadata)
             callback.invoke(Result.success(null))
         } else {
-            Log.e(
-                TAG,
-                "Error response as there is no connection with such ${metadata.callId} in the list."
-            )
+            logger.e("Error response as there is no connection with such ${metadata.callId} in the list.")
             callback.invoke(Result.success(PCallRequestError(PCallRequestErrorEnum.INTERNAL)))
         }
     }
 
     override fun endCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit) {
-        Log.i(TAG, "endCall $callId.")
+        logger.i("endCall $callId.")
         val metadata = CallMetadata(callId = callId)
         PhoneConnectionService.startHungUpCall(baseContext, metadata)
         callback.invoke(Result.success(null))
@@ -501,8 +490,7 @@ class ForegroundService : Service(), PHostApi {
     private fun handleCSReportOutgoingFailure(extras: Bundle?) {
         extras?.let { failure ->
             val failureMetaData = FailureMetadata.fromBundle(failure)
-            Log.e(TAG, "handleCSReportOutgoingFailure: ${failureMetaData.outgoingFailureType}")
-
+            logger.e("handleCSReportOutgoingFailure: ${failureMetaData.outgoingFailureType}")
 
             val callId = failureMetaData.callMetadata?.callId ?: return
             retryManager.cancel(callId)
@@ -529,7 +517,7 @@ class ForegroundService : Service(), PHostApi {
     // --------------------------------
 
     override fun onUnbind(intent: Intent?): Boolean {
-        Log.i(TAG, "onUnbind")
+        logger.i("onUnbind")
         stopSelf()
         return super.onUnbind(intent)
     }
@@ -543,7 +531,7 @@ class ForegroundService : Service(), PHostApi {
 
         retryManager.clear()
         outgoingCallbacksManager.clear()
-        
+
         isRunning = false
     }
 
@@ -553,6 +541,8 @@ class ForegroundService : Service(), PHostApi {
 
     companion object {
         private const val TAG = "ForegroundService"
+
+        private val logger = Log(TAG)
 
         // Maximum number of retries if PhoneAccount is not yet registered
         private const val OUTGOING_REGISTER_RETRY_MAX = 5
