@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Bundle
 import android.telecom.Connection
 import android.telecom.ConnectionRequest
 import android.telecom.ConnectionService
@@ -128,15 +129,15 @@ class PhoneConnectionService : ConnectionService() {
     override fun onCreateOutgoingConnectionFailed(
         connectionManagerPhoneAccount: PhoneAccountHandle?, request: ConnectionRequest?
     ) {
-        Log.e(
-            TAG, "onCreateOutgoingConnectionFailed: $connectionManagerPhoneAccount  $request"
-        )
+        val callMetadata = CallMetadata.fromBundleOrNull(request?.extras ?: Bundle.EMPTY)
 
-        dispatcher.dispatch(
-            baseContext,
-            ConnectionPerform.OutgoingFailure,
-            FailureMetadata("onCreateOutgoingConnectionFailed: $connectionManagerPhoneAccount  $request").toBundle()
-        )
+        val failureContext = "onCreateOutgoingConnectionFailed"
+        val failureMessage = "$failureContext: $connectionManagerPhoneAccount $request"
+        val failureMetadata = FailureMetadata(callMetadata, failureMessage).toBundle()
+
+        Log.e(TAG, failureMessage)
+
+        dispatcher.dispatch(baseContext, ConnectionPerform.OutgoingFailure, failureMetadata)
 
         if (!connectionManager.hasVideoConnections()) {
             activityWakelockManager.releaseScreenWakeLock()
@@ -200,15 +201,15 @@ class PhoneConnectionService : ConnectionService() {
     override fun onCreateIncomingConnectionFailed(
         connectionManagerPhoneAccount: PhoneAccountHandle?, request: ConnectionRequest?
     ) {
-        Log.e(
-            TAG,
-            "onCreateIncomingConnectionFailed:: $connectionManagerPhoneAccount  $connectionManager "
-        )
-        dispatcher.dispatch(
-            baseContext,
-            ConnectionPerform.IncomingFailure,
-            FailureMetadata("onCreateOutgoingConnectionFailed: $connectionManagerPhoneAccount  $request").toBundle()
-        )
+        val callMetadata = CallMetadata.fromBundleOrNull(request?.extras ?: Bundle.EMPTY)
+
+        val failureContext = "onCreateIncomingConnectionFailed"
+        val failureMessage = "$failureContext: $connectionManagerPhoneAccount $request"
+        val failureMetadata = FailureMetadata(callMetadata, failureMessage).toBundle()
+
+        Log.e(TAG, failureMessage)
+
+        dispatcher.dispatch(baseContext, ConnectionPerform.IncomingFailure, failureMetadata)
 
         if (!connectionManager.hasVideoConnections()) {
             activityWakelockManager.releaseScreenWakeLock()
@@ -311,10 +312,10 @@ class PhoneConnectionService : ConnectionService() {
             val telephonyUtils = TelephonyUtils(context)
 
             if (telephonyUtils.isEmergencyNumber(metadata.number)) {
-                // TODO: Implement emergency number handling
                 Log.i(TAG, "onOutgoingCall, trying to call on emergency number: ${metadata.number}")
 
                 val failureMetadata = FailureMetadata(
+                    metadata,
                     "Failed to establish outgoing connection: Emergency number",
                     outgoingFailureType = OutgoingFailureType.EMERGENCY_NUMBER
                 )
