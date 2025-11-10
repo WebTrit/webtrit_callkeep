@@ -151,15 +151,24 @@ class ForegroundService : Service(), PHostApi {
     override fun setUp(options: POptions, callback: (Result<Unit>) -> Unit) {
         logger.i("setUp")
 
-        // Registers all necessary notification channels for the application.
-        // This includes channels for active calls, incoming calls, missed calls, and foreground calls.
-        NotificationChannelManager.registerNotificationChannels(baseContext)
+        try {
+            TelephonyUtils(baseContext).registerPhoneAccount()
+        } catch (e: Exception) {
+            callback(Result.failure(e))
+            return
+        }
 
-        TelephonyUtils(baseContext).registerPhoneAccount()
+        runCatching {
+            // Registers all necessary notification channels for the application.
+            // This includes channels for active calls, incoming calls, missed calls, and foreground calls.
+            NotificationChannelManager.registerNotificationChannels(baseContext)
+        }.onFailure { Log.w("CallKeep", "Channel registration failed: ${it.message}", it) }
 
-        StorageDelegate.Sound.initRingtonePath(baseContext, options.android.ringtoneSound)
-        StorageDelegate.Sound.initRingbackPath(baseContext, options.android.ringbackSound)
-
+        runCatching {
+            StorageDelegate.Sound.initRingtonePath(baseContext, options.android.ringtoneSound)
+            StorageDelegate.Sound.initRingbackPath(baseContext, options.android.ringbackSound)
+        }.onFailure { Log.w("CallKeep", "Sound init failed: ${it.message}", it) }
+        
         callback.invoke(Result.success(Unit))
     }
 
