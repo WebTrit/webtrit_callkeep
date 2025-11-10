@@ -168,7 +168,7 @@ class ForegroundService : Service(), PHostApi {
             StorageDelegate.Sound.initRingtonePath(baseContext, options.android.ringtoneSound)
             StorageDelegate.Sound.initRingbackPath(baseContext, options.android.ringbackSound)
         }.onFailure { Log.w("CallKeep", "Sound init failed: ${it.message}", it) }
-        
+
         callback.invoke(Result.success(Unit))
     }
 

@@ -43,6 +43,10 @@ class RetryManager<K>(
     ) {
         cancel(key) // ensure clean slate
 
+        /**
+         * Schedules the next retry attempt with an exponential backoff delay.
+         * This function calculates the delay and posts the [nextAttemptRunnable] to the handler.
+         */
         fun scheduleNext(attempt: Int) {
             // Calculate delay before the next retry attempt using exponential backoff.
             //
@@ -58,63 +62,78 @@ class RetryManager<K>(
                     config.maxDelayMs.toDouble()
                 ).toLong()
 
-            val r = Runnable {
-                // Guard if canceled in the meantime
-                val s = states[key] ?: return@Runnable
-                val currentAttempt = s.attempt + 1
-                s.attempt = currentAttempt
-                onAttemptStart(currentAttempt)
-
-                try {
-                    // user operation; should throw on failure
-                    // success — cleanup and notify
-                    block(currentAttempt)
-                    cancel(key)
-                    onSuccess()
-                } catch (t: Throwable) {
-                    if (decider.shouldRetry(currentAttempt, t, config.maxAttempts)) {
-                        // schedule another attempt
-                        scheduleNext(currentAttempt + 1)
-                    } else {
-                        cancel(key)
-                        onFinalFailure(t)
-                    }
+            // Runnable that encapsulates the logic for the *next* retry attempt after a delay.
+            // It delegates the core logic to performAttemptInternal and passes a lambda to schedule the next retry.
+            val nextAttemptRunnable = Runnable {
+                performAttemptInternal(
+                    key, config, onAttemptStart, onSuccess, onFinalFailure, block
+                ) { nextAttempt ->
+                    // This lambda is called if a retry is needed; it schedules the subsequent attempt
+                    scheduleNext(nextAttempt)
                 }
             }
 
             // Save & post
-            states[key] = State(attempt = attempt - 1, runnable = r)
+            states[key] = State(attempt = attempt - 1, runnable = nextAttemptRunnable)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                handler.postDelayed(r, key, nextDelay)
+                handler.postDelayed(nextAttemptRunnable, key, nextDelay)
             } else {
-                handler.postDelayed(r, nextDelay)
+                handler.postDelayed(nextAttemptRunnable, nextDelay)
             }
         }
 
-        // first attempt fires immediately (delay 0)
-        val runnable = Runnable {
-            val s = states[key] ?: return@Runnable
-            val attempt = s.attempt + 1
-            s.attempt = attempt
-            onAttemptStart(attempt)
+        // Runnable for the initial attempt (attempt 1), executed without delay.
+        // It delegates the core logic to performAttemptInternal and passes a lambda to schedule subsequent retries if needed.
+        val initialAttemptRunnable = Runnable {
+            performAttemptInternal(
+                key, config, onAttemptStart, onSuccess, onFinalFailure, block
+            ) { nextAttempt ->
+                // This lambda is called if a retry is needed; it schedules the first delayed attempt
+                scheduleNext(nextAttempt)
+            }
+        }
 
-            try {
-                block(attempt)
+        states[key] = State(attempt = 0, runnable = initialAttemptRunnable)
+        handler.post(initialAttemptRunnable)
+    }
+
+    /**
+     * Performs a single attempt of the block operation, handles its success or failure,
+     * and decides whether to schedule a next retry based on the decider.
+     *
+     * @param scheduleNextAction A callback function to invoke if a retry is deemed necessary,
+     *                           passing the number of the next attempt to be scheduled.
+     */
+    private fun performAttemptInternal(
+        key: K,
+        config: RetryConfig,
+        onAttemptStart: (attempt: Int) -> Unit,
+        onSuccess: () -> Unit,
+        onFinalFailure: (Throwable) -> Unit,
+        block: (attempt: Int) -> Unit,
+        scheduleNextAction: (nextAttempt: Int) -> Unit // Callback to schedule the next attempt
+    ) {
+        // Retrieve the current retry state for this key. Guard if canceled in the meantime.
+        val state = states[key] ?: return
+        val currentAttempt = state.attempt + 1
+        state.attempt = currentAttempt
+        onAttemptStart(currentAttempt)
+
+        try {
+            // user operation; should throw on failure
+            // success — cleanup and notify
+            block(currentAttempt)
+            cancel(key)
+            onSuccess()
+        } catch (t: Throwable) {
+            if (decider.shouldRetry(currentAttempt, t, config.maxAttempts)) {
+                // schedule another attempt using the provided callback
+                scheduleNextAction(currentAttempt + 1)
+            } else {
                 cancel(key)
-                onSuccess()
-            } catch (t: Throwable) {
-                if (decider.shouldRetry(attempt, t, config.maxAttempts)) {
-                    scheduleNext(attempt + 1)
-                } else {
-                    cancel(key)
-                    onFinalFailure(t)
-                }
+                onFinalFailure(t)
             }
         }
-
-        states[key] = State(attempt = 0, runnable = runnable)
-        handler.post(runnable)
-
     }
 
     fun cancel(key: K) {
@@ -122,7 +141,7 @@ class RetryManager<K>(
     }
 
     fun clear() {
-        states.values.forEach { st -> st.runnable?.let { handler.removeCallbacks(it) } }
+        states.values.forEach { state -> state.runnable?.let { handler.removeCallbacks(it) } }
         states.clear()
     }
 }
