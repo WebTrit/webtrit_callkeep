@@ -520,6 +520,39 @@ class ForegroundService : Service(), PHostApi {
         }
     }
 
+    /**
+     * Callback triggered from the Flutter side when the delegate is set.
+     *
+     * This method is invoked when the Flutter application is ready to receive events from the native side.
+     * It checks for any existing active connections (calls) and restores their state on the Flutter side.
+     * This is crucial for re-synchronizing the UI after a hot restart or when the app comes to the
+     * foreground and re-establishes its communication channel with this service.
+     */
+    override fun onDelegateSet() {
+        logger.d("onDelegateSet: Flutter delegate attached. Checking for active connections to restore...")
+        val connections = PhoneConnectionService.connectionManager.getConnections()
+
+        if (connections.isEmpty()) {
+            Log.d(TAG, "onDelegateSet: No active connections found.")
+            return
+        }
+
+        Handler(Looper.getMainLooper()).post {
+            connections.forEach { connection ->
+                val metadata = connection.metadata
+                val handle = metadata.handle
+
+                if (handle == null) {
+                    Log.w(TAG, "onDelegateSet: Skipping connection with null handle")
+                    return@forEach
+                }
+
+                connection.forceUpdateAudioState();
+            }
+        }
+    }
+
+
     //
     // --------------------------------
     // Handlers for ConnectionService reports to communicate with the Flutter side

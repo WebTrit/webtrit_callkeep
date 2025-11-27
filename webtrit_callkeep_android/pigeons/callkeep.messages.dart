@@ -400,6 +400,8 @@ abstract class PHostApi {
   @ObjCSelector('sendDTMF:key:')
   @async
   PCallRequestError? sendDTMF(String callId, String key);
+
+  void onDelegateSet();
 }
 
 @HostApi()
