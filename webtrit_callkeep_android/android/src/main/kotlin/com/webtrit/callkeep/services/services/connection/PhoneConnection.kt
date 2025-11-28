@@ -321,6 +321,33 @@ class PhoneConnection internal constructor(
     }
 
     /**
+     * Manually triggers audio state callbacks to refresh the Flutter side.
+     */
+    fun forceUpdateAudioState() {
+        Log.i(TAG, "forceUpdateAudioState: Triggering manual update")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            try {
+                onCallEndpointChanged(currentCallEndpoint)
+
+                if (avaliablecallEndpoints.isNotEmpty()) {
+                    onAvailableCallEndpointsChanged(avaliablecallEndpoints)
+                }
+
+                dispatcher(ConnectionPerform.AudioMuting, metadata.copy(hasMute = this.isMute))
+
+            } catch (e: Exception) {
+                Log.e(TAG, "forceUpdateAudioState: Error updating endpoints", e)
+            }
+        } else {
+            val currentState = callAudioState
+            if (currentState != null) {
+                onCallAudioStateChanged(currentState)
+            }
+        }
+    }
+
+    /**
      * Called when the available call endpoints change.
      *
      * This method is triggered when the list of available call endpoints changes, such as when
