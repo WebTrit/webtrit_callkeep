@@ -60,7 +60,10 @@ class ActiveCallService : Service() {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
                 val hasVideo = callsMetadata.any { it.hasVideo }
                 val hasCameraPermission = PermissionsHelper(this).hasCameraPermission()
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or if (hasVideo && hasCameraPermission) ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA else 0
+                val audioDevice = callsMetadata.any { it.audioDevice != null }
+                val audioDevices = callsMetadata.any { it.audioDevices.isNotEmpty() }
+                val hasMicrophonePermission = PermissionsHelper(this).hasMicrophonePermission()
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL or if (audioDevice && audioDevices && hasMicrophonePermission) ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE else 0 or if (hasVideo && hasCameraPermission) ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA else 0
             }
 
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
