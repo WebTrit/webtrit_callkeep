@@ -172,7 +172,6 @@ class ForegroundService : Service(), PHostApi {
         callback.invoke(Result.success(Unit))
     }
 
-    @SuppressLint("MissingPermission")
     override fun startCall(
         callId: String,
         handle: PHandle,
@@ -234,6 +233,7 @@ class ForegroundService : Service(), PHostApi {
             if (attempt > 1) TelephonyUtils(baseContext).registerPhoneAccount()
 
             try {
+                @SuppressLint("MissingPermission")
                 PhoneConnectionService.startOutgoingCall(baseContext, metadata)
                 // If start succeeded synchronously, just return; success will be confirmed by CS report.
                 // We do NOT throw -> RetryManager treats as success and stops scheduling more attempts.
@@ -547,7 +547,7 @@ class ForegroundService : Service(), PHostApi {
                     return@forEach
                 }
 
-                connection.forceUpdateAudioState();
+                connection.forceUpdateAudioState()
             }
         }
     }

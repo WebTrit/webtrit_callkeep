@@ -1,5 +1,6 @@
 package com.webtrit.callkeep.services.services.connection
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
@@ -11,6 +12,7 @@ import android.telecom.ConnectionService
 import android.telecom.DisconnectCause
 import android.telecom.PhoneAccount
 import android.telecom.PhoneAccountHandle
+import androidx.annotation.RequiresPermission
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.Log
@@ -304,7 +306,7 @@ class PhoneConnectionService : ConnectionService() {
          *
          * @param metadata The [CallMetadata] for the incoming call.
          */
-        @SuppressLint("MissingPermission")
+        @RequiresPermission(Manifest.permission.CALL_PHONE)
         fun startOutgoingCall(context: Context, metadata: CallMetadata) {
             Log.i(TAG, "onOutgoingCall, callId: ${metadata.callId}")
 
