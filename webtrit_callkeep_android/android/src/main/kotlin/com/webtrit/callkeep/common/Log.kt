@@ -69,7 +69,7 @@ class Log(private val tag: String) {
             } else {
                 // If delegates exist, send the log to the first delegate
                 Handler(Looper.getMainLooper()).post {
-                    isolateDelegates.first().onLog(type, tag, message) {}
+                    isolateDelegates.firstOrNull()?.onLog(type, tag, message) {}
                 }
             }
         }
