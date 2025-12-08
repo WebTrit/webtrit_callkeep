@@ -111,15 +111,15 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
         // Register the service to receive connection service perform events
         registerReceiverCompat(
-            connectionServicePerformReceiver,
-            IntentFilter(ConnectionPerform.MissedCall.name)
+            connectionServicePerformReceiver, IntentFilter(ConnectionPerform.MissedCall.name)
         )
 
         notificationBuilder = ForegroundCallNotificationBuilder()
 
         startForegroundService()
 
-        val callbackDispatcher = StorageDelegate.SignalingService.getCallbackDispatcher(applicationContext)
+        val callbackDispatcher =
+            StorageDelegate.SignalingService.getCallbackDispatcher(applicationContext)
         flutterEngineHelper = FlutterEngineHelper(applicationContext, callbackDispatcher, this)
 
         isRunning = true
@@ -141,7 +141,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
 
         if (StorageDelegate.SignalingService.isSignalingServiceEnabled(context = applicationContext)) {
-            SignalingServiceBootWorker.Companion.enqueue(this)
+            SignalingServiceBootWorker.enqueue(this)
         }
 
         getLock(applicationContext)?.let { lock ->
@@ -163,8 +163,16 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
      */
     private fun startForegroundService() {
         Log.d(TAG, "Starting foreground service")
-        notificationBuilder.setTitle(StorageDelegate.SignalingService.getNotificationTitle(applicationContext))
-        notificationBuilder.setContent(StorageDelegate.SignalingService.getNotificationDescription(applicationContext))
+        notificationBuilder.setTitle(
+            StorageDelegate.SignalingService.getNotificationTitle(
+                applicationContext
+            )
+        )
+        notificationBuilder.setContent(
+            StorageDelegate.SignalingService.getNotificationDescription(
+                applicationContext
+            )
+        )
         val notification = notificationBuilder.build()
 
         if (PermissionsHelper(baseContext).hasNotificationPermission()) {
@@ -270,24 +278,31 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
     override fun onTaskRemoved(rootIntent: Intent?) {
         Log.d(TAG, "SignalingIsolateService onTaskRemoved: $rootIntent")
         if (StorageDelegate.SignalingService.isSignalingServiceEnabled(context = applicationContext)) {
-            SignalingServiceBootWorker.Companion.enqueue(applicationContext, 1000)
+            SignalingServiceBootWorker.enqueue(applicationContext, 1000)
         }
     }
 
     @Suppress("DEPRECATION")
-    private fun synchronizeSignalingIsolate(activityLifecycle: Lifecycle.Event, status: SignalingStatus?) {
+    private fun synchronizeSignalingIsolate(
+        activityLifecycle: Lifecycle.Event, status: SignalingStatus?
+    ) {
         val wakeUpHandler = StorageDelegate.SignalingService.getOnSyncHandler(baseContext)
 
         println("SignalingIsolateService synchronizeSignalingIsolate wakeUpHandler: $status")
         _isolateSignalingFlutterApi?.onWakeUpBackgroundHandler(
             wakeUpHandler, PCallkeepServiceStatus(
-                activityLifecycle.toPCallkeepLifecycleType(), mainSignalingStatus = status?.toPCallkeepSignalingStatus()
+                activityLifecycle.toPCallkeepLifecycleType(),
+                mainSignalingStatus = status?.toPCallkeepSignalingStatus()
             )
         ) { response -> }
     }
 
     override fun incomingCall(
-        callId: String, handle: PHandle, displayName: String?, hasVideo: Boolean, callback: (Result<Unit>) -> Unit
+        callId: String,
+        handle: PHandle,
+        displayName: String?,
+        hasVideo: Boolean,
+        callback: (Result<Unit>) -> Unit
     ) {
         val ringtonePath = StorageDelegate.Sound.getRingtonePath(baseContext)
 
@@ -343,7 +358,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         fun stop(context: Context) {
             Log.d(TAG, "Stopping SignalingIsolateService")
 
-            SignalingServiceBootWorker.Companion.remove(context)
+            SignalingServiceBootWorker.remove(context)
 
             context.stopService(Intent(context, SignalingIsolateService::class.java))
         }

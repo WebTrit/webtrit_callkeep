@@ -5,7 +5,11 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.content.ContextCompat
-import androidx.work.*
+import androidx.work.CoroutineWorker
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.WorkerParameters
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.services.services.signaling.SignalingIsolateService
@@ -59,7 +63,9 @@ class ForegroundCallBootReceiver : BroadcastReceiver() {
      */
     private fun enqueueSignalingWorker(context: Context) {
 
-        val workRequest = OneTimeWorkRequestBuilder<SignalingStartWorker>().setInitialDelay(2, TimeUnit.SECONDS).build()
+        val workRequest =
+            OneTimeWorkRequestBuilder<SignalingStartWorker>().setInitialDelay(2, TimeUnit.SECONDS)
+                .build()
 
         WorkManager.getInstance(context).enqueueUniqueWork(
             WORK_NAME, ExistingWorkPolicy.REPLACE, workRequest

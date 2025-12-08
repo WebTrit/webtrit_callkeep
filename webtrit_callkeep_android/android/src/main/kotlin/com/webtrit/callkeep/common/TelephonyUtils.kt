@@ -17,7 +17,8 @@ import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 
 class TelephonyUtils(private val context: Context) {
     fun isEmergencyNumber(number: String): Boolean {
-        val telephonyManager = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+        val telephonyManager =
+            context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
 
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             telephonyManager.isEmergencyNumber(number)
@@ -36,7 +37,9 @@ class TelephonyUtils(private val context: Context) {
     }
 
     fun addNewIncomingCall(metadata: CallMetadata) {
-        getTelecomManager().addNewIncomingCall(getPhoneAccountHandle(), buildIncomingCallExtras(metadata))
+        getTelecomManager().addNewIncomingCall(
+            getPhoneAccountHandle(), buildIncomingCallExtras(metadata)
+        )
     }
 
     fun registerPhoneAccount() {

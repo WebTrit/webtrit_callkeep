@@ -73,7 +73,8 @@ data class CallMetadata(
 
         fun fromBundle(bundle: Bundle): CallMetadata {
             val metadata = fromBundleOrNull(bundle)
-            return metadata ?: throw IllegalArgumentException("Missing required callId property in Bundle")
+            return metadata
+                ?: throw IllegalArgumentException("Missing required callId property in Bundle")
         }
 
         fun fromBundleOrNull(bundle: Bundle): CallMetadata? {
@@ -85,20 +86,21 @@ data class CallMetadata(
                 handle = bundle.getBundle(CallDataConst.NUMBER)?.let { CallHandle.fromBundle(it) },
                 hasVideo = bundle.getBoolean(CallDataConst.HAS_VIDEO, false),
                 hasSpeaker = bundle.getBoolean(CallDataConst.HAS_SPEAKER, false),
-                audioDevice = bundle.getBundle(CallDataConst.AUDIO_DEVICE)?.let { AudioDevice.fromBundle(it) },
-                audioDevices = bundle.getBundle(CallDataConst.AUDIO_DEVICES)?.let { audioDevicesBundle ->
-                    audioDevicesBundle.keySet().mapNotNull { key ->
-                        audioDevicesBundle.getBundle(key)?.let { AudioDevice.fromBundle(it) }
-                    }
-                } ?: emptyList(),
+                audioDevice = bundle.getBundle(CallDataConst.AUDIO_DEVICE)
+                    ?.let { AudioDevice.fromBundle(it) },
+                audioDevices = bundle.getBundle(CallDataConst.AUDIO_DEVICES)
+                    ?.let { audioDevicesBundle ->
+                        audioDevicesBundle.keySet().mapNotNull { key ->
+                            audioDevicesBundle.getBundle(key)?.let { AudioDevice.fromBundle(it) }
+                        }
+                    } ?: emptyList(),
                 proximityEnabled = bundle.getBoolean(CallDataConst.PROXIMITY_ENABLED, false),
                 hasMute = bundle.getBoolean(CallDataConst.HAS_MUTE, false),
                 hasHold = bundle.getBoolean(CallDataConst.HAS_HOLD, false),
                 dualToneMultiFrequency = bundle.getChar(CallDataConst.DTMF),
                 ringtonePath = bundle.getString(CALL_RINGTONE_PATH),
                 createdTime = bundle.getLong(CALL_METADATA_CREATED_TIME),
-                acceptedTime = bundle.getLong(CALL_METADATA_ACCEPTED_TIME)
-            )
+                acceptedTime = bundle.getLong(CALL_METADATA_ACCEPTED_TIME))
         }
     }
 }

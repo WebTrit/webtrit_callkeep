@@ -29,11 +29,9 @@ fun PhoneConnection.toPConnection(): PCallkeepConnection? {
         return null
     }
 
-    val callkeepDisconnectCause =
-        PCallkeepDisconnectCause(
-            callkeepDisconnectCauseType,
-            disconnectCause.reason ?: "Unknown reason"
-        )
+    val callkeepDisconnectCause = PCallkeepDisconnectCause(
+        callkeepDisconnectCauseType, disconnectCause.reason ?: "Unknown reason"
+    )
 
     return PCallkeepConnection(metadata.callId, callkeepStatus, callkeepDisconnectCause)
 }
@@ -54,7 +52,7 @@ fun PAudioDevice.toAudioDevice(): AudioDevice {
 }
 
 fun AudioDevice.toPAudioDevice(): PAudioDevice {
-    return PAudioDevice (
+    return PAudioDevice(
         type = when (this.type) {
             AudioDeviceType.EARPIECE -> PAudioDeviceType.EARPIECE
             AudioDeviceType.SPEAKER -> PAudioDeviceType.SPEAKER

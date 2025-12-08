@@ -129,6 +129,14 @@ enum PCallRequestErrorEnum {
   maximumCallGroupsReached,
   internal,
   emergencyNumber,
+  /// Android only.
+  ///
+  /// Triggered when the phone is not registered as a self-managed
+  /// [PhoneAccount]. As a result, the `ConnectionService` cannot create
+  /// a connection, and the system throws an exception such as
+  /// `CALL_PHONE permission required to place calls`, because it attempts
+  /// to use the GSM dialer instead of VoIP.
+  selfManagedPhoneAccountNotRegistered,
 }
 
 // TODO: See https://github.com/flutter/flutter/issues/87307
@@ -164,7 +172,7 @@ enum PCallkeepConnectionState {
   stateActive,
   stateHolding,
   stateDisconnected,
-  statePullingCall;
+  statePullingCall,
 }
 
 enum PCallkeepDisconnectCauseType {
@@ -543,4 +551,37 @@ abstract class PHostSmsReceptionConfigApi {
     required String messagePrefix,
     required String regexPattern,
   });
+}
+
+// ------------------------------------------------------------------------------------------------
+// Android Activity Control section
+// ------------------------------------------------------------------------------------------------
+
+@HostApi()
+abstract class PHostActivityControlApi {
+  /// Allows the app's activity to be shown over the device lock screen.
+  ///
+  /// This is an Android-only feature.
+  @async
+  void showOverLockscreen(bool enable);
+
+  /// Turns the screen on when the app's window is shown.
+  ///
+  /// Typically used in conjunction with [showOverLockscreen].
+  /// This is an Android-only feature.
+  @async
+  void wakeScreenOnShow(bool enable);
+
+  /// Moves the entire task (app) to the background.
+  ///
+  /// This is an Android-only feature.
+  /// Returns `true` if successful.
+  @async
+  bool sendToBackground();
+
+  /// Checks if the device screen is currently locked (keyguard is active).
+  ///
+  /// Returns `false` on non-Android platforms.
+  @async
+  bool isDeviceLocked();
 }

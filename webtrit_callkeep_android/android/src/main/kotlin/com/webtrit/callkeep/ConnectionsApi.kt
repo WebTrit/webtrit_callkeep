@@ -26,7 +26,9 @@ class ConnectionsApi() : PHostConnectionsApi {
         callback(Result.success(Unit))
     }
 
-    override fun cleanConnections(callback: (Result<Unit>) -> Unit) {
+    override fun cleanConnections(
+        callback: (Result<Unit>) -> Unit
+    ) {
         PhoneConnectionService.connectionManager.cleanConnections()
         callback(Result.success(Unit))
     }

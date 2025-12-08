@@ -14,7 +14,10 @@ import com.webtrit.callkeep.common.AssetHolder
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.StorageDelegate
+import com.webtrit.callkeep.common.setShowWhenLockedCompat
+import com.webtrit.callkeep.common.setTurnScreenOnCompat
 import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
+import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 import com.webtrit.callkeep.services.services.foreground.ForegroundService
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
 import com.webtrit.callkeep.services.services.signaling.SignalingIsolateService
@@ -86,8 +89,6 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
 
         PHostApi.setUp(this.messenger, null)
 
-        ActivityHolder.setActivity(null)
-
         PHostBackgroundSignalingIsolateBootstrapApi.setUp(messenger, null)
         PHostBackgroundPushNotificationIsolateBootstrapApi.setUp(messenger, null)
 
@@ -101,6 +102,10 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         this.activityPluginBinding = binding
 
         ActivityHolder.setActivity(binding.activity)
+
+        ActivityControlApi(binding.activity).let {
+            PHostActivityControlApi.setUp(messenger, it)
+        }
 
         lifeCycle = (binding.lifecycle as HiddenLifecycleReference).lifecycle
         lifeCycle!!.addObserver(this)
@@ -132,6 +137,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
 
         activityPluginBinding?.activity?.let { unbindAndStopForegroundService(it) }
         PHostApi.setUp(messenger, null)
+        PHostActivityControlApi.setUp(messenger, null)
 
         foregroundService = null
         serviceConnection = null
@@ -150,8 +156,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
             )
 
             PHostBackgroundPushNotificationIsolateApi.setUp(
-                messenger,
-                pushNotificationIsolateService?.getCallLifecycleHandler()
+                messenger, pushNotificationIsolateService?.getCallLifecycleHandler()
             )
         }
 
@@ -193,22 +198,54 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     }
 
     override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
-        Log.d(TAG, "onStateChanged: Lifecycle event received - $event")
+        Log.d(
+            TAG,
+            "onStateChanged: Lifecycle event received - $event, activity: ${activityPluginBinding?.activity}"
+        )
         ActivityLifecycleBroadcaster.setValue(context, event)
 
-        // When the app is in the background, the service should be stopped. However, there is an unresolved issue if a call starts from the activity and the app is minimized, causing incomplete event handling.
-        // To handle events when the app is minimized, we allow the service to remain active for as long as possible to manage recent events.
-        // Currently, this can throw a BackgroundServiceStartNotAllowedException when the activity is in the background and the connection service emits an event.
-        // To handle events when the app is in the background, we use isolates, so we do not stop the service to correctly handle recent events from the activity.
-
-        // if (event == Lifecycle.Event.ON_STOP) {
-        //     activityPluginBinding?.activity?.let { unbindAndStopForegroundService(it) }
-        // }
-        // if (event == Lifecycle.Event.ON_START && serviceConnection == null) {
-        //     activityPluginBinding?.activity?.let {
-        //         bindForegroundService(it)
-        //     }
-        // }
+        /**
+         * This block is essential for the incoming call flow on the lock screen.
+         *
+         * It manages the `setShowWhenLocked` and `setTurnScreenOn` permissions
+         * to reliably show the Activity. On modern Android versions,
+         * the `setFullScreenIntent` alone is often not enough to wake the
+         * device and show the Activity; these flags are required.
+         *
+         * We set these flags here programmatically *only when a call is active*,
+         * rather than in the `AndroidManifest.xml`. If set in the Manifest,
+         * the Activity would *always* attempt to show on the lock screen,
+         * which is not the desired behavior.
+         *
+         * `ON_START` is our only reliable "checkpoint" that fires every
+         * time the Activity becomes visible. This logic handles two scenarios:
+         *
+         * 1. **(Activate)** If the Activity starts *during* an active call,
+         * `hasActiveConnections` will be `true`, and we force
+         * the Activity over the lock screen and turn the screen on.
+         *
+         * 2. **(Clear)** If the Activity starts *after* a call has
+         * ended (or the user is just opening the app normally),
+         * `hasActiveConnections` will be `false`. This guarantees
+         * that we clear the flags.
+         *
+         * We don't use `ON_STOP` for clearing because, **on some devices**,
+         * it's called almost immediately after `ON_START` on the lock screen,
+         * which leads to a race condition (setting flags to `true` then
+         * immediately to `false`). This `ON_START`-only approach also solves
+         * the problem where flags could get "stuck" in `true` (e.g., if
+         * the app was force-stopped).
+         */
+        if (event == Lifecycle.Event.ON_START) {
+            val connections = PhoneConnectionService.connectionManager.getConnections()
+            val hasActiveConnections = connections.isNotEmpty()
+            Log.i(
+                TAG,
+                "onStateChanged: ON_START. Has active connections: $hasActiveConnections (${connections.size})"
+            )
+            activityPluginBinding?.activity?.setShowWhenLockedCompat(hasActiveConnections)
+            activityPluginBinding?.activity?.setTurnScreenOnCompat(hasActiveConnections)
+        }
     }
 
     private fun bindForegroundService(activity: Context) {

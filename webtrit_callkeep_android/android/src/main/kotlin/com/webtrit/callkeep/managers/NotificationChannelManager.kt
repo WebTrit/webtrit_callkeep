@@ -6,7 +6,6 @@ import android.app.NotificationManager
 import android.content.Context
 import androidx.core.app.NotificationManagerCompat
 import com.webtrit.callkeep.R
-import com.webtrit.callkeep.common.ContextHolder
 
 /**
  * Singleton that manages the creation and registration of notification channels.
@@ -15,7 +14,7 @@ object NotificationChannelManager {
 
     // Constants for notification channel IDs
     const val MISSED_CALL_NOTIFICATION_CHANNEL_ID = "MISSED_CALL_NOTIFICATION_CHANNEL_ID"
-    const val INCOMING_CALL_NOTIFICATION_CHANNEL_ID = "INCOMING_CALL_NOTIFICATION_SILENT_CHANNEL_ID"
+    const val INCOMING_CALL_NOTIFICATION_CHANNEL_ID = "INCOMING_CALL_NOTIFICATION_CHANNEL_ID"
     const val FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID = "FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID"
     const val NOTIFICATION_ACTIVE_CALL_CHANNEL_ID = "NOTIFICATION_ACTIVE_CALL_CHANNEL_ID"
 
@@ -43,6 +42,7 @@ object NotificationChannelManager {
      */
     private fun registerActiveCallChannel(context: Context) {
         registerNotificationChannel(
+            context,
             channelId = NOTIFICATION_ACTIVE_CALL_CHANNEL_ID,
             title = context.getString(R.string.push_notification_active_call_channel_title),
             description = context.getString(R.string.push_notification_active_call_channel_description),
@@ -59,6 +59,7 @@ object NotificationChannelManager {
      */
     private fun registerIncomingCallChannel(context: Context) {
         registerNotificationChannel(
+            context,
             channelId = INCOMING_CALL_NOTIFICATION_CHANNEL_ID,
             title = context.getString(R.string.push_notification_incoming_call_channel_title),
             description = context.getString(R.string.push_notification_incoming_call_channel_description),
@@ -78,6 +79,7 @@ object NotificationChannelManager {
      */
     private fun registerMissedCallChannel(context: Context) {
         registerNotificationChannel(
+            context,
             channelId = MISSED_CALL_NOTIFICATION_CHANNEL_ID,
             title = context.getString(R.string.push_notification_missed_call_channel_title),
             description = context.getString(R.string.push_notification_missed_call_channel_description),
@@ -94,6 +96,7 @@ object NotificationChannelManager {
      */
     private fun registerForegroundCallChannel(context: Context) {
         registerNotificationChannel(
+            context,
             channelId = FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID,
             title = context.getString(R.string.push_notification_foreground_call_service_title),
             description = context.getString(R.string.push_notification_foreground_call_service_description),
@@ -114,6 +117,7 @@ object NotificationChannelManager {
      * @param lockscreenVisibility The visibility of the notification on the lockscreen (default is public).
      */
     private fun registerNotificationChannel(
+        context: Context,
         channelId: String,
         title: String,
         description: String,
@@ -130,6 +134,7 @@ object NotificationChannelManager {
             setShowBadge(showBadge)
             if (customSound) setSound(null, null)
         }
-        NotificationManagerCompat.from(ContextHolder.context).createNotificationChannel(notificationChannel)
+        NotificationManagerCompat.from(context)
+            .createNotificationChannel(notificationChannel)
     }
 }

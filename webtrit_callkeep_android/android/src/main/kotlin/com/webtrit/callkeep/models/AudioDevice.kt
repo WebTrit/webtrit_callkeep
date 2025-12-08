@@ -7,9 +7,7 @@ enum class AudioDeviceType {
 }
 
 class AudioDevice(
-    val type: AudioDeviceType,
-    val name: String? = null,
-    val id: String? = null
+    val type: AudioDeviceType, val name: String? = null, val id: String? = null
 ) {
     fun toBundle(): Bundle {
         return Bundle().apply {

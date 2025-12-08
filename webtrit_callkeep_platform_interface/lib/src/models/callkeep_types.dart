@@ -19,6 +19,7 @@ typedef CallKeepPushNotificationSyncStatusHandle = Future<void> Function(Callkee
 /// [callkeepServiceStatus] - Provides the current status of the Callkeep service when the lifecycle changes.
 ///
 /// Returns a [Future] that completes after handling the lifecycle change.
-typedef ForegroundChangeLifecycleHandle = Future<void> Function(
-  CallkeepServiceStatus callkeepServiceStatus,
-);
+typedef ForegroundChangeLifecycleHandle =
+    Future<void> Function(
+      CallkeepServiceStatus callkeepServiceStatus,
+    );

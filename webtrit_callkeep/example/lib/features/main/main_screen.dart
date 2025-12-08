@@ -10,9 +10,9 @@ import '../../app/constants.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({
-    Key? key,
+    super.key,
     required this.callkeepBackgroundService,
-  }) : super(key: key);
+  });
 
   final BackgroundPushNotificationService callkeepBackgroundService;
 
@@ -24,166 +24,166 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.max,
+      appBar: AppBar(
+        title: const Text('Webtrit Callkeep Example'),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(8.0),
+        children: [
+          // Section for API navigation
+          _SectionCard(
+            title: 'API Sections',
             children: [
-              Text(
-                "Webtrit Callkeep",
-                style: Theme.of(context).textTheme.titleLarge,
-                textAlign: TextAlign.center,
+              ElevatedButton(
+                child: const Text('Callkeep API'),
+                onPressed: () => GoRouter.of(context).pushNamed(AppRoute.actions),
               ),
-              DefaultGridView(
-                children: [
-                  ElevatedButton(
-                    child: Text("Callkeep API", textAlign: TextAlign.center),
-                    onPressed: () => GoRouter.of(context).pushNamed(AppRoute.actions),
-                  ),
-                  ElevatedButton(
-                    child: Text("Tests API"),
-                    onPressed: () => GoRouter.of(context).pushNamed(AppRoute.tests),
-                  ),
-                ],
+              ElevatedButton(
+                child: const Text('Tests API'),
+                onPressed: () => GoRouter.of(context).pushNamed(AppRoute.tests),
               ),
-              Text(
-                "Permissions required for Android foreground services",
-                style: Theme.of(context).textTheme.titleSmall,
-                textAlign: TextAlign.center,
+              // New button to navigate to ActivityControlScreen
+              ElevatedButton(
+                child: const Text('Activity Control API'),
+                onPressed: () => GoRouter.of(context).pushNamed(AppRoute.activityControl),
               ),
-              DefaultGridView(
-                children: [
-                  ElevatedButton(
-                    child: Text("Request all permissions", textAlign: TextAlign.center),
-                    onPressed: () => _requestPermissions([
-                      Permission.notification,
-                      Permission.ignoreBatteryOptimizations,
-                      Permission.microphone,
-                      Permission.camera,
-                    ]),
-                  ),
-                  ElevatedButton(
-                    child: Text("Check all permissions", textAlign: TextAlign.center),
-                    onPressed: () {},
-                  ),
-                ],
-              ),
-              Text(
-                "Callkeep Permissions",
-                style: Theme.of(context).textTheme.titleSmall,
-                textAlign: TextAlign.center,
-              ),
-              DefaultGridView(
-                children: [
-                  ElevatedButton(
-                    child: Text("Full screen intent permission status", textAlign: TextAlign.center),
-                    onPressed: () async {
-                      var status = await WebtritCallkeepPermissions().getFullScreenIntentPermissionStatus();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Permission status: $status')),
-                      );
-                    },
-                  ),
-                  ElevatedButton(
-                    child: Text("Open Full Screen Intent Settings", textAlign: TextAlign.center),
-                    onPressed: () => WebtritCallkeepPermissions().openFullScreenIntentSettings(),
-                  ),
-                  ElevatedButton(
-                    child: Text("Battery optimization status", textAlign: TextAlign.center),
-                    onPressed: () async {
-                      var status = await WebtritCallkeepPermissions().getBatteryMode();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Permission status: $status')),
-                      );
-                    },
-                  ),
-                ],
-              ),
-              Text(
-                "Android signaling isolate  API ",
-                style: Theme.of(context).textTheme.titleSmall,
-                textAlign: TextAlign.center,
-              ),
-              DefaultGridView(children: [
-                ElevatedButton(
-                  child: Text("Start foreground signaling service", textAlign: TextAlign.center),
-                  onPressed: () {
-                    Permission.notification.request().then((value) {
-                      if (value.isGranted) {
-                        AndroidCallkeepServices.backgroundSignalingBootstrapService.startService();
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text("Notification permission is required"),
-                          ),
-                        );
-                      }
-                    });
-                  },
-                ),
-                ElevatedButton(
-                  child: Text("Stop foreground signaling service", textAlign: TextAlign.center),
-                  onPressed: () {
-                    AndroidCallkeepServices.backgroundSignalingBootstrapService.stopService();
-                  },
-                ),
-              ]),
-              Text(
-                "Push notification isolate API ",
-                style: Theme.of(context).textTheme.titleSmall,
-                textAlign: TextAlign.center,
-              ),
-              DefaultGridView(children: [
-                ElevatedButton(
-                  child: Text("Trigger incoming call", textAlign: TextAlign.center),
-                  onPressed: () {
-                    CallkeepConnections().cleanConnections();
-                    AndroidCallkeepServices.backgroundPushNotificationBootstrapService.reportNewIncomingCall(
-                      call1Identifier,
-                      call1Number,
-                      displayName: call1Name,
-                      hasVideo: false,
-                    );
-                  },
-                ),
-              ]),
-              Text(
-                "Base callkeep API (Main isolate API)",
-                style: Theme.of(context).textTheme.titleSmall,
-                textAlign: TextAlign.center,
-              ),
-              DefaultGridView(
-                children: [
-                  ElevatedButton(
-                    child: Text("Report incoming call", textAlign: TextAlign.center),
-                    onPressed: () => Callkeep()
-                        .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Name, hasVideo: false),
-                  ),
-                  ElevatedButton(
-                    child: Text("Hangup incoming call"),
-                    onPressed: () => Callkeep().endCall(call1Identifier),
-                  ),
-                  ElevatedButton(
-                    child: Text("Answer incoming call", textAlign: TextAlign.center),
-                    onPressed: () => Callkeep().answerCall(call1Identifier),
-                  ),
-                ],
-              ),
-              SizedBox(height: 40),
             ],
           ),
-        ),
+
+          // Section for basic app permissions
+          _SectionCard(
+            title: 'App Permissions',
+            children: [
+              ElevatedButton(
+                child: const Text('Request All Permissions'),
+                onPressed: () => _requestPermissions([
+                  Permission.notification,
+                  Permission.ignoreBatteryOptimizations,
+                  Permission.microphone,
+                  Permission.camera,
+                ]),
+              ),
+              ElevatedButton(
+                child: const Text('Check All Permissions'),
+                onPressed: () {
+                  // TODO: Implement permission check logic
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Check logic not implemented yet.')),
+                  );
+                },
+              ),
+            ],
+          ),
+
+          // Section for special Callkeep permissions
+          _SectionCard(
+            title: 'Callkeep Permissions (Android)',
+            children: [
+              ElevatedButton(
+                child: const Text('Full Screen Intent Status'),
+                onPressed: () async {
+                  var status = await WebtritCallkeepPermissions().getFullScreenIntentPermissionStatus();
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Permission status: $status')),
+                  );
+                },
+              ),
+              ElevatedButton(
+                child: const Text('Open Full Screen Settings'),
+                onPressed: () => WebtritCallkeepPermissions().openFullScreenIntentSettings(),
+              ),
+              ElevatedButton(
+                child: const Text('Battery Optimization Status'),
+                onPressed: () async {
+                  var status = await WebtritCallkeepPermissions().getBatteryMode();
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Permission status: $status')),
+                  );
+                },
+              ),
+            ],
+          ),
+
+          // Section for Signaling Isolate
+          _SectionCard(
+            title: 'Android Signaling Isolate API',
+            children: [
+              ElevatedButton(
+                child: const Text('Start Foreground Service'),
+                onPressed: () {
+                  Permission.notification.request().then((value) {
+                    if (value.isGranted) {
+                      AndroidCallkeepServices.backgroundSignalingBootstrapService.startService();
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Notification permission is required'),
+                        ),
+                      );
+                    }
+                  });
+                },
+              ),
+              ElevatedButton(
+                child: const Text('Stop Foreground Service'),
+                onPressed: () {
+                  AndroidCallkeepServices.backgroundSignalingBootstrapService.stopService();
+                },
+              ),
+            ],
+          ),
+
+          // Section for Push Notification Isolate
+          _SectionCard(
+            title: 'Push Notification Isolate API',
+            children: [
+              ElevatedButton(
+                child: const Text('Trigger Incoming Call (Push)'),
+                onPressed: () {
+                  CallkeepConnections().cleanConnections();
+                  AndroidCallkeepServices.backgroundPushNotificationBootstrapService.reportNewIncomingCall(
+                    call1Identifier,
+                    call1Number,
+                    displayName: call1Name,
+                    hasVideo: false,
+                  );
+                },
+              ),
+            ],
+          ),
+
+          // Section for Base Callkeep API
+          _SectionCard(
+            title: 'Base Callkeep API (Main Isolate)',
+            children: [
+              ElevatedButton(
+                child: const Text('Report Incoming Call'),
+                onPressed: () => Callkeep()
+                    .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Name, hasVideo: false),
+              ),
+              ElevatedButton(
+                child: const Text('Hangup Incoming Call'),
+                onPressed: () => Callkeep().endCall(call1Identifier),
+              ),
+              ElevatedButton(
+                child: const Text('Answer Incoming Call'),
+                onPressed: () => Callkeep().answerCall(call1Identifier),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
   Future<void> _requestPermissions(List<Permission> permissions) async {
     final statuses = await permissions.request();
-    statuses.forEach((permission, status) {
-      print('$permission: $status');
+    if (!mounted) return;
 
+    statuses.forEach((permission, status) {
+      debugPrint('$permission: $status');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('$permission: $status')),
       );
@@ -191,28 +191,38 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-class DefaultGridView extends StatelessWidget {
-  const DefaultGridView({
-    super.key,
+/// A helper widget to create a consistent section card.
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({
+    required this.title,
     required this.children,
-    this.crossAxisCount = 2,
   });
 
-  final int crossAxisCount;
+  final String title;
   final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      padding: EdgeInsets.symmetric(horizontal: 8),
-      crossAxisCount: 2,
-      crossAxisSpacing: 8,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 2.5,
-      children: children.map((child) {
-        return Center(child: child);
-      }).toList(),
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12.0),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const Divider(),
+            Wrap(
+              spacing: 8.0,
+              runSpacing: 4.0,
+              children: children,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

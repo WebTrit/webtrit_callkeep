@@ -38,17 +38,17 @@ class CallkeepIOSOptions extends Equatable {
 
   @override
   List<Object?> get props => [
-        localizedName,
-        ringtoneSound,
-        ringbackSound,
-        iconTemplateImageAssetName,
-        maximumCallGroups,
-        maximumCallsPerCallGroup,
-        supportedHandleTypes,
-        supportsVideo,
-        includesCallsInRecents,
-        driveIdleTimerDisabled,
-      ];
+    localizedName,
+    ringtoneSound,
+    ringbackSound,
+    iconTemplateImageAssetName,
+    maximumCallGroups,
+    maximumCallsPerCallGroup,
+    supportedHandleTypes,
+    supportsVideo,
+    includesCallsInRecents,
+    driveIdleTimerDisabled,
+  ];
 }
 
 class CallkeepAndroidOptions extends Equatable {
@@ -62,7 +62,7 @@ class CallkeepAndroidOptions extends Equatable {
 
   @override
   List<Object?> get props => [
-        ringtoneSound,
-        ringbackSound,
-      ];
+    ringtoneSound,
+    ringbackSound,
+  ];
 }

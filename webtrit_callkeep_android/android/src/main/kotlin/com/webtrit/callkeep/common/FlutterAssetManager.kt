@@ -2,13 +2,11 @@ package com.webtrit.callkeep.common
 
 import android.content.Context
 import android.net.Uri
-
+import androidx.core.net.toUri
 import io.flutter.embedding.engine.plugins.FlutterPlugin
-
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import androidx.core.net.toUri
 
 /**
  * Manages caching operations for assets.
@@ -19,7 +17,9 @@ import androidx.core.net.toUri
  * For more information, refer to the Flutter API documentation:
  * {@link https://api.flutter.dev/javadoc/io/flutter/embedding/engine/plugins/FlutterPlugin.FlutterAssets.html#getAssetFilePathByName(java.lang.String)}
  */
-class FlutterAssetManager(private val context: Context, private var assets: FlutterPlugin.FlutterAssets) {
+class FlutterAssetManager(
+    private val context: Context, private var assets: FlutterPlugin.FlutterAssets
+) {
     private val cacheDir: File by lazy { context.cacheDir }
 
     fun getAsset(asset: String): Uri? {

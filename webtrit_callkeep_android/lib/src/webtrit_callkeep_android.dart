@@ -27,6 +27,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
 
   final _soundApi = PHostSoundApi();
   final _connectionsApi = PHostConnectionsApi();
+  final _activityControlApi = PHostActivityControlApi();
 
   int? _signalingIsolatePluginCallbackHandle;
   int? _pushNotificationIsolatePluginCallbackHandle;
@@ -274,18 +275,20 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     return _connectionsApi.updateActivitySignalingStatus(status.toPigeon());
   }
 
-// Android background signaling service
-// ------------------------------------------------------------------------------------------------
+  // Android background signaling service
+  // ------------------------------------------------------------------------------------------------
 
   @override
   Future<void> initializeBackgroundSignalingServiceCallback(ForegroundStartServiceHandle? onSync) async {
     // Initialization callback handle for the isolate plugin only once;
-    _signalingIsolatePluginCallbackHandle = _signalingIsolatePluginCallbackHandle ??
+    _signalingIsolatePluginCallbackHandle =
+        _signalingIsolatePluginCallbackHandle ??
         PluginUtilities.getCallbackHandle(
           _isolatePluginCallbackDispatcher,
         )?.toRawHandle();
 
-    _onSignalingServiceStartHandle = _onSignalingServiceStartHandle ??
+    _onSignalingServiceStartHandle =
+        _onSignalingServiceStartHandle ??
         PluginUtilities.getCallbackHandle(
           onSync!,
         )?.toRawHandle();
@@ -346,20 +349,22 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     return _backgroundSignalingIsolateApi.endCall(callId);
   }
 
-// ------------------------------------------------------------------------------------------------
-// Android background signaling service
+  // ------------------------------------------------------------------------------------------------
+  // Android background signaling service
 
-// Android background push notification service
-// ------------------------------------------------------------------------------------------------
+  // Android background push notification service
+  // ------------------------------------------------------------------------------------------------
   @override
   Future<void> initializePushNotificationCallback(CallKeepPushNotificationSyncStatusHandle onSync) async {
     // Initialization callback handle for the isolate plugin only once;
-    _pushNotificationIsolatePluginCallbackHandle = _pushNotificationIsolatePluginCallbackHandle ??
+    _pushNotificationIsolatePluginCallbackHandle =
+        _pushNotificationIsolatePluginCallbackHandle ??
         PluginUtilities.getCallbackHandle(
           _isolatePluginCallbackDispatcher,
         )?.toRawHandle();
 
-    _onPushNotificationNotificationSync = _onPushNotificationNotificationSync ??
+    _onPushNotificationNotificationSync =
+        _onPushNotificationNotificationSync ??
         PluginUtilities.getCallbackHandle(
           onSync,
         )?.toRawHandle();
@@ -403,12 +408,12 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     return _backgroundPushNotificationIsolateApi.endCall(callId);
   }
 
-// ------------------------------------------------------------------------------------------------
-// Android background push notification service
+  // ------------------------------------------------------------------------------------------------
+  // Android background push notification service
 
   // ------------------------------------------------------------------------------------------------
-// Android SMS reception section
-// ------------------------------------------------------------------------------------------------
+  // Android SMS reception section
+  // ------------------------------------------------------------------------------------------------
 
   /// Initializes SMS reception with the given prefix used to filter messages.
   ///
@@ -430,7 +435,43 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     );
   }
 
-// ------------------------------------------------------------------------------------------------
+  // ------------------------------------------------------------------------------------------------
+  // Android Activity Control section
+  // ------------------------------------------------------------------------------------------------
+
+  /// Allows the app's activity to be shown over the device lock screen.
+  ///
+  /// This is an Android-only feature.
+  @override
+  Future<void> showOverLockscreen([bool enable = true]) {
+    return _activityControlApi.showOverLockscreen(enable);
+  }
+
+  /// Turns the screen on when the app's window is shown.
+  ///
+  /// Typically used in conjunction with [showOverLockscreen].
+  /// This is an Android-only feature.
+  @override
+  Future<void> wakeScreenOnShow([bool enable = true]) {
+    return _activityControlApi.wakeScreenOnShow(enable);
+  }
+
+  /// Moves the entire task (app) to the background.
+  ///
+  /// This is an Android-only feature.
+  /// Returns `true` if successful.
+  @override
+  Future<bool> sendToBackground() {
+    return _activityControlApi.sendToBackground();
+  }
+
+  /// Checks if the device screen is currently locked (keyguard is active).
+  ///
+  /// Returns `false` on non-Android platforms.
+  @override
+  Future<bool> isDeviceLocked() {
+    return _activityControlApi.isDeviceLocked();
+  }
 }
 
 class _CallkeepDelegateRelay implements PDelegateFlutterApi {

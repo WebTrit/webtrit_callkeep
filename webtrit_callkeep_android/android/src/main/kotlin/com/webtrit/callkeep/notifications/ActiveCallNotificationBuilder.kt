@@ -7,9 +7,9 @@ import android.graphics.drawable.Icon
 import androidx.core.app.NotificationCompat
 import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.ContextHolder.context
+import com.webtrit.callkeep.managers.NotificationChannelManager.NOTIFICATION_ACTIVE_CALL_CHANNEL_ID
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.NotificationAction
-import com.webtrit.callkeep.managers.NotificationChannelManager.NOTIFICATION_ACTIVE_CALL_CHANNEL_ID
 import com.webtrit.callkeep.services.services.active_call.ActiveCallService
 
 class ActiveCallNotificationBuilder() : NotificationBuilder() {
@@ -58,7 +58,10 @@ class ActiveCallNotificationBuilder() : NotificationBuilder() {
             callMetaData?.toBundle()?.let { putExtras(it) }
         }
         return PendingIntent.getService(
-            context, 0, hangUpIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            context,
+            0,
+            hangUpIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
     }
 

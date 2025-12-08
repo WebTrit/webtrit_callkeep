@@ -6,8 +6,8 @@ import '../bloc/tests_cubit.dart';
 
 class TestsScreen extends StatelessWidget {
   const TestsScreen({
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -44,29 +44,29 @@ class TestsScreen extends StatelessWidget {
                     Column(
                       children: [
                         ElevatedButton(
-                          child: Text("Simulate repeated identical incoming calls", textAlign: TextAlign.center),
+                          child: Text('Simulate repeated identical incoming calls', textAlign: TextAlign.center),
                           onPressed: () => context.read<TestsCubit>().spamSameIncomingCalls(),
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton(
-                          child: Text("Simulate repeated identical incoming calls (background)",
+                          child: Text('Simulate repeated identical incoming calls (background)',
                               textAlign: TextAlign.center),
                           onPressed: () => context.read<TestsCubit>().spamSameIncomingCallsAndBackground(),
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton(
                           child:
-                              Text("Simulate background repeated identical incoming call", textAlign: TextAlign.center),
+                              Text('Simulate background repeated identical incoming call', textAlign: TextAlign.center),
                           onPressed: () => context.read<TestsCubit>().spamBackgroundSameIncomingCalls(),
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton(
-                          child: Text("Simulate varied incoming calls", textAlign: TextAlign.center),
+                          child: Text('Simulate varied incoming calls', textAlign: TextAlign.center),
                           onPressed: () => context.read<TestsCubit>().spamDifferentIncomingCalls(),
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton(
-                          child: Text("Reset environment", textAlign: TextAlign.center),
+                          child: Text('Reset environment', textAlign: TextAlign.center),
                           onPressed: () => context.read<TestsCubit>().tearDown(),
                         ),
                       ],

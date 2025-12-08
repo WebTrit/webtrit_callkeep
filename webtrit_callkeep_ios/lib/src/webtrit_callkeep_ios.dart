@@ -22,18 +22,18 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
   @override
   void setDelegate(CallkeepDelegate? delegate) {
     if (delegate != null) {
-      PDelegateFlutterApi.setup(_CallkeepDelegateRelay(delegate, _uuidToCallIdMapping, _callkeepActionHistory));
+      PDelegateFlutterApi.setUp(_CallkeepDelegateRelay(delegate, _uuidToCallIdMapping, _callkeepActionHistory));
     } else {
-      PDelegateFlutterApi.setup(null);
+      PDelegateFlutterApi.setUp(null);
     }
   }
 
   @override
   void setPushRegistryDelegate(PushRegistryDelegate? delegate) {
     if (delegate != null) {
-      PPushRegistryDelegateFlutterApi.setup(_PushRegistryDelegateRelay(delegate));
+      PPushRegistryDelegateFlutterApi.setUp(_PushRegistryDelegateRelay(delegate));
     } else {
-      PPushRegistryDelegateFlutterApi.setup(null);
+      PPushRegistryDelegateFlutterApi.setUp(null);
     }
   }
 

@@ -15,13 +15,13 @@ Future<void> onStartForegroundService(CallkeepServiceStatus status) async {
 
   _log.info('Starting call after 3 seconds');
   Future.delayed(Duration(seconds: 3), () {
-    Fluttertoast.showToast(msg: "Starting incoming call", toastLength: Toast.LENGTH_SHORT);
+    Fluttertoast.showToast(msg: 'Starting incoming call', toastLength: Toast.LENGTH_SHORT);
     BackgroundSignalingService().incomingCall(call1Identifier, call1Number);
   });
 
   _log.info('Starting call after 5 seconds');
   Future.delayed(Duration(seconds: 8), () {
-    Fluttertoast.showToast(msg: "End incoming call", toastLength: Toast.LENGTH_SHORT);
+    Fluttertoast.showToast(msg: 'End incoming call', toastLength: Toast.LENGTH_SHORT);
     BackgroundSignalingService().endCall(call1Identifier);
   });
 

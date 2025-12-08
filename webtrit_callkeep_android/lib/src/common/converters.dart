@@ -83,6 +83,8 @@ extension PCallRequestErrorEnumConverter on PCallRequestErrorEnum {
         return CallkeepCallRequestError.internal;
       case PCallRequestErrorEnum.emergencyNumber:
         return CallkeepCallRequestError.emergencyNumber;
+      case PCallRequestErrorEnum.selfManagedPhoneAccountNotRegistered:
+        return CallkeepCallRequestError.selfManagedPhoneAccountNotRegistered;
     }
   }
 }

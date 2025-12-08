@@ -4,7 +4,6 @@ import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.PowerManager
 
 object Platform {
     fun getLaunchActivity(context: Context): Intent? {
@@ -13,14 +12,12 @@ object Platform {
     }
 
     fun isLockScreen(context: Context): Boolean {
-        val keyguardManager: KeyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-        val inKeyguardRestrictedInputMode: Boolean = keyguardManager.inKeyguardRestrictedInputMode()
+        val keyguardManager =
+            context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager ?: return false
 
-        val isLocked = if (inKeyguardRestrictedInputMode) {
-            true
-        } else {
-            !(context.getSystemService(Context.POWER_SERVICE) as PowerManager).isInteractive
-        }
-        return isLocked
+        // isKeyguardLocked() returns true if the lock screen
+        // (keyguard) is currently active.
+        // This works for both "swipe" and PIN.
+        return keyguardManager.isKeyguardLocked
     }
 }

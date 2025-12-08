@@ -33,15 +33,15 @@ class ActiveCallService : Service() {
         }
 
         callsMetadata =
-            intent?.parcelableArrayList<Bundle>("metadata")?.map { CallMetadata.Companion.fromBundle(it) }?.toMutableList()
-                ?: mutableListOf()
+            intent?.parcelableArrayList<Bundle>("metadata")?.map { CallMetadata.fromBundle(it) }
+                ?.toMutableList() ?: mutableListOf()
 
         activeCallNotificationBuilder.setCallsMetaData(callsMetadata)
         val notification = activeCallNotificationBuilder.build()
 
         startForegroundServiceCompat(
             this,
-            ActiveCallNotificationBuilder.Companion.NOTIFICATION_ID,
+            ActiveCallNotificationBuilder.NOTIFICATION_ID,
             notification,
             getForegroundServiceTypes(callsMetadata),
         )
@@ -52,8 +52,8 @@ class ActiveCallService : Service() {
     }
 
     private fun hungUpCall() = callsMetadata.firstOrNull()?.let {
-        PhoneConnectionService.Companion.startHungUpCall(baseContext, it)
-    } ?: PhoneConnectionService.Companion.tearDown(baseContext)
+        PhoneConnectionService.startHungUpCall(baseContext, it)
+    } ?: PhoneConnectionService.tearDown(baseContext)
 
     private fun getForegroundServiceTypes(callsMetadata: List<CallMetadata>): Int? {
         return when {

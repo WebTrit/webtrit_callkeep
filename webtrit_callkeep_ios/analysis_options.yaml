@@ -1,5 +1,4 @@
-include: package:very_good_analysis/analysis_options.5.1.0.yaml
-
+include: package:very_good_analysis/analysis_options.yaml
 
 analyzer:
   exclude:
@@ -8,7 +7,11 @@ analyzer:
 
 linter:
   rules:
-    lines_longer_than_80_chars: false # Conflicts with the team's preference
+    # Conflicts with the team's preference
+    lines_longer_than_80_chars: false
     # public_member_api_docs: false
     one_member_abstracts: false # TODO: on migration stage
-    avoid_positional_boolean_parameters: false # TODO: on migration stage
+    avoid_positional_boolean_parameters: # TODO: on migration stage
+
+formatter:
+  page_width: 120

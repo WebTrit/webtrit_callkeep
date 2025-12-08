@@ -25,10 +25,12 @@ class AndroidPendingCallHandler {
 
   /// Subscribes to pending calls.
   StreamSubscription<PendingCall> subscribe(void Function(PendingCall) call) {
-    final subscription = _streamController.stream.map((pendingCall) {
-      _calls.remove(pendingCall);
-      return pendingCall;
-    }).listen(call);
+    final subscription = _streamController.stream
+        .map((pendingCall) {
+          _calls.remove(pendingCall);
+          return pendingCall;
+        })
+        .listen(call);
 
     flush();
     return subscription;

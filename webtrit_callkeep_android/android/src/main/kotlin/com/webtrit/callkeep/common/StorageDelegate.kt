@@ -14,7 +14,8 @@ object StorageDelegate {
 
     private fun getSharedPreferences(context: Context?): SharedPreferences? {
         if (sharedPreferences == null) {
-            sharedPreferences = context?.getSharedPreferences(COMMON_PREFERENCES, Context.MODE_PRIVATE)
+            sharedPreferences =
+                context?.getSharedPreferences(COMMON_PREFERENCES, Context.MODE_PRIVATE)
         }
         return sharedPreferences
     }
@@ -103,7 +104,9 @@ object StorageDelegate {
         }
 
         fun isSignalingServiceEnabled(context: Context): Boolean {
-            return getSharedPreferences(context)?.getBoolean(SIGNALING_SERVICE_ENABLED, false) == true
+            return getSharedPreferences(context)?.getBoolean(
+                SIGNALING_SERVICE_ENABLED, false
+            ) == true
         }
 
         fun setNotificationTitle(context: Context, value: String?) {
@@ -122,7 +125,8 @@ object StorageDelegate {
 
         fun getNotificationTitle(context: Context): String {
             val default = context.getString(R.string.signaling_service_notification_name)
-            return getSharedPreferences(context)?.getString(SS_NOTIFICATION_TITLE_KEY, default) ?: default
+            return getSharedPreferences(context)?.getString(SS_NOTIFICATION_TITLE_KEY, default)
+                ?: default
         }
 
         fun getNotificationDescription(context: Context): String {

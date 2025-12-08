@@ -20,12 +20,10 @@ class BackgroundPushNotificationIsolateBootstrapApi(
     }
 
     override fun configureSignalingService(
-        launchBackgroundIsolateEvenIfAppIsOpen: Boolean,
-        callback: (Result<Unit>) -> Unit
+        launchBackgroundIsolateEvenIfAppIsOpen: Boolean, callback: (Result<Unit>) -> Unit
     ) {
         StorageDelegate.IncomingCallService.setLaunchBackgroundIsolateEvenIfAppIsOpen(
-            context,
-            launchBackgroundIsolateEvenIfAppIsOpen
+            context, launchBackgroundIsolateEvenIfAppIsOpen
         )
 
         callback(Result.success(Unit))

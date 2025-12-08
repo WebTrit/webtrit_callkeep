@@ -7,13 +7,14 @@ import android.app.Person
 import android.content.Intent
 import android.graphics.drawable.Icon
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.webtrit.callkeep.R
-import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.common.ContextHolder.context
 import com.webtrit.callkeep.managers.NotificationChannelManager.INCOMING_CALL_NOTIFICATION_CHANNEL_ID
+import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
 
 class IncomingCallNotificationBuilder() : NotificationBuilder() {
@@ -45,14 +46,17 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
         }
     }
 
-    private fun createNotificationAction(iconRes: Int, textRes: Int, intent: PendingIntent): Notification.Action {
+    private fun createNotificationAction(
+        iconRes: Int, textRes: Int, intent: PendingIntent
+    ): Notification.Action {
         return Notification.Action.Builder(
             Icon.createWithResource(context, iconRes), context.getString(textRes), intent
         ).build()
     }
 
     override fun build(): Notification {
-        val meta = requireNotNull(callMetaData) { "Call metadata must be set before building the notification." }
+        val meta =
+            requireNotNull(callMetaData) { "Call metadata must be set before building the notification." }
 
         val answerIntent = createCallActionIntent(NotificationAction.Answer.action)
         val declineIntent = createCallActionIntent(NotificationAction.Decline.action)
@@ -74,12 +78,33 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val person = Person.Builder().setName(meta.name).setImportant(true).build()
             val style = Notification.CallStyle.forIncomingCall(person, declineIntent, answerIntent)
-            builder.setStyle(style).build().apply { flags = flags or NotificationCompat.FLAG_INSISTENT }
+            builder.setStyle(style).build()
+                .apply { flags = flags or NotificationCompat.FLAG_INSISTENT }
         } else {
             builder.addAction(createNotificationAction(icDecline, declineButton, declineIntent))
             builder.addAction(createNotificationAction(icAnswer, answerButton, answerIntent))
             builder.build().apply { flags = flags or NotificationCompat.FLAG_INSISTENT }
         }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun buildSilent(): Notification {
+        Log.d(TAG, "Updating incoming call notification to silent mode.")
+
+        val meta =
+            requireNotNull(callMetaData) { "Call metadata must be set before updating the notification." }
+
+        val title = context.getString(R.string.incoming_call_title)
+        val description = context.getString(R.string.incoming_call_description, meta.name)
+
+        return NotificationCompat.Builder(context, INCOMING_CALL_NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification).setCategory(NotificationCompat.CATEGORY_CALL)
+            .setContentTitle(title).setContentText(description).setOnlyAlertOnce(true)
+            .setSilent(true).setAutoCancel(false).setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW).setDefaults(0).setSound(null)
+            .setVibrate(null).setFullScreenIntent(null, false).build().apply {
+                flags = flags and Notification.FLAG_INSISTENT.inv()
+            }
     }
 
     fun buildReleaseNotification(): Notification {
