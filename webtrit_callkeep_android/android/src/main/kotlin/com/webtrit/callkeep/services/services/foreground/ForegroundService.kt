@@ -1,5 +1,6 @@
 package com.webtrit.callkeep.services.services.foreground
 
+import java.util.concurrent.ConcurrentHashMap
 import android.annotation.SuppressLint
 import android.app.Service
 import android.content.BroadcastReceiver
@@ -33,7 +34,9 @@ import com.webtrit.callkeep.common.isCallPhoneSecurityException
 import com.webtrit.callkeep.managers.NotificationChannelManager
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.EmergencyNumberException
+import com.webtrit.callkeep.models.FailedCallInfo
 import com.webtrit.callkeep.models.FailureMetadata
+import com.webtrit.callkeep.models.OutgoingFailureSource
 import com.webtrit.callkeep.models.OutgoingFailureType
 import com.webtrit.callkeep.models.toAudioDevice
 import com.webtrit.callkeep.models.toCallHandle
@@ -180,6 +183,14 @@ class ForegroundService : Service(), PHostApi {
         proximityEnabled: Boolean,
         callback: (Result<PCallRequestError?>) -> Unit
     ) {
+        val metadata = CallMetadata(
+            callId = callId,
+            handle = handle.toCallHandle(),
+            displayName = displayNameOrContactIdentifier,
+            hasVideo = video,
+            proximityEnabled = proximityEnabled
+        )
+
         val logContext = "startCall($callId|$handle)"
         logger.i("$logContext: trying to start call")
 
@@ -188,19 +199,13 @@ class ForegroundService : Service(), PHostApi {
 
         // register callback + a global timeout for the whole outgoing flow
         outgoingCallbacksManager.put(callId, callback) { cb ->
-            logger.w("$logContext: overall timeout reached")
+            val exception = Exception("Overall timeout reached")
+            logger.w("$logContext: ", exception)
+            saveFailedOutgoingCall(metadata, OutgoingFailureSource.TIMEOUT, exception)
             cb(Result.success(PCallRequestError(PCallRequestErrorEnum.INTERNAL)))
             // ensure retry is stopped
             retryManager.cancel(callId)
         }
-
-        val metadata = CallMetadata(
-            callId = callId,
-            handle = handle.toCallHandle(),
-            displayName = displayNameOrContactIdentifier,
-            hasVideo = video,
-            proximityEnabled = proximityEnabled
-        )
 
         // Kick off retry loop that wraps the "start outgoing call" attempt + PA re-registration on SecurityException(CALL_PHONE)
         retryManager.run(key = callId, config = OUTGOING_RETRY_CONFIG, onAttemptStart = { attempt ->
@@ -213,6 +218,7 @@ class ForegroundService : Service(), PHostApi {
             logger.i("$logContext: operation succeeded(will be confirmed by CS report)")
         }, onFinalFailure = { err ->
             logger.w("$logContext: give up after retries. reason=${err.javaClass.simpleName}: ${err.message}")
+            saveFailedOutgoingCall(metadata, OutgoingFailureSource.TIMEOUT, err)
             outgoingCallbacksManager.invokeAndRemove(
                 callId, Result.success(
                     when (err) {
@@ -233,8 +239,12 @@ class ForegroundService : Service(), PHostApi {
             if (attempt > 1) TelephonyUtils(baseContext).registerPhoneAccount()
 
             try {
-                @SuppressLint("MissingPermission")
-                PhoneConnectionService.startOutgoingCall(baseContext, metadata)
+                // Suppress MissingPermission lint because in a self-managed PhoneAccount,
+                // the app does not need the CALL_PHONE permission to place outgoing calls
+                // through its own ConnectionService. The Telecom framework handles the call.
+                @SuppressLint("MissingPermission") PhoneConnectionService.startOutgoingCall(
+                    baseContext, metadata
+                )
                 // If start succeeded synchronously, just return; success will be confirmed by CS report.
                 // We do NOT throw -> RetryManager treats as success and stops scheduling more attempts.
             } catch (e: EmergencyNumberException) {
@@ -251,6 +261,17 @@ class ForegroundService : Service(), PHostApi {
         }
     }
 
+    /**
+     * Saves information about a failed outgoing call to an in-memory store for diagnostics.
+     *
+     * @param metadata The [CallMetadata] associated with the failed call attempt.
+     * @param source The [OutgoingFailureSource] indicating where the failure was detected
+     *               (e.g., timeout, ConnectionService callback).
+     * @param error The [Throwable] that caused the failure, if available. Its message is extracted for logging.
+     */
+    private fun saveFailedOutgoingCall(
+        metadata: CallMetadata, source: OutgoingFailureSource, error: Throwable?
+    ) = failedCallsStore.add(metadata, source, error?.message)
 
     // TODO: Move logic to the PhoneConnectionService
     override fun reportNewIncomingCall(
@@ -501,6 +522,12 @@ class ForegroundService : Service(), PHostApi {
             val failureMetaData = FailureMetadata.fromBundle(failure)
             logger.e("handleCSReportOutgoingFailure: ${failureMetaData.outgoingFailureType}")
 
+            failureMetaData.callMetadata?.let { meta ->
+                saveFailedOutgoingCall(
+                    meta, OutgoingFailureSource.CS_CALLBACK, failureMetaData.getThrowable()
+                )
+            }
+
             val callId = failureMetaData.callMetadata?.callId ?: return
             retryManager.cancel(callId)
 
@@ -593,12 +620,14 @@ class ForegroundService : Service(), PHostApi {
         private const val OUTGOING_REGISTER_RETRY_DELAY_MS = 750L
 
         // Unified retry configuration for outgoing calls
-        val OUTGOING_RETRY_CONFIG = RetryConfig(
+        private val OUTGOING_RETRY_CONFIG = RetryConfig(
             maxAttempts = OUTGOING_REGISTER_RETRY_MAX,
             initialDelayMs = OUTGOING_REGISTER_RETRY_DELAY_MS,
             backoffMultiplier = 1.5,
             maxDelayMs = 5_000L
         )
+
+        val failedCallsStore = FailedCallsStore()
 
         var isRunning = false
     }
@@ -683,4 +712,30 @@ private object CallPhoneSecurityRetryDecider : RetryDecider {
         if (attempt >= maxAttempts) return false
         return error is SecurityException && error.isCallPhoneSecurityException()
     }
+}
+
+
+/**
+ * A thread-safe in-memory store for failed outgoing calls.
+ *
+ * This class provides a simple, volatile storage mechanism to log details about outgoing call
+ * attempts that did not succeed. Since it uses a [ConcurrentHashMap], it is safe for use
+ * across multiple threads.
+ *
+ * The store is in-memory only, meaning its contents are lost when the application process
+ * is terminated. It is intended for short-term diagnostics and debugging rather than
+ * persistent call logging.
+ *
+ */
+class FailedCallsStore {
+    private val store = ConcurrentHashMap<String, FailedCallInfo>()
+
+    fun add(metadata: CallMetadata, source: OutgoingFailureSource, reason: String?) {
+        val info = FailedCallInfo(
+            callId = metadata.callId, metadata = metadata, source = source, reason = reason
+        )
+        store[metadata.callId] = info
+    }
+
+    fun getAll(): List<FailedCallInfo> = store.values.toList().sortedByDescending { it.timestamp }
 }
