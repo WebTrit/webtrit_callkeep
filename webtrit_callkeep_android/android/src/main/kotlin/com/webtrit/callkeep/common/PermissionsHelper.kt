@@ -39,6 +39,12 @@ class PermissionsHelper(private val context: Context) {
         return cameraPermission == PackageManager.PERMISSION_GRANTED
     }
 
+    fun hasMicrophonePermission(): Boolean {
+        val microphonePermission =
+            context.checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+        return microphonePermission == PackageManager.PERMISSION_GRANTED
+    }
+
     /**
      * Checks if notification permission is granted on Android 13+ (API level 33).
      */
