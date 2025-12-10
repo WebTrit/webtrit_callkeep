@@ -190,6 +190,30 @@ extension PSpecialPermissionStatusTypeEnumConverter on PSpecialPermissionStatusT
         return CallkeepSpecialPermissionStatus.denied;
       case PSpecialPermissionStatusTypeEnum.granted:
         return CallkeepSpecialPermissionStatus.granted;
+      case PSpecialPermissionStatusTypeEnum.unknown:
+        return CallkeepSpecialPermissionStatus.unknown;
+    }
+  }
+}
+
+extension CallkeepPermissionConverter on CallkeepPermission {
+  PCallkeepPermission toPigeon() {
+    switch (this) {
+      case CallkeepPermission.readPhoneState:
+        return PCallkeepPermission.readPhoneState;
+      case CallkeepPermission.readPhoneNumbers:
+        return PCallkeepPermission.readPhoneNumbers;
+    }
+  }
+}
+
+extension PCallkeepPermissionConverter on PCallkeepPermission {
+  CallkeepPermission toCallkeep() {
+    switch (this) {
+      case PCallkeepPermission.readPhoneState:
+        return CallkeepPermission.readPhoneState;
+      case PCallkeepPermission.readPhoneNumbers:
+        return CallkeepPermission.readPhoneNumbers;
     }
   }
 }

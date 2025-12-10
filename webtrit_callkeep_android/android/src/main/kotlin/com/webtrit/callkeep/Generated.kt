@@ -95,9 +95,21 @@ enum class PLogTypeEnum(val raw: Int) {
   }
 }
 
+enum class PCallkeepPermission(val raw: Int) {
+  READ_PHONE_STATE(0),
+  READ_PHONE_NUMBERS(1);
+
+  companion object {
+    fun ofRaw(raw: Int): PCallkeepPermission? {
+      return values().firstOrNull { it.raw == raw }
+    }
+  }
+}
+
 enum class PSpecialPermissionStatusTypeEnum(val raw: Int) {
   DENIED(0),
-  GRANTED(1);
+  GRANTED(1),
+  UNKNOWN(2);
 
   companion object {
     fun ofRaw(raw: Int): PSpecialPermissionStatusTypeEnum? {
@@ -456,6 +468,37 @@ data class PAudioDevice (
 }
 
 /** Generated class from Pigeon that represents data sent in messages. */
+data class PPermissionResult (
+  val permission: PCallkeepPermission,
+  val status: PSpecialPermissionStatusTypeEnum
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): PPermissionResult {
+      val permission = pigeonVar_list[0] as PCallkeepPermission
+      val status = pigeonVar_list[1] as PSpecialPermissionStatusTypeEnum
+      return PPermissionResult(permission, status)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      permission,
+      status,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is PPermissionResult) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return GeneratedPigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
 data class PHandle (
   val type: PHandleTypeEnum,
   val value: String
@@ -675,120 +718,130 @@ private open class GeneratedPigeonCodec : StandardMessageCodec() {
       }
       130.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          PSpecialPermissionStatusTypeEnum.ofRaw(it.toInt())
+          PCallkeepPermission.ofRaw(it.toInt())
         }
       }
       131.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          PCallkeepAndroidBatteryMode.ofRaw(it.toInt())
+          PSpecialPermissionStatusTypeEnum.ofRaw(it.toInt())
         }
       }
       132.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          PHandleTypeEnum.ofRaw(it.toInt())
+          PCallkeepAndroidBatteryMode.ofRaw(it.toInt())
         }
       }
       133.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          PCallInfoConsts.ofRaw(it.toInt())
+          PHandleTypeEnum.ofRaw(it.toInt())
         }
       }
       134.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          PEndCallReasonEnum.ofRaw(it.toInt())
+          PCallInfoConsts.ofRaw(it.toInt())
         }
       }
       135.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          PAudioDeviceType.ofRaw(it.toInt())
+          PEndCallReasonEnum.ofRaw(it.toInt())
         }
       }
       136.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          PIncomingCallErrorEnum.ofRaw(it.toInt())
+          PAudioDeviceType.ofRaw(it.toInt())
         }
       }
       137.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          PCallRequestErrorEnum.ofRaw(it.toInt())
+          PIncomingCallErrorEnum.ofRaw(it.toInt())
         }
       }
       138.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          PCallkeepLifecycleEvent.ofRaw(it.toInt())
+          PCallRequestErrorEnum.ofRaw(it.toInt())
         }
       }
       139.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          PCallkeepPushNotificationSyncStatus.ofRaw(it.toInt())
+          PCallkeepLifecycleEvent.ofRaw(it.toInt())
         }
       }
       140.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          PCallkeepConnectionState.ofRaw(it.toInt())
+          PCallkeepPushNotificationSyncStatus.ofRaw(it.toInt())
         }
       }
       141.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          PCallkeepDisconnectCauseType.ofRaw(it.toInt())
+          PCallkeepConnectionState.ofRaw(it.toInt())
         }
       }
       142.toByte() -> {
         return (readValue(buffer) as Long?)?.let {
-          PCallkeepSignalingStatus.ofRaw(it.toInt())
+          PCallkeepDisconnectCauseType.ofRaw(it.toInt())
         }
       }
       143.toByte() -> {
-        return (readValue(buffer) as? List<Any?>)?.let {
-          PIOSOptions.fromList(it)
+        return (readValue(buffer) as Long?)?.let {
+          PCallkeepSignalingStatus.ofRaw(it.toInt())
         }
       }
       144.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PAndroidOptions.fromList(it)
+          PIOSOptions.fromList(it)
         }
       }
       145.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          POptions.fromList(it)
+          PAndroidOptions.fromList(it)
         }
       }
       146.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PAudioDevice.fromList(it)
+          POptions.fromList(it)
         }
       }
       147.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PHandle.fromList(it)
+          PAudioDevice.fromList(it)
         }
       }
       148.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PEndCallReason.fromList(it)
+          PPermissionResult.fromList(it)
         }
       }
       149.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PIncomingCallError.fromList(it)
+          PHandle.fromList(it)
         }
       }
       150.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PCallRequestError.fromList(it)
+          PEndCallReason.fromList(it)
         }
       }
       151.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PCallkeepServiceStatus.fromList(it)
+          PIncomingCallError.fromList(it)
         }
       }
       152.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PCallkeepDisconnectCause.fromList(it)
+          PCallRequestError.fromList(it)
         }
       }
       153.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          PCallkeepServiceStatus.fromList(it)
+        }
+      }
+      154.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          PCallkeepDisconnectCause.fromList(it)
+        }
+      }
+      155.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           PCallkeepConnection.fromList(it)
         }
@@ -802,100 +855,108 @@ private open class GeneratedPigeonCodec : StandardMessageCodec() {
         stream.write(129)
         writeValue(stream, value.raw)
       }
-      is PSpecialPermissionStatusTypeEnum -> {
+      is PCallkeepPermission -> {
         stream.write(130)
         writeValue(stream, value.raw)
       }
-      is PCallkeepAndroidBatteryMode -> {
+      is PSpecialPermissionStatusTypeEnum -> {
         stream.write(131)
         writeValue(stream, value.raw)
       }
-      is PHandleTypeEnum -> {
+      is PCallkeepAndroidBatteryMode -> {
         stream.write(132)
         writeValue(stream, value.raw)
       }
-      is PCallInfoConsts -> {
+      is PHandleTypeEnum -> {
         stream.write(133)
         writeValue(stream, value.raw)
       }
-      is PEndCallReasonEnum -> {
+      is PCallInfoConsts -> {
         stream.write(134)
         writeValue(stream, value.raw)
       }
-      is PAudioDeviceType -> {
+      is PEndCallReasonEnum -> {
         stream.write(135)
         writeValue(stream, value.raw)
       }
-      is PIncomingCallErrorEnum -> {
+      is PAudioDeviceType -> {
         stream.write(136)
         writeValue(stream, value.raw)
       }
-      is PCallRequestErrorEnum -> {
+      is PIncomingCallErrorEnum -> {
         stream.write(137)
         writeValue(stream, value.raw)
       }
-      is PCallkeepLifecycleEvent -> {
+      is PCallRequestErrorEnum -> {
         stream.write(138)
         writeValue(stream, value.raw)
       }
-      is PCallkeepPushNotificationSyncStatus -> {
+      is PCallkeepLifecycleEvent -> {
         stream.write(139)
         writeValue(stream, value.raw)
       }
-      is PCallkeepConnectionState -> {
+      is PCallkeepPushNotificationSyncStatus -> {
         stream.write(140)
         writeValue(stream, value.raw)
       }
-      is PCallkeepDisconnectCauseType -> {
+      is PCallkeepConnectionState -> {
         stream.write(141)
         writeValue(stream, value.raw)
       }
-      is PCallkeepSignalingStatus -> {
+      is PCallkeepDisconnectCauseType -> {
         stream.write(142)
         writeValue(stream, value.raw)
       }
-      is PIOSOptions -> {
+      is PCallkeepSignalingStatus -> {
         stream.write(143)
-        writeValue(stream, value.toList())
+        writeValue(stream, value.raw)
       }
-      is PAndroidOptions -> {
+      is PIOSOptions -> {
         stream.write(144)
         writeValue(stream, value.toList())
       }
-      is POptions -> {
+      is PAndroidOptions -> {
         stream.write(145)
         writeValue(stream, value.toList())
       }
-      is PAudioDevice -> {
+      is POptions -> {
         stream.write(146)
         writeValue(stream, value.toList())
       }
-      is PHandle -> {
+      is PAudioDevice -> {
         stream.write(147)
         writeValue(stream, value.toList())
       }
-      is PEndCallReason -> {
+      is PPermissionResult -> {
         stream.write(148)
         writeValue(stream, value.toList())
       }
-      is PIncomingCallError -> {
+      is PHandle -> {
         stream.write(149)
         writeValue(stream, value.toList())
       }
-      is PCallRequestError -> {
+      is PEndCallReason -> {
         stream.write(150)
         writeValue(stream, value.toList())
       }
-      is PCallkeepServiceStatus -> {
+      is PIncomingCallError -> {
         stream.write(151)
         writeValue(stream, value.toList())
       }
-      is PCallkeepDisconnectCause -> {
+      is PCallRequestError -> {
         stream.write(152)
         writeValue(stream, value.toList())
       }
-      is PCallkeepConnection -> {
+      is PCallkeepServiceStatus -> {
         stream.write(153)
+        writeValue(stream, value.toList())
+      }
+      is PCallkeepDisconnectCause -> {
+        stream.write(154)
+        writeValue(stream, value.toList())
+      }
+      is PCallkeepConnection -> {
+        stream.write(155)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -1212,6 +1273,8 @@ interface PHostPermissionsApi {
   fun openFullScreenIntentSettings(callback: (Result<Unit>) -> Unit)
   fun openSettings(callback: (Result<Unit>) -> Unit)
   fun getBatteryMode(callback: (Result<PCallkeepAndroidBatteryMode>) -> Unit)
+  fun requestPermissions(permissions: List<PCallkeepPermission>, callback: (Result<List<PPermissionResult>>) -> Unit)
+  fun checkPermissionsStatus(permissions: List<PCallkeepPermission>, callback: (Result<List<PPermissionResult>>) -> Unit)
 
   companion object {
     /** The codec used by PHostPermissionsApi. */
@@ -1279,6 +1342,80 @@ interface PHostPermissionsApi {
         if (api != null) {
           channel.setMessageHandler { _, reply ->
             api.getBatteryMode{ result: Result<PCallkeepAndroidBatteryMode> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(GeneratedPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(GeneratedPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.requestPermissions$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val permissionsArg = args[0] as List<PCallkeepPermission>
+            api.requestPermissions(permissionsArg) { result: Result<List<PPermissionResult>> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(GeneratedPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(GeneratedPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.checkPermissionsStatus$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val permissionsArg = args[0] as List<PCallkeepPermission>
+            api.checkPermissionsStatus(permissionsArg) { result: Result<List<PPermissionResult>> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(GeneratedPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(GeneratedPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+    }
+  }
+}
+/** Generated interface from Pigeon that represents a handler of messages from Flutter. */
+interface PHostDiagnosticsApi {
+  fun getDiagnosticReport(callback: (Result<Map<String, Any?>>) -> Unit)
+
+  companion object {
+    /** The codec used by PHostDiagnosticsApi. */
+    val codec: MessageCodec<Any?> by lazy {
+      GeneratedPigeonCodec()
+    }
+    /** Sets up an instance of `PHostDiagnosticsApi` to handle messages through the `binaryMessenger`. */
+    @JvmOverloads
+    fun setUp(binaryMessenger: BinaryMessenger, api: PHostDiagnosticsApi?, messageChannelSuffix: String = "") {
+      val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostDiagnosticsApi.getDiagnosticReport$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.getDiagnosticReport{ result: Result<Map<String, Any?>> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(GeneratedPigeonUtils.wrapError(error))

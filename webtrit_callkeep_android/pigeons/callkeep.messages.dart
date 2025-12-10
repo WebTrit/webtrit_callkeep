@@ -51,9 +51,20 @@ enum PLogTypeEnum {
   warn,
 }
 
+enum PCallkeepPermission {
+  readPhoneState,
+  readPhoneNumbers,
+}
+
 enum PSpecialPermissionStatusTypeEnum {
   denied,
   granted,
+  unknown,
+}
+
+class PPermissionResult {
+  late PCallkeepPermission permission;
+  late PSpecialPermissionStatusTypeEnum status;
 }
 
 enum PCallkeepAndroidBatteryMode {
@@ -129,6 +140,7 @@ enum PCallRequestErrorEnum {
   maximumCallGroupsReached,
   internal,
   emergencyNumber,
+
   /// Android only.
   ///
   /// Triggered when the phone is not registered as a self-managed
@@ -296,6 +308,18 @@ abstract class PHostPermissionsApi {
 
   @async
   PCallkeepAndroidBatteryMode getBatteryMode();
+
+  @async
+  List<PPermissionResult> requestPermissions(List<PCallkeepPermission> permissions);
+
+  @async
+  List<PPermissionResult> checkPermissionsStatus(List<PCallkeepPermission> permissions);
+}
+
+@HostApi()
+abstract class PHostDiagnosticsApi {
+  @async
+  Map<String, Object?> getDiagnosticReport();
 }
 
 @HostApi()

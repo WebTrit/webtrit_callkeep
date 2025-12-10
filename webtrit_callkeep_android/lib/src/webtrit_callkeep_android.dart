@@ -37,6 +37,8 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
 
   final _permissionsApi = PHostPermissionsApi();
 
+  final _diagnosticsApi = PHostDiagnosticsApi();
+
   @override
   void setDelegate(
     CallkeepDelegate? delegate,
@@ -246,6 +248,30 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   @override
   Future<CallkeepAndroidBatteryMode> getBatteryMode() {
     return _permissionsApi.getBatteryMode().then((value) => value.toCallkeep());
+  }
+
+  @override
+  Future<Map<String, dynamic>> getDiagnosticReport() async {
+    final rawData = await _diagnosticsApi.getDiagnosticReport();
+    return rawData.cast<String, dynamic>();
+  }
+
+  @override
+  Future<Map<CallkeepPermission, CallkeepSpecialPermissionStatus>> requestPermissions(
+    List<CallkeepPermission> permissions,
+  ) async {
+    final pigeonList = permissions.map((e) => e.toPigeon()).toList();
+    final results = await _permissionsApi.requestPermissions(pigeonList);
+    return {for (final result in results) result.permission.toCallkeep(): result.status.toCallkeep()};
+  }
+
+  @override
+  Future<Map<CallkeepPermission, CallkeepSpecialPermissionStatus>> checkPermissionsStatus(
+    List<CallkeepPermission> permissions,
+  ) async {
+    final pigeonList = permissions.map((e) => e.toPigeon()).toList();
+    final results = await _permissionsApi.checkPermissionsStatus(pigeonList);
+    return {for (final result in results) result.permission.toCallkeep(): result.status.toCallkeep()};
   }
 
   @override
