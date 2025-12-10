@@ -1,5 +1,6 @@
 package com.webtrit.callkeep.common
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.KeyguardManager
@@ -8,6 +9,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.media.Ringtone
 import android.os.Build
 import android.os.Build.VERSION.SDK_INT
@@ -15,11 +17,15 @@ import android.os.Bundle
 import android.os.Parcelable
 import android.view.WindowManager
 import androidx.core.app.ServiceCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import com.webtrit.callkeep.PCallkeepLifecycleEvent
+import com.webtrit.callkeep.PCallkeepPermission
 import com.webtrit.callkeep.PCallkeepPushNotificationSyncStatus
 import com.webtrit.callkeep.PCallkeepSignalingStatus
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
+import com.webtrit.callkeep.PPermissionResult
+import com.webtrit.callkeep.PSpecialPermissionStatusTypeEnum
 import com.webtrit.callkeep.models.SignalingStatus
 
 inline fun <reified T : Parcelable> Intent.parcelable(key: String): T? = when {
@@ -238,4 +244,56 @@ fun SecurityException?.isCallPhoneSecurityException(): Boolean {
 
     // Check for key phrases that indicate a missing CALL_PHONE permission
     return msg.contains("CALL_PHONE permission required") || msg.contains("android.permission.CALL_PHONE")
+}
+
+/**
+ * Converts a raw Android permission string to the Pigeon enum [PCallkeepPermission].
+ */
+fun String.toPCallkeepPermission(): PCallkeepPermission? {
+    return when (this) {
+        Manifest.permission.READ_PHONE_STATE -> PCallkeepPermission.READ_PHONE_STATE
+        Manifest.permission.READ_PHONE_NUMBERS -> PCallkeepPermission.READ_PHONE_NUMBERS
+        else -> null
+    }
+}
+
+/**
+ * Converts a Pigeon enum [PCallkeepPermission] to the Android Manifest string.
+ * Returns null if the permission is not relevant for the current SDK level (e.g. READ_PHONE_NUMBERS on old Android).
+ */
+fun PCallkeepPermission.toAndroidPermission(): String? {
+    return when (this) {
+        PCallkeepPermission.READ_PHONE_STATE -> Manifest.permission.READ_PHONE_STATE
+        PCallkeepPermission.READ_PHONE_NUMBERS -> {
+            if (SDK_INT >= Build.VERSION_CODES.O) {
+                Manifest.permission.READ_PHONE_NUMBERS
+            } else {
+                null
+            }
+        }
+    }
+}
+
+/**
+ * Converts a list of Pigeon permissions to a list of valid Android permission strings.
+ */
+fun List<PCallkeepPermission>.toAndroidPermissions(): List<String> {
+    return this.mapNotNull { it.toAndroidPermission() }
+}
+
+/**
+ * Creates a list of [PPermissionResult] based on the current grant status of the provided permissions.
+ */
+fun List<String>.toPPermissionResults(context: Context): List<PPermissionResult> {
+    return this.mapNotNull { permString ->
+        val pType = permString.toPCallkeepPermission() ?: return@mapNotNull null
+        val isGranted = ContextCompat.checkSelfPermission(
+            context, permString
+        ) == PackageManager.PERMISSION_GRANTED
+
+        PPermissionResult(
+            permission = pType,
+            status = if (isGranted) PSpecialPermissionStatusTypeEnum.GRANTED else PSpecialPermissionStatusTypeEnum.DENIED
+        )
+    }
 }

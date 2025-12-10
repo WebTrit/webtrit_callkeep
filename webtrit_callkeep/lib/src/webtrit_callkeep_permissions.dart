@@ -73,6 +73,35 @@ class WebtritCallkeepPermissions {
 
     return platform.getBatteryMode();
   }
+
+  /// Requests the specified [permissions] on Android.
+  ///
+  /// Returns a [Map] where:
+  /// - Key: The specific [CallkeepPermission] requested.
+  /// - Value: The [CallkeepSpecialPermissionStatus] (granted/denied).
+  Future<Map<CallkeepPermission, CallkeepSpecialPermissionStatus>> requestPermissions(
+    List<CallkeepPermission> permissions,
+  ) async {
+    if (kIsWeb || !Platform.isAndroid) {
+      return const {};
+    }
+    return platform.requestPermissions(permissions);
+  }
+
+  /// Checks the current status of the specified [permissions] on Android
+  /// without triggering a permission request dialog.
+  ///
+  /// Returns a [Map] where:
+  /// - Key: The specific [CallkeepPermission] being checked.
+  /// - Value: The [CallkeepSpecialPermissionStatus] (granted/denied).
+  Future<Map<CallkeepPermission, CallkeepSpecialPermissionStatus>> checkPermissionsStatus(
+    List<CallkeepPermission> permissions,
+  ) async {
+    if (kIsWeb || !Platform.isAndroid) {
+      return const {};
+    }
+    return platform.checkPermissionsStatus(permissions);
+  }
 }
 
 /// Extension on [CallkeepSpecialPermissions] to get the status of special permissions.

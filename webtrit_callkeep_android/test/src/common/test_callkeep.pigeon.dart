@@ -21,77 +21,83 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is PLogTypeEnum) {
       buffer.putUint8(129);
       writeValue(buffer, value.index);
-    }    else if (value is PSpecialPermissionStatusTypeEnum) {
+    }    else if (value is PCallkeepPermission) {
       buffer.putUint8(130);
       writeValue(buffer, value.index);
-    }    else if (value is PCallkeepAndroidBatteryMode) {
+    }    else if (value is PSpecialPermissionStatusTypeEnum) {
       buffer.putUint8(131);
       writeValue(buffer, value.index);
-    }    else if (value is PHandleTypeEnum) {
+    }    else if (value is PCallkeepAndroidBatteryMode) {
       buffer.putUint8(132);
       writeValue(buffer, value.index);
-    }    else if (value is PCallInfoConsts) {
+    }    else if (value is PHandleTypeEnum) {
       buffer.putUint8(133);
       writeValue(buffer, value.index);
-    }    else if (value is PEndCallReasonEnum) {
+    }    else if (value is PCallInfoConsts) {
       buffer.putUint8(134);
       writeValue(buffer, value.index);
-    }    else if (value is PAudioDeviceType) {
+    }    else if (value is PEndCallReasonEnum) {
       buffer.putUint8(135);
       writeValue(buffer, value.index);
-    }    else if (value is PIncomingCallErrorEnum) {
+    }    else if (value is PAudioDeviceType) {
       buffer.putUint8(136);
       writeValue(buffer, value.index);
-    }    else if (value is PCallRequestErrorEnum) {
+    }    else if (value is PIncomingCallErrorEnum) {
       buffer.putUint8(137);
       writeValue(buffer, value.index);
-    }    else if (value is PCallkeepLifecycleEvent) {
+    }    else if (value is PCallRequestErrorEnum) {
       buffer.putUint8(138);
       writeValue(buffer, value.index);
-    }    else if (value is PCallkeepPushNotificationSyncStatus) {
+    }    else if (value is PCallkeepLifecycleEvent) {
       buffer.putUint8(139);
       writeValue(buffer, value.index);
-    }    else if (value is PCallkeepConnectionState) {
+    }    else if (value is PCallkeepPushNotificationSyncStatus) {
       buffer.putUint8(140);
       writeValue(buffer, value.index);
-    }    else if (value is PCallkeepDisconnectCauseType) {
+    }    else if (value is PCallkeepConnectionState) {
       buffer.putUint8(141);
       writeValue(buffer, value.index);
-    }    else if (value is PCallkeepSignalingStatus) {
+    }    else if (value is PCallkeepDisconnectCauseType) {
       buffer.putUint8(142);
       writeValue(buffer, value.index);
-    }    else if (value is PIOSOptions) {
+    }    else if (value is PCallkeepSignalingStatus) {
       buffer.putUint8(143);
-      writeValue(buffer, value.encode());
-    }    else if (value is PAndroidOptions) {
+      writeValue(buffer, value.index);
+    }    else if (value is PIOSOptions) {
       buffer.putUint8(144);
       writeValue(buffer, value.encode());
-    }    else if (value is POptions) {
+    }    else if (value is PAndroidOptions) {
       buffer.putUint8(145);
       writeValue(buffer, value.encode());
-    }    else if (value is PAudioDevice) {
+    }    else if (value is POptions) {
       buffer.putUint8(146);
       writeValue(buffer, value.encode());
-    }    else if (value is PHandle) {
+    }    else if (value is PAudioDevice) {
       buffer.putUint8(147);
       writeValue(buffer, value.encode());
-    }    else if (value is PEndCallReason) {
+    }    else if (value is PPermissionResult) {
       buffer.putUint8(148);
       writeValue(buffer, value.encode());
-    }    else if (value is PIncomingCallError) {
+    }    else if (value is PHandle) {
       buffer.putUint8(149);
       writeValue(buffer, value.encode());
-    }    else if (value is PCallRequestError) {
+    }    else if (value is PEndCallReason) {
       buffer.putUint8(150);
       writeValue(buffer, value.encode());
-    }    else if (value is PCallkeepServiceStatus) {
+    }    else if (value is PIncomingCallError) {
       buffer.putUint8(151);
       writeValue(buffer, value.encode());
-    }    else if (value is PCallkeepDisconnectCause) {
+    }    else if (value is PCallRequestError) {
       buffer.putUint8(152);
       writeValue(buffer, value.encode());
-    }    else if (value is PCallkeepConnection) {
+    }    else if (value is PCallkeepServiceStatus) {
       buffer.putUint8(153);
+      writeValue(buffer, value.encode());
+    }    else if (value is PCallkeepDisconnectCause) {
+      buffer.putUint8(154);
+      writeValue(buffer, value.encode());
+    }    else if (value is PCallkeepConnection) {
+      buffer.putUint8(155);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -106,64 +112,69 @@ class _PigeonCodec extends StandardMessageCodec {
         return value == null ? null : PLogTypeEnum.values[value];
       case 130: 
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : PSpecialPermissionStatusTypeEnum.values[value];
+        return value == null ? null : PCallkeepPermission.values[value];
       case 131: 
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : PCallkeepAndroidBatteryMode.values[value];
+        return value == null ? null : PSpecialPermissionStatusTypeEnum.values[value];
       case 132: 
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : PHandleTypeEnum.values[value];
+        return value == null ? null : PCallkeepAndroidBatteryMode.values[value];
       case 133: 
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : PCallInfoConsts.values[value];
+        return value == null ? null : PHandleTypeEnum.values[value];
       case 134: 
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : PEndCallReasonEnum.values[value];
+        return value == null ? null : PCallInfoConsts.values[value];
       case 135: 
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : PAudioDeviceType.values[value];
+        return value == null ? null : PEndCallReasonEnum.values[value];
       case 136: 
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : PIncomingCallErrorEnum.values[value];
+        return value == null ? null : PAudioDeviceType.values[value];
       case 137: 
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : PCallRequestErrorEnum.values[value];
+        return value == null ? null : PIncomingCallErrorEnum.values[value];
       case 138: 
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : PCallkeepLifecycleEvent.values[value];
+        return value == null ? null : PCallRequestErrorEnum.values[value];
       case 139: 
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : PCallkeepPushNotificationSyncStatus.values[value];
+        return value == null ? null : PCallkeepLifecycleEvent.values[value];
       case 140: 
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : PCallkeepConnectionState.values[value];
+        return value == null ? null : PCallkeepPushNotificationSyncStatus.values[value];
       case 141: 
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : PCallkeepDisconnectCauseType.values[value];
+        return value == null ? null : PCallkeepConnectionState.values[value];
       case 142: 
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : PCallkeepSignalingStatus.values[value];
+        return value == null ? null : PCallkeepDisconnectCauseType.values[value];
       case 143: 
-        return PIOSOptions.decode(readValue(buffer)!);
+        final int? value = readValue(buffer) as int?;
+        return value == null ? null : PCallkeepSignalingStatus.values[value];
       case 144: 
-        return PAndroidOptions.decode(readValue(buffer)!);
+        return PIOSOptions.decode(readValue(buffer)!);
       case 145: 
-        return POptions.decode(readValue(buffer)!);
+        return PAndroidOptions.decode(readValue(buffer)!);
       case 146: 
-        return PAudioDevice.decode(readValue(buffer)!);
+        return POptions.decode(readValue(buffer)!);
       case 147: 
-        return PHandle.decode(readValue(buffer)!);
+        return PAudioDevice.decode(readValue(buffer)!);
       case 148: 
-        return PEndCallReason.decode(readValue(buffer)!);
+        return PPermissionResult.decode(readValue(buffer)!);
       case 149: 
-        return PIncomingCallError.decode(readValue(buffer)!);
+        return PHandle.decode(readValue(buffer)!);
       case 150: 
-        return PCallRequestError.decode(readValue(buffer)!);
+        return PEndCallReason.decode(readValue(buffer)!);
       case 151: 
-        return PCallkeepServiceStatus.decode(readValue(buffer)!);
+        return PIncomingCallError.decode(readValue(buffer)!);
       case 152: 
-        return PCallkeepDisconnectCause.decode(readValue(buffer)!);
+        return PCallRequestError.decode(readValue(buffer)!);
       case 153: 
+        return PCallkeepServiceStatus.decode(readValue(buffer)!);
+      case 154: 
+        return PCallkeepDisconnectCause.decode(readValue(buffer)!);
+      case 155: 
         return PCallkeepConnection.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);

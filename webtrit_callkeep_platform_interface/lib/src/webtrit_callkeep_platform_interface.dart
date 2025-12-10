@@ -196,6 +196,35 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('getBatteryMode() has not been implemented.');
   }
 
+  /// Requests the specified [permissions] on Android.
+  ///
+  /// Returns a [Map] where:
+  /// - Key: The specific [CallkeepPermission] requested.
+  /// - Value: The [CallkeepSpecialPermissionStatus] (granted/denied).
+  Future<Map<CallkeepPermission, CallkeepSpecialPermissionStatus>> requestPermissions(
+    List<CallkeepPermission> permissions,
+  ) {
+    throw UnimplementedError('requestPermissions() has not been implemented.');
+  }
+
+  /// Checks the current status of the specified [permissions] on Android
+  /// without triggering a permission request dialog.
+  ///
+  /// Returns a [Map] where:
+  /// - Key: The specific [CallkeepPermission] being checked.
+  /// - Value: The [CallkeepSpecialPermissionStatus] (granted/denied).
+  Future<Map<CallkeepPermission, CallkeepSpecialPermissionStatus>> checkPermissionsStatus(
+    List<CallkeepPermission> permissions,
+  ) {
+    throw UnimplementedError('checkPermissionsStatus() has not been implemented.');
+  }
+
+  /// Retrieves a detailed diagnostic report from the native side as a raw Map.
+  /// Includes device info, permissions status, telecom registration status, etc.
+  Future<Map<String, dynamic>> getDiagnosticReport() {
+    throw UnimplementedError('getDiagnosticReport() has not been implemented.');
+  }
+
   /// Play the ringback sound.
   /// Returns [Future] that resolves on sound was successfully played.
   Future<void> playRingbackSound() {

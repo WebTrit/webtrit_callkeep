@@ -1,12 +1,19 @@
 package com.webtrit.callkeep
 
 import android.content.Context
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.BatteryModeHelper
 import com.webtrit.callkeep.common.PermissionsHelper
+import com.webtrit.callkeep.common.toAndroidPermissions
+import com.webtrit.callkeep.common.toPPermissionResults
 
 class PermissionsApi(
     private val context: Context,
 ) : PHostPermissionsApi {
+
     override fun getFullScreenIntentPermissionStatus(callback: (Result<PSpecialPermissionStatusTypeEnum>) -> Unit) {
         val screenIntentPermissionAvailable = PermissionsHelper(context).canUseFullScreenIntent()
         val status =
@@ -22,7 +29,7 @@ class PermissionsApi(
      *
      * @param callback A callback that receives a [Result]:
      * - [Result.success(Unit)] if the settings screen was successfully opened.
-     * - [Result.failure] with an exception (e.g., [ActivityNotFoundException]) if the intent cannot be handled.
+     * - [Result.failure] with an exception (e.g., [android.content.ActivityNotFoundException]) if the intent cannot be handled.
      *
      * Note: This functionality is only supported on Android 13 (API 33) and above,
      * and may not be available on all devices even on supported versions.
@@ -58,5 +65,53 @@ class PermissionsApi(
         }
 
         callback.invoke(Result.success(mode))
+    }
+
+    /**
+     * Generic request for a list of permissions.
+     */
+    override fun requestPermissions(
+        permissions: List<PCallkeepPermission>, callback: (Result<List<PPermissionResult>>) -> Unit
+    ) {
+        val activity = ActivityHolder.getActivity()
+        if (activity == null) {
+            callback.invoke(Result.failure(IllegalStateException("No active Activity")))
+            return
+        }
+
+        try {
+            activity.runOnUiThread {
+                val androidPerms = permissions.toAndroidPermissions()
+                val missing = androidPerms.filter {
+                    ContextCompat.checkSelfPermission(
+                        context, it
+                    ) != PackageManager.PERMISSION_GRANTED
+                }
+                if (missing.isNotEmpty()) {
+                    ActivityCompat.requestPermissions(
+                        activity, missing.toTypedArray(), 10101
+                    )
+                }
+                val results = androidPerms.toPPermissionResults(context)
+                callback.invoke(Result.success(results))
+            }
+        } catch (e: Exception) {
+            callback.invoke(Result.failure(e))
+        }
+    }
+
+    /**
+     * Generic status check without requesting.
+     */
+    override fun checkPermissionsStatus(
+        permissions: List<PCallkeepPermission>, callback: (Result<List<PPermissionResult>>) -> Unit
+    ) {
+        try {
+            val androidPerms = permissions.toAndroidPermissions()
+            val results = androidPerms.toPPermissionResults(context)
+            callback.invoke(Result.success(results))
+        } catch (e: Exception) {
+            callback.invoke(Result.failure(e))
+        }
     }
 }

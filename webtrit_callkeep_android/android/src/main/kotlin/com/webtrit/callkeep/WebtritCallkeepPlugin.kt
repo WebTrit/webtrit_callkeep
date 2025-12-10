@@ -71,6 +71,10 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         }
 
         // Helper APIs
+        DiagnosticsApi(context).let {
+            PHostDiagnosticsApi.setUp(messenger, it)
+        }
+
         PermissionsApi(context).let {
             PHostPermissionsApi.setUp(messenger, it)
         }
@@ -92,6 +96,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         PHostBackgroundSignalingIsolateBootstrapApi.setUp(messenger, null)
         PHostBackgroundPushNotificationIsolateBootstrapApi.setUp(messenger, null)
 
+        PHostDiagnosticsApi.setUp(messenger, null)
         PHostPermissionsApi.setUp(messenger, null)
         PHostSoundApi.setUp(messenger, null)
         PHostConnectionsApi.setUp(messenger, null)
