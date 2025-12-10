@@ -46,6 +46,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     private var serviceConnection: ServiceConnection? = null
 
     private var delegateLogsFlutterApi: PDelegateLogsFlutterApi? = null
+    private var permissionsApi: PermissionsApi? = null
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         // Store binnyMessenger for later use if instance of the flutter engine belongs to main isolate OR call service isolate
@@ -55,9 +56,6 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
 
         ContextHolder.init(context)
         AssetHolder.init(context, assets)
-
-        delegateLogsFlutterApi = PDelegateLogsFlutterApi(messenger).also { Log.add(it) }
-        Log.i(TAG, "onAttachedToEngine id:${flutterPluginBinding.hashCode()}")
 
         // Bootstrap isolate APIs
         BackgroundSignalingIsolateBootstrapApi(context).let {
@@ -71,13 +69,19 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         }
 
         // Helper APIs
+
+        permissionsApi = PermissionsApi(context)
+        permissionsApi?.let {
+            PHostPermissionsApi.setUp(messenger, it)
+        }
+
+        delegateLogsFlutterApi = PDelegateLogsFlutterApi(messenger).also { Log.add(it) }
+        Log.i(TAG, "onAttachedToEngine id:${flutterPluginBinding.hashCode()}")
+
         DiagnosticsApi(context).let {
             PHostDiagnosticsApi.setUp(messenger, it)
         }
 
-        PermissionsApi(context).let {
-            PHostPermissionsApi.setUp(messenger, it)
-        }
         SoundApi(context).let {
             PHostSoundApi.setUp(messenger, it)
         }
@@ -91,13 +95,15 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         delegateLogsFlutterApi?.let { Log.remove(it) }
         delegateLogsFlutterApi = null
 
+        PHostPermissionsApi.setUp(messenger, null)
+        permissionsApi = null
+
         PHostApi.setUp(this.messenger, null)
 
         PHostBackgroundSignalingIsolateBootstrapApi.setUp(messenger, null)
         PHostBackgroundPushNotificationIsolateBootstrapApi.setUp(messenger, null)
 
         PHostDiagnosticsApi.setUp(messenger, null)
-        PHostPermissionsApi.setUp(messenger, null)
         PHostSoundApi.setUp(messenger, null)
         PHostConnectionsApi.setUp(messenger, null)
     }
@@ -110,6 +116,10 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
 
         ActivityControlApi(binding.activity).let {
             PHostActivityControlApi.setUp(messenger, it)
+        }
+
+        permissionsApi?.let {
+            binding.addRequestPermissionsResultListener(it)
         }
 
         lifeCycle = (binding.lifecycle as HiddenLifecycleReference).lifecycle
@@ -137,6 +147,10 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     override fun onDetachedFromActivity() {
         Log.i(TAG, "onDetachedFromActivity id:${activityPluginBinding?.hashCode()}")
         ActivityHolder.setActivity(null)
+
+        permissionsApi?.let {
+            activityPluginBinding?.removeRequestPermissionsResultListener(it)
+        }
 
         this.lifeCycle?.removeObserver(this)
 
