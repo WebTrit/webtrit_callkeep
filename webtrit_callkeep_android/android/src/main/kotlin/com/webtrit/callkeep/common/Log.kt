@@ -28,6 +28,11 @@ class Log(private val tag: String) {
     fun i(message: String) = log(PLogTypeEnum.INFO, tag, message)
 
     /**
+     * Logs a verbose message using the instance tag.
+     */
+    fun v(message: String) = log(PLogTypeEnum.VERBOSE, tag, message)
+
+    /**
      * Logs a warning message using the instance tag.
      */
     fun w(message: String, throwable: Throwable? = null) =
