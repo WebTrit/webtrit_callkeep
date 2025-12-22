@@ -3,10 +3,16 @@ package com.webtrit.callkeep.services.services.connection.dispatchers
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
+import com.webtrit.callkeep.services.services.connection.ActivityWakelockManager
 import com.webtrit.callkeep.services.services.connection.ConnectionManager
+import com.webtrit.callkeep.services.services.connection.PhoneConnection
 import com.webtrit.callkeep.services.services.connection.ProximitySensorManager
 import com.webtrit.callkeep.services.services.connection.ServiceAction
 import com.webtrit.callkeep.services.services.connection.models.PerformDispatchHandle
+
+enum class ConnectionLifecycleAction {
+    ConnectionCreated, ConnectionChanged, ServiceDestroyed
+}
 
 /**
  * Dispatcher for handling call-related service actions triggered from various sources,
@@ -24,7 +30,8 @@ import com.webtrit.callkeep.services.services.connection.models.PerformDispatchH
 class PhoneConnectionServiceDispatcher(
     private val connectionManager: ConnectionManager,
     private val proximitySensorManager: ProximitySensorManager,
-    private val dispatcher: PerformDispatchHandle
+    private val dispatcher: PerformDispatchHandle,
+    private val activityWakelockManager: ActivityWakelockManager
 ) {
 
     /**
@@ -39,7 +46,8 @@ class PhoneConnectionServiceDispatcher(
      * @param metadata Metadata associated with the call, if applicable.
      */
     fun dispatch(action: ServiceAction, metadata: CallMetadata?) {
-        Log.d(TAG, "Dispatching action: $action with metadata: $metadata")
+        logger.d("Dispatching ServiceAction: $action | CallId: ${metadata?.callId ?: "N/A"}")
+
         when (action) {
             ServiceAction.AnswerCall -> metadata?.let { handleAnswerCall(it) }
             ServiceAction.DeclineCall -> metadata?.let { handleDeclineCall(it) }
@@ -55,87 +63,162 @@ class PhoneConnectionServiceDispatcher(
         }
     }
 
+    /**
+     * Dispatches lifecycle events related to connection state changes.
+     */
+    fun dispatchLifecycle(action: ConnectionLifecycleAction, metadata: CallMetadata? = null) {
+        logger.d("Dispatching LifecycleAction: $action")
+        when (action) {
+            ConnectionLifecycleAction.ConnectionCreated -> metadata?.let {
+                handleConnectionCreated(
+                    it
+                )
+            }
+
+            ConnectionLifecycleAction.ConnectionChanged -> handleConnectionChanged()
+            ConnectionLifecycleAction.ServiceDestroyed -> handleServiceDestroyed()
+        }
+    }
+
     private fun handleAnswerCall(metadata: CallMetadata) {
+        logger.d("Starting proximity sensor for AnswerCall")
         proximitySensorManager.startListening()
-        connectionManager.getConnection(metadata.callId)?.onAnswer() ?: dispatcher(
-            ConnectionPerform.ConnectionNotFound, metadata
-        )
+
+        executeOnConnection(metadata, "AnswerCall") {
+            it.onAnswer()
+        }
     }
 
     private fun handleDeclineCall(metadata: CallMetadata) {
-        connectionManager.getConnection(metadata.callId)?.declineCall() ?: dispatcher(
-            ConnectionPerform.ConnectionNotFound, metadata
-        )
+        executeOnConnection(metadata, "DeclineCall") {
+            it.declineCall()
+        }
+
+        logger.d("Stopping proximity sensor (DeclineCall)")
         proximitySensorManager.stopListening()
     }
 
     private fun handleHungUpCall(metadata: CallMetadata) {
-        connectionManager.getConnection(metadata.callId)?.hungUp() ?: dispatcher(
-            ConnectionPerform.ConnectionNotFound, metadata
-        )
+        executeOnConnection(metadata, "HungUpCall") {
+            it.hungUp()
+        }
+
+        logger.d("Stopping proximity sensor (HungUpCall)")
         proximitySensorManager.stopListening()
     }
 
     private fun handleEstablishCall(metadata: CallMetadata) {
+        logger.d("Starting proximity sensor for EstablishCall")
         proximitySensorManager.startListening()
-        connectionManager.getConnection(metadata.callId)?.establish() ?: dispatcher(
-            ConnectionPerform.ConnectionNotFound, metadata
-        )
+
+        executeOnConnection(metadata, "EstablishCall") {
+            it.establish()
+        }
     }
 
     private fun handleMute(metadata: CallMetadata) {
-        connectionManager.getConnection(metadata.callId)?.changeMuteState(metadata.hasMute)
-            ?: dispatcher(
-                ConnectionPerform.ConnectionNotFound, metadata
-            )
+        executeOnConnection(metadata, "SetMute(${metadata.hasMute})") {
+            it.changeMuteState(metadata.hasMute)
+        }
     }
 
     private fun handleHold(metadata: CallMetadata) {
-        connectionManager.getConnection(metadata.callId)?.apply {
-            if (metadata.hasHold) onHold() else onUnhold()
-        } ?: dispatcher(
-            ConnectionPerform.ConnectionNotFound, metadata
-        )
+        executeOnConnection(metadata, "SetHold(${metadata.hasHold})") {
+            if (metadata.hasHold) it.onHold() else it.onUnhold()
+        }
     }
 
-    // This method updates the call metadata. It can be invoked during the connection creation process,
-    // where the connection might not yet be registered in the ConnectionManager. If no connection is found,
-    // the update is ignored to prevent errors.
     private fun handleUpdateCall(metadata: CallMetadata) {
-        connectionManager.getConnection(metadata.callId)?.updateData(metadata) ?: Log.d(
-            TAG, "Connection not found for callId: ${metadata.callId}, ignoring update"
-        )
+        if (metadata.hasVideo) {
+            activityWakelockManager.acquireScreenWakeLock()
+        } else {
+            activityWakelockManager.releaseScreenWakeLock()
+        }
+
+        val connection = connectionManager.getConnection(metadata.callId)
+        if (connection != null) {
+            logger.v("Updating data for connection: ${metadata.callId}")
+            connection.updateData(metadata)
+        } else {
+            logger.d("Connection not found for update, ignoring. CallId: ${metadata.callId}")
+        }
     }
 
     private fun handleSendDTMF(metadata: CallMetadata) {
-        metadata.dualToneMultiFrequency?.let {
-            connectionManager.getConnection(metadata.callId)?.onPlayDtmfTone(it)
-        } ?: dispatcher(
-            ConnectionPerform.ConnectionNotFound, metadata
-        )
+        val dtmf = metadata.dualToneMultiFrequency
+        if (dtmf == null) {
+            logger.w("DTMF action requested but no tone provided. CallId: ${metadata.callId}")
+            return
+        }
+
+        executeOnConnection(metadata, "PlayDTMF($dtmf)") {
+            it.onPlayDtmfTone(dtmf)
+        }
     }
 
     private fun handleSpeaker(metadata: CallMetadata) {
-        connectionManager.getConnection(metadata.callId)?.changeSpeakerState(metadata.hasSpeaker)
-            ?: dispatcher(
-                ConnectionPerform.ConnectionNotFound, metadata
-            )
+        executeOnConnection(metadata, "SetSpeaker(${metadata.hasSpeaker})") {
+            it.changeSpeakerState(metadata.hasSpeaker)
+        }
     }
 
     private fun handleAudioDeviceSet(metadata: CallMetadata) {
-        connectionManager.getConnection(metadata.callId)?.setAudioDevice(metadata.audioDevice!!)
-            ?: dispatcher(
-                ConnectionPerform.ConnectionNotFound, metadata
-            )
+        val device = metadata.audioDevice
+        if (device == null) {
+            logger.e("AudioDeviceSet requested but device is null. CallId: ${metadata.callId}")
+            return
+        }
+
+        executeOnConnection(metadata, "SetAudioDevice($device)") {
+            it.setAudioDevice(device)
+        }
     }
 
     private fun handleTearDown() {
-        connectionManager.getConnections().forEach {
-            it.hungUp()
+        val connections = connectionManager.getConnections()
+        logger.i("Tearing down all ${connections.size} active connections")
+
+        connections.forEach { it.hungUp() }
+    }
+
+
+    private fun handleConnectionCreated(metadata: CallMetadata) {
+        if (metadata.hasVideo) {
+            logger.d("Video connection created. Requesting Screen WakeLock. CallId: ${metadata.callId}")
+            activityWakelockManager.acquireScreenWakeLock()
+        }
+    }
+
+    private fun handleConnectionChanged() {
+        if (!connectionManager.hasVideoConnections()) {
+            logger.d("No active video connections remaining. Releasing Screen WakeLock.")
+            activityWakelockManager.releaseScreenWakeLock()
+        }
+    }
+
+    private fun handleServiceDestroyed() {
+        logger.i("Service destroyed. Disposing resources.")
+        activityWakelockManager.dispose()
+    }
+
+    /**
+     * Helper to safely execute an action on a connection.
+     * If the connection is missing, it logs a warning and dispatches [ConnectionPerform.ConnectionNotFound].
+     */
+    private inline fun executeOnConnection(
+        metadata: CallMetadata, actionName: String, block: (PhoneConnection) -> Unit
+    ) {
+        val connection = connectionManager.getConnection(metadata.callId)
+        if (connection != null) {
+            block(connection)
+        } else {
+            logger.w("Unable to perform $actionName: Connection not found for callId: ${metadata.callId}")
+            dispatcher(ConnectionPerform.ConnectionNotFound, metadata)
         }
     }
 
     companion object {
         private const val TAG = "PhoneConnectionServiceDispatcher"
+        private val logger = Log(TAG)
     }
 }

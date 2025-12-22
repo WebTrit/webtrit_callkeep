@@ -23,6 +23,7 @@ import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.models.OutgoingFailureType
 import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
+import com.webtrit.callkeep.services.services.connection.dispatchers.ConnectionLifecycleAction
 import com.webtrit.callkeep.services.services.connection.dispatchers.PhoneConnectionServiceDispatcher
 import com.webtrit.callkeep.services.services.foreground.ForegroundService
 
@@ -36,7 +37,6 @@ import com.webtrit.callkeep.services.services.foreground.ForegroundService
  */
 class PhoneConnectionService : ConnectionService() {
     private lateinit var sensorManager: ProximitySensorManager
-    private lateinit var activityWakelockManager: ActivityWakelockManager
     private lateinit var phoneConnectionServiceDispatcher: PhoneConnectionServiceDispatcher
     private lateinit var telephonyUtils: TelephonyUtils
 
@@ -48,10 +48,17 @@ class PhoneConnectionService : ConnectionService() {
         // Set the service state to true when the system starts the service.
         isRunning = true
         sensorManager = ProximitySensorManager(applicationContext, PhoneConnectionConsts())
-        activityWakelockManager = ActivityWakelockManager(ActivityHolder)
         telephonyUtils = TelephonyUtils(applicationContext)
+
+        val activityWakelockManager = ActivityWakelockManager(ActivityHolder)
+
         phoneConnectionServiceDispatcher =
-            PhoneConnectionServiceDispatcher(connectionManager, sensorManager, ::performEventHandle)
+            PhoneConnectionServiceDispatcher(
+                connectionManager,
+                sensorManager,
+                ::performEventHandle,
+                activityWakelockManager
+            )
     }
 
     /**
@@ -112,12 +119,12 @@ class PhoneConnectionService : ConnectionService() {
         sensorManager.setShouldListenProximity(metadata.proximityEnabled)
         connectionManager.addConnection(metadata.callId, connection)
 
-        if (metadata.hasVideo) {
-            activityWakelockManager.acquireScreenWakeLock()
-        }
+        phoneConnectionServiceDispatcher.dispatchLifecycle(
+            ConnectionLifecycleAction.ConnectionCreated,
+            metadata
+        )
 
         return connection
-
     }
 
     /**
@@ -141,9 +148,7 @@ class PhoneConnectionService : ConnectionService() {
 
         dispatcher.dispatch(baseContext, ConnectionPerform.OutgoingFailure, failureMetadata)
 
-        if (!connectionManager.hasVideoConnections()) {
-            activityWakelockManager.releaseScreenWakeLock()
-        }
+        phoneConnectionServiceDispatcher.dispatchLifecycle(ConnectionLifecycleAction.ConnectionChanged)
 
         super.onCreateOutgoingConnectionFailed(connectionManagerPhoneAccount, request)
     }
@@ -179,12 +184,15 @@ class PhoneConnectionService : ConnectionService() {
         val connection = PhoneConnection.createIncomingPhoneConnection(
             applicationContext, ::performEventHandle, metadata, ::disconnectConnection
         )
-        sensorManager.setShouldListenProximity(true)
+        val shouldListenProximity = !metadata.hasVideo
+        sensorManager.setShouldListenProximity(shouldListenProximity)
+
         connectionManager.addConnection(metadata.callId, connection)
 
-        if (metadata.hasVideo) {
-            activityWakelockManager.acquireScreenWakeLock()
-        }
+        phoneConnectionServiceDispatcher.dispatchLifecycle(
+            ConnectionLifecycleAction.ConnectionCreated,
+            metadata
+        )
 
         startService(Intent(applicationContext, ForegroundService::class.java).apply {
             action = "test"
@@ -213,9 +221,7 @@ class PhoneConnectionService : ConnectionService() {
 
         dispatcher.dispatch(baseContext, ConnectionPerform.IncomingFailure, failureMetadata)
 
-        if (!connectionManager.hasVideoConnections()) {
-            activityWakelockManager.releaseScreenWakeLock()
-        }
+        phoneConnectionServiceDispatcher.dispatchLifecycle(ConnectionLifecycleAction.ConnectionChanged)
 
         super.onCreateIncomingConnectionFailed(connectionManagerPhoneAccount, request)
     }
@@ -223,9 +229,7 @@ class PhoneConnectionService : ConnectionService() {
     private fun disconnectConnection(connection: PhoneConnection) {
         Log.i(TAG, "disconnectConnection:: $connection")
 
-        if (!connectionManager.hasVideoConnections()) {
-            activityWakelockManager.releaseScreenWakeLock()
-        }
+        phoneConnectionServiceDispatcher.dispatchLifecycle(ConnectionLifecycleAction.ConnectionChanged)
     }
 
     override fun onDestroy() {
@@ -233,7 +237,7 @@ class PhoneConnectionService : ConnectionService() {
         // Set the service state to false when the system destroys the service.
         isRunning = false
         sensorManager.stopListening()
-        activityWakelockManager.dispose()
+        phoneConnectionServiceDispatcher.dispatchLifecycle(ConnectionLifecycleAction.ServiceDestroyed)
         connectionManager.getConnections().forEach {
             Log.i(TAG, "onDetachActivity, disconnect outgoing call, callId: ${it.id}")
             it.onDisconnect()
