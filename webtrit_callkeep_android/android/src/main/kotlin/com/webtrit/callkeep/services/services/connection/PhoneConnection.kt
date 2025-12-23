@@ -175,7 +175,7 @@ class PhoneConnection internal constructor(
     override fun onStateChanged(state: Int) {
         logger.v("Connection state changed to: $state for callId: $id")
         super.onStateChanged(state)
-        handleIncomingTimeout(state)
+        handleConnectionTimeout(state)
 
         when (state) {
             STATE_DIALING -> onDialing()
@@ -186,7 +186,7 @@ class PhoneConnection internal constructor(
     /**
      * Manages automatic disconnection logic if the call stays in transient states too long.
      */
-    private fun handleIncomingTimeout(state: Int) {
+    private fun handleConnectionTimeout(state: Int) {
         if (state in timeout?.states.orEmpty()) {
             timeout?.start(::onTimeoutTriggered)
         } else {
