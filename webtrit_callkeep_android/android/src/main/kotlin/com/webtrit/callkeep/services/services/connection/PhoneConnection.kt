@@ -395,7 +395,7 @@ class PhoneConnection internal constructor(
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     private fun performEndpointChange(endpoint: CallEndpoint) {
         requestCallEndpointChange(
-            endpoint, Executors.newSingleThreadExecutor(), EndpointChangeReceiver(endpoint)
+            endpoint, audioEndpointChangeExecutor, EndpointChangeReceiver(endpoint)
         )
     }
 
@@ -503,6 +503,12 @@ class PhoneConnection internal constructor(
     companion object {
         private const val TAG = "PhoneConnection"
         private val logger = Log(TAG)
+
+        /**
+         * Shared single-thread executor for handling endpoint changes efficiently across all connections.
+         * Using a shared executor prevents resource exhaustion and ensures sequential execution.
+         */
+        private val audioEndpointChangeExecutor = Executors.newSingleThreadExecutor()
 
         /**
          * Factory method for incoming call instances.
