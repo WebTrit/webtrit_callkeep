@@ -177,6 +177,7 @@ class PhoneConnectionServiceDispatcher(
     private fun handleServiceDestroyed() {
         logger.i("Service destroyed. Disposing resources.")
         activityWakelockManager.releaseScreenWakeLock()
+        proximitySensorManager.setShouldListenProximity(false)
         activityWakelockManager.dispose()
     }
 
@@ -198,18 +199,25 @@ class PhoneConnectionServiceDispatcher(
         // This avoids race conditions where the map might still contain a stale connection
         // or a connecting call hasn't updated its metadata yet.
         val hasVideo = activeConnections.any { it.metadata.hasVideo }
-
-        logger.v("Updating sensors state. HasVideo: $hasVideo, HasAnyConnection: $hasAnyConnection")
-
+        // Proximity should only be enabled for audio-only calls that explicitly allow it.
+        val shouldEnableProximity = activeConnections.any {
+            !it.metadata.hasVideo && it.metadata.proximityEnabled
+        }
+        logger.v(
+            "Updating sensors state. HasVideo: $hasVideo, HasAnyConnection: $hasAnyConnection, ShouldEnableProximity: $shouldEnableProximity"
+        )
         if (hasVideo) {
             activityWakelockManager.acquireScreenWakeLock()
+            proximitySensorManager.setShouldListenProximity(false)
             proximitySensorManager.stopListening()
         } else {
             activityWakelockManager.releaseScreenWakeLock()
 
-            if (hasAnyConnection) {
+            if (shouldEnableProximity) {
+                proximitySensorManager.setShouldListenProximity(true)
                 proximitySensorManager.startListening()
             } else {
+                proximitySensorManager.setShouldListenProximity(false)
                 proximitySensorManager.stopListening()
             }
         }
