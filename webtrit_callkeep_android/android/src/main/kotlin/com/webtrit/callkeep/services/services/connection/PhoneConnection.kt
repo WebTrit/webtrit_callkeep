@@ -575,9 +575,20 @@ class ConnectionTimeout(
     }
 
     companion object {
-        private val DEFAULT_INCOMING_STATES = listOf(Connection.STATE_NEW, Connection.STATE_RINGING)
-        private val DEFAULT_OUTGOING_STATES = listOf(Connection.STATE_DIALING)
+        /**
+         * Duration in milliseconds before a call in a transient state is automatically disconnected.
+         */
         private const val TIMEOUT_DURATION_MS = 35000L
+
+        /**
+         * Telecom states that trigger the timeout for incoming calls.
+         */
+        private val DEFAULT_INCOMING_STATES = listOf(Connection.STATE_NEW, Connection.STATE_RINGING)
+
+        /**
+         * Telecom states that trigger the timeout for outgoing calls.
+         */
+        private val DEFAULT_OUTGOING_STATES = listOf(Connection.STATE_DIALING)
 
         /**
          * Creates a timeout configuration for outgoing dialing.
