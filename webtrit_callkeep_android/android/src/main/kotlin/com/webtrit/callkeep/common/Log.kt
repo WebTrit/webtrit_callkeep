@@ -40,8 +40,20 @@ class Log(private val tag: String) {
         log(PLogTypeEnum.WARN, tag, "$message\n$throwable")
 
     companion object {
+        /**
+         * Prefix prepended to all log tags to uniquely identify library-related log output.
+         */
         private const val GLOBAL_PREFIX = "CK-"
+
+        /**
+         * Collection of registered Flutter API delegates that receive and process log events.
+         */
         private var isolateDelegates = mutableListOf<PDelegateLogsFlutterApi>()
+
+        /**
+         * Reusable handler tied to the main looper for dispatching logs to delegates.
+         */
+        private val mainHandler = Handler(Looper.getMainLooper())
 
         /**
          * Adds a delegate to receive log messages.
@@ -88,7 +100,7 @@ class Log(private val tag: String) {
          * Dispatches log events to the main thread for delegate consumption.
          */
         private fun dispatchToDelegate(type: PLogTypeEnum, tag: String, message: String) =
-            Handler(Looper.getMainLooper()).post { notifyFirstDelegate(type, tag, message) }
+            mainHandler.post { notifyFirstDelegate(type, tag, message) }
 
         /**
          * Notifies the primary registered isolate delegate.
