@@ -15,23 +15,24 @@ enum class ConnectionLifecycleAction {
 }
 
 /**
- * Dispatcher for handling call-related service actions triggered from various sources,
- * such as activities, background signaling, or incoming services.
+ * Dispatcher responsible for routing ServiceAction requests to PhoneConnection instances
+ * managed by the [ConnectionManager], and for coordinating ancillary managers such as
+ * [ProximitySensorManager] and [ActivityWakelockManager].
  *
- * This class is responsible for forwarding service actions to the appropriate connection instance
- * via the [ConnectionManager], and for managing the [ProximitySensorManager].
- * If a corresponding connection does not exist, it uses the [PerformDispatchHandle] proxy
- * to forward the action back (e.g., to Flutter) to avoid freezing async/await logic.
+ * If the targeted connection cannot be found, the provided [PerformDispatchHandle]
+ * (`dispatcher`) is invoked to propagate the event to the higher layer (for example, Flutter)
+ * rather than blocking async logic.
  *
  * @property connectionManager Manages active phone connections.
- * @property proximitySensorManager Controls the proximity sensor behavior.
- * @property dispatcher Proxy used to report events if no connection is found.
+ * @property dispatcher Callback invoked when a connection is not found.
+ * @property activityWakelockManager Controls screen wake locks (used for video calls).
+ * @property proximitySensorManager Controls proximity sensor behavior.
  */
 class PhoneConnectionServiceDispatcher(
     private val connectionManager: ConnectionManager,
-    private val proximitySensorManager: ProximitySensorManager,
     private val dispatcher: PerformDispatchHandle,
-    private val activityWakelockManager: ActivityWakelockManager
+    private val activityWakelockManager: ActivityWakelockManager,
+    private val proximitySensorManager: ProximitySensorManager,
 ) {
 
     /**
@@ -187,6 +188,13 @@ class PhoneConnectionServiceDispatcher(
             logger.d("Video connection created. Requesting Screen WakeLock. CallId: ${metadata.callId}")
             activityWakelockManager.acquireScreenWakeLock()
         }
+
+        // Handle Proximity Sensor Logic
+        // If it is a video call, the proximity sensor should be disabled.
+        // If it is an audio call, we respect the 'proximityEnabled' flag (defaulting to true for audio).
+        val shouldListenProximity = if (metadata.hasVideo) false else metadata.proximityEnabled
+        logger.d("Setting proximity listen state to: $shouldListenProximity for callId: ${metadata.callId}")
+        proximitySensorManager.setShouldListenProximity(shouldListenProximity)
     }
 
     private fun handleConnectionChanged() {
@@ -194,6 +202,7 @@ class PhoneConnectionServiceDispatcher(
             logger.d("No active video connections remaining. Releasing Screen WakeLock.")
             activityWakelockManager.releaseScreenWakeLock()
         }
+        proximitySensorManager.stopListening()
     }
 
     private fun handleServiceDestroyed() {
