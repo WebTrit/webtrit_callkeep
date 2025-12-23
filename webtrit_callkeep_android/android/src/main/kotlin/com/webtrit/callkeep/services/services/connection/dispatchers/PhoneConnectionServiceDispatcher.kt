@@ -207,6 +207,7 @@ class PhoneConnectionServiceDispatcher(
 
     private fun handleServiceDestroyed() {
         logger.i("Service destroyed. Disposing resources.")
+        activityWakelockManager.releaseScreenWakeLock()
         activityWakelockManager.dispose()
     }
 
