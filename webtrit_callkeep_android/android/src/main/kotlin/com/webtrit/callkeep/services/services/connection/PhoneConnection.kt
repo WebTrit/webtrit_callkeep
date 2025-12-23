@@ -298,7 +298,11 @@ class PhoneConnection internal constructor(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             val endpoint =
                 avaliablecallEndpoints.firstOrNull { it.identifier == ParcelUuid.fromString(device.id!!) }
-            endpoint?.let(::performEndpointChange)
+            if (endpoint != null) {
+                performEndpointChange(endpoint)
+            } else {
+                logger.e("No suitable call endpoint found for the current audio state. Requested device: $device, callId: $id")
+            }
         } else {
             setAudioRoute(mapDeviceTypeToRoute(device.type))
         }
