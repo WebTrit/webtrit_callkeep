@@ -1,5 +1,7 @@
 package com.webtrit.callkeep.services.services.connection
 
+import java.util.concurrent.Executors
+
 import android.content.Context
 import android.os.Build
 import android.os.Handler
@@ -28,7 +30,6 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
 import com.webtrit.callkeep.services.services.connection.PhoneVideoProvider
 import com.webtrit.callkeep.services.services.connection.models.PerformDispatchHandle
-import java.util.concurrent.Executors
 
 /**
  * Manages an individual phone connection, handling state transitions and audio routing.
@@ -77,6 +78,7 @@ class PhoneConnection internal constructor(
      * Transitions the connection to an active state and ensures the UI is visible.
      */
     fun establish() {
+        logger.d("Establishing connection for callId: $id")
         context.startActivity(Platform.getLaunchActivity(context))
         setActive()
     }
@@ -85,6 +87,7 @@ class PhoneConnection internal constructor(
      * Synchronizes the internal mute state and notifies the application.
      */
     fun changeMuteState(isMute: Boolean) {
+        logger.d("Changing mute state to: $isMute for callId: $id")
         this.isMute = isMute
         dispatcher(ConnectionPerform.AudioMuting, metadata.copy(hasMute = this.isMute))
     }
@@ -93,6 +96,7 @@ class PhoneConnection internal constructor(
      * Invoked by the system when the incoming call interface should be displayed.
      */
     override fun onShowIncomingCallUi() {
+        logger.d("Showing incoming call UI for callId: $id")
         notificationManager.showIncomingCallNotification(metadata)
         audioManager.startRingtone(metadata.ringtonePath)
     }
@@ -101,6 +105,7 @@ class PhoneConnection internal constructor(
      * Handles the transition when a user accepts an incoming call.
      */
     override fun onAnswer() {
+        logger.i("Answering call: $metadata")
         super.onAnswer()
         answer = true
         setActive()
@@ -112,6 +117,7 @@ class PhoneConnection internal constructor(
      * Handles the transition when a user rejects an incoming call.
      */
     override fun onReject() {
+        logger.i("Rejecting call: $id")
         super.onReject()
         setDisconnected(DisconnectCause(DisconnectCause.REJECTED))
     }
@@ -120,6 +126,7 @@ class PhoneConnection internal constructor(
      * Performs final cleanup when the connection is terminated.
      */
     override fun onDisconnect() {
+        logger.i("Disconnecting call: $id")
         super.onDisconnect()
         notificationManager.cancelIncomingNotification(isAnswered())
         notificationManager.cancelActiveCallNotification(id)
@@ -139,6 +146,7 @@ class PhoneConnection internal constructor(
      * Updates the internal state to reflect a held call.
      */
     override fun onHold() {
+        logger.d("Putting call on hold: $id")
         super.onHold()
         setOnHold()
         dispatcher(ConnectionPerform.ConnectionHolding, metadata.copy(hasHold = true))
@@ -148,6 +156,7 @@ class PhoneConnection internal constructor(
      * Resumes the call from a held state.
      */
     override fun onUnhold() {
+        logger.d("Taking call off hold: $id")
         super.onUnhold()
         setActive()
         dispatcher(ConnectionPerform.ConnectionHolding, metadata.copy(hasHold = false))
@@ -157,6 +166,7 @@ class PhoneConnection internal constructor(
      * Dispatches a DTMF tone event to the application.
      */
     override fun onPlayDtmfTone(c: Char) {
+        logger.d("Playing DTMF tone: $c for callId: $id")
         super.onPlayDtmfTone(c)
         dispatcher(ConnectionPerform.SentDTMF, metadata.copy(dualToneMultiFrequency = c))
     }
@@ -165,6 +175,7 @@ class PhoneConnection internal constructor(
      * Orchestrates logical transitions based on the underlying Telecom state.
      */
     override fun onStateChanged(state: Int) {
+        logger.v("Connection state changed to: $state for callId: $id")
         super.onStateChanged(state)
         handleIncomingTimeout(state)
 
@@ -189,6 +200,7 @@ class PhoneConnection internal constructor(
      * Executed when the [ConnectionTimeout] timer elapses.
      */
     private fun onTimeoutTriggered() {
+        logger.w("Timeout reached for callId: $id")
         setDisconnected(DisconnectCause(DisconnectCause.CANCELED, "Timeout reached"))
         onDisconnect()
     }
@@ -199,6 +211,7 @@ class PhoneConnection internal constructor(
     @Deprecated("Deprecated in Java")
     override fun onCallAudioStateChanged(state: CallAudioState?) {
         super.onCallAudioStateChanged(state)
+        logger.d("Legacy audio state changed: $state")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
 
         state?.route?.let {
@@ -220,6 +233,7 @@ class PhoneConnection internal constructor(
      * Refreshes the audio state and endpoints for the application layer.
      */
     fun forceUpdateAudioState() {
+        logger.d("Force updating audio state for callId: $id")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             updateModernAudioState()
         } else {
@@ -245,6 +259,7 @@ class PhoneConnection internal constructor(
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     override fun onAvailableCallEndpointsChanged(callEndpoints: List<CallEndpoint>) {
         super.onAvailableCallEndpointsChanged(callEndpoints)
+        logger.d("Available call endpoints changed: $callEndpoints")
         avaliablecallEndpoints = callEndpoints
         val devices = callEndpoints.map(::mapEndpointToAudioDevice)
         dispatcher(ConnectionPerform.AudioDevicesUpdate, metadata.copy(audioDevices = devices))
@@ -256,6 +271,7 @@ class PhoneConnection internal constructor(
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     override fun onCallEndpointChanged(callEndpoint: CallEndpoint) {
         super.onCallEndpointChanged(callEndpoint)
+        logger.i("Call endpoint changed to: $callEndpoint")
         val device = mapEndpointToAudioDevice(callEndpoint)
         dispatcher(ConnectionPerform.AudioDeviceSet, metadata.copy(audioDevice = device))
 
@@ -269,6 +285,7 @@ class PhoneConnection internal constructor(
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     override fun onMuteStateChanged(isMuted: Boolean) {
         super.onMuteStateChanged(isMuted)
+        logger.d("Mute state changed via system: $isMuted")
         isMute = isMuted
         dispatcher(ConnectionPerform.AudioMuting, metadata.copy(hasMute = isMute))
     }
@@ -277,6 +294,7 @@ class PhoneConnection internal constructor(
      * Requests a change to a specific audio device.
      */
     fun setAudioDevice(device: AudioDevice) {
+        logger.i("Setting audio device: $device for callId: $id")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             val endpoint =
                 avaliablecallEndpoints.firstOrNull { it.identifier == ParcelUuid.fromString(device.id!!) }
@@ -291,6 +309,7 @@ class PhoneConnection internal constructor(
      */
     @Deprecated("Use setAudioDevice instead")
     fun changeSpeakerState(isActive: Boolean) {
+        logger.d("Changing speaker state: $isActive for callId: $id")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             findSpeakerEndpoint(isActive)?.let(::performEndpointChange)
         } else {
@@ -313,6 +332,7 @@ class PhoneConnection internal constructor(
      * Terminates the connection from the local side before acceptance.
      */
     fun declineCall() {
+        logger.d("Local decline for callId: $id")
         if (state == STATE_RINGING) {
             notificationManager.showMissedCallNotification(metadata)
             dispatcher(ConnectionPerform.MissedCall, metadata)
@@ -324,6 +344,7 @@ class PhoneConnection internal constructor(
      * Terminates the active connection.
      */
     fun hungUp() {
+        logger.d("Local hang up for callId: $id")
         dispatcher(ConnectionPerform.AudioMuting, metadata.copy(hasMute = isMute))
         terminateWithCause(DisconnectCause(DisconnectCause.LOCAL))
     }
@@ -332,6 +353,7 @@ class PhoneConnection internal constructor(
      * Logic triggered when the call enters an active talking state.
      */
     private fun onActiveConnection() {
+        logger.i("Connection became active for callId: $id")
         audioManager.stopRingtone()
         notificationManager.cancelIncomingNotification(true)
         notificationManager.cancelMissedCall(metadata)
@@ -347,7 +369,10 @@ class PhoneConnection internal constructor(
     /**
      * Logic triggered when the local side starts dialing.
      */
-    private fun onDialing() = dispatcher(ConnectionPerform.OngoingCall, metadata)
+    private fun onDialing() {
+        logger.i("Dialing callId: $id")
+        dispatcher(ConnectionPerform.OngoingCall, metadata)
+    }
 
     /**
      * Updates the video provider and profile based on session requirements.
@@ -433,6 +458,7 @@ class PhoneConnection internal constructor(
         }
         return avaliablecallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_BLUETOOTH }
             ?: avaliablecallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_WIRED_HEADSET }
+            ?: avaliablecallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_STREAMING }
             ?: avaliablecallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_EARPIECE }
     }
 
@@ -456,6 +482,8 @@ class PhoneConnection internal constructor(
             disconnected = true
             setDisconnected(disconnectCause)
             onDisconnect()
+        } else {
+            logger.v("terminateCallWithCause: already disconnected for callId: $id")
         }
     }
 
@@ -465,13 +493,14 @@ class PhoneConnection internal constructor(
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     private inner class EndpointChangeReceiver(private val endpoint: CallEndpoint) :
         OutcomeReceiver<Void, CallEndpointException> {
-        override fun onResult(p0: Void?) = Log.d(TAG, "Endpoint changed to: $endpoint")
+        override fun onResult(p0: Void?) = logger.d("Endpoint successfully changed to: $endpoint")
         override fun onError(error: CallEndpointException) =
-            Log.e(TAG, "Endpoint change failed: ${error.message}")
+            logger.e("Endpoint change failed for $endpoint: ${error.message}")
     }
 
     companion object {
         private const val TAG = "PhoneConnection"
+        private val logger = Log(TAG)
 
         /**
          * Factory method for incoming call instances.

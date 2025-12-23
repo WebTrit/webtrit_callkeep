@@ -2,9 +2,10 @@ package com.webtrit.callkeep.common
 
 import android.os.Handler
 import android.os.Looper
+import android.util.Log as AndroidLog
+
 import com.webtrit.callkeep.PDelegateLogsFlutterApi
 import com.webtrit.callkeep.PLogTypeEnum
-import android.util.Log as AndroidLog
 
 /**
  * A logging utility that can be instantiated with a specific tag or used statically.
@@ -39,7 +40,7 @@ class Log(private val tag: String) {
         log(PLogTypeEnum.WARN, tag, "$message\n$throwable")
 
     companion object {
-        // List of delegates that will receive log messages
+        private const val GLOBAL_PREFIX = "CK-"
         private var isolateDelegates = mutableListOf<PDelegateLogsFlutterApi>()
 
         /**
@@ -59,25 +60,41 @@ class Log(private val tag: String) {
         }
 
         /**
-         * Logs a message with the specified log type. (Static version)
+         * Internal dispatcher for log messages.
          */
         private fun log(type: PLogTypeEnum, tag: String, message: String) {
+            val prefixedTag = "$GLOBAL_PREFIX$tag"
             if (isolateDelegates.isEmpty()) {
-                // If no delegates, log to Android's system log
-                when (type) {
-                    PLogTypeEnum.DEBUG -> AndroidLog.d(tag, message)
-                    PLogTypeEnum.INFO -> AndroidLog.i(tag, message)
-                    PLogTypeEnum.WARN -> AndroidLog.w(tag, message)
-                    PLogTypeEnum.ERROR -> AndroidLog.e(tag, message)
-                    PLogTypeEnum.VERBOSE -> AndroidLog.v(tag, message)
-                }
+                performSystemLog(type, prefixedTag, message)
             } else {
-                // If delegates exist, send the log to the first delegate
-                Handler(Looper.getMainLooper()).post {
-                    isolateDelegates.firstOrNull()?.onLog(type, tag, message) {}
-                }
+                dispatchToDelegate(type, prefixedTag, message)
             }
         }
+
+        /**
+         * Logs to the standard Android system log.
+         */
+        private fun performSystemLog(type: PLogTypeEnum, tag: String, message: String) {
+            when (type) {
+                PLogTypeEnum.DEBUG -> AndroidLog.d(tag, message)
+                PLogTypeEnum.INFO -> AndroidLog.i(tag, message)
+                PLogTypeEnum.WARN -> AndroidLog.w(tag, message)
+                PLogTypeEnum.ERROR -> AndroidLog.e(tag, message)
+                PLogTypeEnum.VERBOSE -> AndroidLog.v(tag, message)
+            }
+        }
+
+        /**
+         * Dispatches log events to the main thread for delegate consumption.
+         */
+        private fun dispatchToDelegate(type: PLogTypeEnum, tag: String, message: String) =
+            Handler(Looper.getMainLooper()).post { notifyFirstDelegate(type, tag, message) }
+
+        /**
+         * Notifies the primary registered isolate delegate.
+         */
+        private fun notifyFirstDelegate(type: PLogTypeEnum, tag: String, message: String) =
+            isolateDelegates.firstOrNull()?.onLog(type, tag, message) {}
 
         /**
          * Logs an error message. (Static version)
