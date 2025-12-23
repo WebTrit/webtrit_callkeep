@@ -82,9 +82,9 @@ class PhoneConnection internal constructor(
     /**
      * Synchronizes the internal mute state and notifies the application.
      */
-    fun changeMuteState(isMute: Boolean) {
-        logger.d("Changing mute state to: $isMute for callId: $id")
-        this.isMute = isMute
+    fun changeMuteState(muted: Boolean) {
+        logger.d("Changing mute state to: $muted for callId: $id")
+        this.isMute = muted
         dispatcher(ConnectionPerform.AudioMuting, metadata.copy(hasMute = this.isMute))
     }
 
