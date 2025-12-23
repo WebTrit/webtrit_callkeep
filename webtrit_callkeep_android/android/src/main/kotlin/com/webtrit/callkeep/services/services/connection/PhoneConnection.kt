@@ -28,7 +28,6 @@ import com.webtrit.callkeep.models.AudioDevice
 import com.webtrit.callkeep.models.AudioDeviceType
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
-import com.webtrit.callkeep.services.services.connection.PhoneVideoProvider
 import com.webtrit.callkeep.services.services.connection.models.PerformDispatchHandle
 
 /**
@@ -46,10 +45,7 @@ class PhoneConnection internal constructor(
     private var answer = false
     private var disconnected = false
 
-    /**
-     * TODO: Rename to availableCallEndpoints in the next major version.
-     */
-    private var avaliablecallEndpoints: List<CallEndpoint> = emptyList()
+    private var availableCallEndpoints: List<CallEndpoint> = emptyList()
 
     private val notificationManager = NotificationManager()
     private val audioManager = AudioManager(context)
@@ -128,6 +124,8 @@ class PhoneConnection internal constructor(
     override fun onDisconnect() {
         logger.i("Disconnecting call: $id")
         super.onDisconnect()
+
+        timeout?.cancel()
         notificationManager.cancelIncomingNotification(isAnswered())
         notificationManager.cancelActiveCallNotification(id)
         audioManager.stopRingtone()
@@ -247,8 +245,8 @@ class PhoneConnection internal constructor(
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     private fun updateModernAudioState() {
         onCallEndpointChanged(currentCallEndpoint)
-        if (avaliablecallEndpoints.isNotEmpty()) {
-            onAvailableCallEndpointsChanged(avaliablecallEndpoints)
+        if (availableCallEndpoints.isNotEmpty()) {
+            onAvailableCallEndpointsChanged(availableCallEndpoints)
         }
         dispatcher(ConnectionPerform.AudioMuting, metadata.copy(hasMute = isMute))
     }
@@ -260,7 +258,7 @@ class PhoneConnection internal constructor(
     override fun onAvailableCallEndpointsChanged(callEndpoints: List<CallEndpoint>) {
         super.onAvailableCallEndpointsChanged(callEndpoints)
         logger.d("Available call endpoints changed: $callEndpoints")
-        avaliablecallEndpoints = callEndpoints
+        availableCallEndpoints = callEndpoints
         val devices = callEndpoints.map(::mapEndpointToAudioDevice)
         dispatcher(ConnectionPerform.AudioDevicesUpdate, metadata.copy(audioDevices = devices))
     }
@@ -297,7 +295,7 @@ class PhoneConnection internal constructor(
         logger.i("Setting audio device: $device for callId: $id")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             val endpoint =
-                avaliablecallEndpoints.firstOrNull { it.identifier == ParcelUuid.fromString(device.id!!) }
+                availableCallEndpoints.firstOrNull { it.identifier == ParcelUuid.fromString(device.id!!) }
             if (endpoint != null) {
                 performEndpointChange(endpoint)
             } else {
@@ -458,12 +456,12 @@ class PhoneConnection internal constructor(
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     private fun findSpeakerEndpoint(isActive: Boolean): CallEndpoint? {
         if (isActive) {
-            return avaliablecallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_SPEAKER }
+            return availableCallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_SPEAKER }
         }
-        return avaliablecallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_BLUETOOTH }
-            ?: avaliablecallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_WIRED_HEADSET }
-            ?: avaliablecallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_STREAMING }
-            ?: avaliablecallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_EARPIECE }
+        return availableCallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_BLUETOOTH }
+            ?: availableCallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_WIRED_HEADSET }
+            ?: availableCallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_STREAMING }
+            ?: availableCallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_EARPIECE }
     }
 
     /**
