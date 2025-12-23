@@ -2,9 +2,10 @@ package com.webtrit.callkeep.common
 
 import android.os.Handler
 import android.os.Looper
+import android.util.Log as AndroidLog
 import com.webtrit.callkeep.PDelegateLogsFlutterApi
 import com.webtrit.callkeep.PLogTypeEnum
-import android.util.Log as AndroidLog
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * A logging utility that can be instantiated with a specific tag or used statically.
@@ -39,8 +40,20 @@ class Log(private val tag: String) {
         log(PLogTypeEnum.WARN, tag, "$message\n$throwable")
 
     companion object {
-        // List of delegates that will receive log messages
-        private var isolateDelegates = mutableListOf<PDelegateLogsFlutterApi>()
+        /**
+         * Prefix prepended to all log tags to uniquely identify library-related log output.
+         */
+        private const val GLOBAL_PREFIX = "CK-"
+
+        /**
+         * Collection of registered Flutter API delegates that receive and process log events.
+         */
+        private var isolateDelegates = CopyOnWriteArrayList<PDelegateLogsFlutterApi>()
+
+        /**
+         * Reusable handler tied to the main looper for dispatching logs to delegates.
+         */
+        private val mainHandler = Handler(Looper.getMainLooper())
 
         /**
          * Adds a delegate to receive log messages.
@@ -59,24 +72,53 @@ class Log(private val tag: String) {
         }
 
         /**
-         * Logs a message with the specified log type. (Static version)
+         * Internal dispatcher for log messages.
          */
-        private fun log(type: PLogTypeEnum, tag: String, message: String) {
+        private fun log(
+            type: PLogTypeEnum, tag: String, message: String, throwable: Throwable? = null
+        ) {
+            val prefixedTag = "$GLOBAL_PREFIX$tag"
             if (isolateDelegates.isEmpty()) {
-                // If no delegates, log to Android's system log
-                when (type) {
-                    PLogTypeEnum.DEBUG -> AndroidLog.d(tag, message)
-                    PLogTypeEnum.INFO -> AndroidLog.i(tag, message)
-                    PLogTypeEnum.WARN -> AndroidLog.w(tag, message)
-                    PLogTypeEnum.ERROR -> AndroidLog.e(tag, message)
-                    PLogTypeEnum.VERBOSE -> AndroidLog.v(tag, message)
-                }
+                performSystemLog(type, prefixedTag, message, throwable)
             } else {
-                // If delegates exist, send the log to the first delegate
-                Handler(Looper.getMainLooper()).post {
-                    isolateDelegates.firstOrNull()?.onLog(type, tag, message) {}
-                }
+                dispatchToDelegate(type, prefixedTag, message, throwable)
             }
+        }
+
+        /**
+         * Logs to the standard Android system log with proper throwable handling.
+         */
+        private fun performSystemLog(
+            type: PLogTypeEnum, tag: String, message: String, throwable: Throwable?
+        ) {
+            when (type) {
+                PLogTypeEnum.DEBUG -> AndroidLog.d(tag, message, throwable)
+                PLogTypeEnum.INFO -> AndroidLog.i(tag, message, throwable)
+                PLogTypeEnum.WARN -> AndroidLog.w(tag, message, throwable)
+                PLogTypeEnum.ERROR -> AndroidLog.e(tag, message, throwable)
+                PLogTypeEnum.VERBOSE -> AndroidLog.v(tag, message, throwable)
+            }
+        }
+
+        /**
+         * Dispatches log events to the main thread for delegate consumption.
+         */
+        private fun dispatchToDelegate(
+            type: PLogTypeEnum, tag: String, message: String, throwable: Throwable?
+        ) = mainHandler.post { notifyFirstDelegate(type, tag, message, throwable) }
+
+        /**
+         * Notifies the primary registered isolate delegate.
+         */
+        private fun notifyFirstDelegate(
+            type: PLogTypeEnum, tag: String, message: String, throwable: Throwable?
+        ) {
+            val fullMessage = if (throwable != null) {
+                "$message\n${AndroidLog.getStackTraceString(throwable)}"
+            } else {
+                message
+            }
+            isolateDelegates.firstOrNull()?.onLog(type, tag, fullMessage) {}
         }
 
         /**
