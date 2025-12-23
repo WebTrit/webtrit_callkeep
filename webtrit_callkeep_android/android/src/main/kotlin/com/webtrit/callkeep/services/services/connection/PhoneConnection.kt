@@ -293,9 +293,18 @@ class PhoneConnection internal constructor(
      */
     fun setAudioDevice(device: AudioDevice) {
         logger.i("Setting audio device: $device for callId: $id")
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            val endpoint =
-                availableCallEndpoints.firstOrNull { it.identifier == ParcelUuid.fromString(device.id!!) }
+            val deviceId = device.id
+            if (deviceId == null) {
+                logger.e("Cannot set audio device: null device id. Requested device: $device, callId: $id")
+                return
+            }
+
+            val endpoint = availableCallEndpoints.firstOrNull {
+                it.identifier == ParcelUuid.fromString(deviceId)
+            }
+
             if (endpoint != null) {
                 performEndpointChange(endpoint)
             } else {
