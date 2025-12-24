@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Tests for [CallMetadata.updateFrom].
+ * Tests for [CallMetadata.mergeWith].
  *
  * Verifies that partial updates (patching) work correctly, ensuring that
  * specific fields can be updated without resetting other fields to null/defaults.
@@ -16,7 +16,7 @@ class CallMetadataUpdateTest {
             private set
 
         fun updateData(requestCallMetadata: CallMetadata) {
-            metadata = metadata.updateFrom(requestCallMetadata)
+            metadata = metadata.mergeWith(requestCallMetadata)
         }
     }
 
@@ -26,7 +26,7 @@ class CallMetadataUpdateTest {
      * Existing flags (video, speaker) must be preserved and not reset to null.
      */
     @Test
-    fun `updateFrom updates only display name and preserves flags`() {
+    fun `mergeWith updates only display name and preserves flags`() {
         val initial = CallMetadata(
             callId = "call-uuid-1",
             hasVideo = true,
@@ -53,7 +53,7 @@ class CallMetadataUpdateTest {
      * Critical UI data like Handle and Name must be preserved to avoid UI flickering.
      */
     @Test
-    fun `updateFrom updates only proximity and preserves handle and name`() {
+    fun `mergeWith updates only proximity and preserves handle and name`() {
         val handle = CallHandle("100")
         val initial = CallMetadata(
             callId = "call-uuid-2",
@@ -81,7 +81,7 @@ class CallMetadataUpdateTest {
      * Other states, such as Mute, must remain unchanged.
      */
     @Test
-    fun `updateFrom updates only hasVideo and preserves other flags`() {
+    fun `mergeWith updates only hasVideo and preserves other flags`() {
         val initial = CallMetadata(
             callId = "call-uuid-3",
             hasVideo = false,
@@ -106,7 +106,7 @@ class CallMetadataUpdateTest {
      * It should not be treated as "missing value".
      */
     @Test
-    fun `updateFrom overwrites true with explicit false`() {
+    fun `mergeWith overwrites true with explicit false`() {
         val initial = CallMetadata("id", hasVideo = true)
         val connection = FakePhoneConnection(initial)
 
@@ -122,7 +122,7 @@ class CallMetadataUpdateTest {
      * and the existing list should be preserved.
      */
     @Test
-    fun `updateFrom preserves audio devices when update contains empty list`() {
+    fun `mergeWith preserves audio devices when update contains empty list`() {
         val device = AudioDevice(AudioDeviceType.EARPIECE, "Ear", "1")
         val initial = CallMetadata("id", audioDevices = listOf(device))
         val connection = FakePhoneConnection(initial)
@@ -140,7 +140,7 @@ class CallMetadataUpdateTest {
      * the existing list.
      */
     @Test
-    fun `updateFrom replaces audio devices when update contains new list`() {
+    fun `mergeWith replaces audio devices when update contains new list`() {
         val device1 = AudioDevice(AudioDeviceType.EARPIECE, "Ear", "1")
         val initial = CallMetadata("id", audioDevices = listOf(device1))
         val connection = FakePhoneConnection(initial)

@@ -81,7 +81,7 @@ data class CallMetadata(
      * @param other The metadata object containing newer values.
      * @return A new [CallMetadata] instance with merged values, or `this` if [other] is null.
      */
-    fun updateFrom(other: CallMetadata?): CallMetadata {
+    fun mergeWith(other: CallMetadata?): CallMetadata {
         if (other == null) return this
 
         return copy(

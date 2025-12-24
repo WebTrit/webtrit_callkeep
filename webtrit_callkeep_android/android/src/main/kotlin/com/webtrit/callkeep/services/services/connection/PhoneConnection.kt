@@ -353,7 +353,7 @@ class PhoneConnection internal constructor(
      * Updates call identity and visual parameters.
      */
     fun updateData(requestCallMetadata: CallMetadata) {
-        metadata = metadata.updateFrom(requestCallMetadata)
+        metadata = metadata.mergeWith(requestCallMetadata)
         extras = metadata.toBundle()
 
         setAddress(metadata.number.toUri(), TelecomManager.PRESENTATION_ALLOWED)
