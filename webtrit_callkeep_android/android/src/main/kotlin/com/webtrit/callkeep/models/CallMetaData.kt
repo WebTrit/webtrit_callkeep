@@ -71,8 +71,7 @@ data class CallMetadata(
      * Updates the current metadata with values from [other].
      *
      * **Merge Strategy:**
-     * - **Nullable Fields:** Updated only if [other] provides a non-null value. Existing values are preserved if [other] has nulls.
-     * - **Boolean Fields:** Always overwritten by values from [other].
+     * - **Nullable Fields (including Booleans):** Updated only if [other] provides a non-null value. Existing values are preserved if [other] has nulls.
      * - **Collections (audioDevices):** Updated only if [other]'s list is **non-empty**.
      *
      * **Limitations:**
@@ -89,13 +88,13 @@ data class CallMetadata(
             callId = other.callId,
             displayName = other.displayName ?: displayName,
             handle = other.handle ?: handle,
-            hasVideo = other.hasVideo,
-            hasSpeaker = other.hasSpeaker,
+            hasVideo = other.hasVideo ?: hasVideo,
+            hasSpeaker = other.hasSpeaker ?: hasSpeaker,
             audioDevice = other.audioDevice ?: audioDevice,
             audioDevices = other.audioDevices.ifEmpty { audioDevices },
-            proximityEnabled = other.proximityEnabled,
-            hasMute = other.hasMute,
-            hasHold = other.hasHold,
+            proximityEnabled = other.proximityEnabled ?: proximityEnabled,
+            hasMute = other.hasMute ?: hasMute,
+            hasHold = other.hasHold ?: hasHold,
             dualToneMultiFrequency = other.dualToneMultiFrequency ?: dualToneMultiFrequency,
             ringtonePath = other.ringtonePath ?: ringtonePath,
             createdTime = other.createdTime ?: createdTime,
