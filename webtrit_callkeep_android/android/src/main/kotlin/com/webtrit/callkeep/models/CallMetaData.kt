@@ -2,6 +2,7 @@ package com.webtrit.callkeep.models
 
 import android.os.Bundle
 import com.webtrit.callkeep.common.CallDataConst
+import com.webtrit.callkeep.common.extensions.getCharOrNull
 import com.webtrit.callkeep.common.extensions.getLongOrNull
 import com.webtrit.callkeep.common.parcelableArrayList
 
@@ -64,9 +65,29 @@ data class CallMetadata(
         acceptedTime?.let { putLong(CALL_METADATA_ACCEPTED_TIME, it) }
     }
 
-    fun mergeWith(other: CallMetadata?): CallMetadata {
+    /**
+     * Updates the current metadata with values from [other].
+     *
+     * **Merge Strategy:**
+     * - **Nullable Fields:** Updated only if [other] provides a non-null value. Existing values are preserved if [other] has nulls.
+     * - **Boolean Fields:** Always overwritten by values from [other].
+     * - **Collections (audioDevices):** Updated only if [other]'s list is **non-empty**.
+     *
+     * **Limitations:**
+     * - **Audio Devices:** It is **not possible to clear** the [audioDevices] list using this method. Passing an empty list in [other] will cause the existing list to be preserved.
+     * - **Unsetting Values:** It is not possible to unset nullable fields (set them back to null) via this method.
+     *
+     * @param other The metadata object containing newer values.
+     * @return A new [CallMetadata] instance with merged values, or `this` if [other] is null.
+     */
+    fun updateFrom(other: CallMetadata?): CallMetadata {
         if (other == null) return this
 
+        // TODO: Fix boolean state overwrite issue.
+        // Currently, boolean fields (hasVideo, etc.) default to 'false' in 'other'.
+        // If 'other' is a partial update where these fields are missing,
+        // they will overwrite the current 'true' state with 'false'.
+        // Consider changing these fields to Boolean? (nullable) to support partial updates correctly.
         return copy(
             callId = other.callId,
             displayName = other.displayName ?: displayName,
@@ -74,8 +95,6 @@ data class CallMetadata(
             hasVideo = other.hasVideo,
             hasSpeaker = other.hasSpeaker,
             audioDevice = other.audioDevice ?: audioDevice,
-            // logic: only replace if new list is not empty.
-            // Warning: prevents clearing the list via merge.
             audioDevices = other.audioDevices.ifEmpty { audioDevices },
             proximityEnabled = other.proximityEnabled,
             hasMute = other.hasMute,
@@ -85,10 +104,6 @@ data class CallMetadata(
             createdTime = other.createdTime ?: createdTime,
             acceptedTime = other.acceptedTime ?: acceptedTime
         )
-    }
-
-    override fun toString(): String {
-        return "CallMetadata(" + "callId='$callId', " + "displayName=${displayName?.let { "'$it'" }}, " + "handle=$handle, " + "hasVideo=$hasVideo, " + "hasSpeaker=$hasSpeaker, " + "audioDevice=$audioDevice, " + "audioDevices=$audioDevices, " + "proximityEnabled=$proximityEnabled, " + "hasMute=$hasMute, " + "hasHold=$hasHold, " + "dualToneMultiFrequency=$dualToneMultiFrequency, " + "ringtonePath=${ringtonePath?.let { "'$it'" }}, " + "createdTime=$createdTime, " + "acceptedTime=$acceptedTime" + ")"
     }
 
     companion object {
@@ -116,7 +131,7 @@ data class CallMetadata(
                 proximityEnabled = bundle.getBoolean(CallDataConst.PROXIMITY_ENABLED, false),
                 hasMute = bundle.getBoolean(CallDataConst.HAS_MUTE, false),
                 hasHold = bundle.getBoolean(CallDataConst.HAS_HOLD, false),
-                dualToneMultiFrequency = bundle.getChar(CallDataConst.DTMF)
+                dualToneMultiFrequency = bundle.getCharOrNull(CallDataConst.DTMF)
                     .takeIf { it != DEFAULT_CHAR_VALUE },
                 ringtonePath = bundle.getString(CALL_RINGTONE_PATH),
                 createdTime = bundle.getLongOrNull(CALL_METADATA_CREATED_TIME),

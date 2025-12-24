@@ -329,7 +329,7 @@ class PhoneConnection internal constructor(
      * Updates call identity and visual parameters.
      */
     fun updateData(metadata: CallMetadata) {
-        this.metadata = this.metadata.mergeWith(metadata)
+        this.metadata = this.metadata.updateFrom(metadata)
         extras = metadata.toBundle()
         setAddress(metadata.number.toUri(), TelecomManager.PRESENTATION_ALLOWED)
         setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
