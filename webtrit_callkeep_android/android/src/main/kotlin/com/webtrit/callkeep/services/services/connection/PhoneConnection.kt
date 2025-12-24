@@ -33,7 +33,7 @@ import com.webtrit.callkeep.services.services.connection.models.PerformDispatchH
 class PhoneConnection internal constructor(
     private val context: Context,
     private val dispatcher: PerformDispatchHandle,
-    var metadata: CallMetadata,
+    private var metadata: CallMetadata,
     var onDisconnectCallback: (connection: PhoneConnection) -> Unit,
     var timeout: ConnectionTimeout? = null,
 ) : Connection() {
@@ -46,6 +46,30 @@ class PhoneConnection internal constructor(
 
     private val notificationManager = NotificationManager()
     private val audioManager = AudioManager(context)
+
+    val callId: String
+        get() = metadata.callId
+
+    val displayName: String?
+        get() = metadata.displayName
+
+    val handle: com.webtrit.callkeep.models.CallHandle?
+        get() = metadata.handle
+
+    val hasVideo: Boolean
+        get() = metadata.hasVideo ?: false
+
+    val hasSpeaker: Boolean
+        get() = isHasSpeaker
+
+    val proximityEnabled: Boolean
+        get() = metadata.proximityEnabled ?: false
+
+    val hasMute: Boolean
+        get() = isMute
+
+    val hasHold: Boolean
+        get() = state == STATE_HOLDING
 
     init {
         audioModeIsVoip = true
@@ -328,12 +352,13 @@ class PhoneConnection internal constructor(
     /**
      * Updates call identity and visual parameters.
      */
-    fun updateData(metadata: CallMetadata) {
-        this.metadata = this.metadata.updateFrom(metadata)
+    fun updateData(requestCallMetadata: CallMetadata) {
+        metadata = metadata.mergeWith(requestCallMetadata)
         extras = metadata.toBundle()
+
         setAddress(metadata.number.toUri(), TelecomManager.PRESENTATION_ALLOWED)
         setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
-        applyVideoState(metadata.hasVideo)
+        applyVideoState(metadata.hasVideo == true)
     }
 
     /**

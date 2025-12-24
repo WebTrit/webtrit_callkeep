@@ -33,7 +33,7 @@ fun PhoneConnection.toPConnection(): PCallkeepConnection? {
         callkeepDisconnectCauseType, disconnectCause.reason ?: "Unknown reason"
     )
 
-    return PCallkeepConnection(metadata.callId, callkeepStatus, callkeepDisconnectCause)
+    return PCallkeepConnection(callId, callkeepStatus, callkeepDisconnectCause)
 }
 
 fun PAudioDevice.toAudioDevice(): AudioDevice {

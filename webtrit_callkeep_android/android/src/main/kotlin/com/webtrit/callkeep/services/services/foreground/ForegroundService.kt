@@ -421,7 +421,7 @@ class ForegroundService : Service(), PHostApi {
             flutterDelegateApi?.didPushIncomingCall(
                 handleArg = metadata.handle!!.toPHandle(),
                 displayNameArg = metadata.displayName,
-                videoArg = metadata.hasVideo,
+                videoArg = metadata.hasVideo ?: false,
                 callIdArg = metadata.callId,
                 errorArg = null
             ) {}
@@ -458,7 +458,7 @@ class ForegroundService : Service(), PHostApi {
                 callMetaData.callId,
                 callMetaData.handle!!.toPHandle(),
                 callMetaData.name,
-                callMetaData.hasVideo,
+                callMetaData.hasVideo ?: false,
             ) {}
         }
     }
@@ -467,7 +467,7 @@ class ForegroundService : Service(), PHostApi {
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
             flutterDelegateApi?.performSetSpeaker(
-                callMetaData.callId, callMetaData.hasSpeaker
+                callMetaData.callId, callMetaData.hasSpeaker ?: false
             ) {}
         }
     }
@@ -494,7 +494,7 @@ class ForegroundService : Service(), PHostApi {
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
             flutterDelegateApi?.performSetMuted(
-                callMetaData.callId, callMetaData.hasMute
+                callMetaData.callId, callMetaData.hasMute ?: false
             ) {}
         }
     }
@@ -503,7 +503,7 @@ class ForegroundService : Service(), PHostApi {
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
             flutterDelegateApi?.performSetHeld(
-                callMetaData.callId, callMetaData.hasHold
+                callMetaData.callId, callMetaData.hasHold ?: false
             ) {}
         }
     }
@@ -566,8 +566,7 @@ class ForegroundService : Service(), PHostApi {
 
         Handler(Looper.getMainLooper()).post {
             connections.forEach { connection ->
-                val metadata = connection.metadata
-                val handle = metadata.handle
+                val handle = connection.handle
 
                 if (handle == null) {
                     Log.w(TAG, "onDelegateSet: Skipping connection with null handle")
