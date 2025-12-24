@@ -3,6 +3,24 @@ package com.webtrit.callkeep.models
 import android.os.Bundle
 import com.webtrit.callkeep.common.CallDataConst
 
+/**
+ * WARNING: DO NOT USE @Parcelize OR Parcelable FOR THIS CLASS.
+ *
+ * Technical Reason:
+ * Objects of this class are passed to the Android system process via the Telecom Framework (ConnectionService).
+ * The system process (system_server) often attempts to unmarshal the Bundle contents for internal
+ * operations, such as logging (ConnectionRequest.toString()) or inspecting transaction extras.
+ *
+ * Since [CallMetadata] is a custom class defined within the application, the system's ClassLoader
+ * is unaware of it. If a Parcelable object of this type is included in the Bundle, the system
+ * will throw an [android.os.BadParcelableException] caused by a [java.lang.ClassNotFoundException].
+ * This results in a fatal crash of the system process or the connection service.
+ *
+ * Solution:
+ * Use manual serialization by packing individual fields into a [Bundle] using standard Android
+ * types (String, Boolean, Long, etc.). These types can be safely unmarshalled by the system
+ * without loading application-specific classes.
+ */
 data class CallMetadata(
     val callId: String,
     val displayName: String? = null,
