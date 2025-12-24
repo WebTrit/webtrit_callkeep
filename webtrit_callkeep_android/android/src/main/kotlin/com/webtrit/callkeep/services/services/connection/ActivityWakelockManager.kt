@@ -86,9 +86,20 @@ class ActivityWakelockManager(private val activityProvider: ActivityProvider) {
 
     /**
      * Disposes of the WakelockManager by unsubscribing from ActivityHolder updates.
+     * Forcefully clears the keep-screen-on flag before disposing resources to prevent leaks.
      */
     fun dispose() {
-        logger.d("Disposing ActivityWakelockManager. Clearing queue and listeners.")
+        logger.d("Disposing ActivityWakelockManager. Cleanup started.")
+
+        activityProvider.getActivity()?.let { activity ->
+            runCatching {
+                logger.v("Force clearing FLAG_KEEP_SCREEN_ON on ${activity.componentName.shortClassName}")
+                activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }.onFailure { e ->
+                logger.e("Failed to clear flag during dispose", e)
+            }
+        }
+
         operationQueue.clear()
         activityProvider.removeActivityChangeListener(activityChangeListener)
     }

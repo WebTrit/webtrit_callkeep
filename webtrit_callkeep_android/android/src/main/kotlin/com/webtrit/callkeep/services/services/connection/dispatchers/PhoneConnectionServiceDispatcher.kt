@@ -71,9 +71,7 @@ class PhoneConnectionServiceDispatcher(
         logger.d("Dispatching LifecycleAction: $action")
         when (action) {
             ConnectionLifecycleAction.ConnectionCreated -> metadata?.let {
-                handleConnectionCreated(
-                    it
-                )
+                handleConnectionCreated(it)
             }
 
             ConnectionLifecycleAction.ConnectionChanged -> handleConnectionChanged()
@@ -82,39 +80,25 @@ class PhoneConnectionServiceDispatcher(
     }
 
     private fun handleAnswerCall(metadata: CallMetadata) {
-        logger.d("Starting proximity sensor for AnswerCall")
-        proximitySensorManager.startListening()
-
-        executeOnConnection(metadata, "AnswerCall") {
-            it.onAnswer()
-        }
+        logger.d("Processing AnswerCall.")
+        executeOnConnection(metadata, "AnswerCall", PhoneConnection::onAnswer)
+        updateSensorsState()
     }
 
     private fun handleDeclineCall(metadata: CallMetadata) {
-        executeOnConnection(metadata, "DeclineCall") {
-            it.declineCall()
-        }
-
-        logger.d("Stopping proximity sensor (DeclineCall)")
-        proximitySensorManager.stopListening()
+        executeOnConnection(metadata, "DeclineCall", PhoneConnection::declineCall)
+        updateSensorsState()
     }
 
     private fun handleHungUpCall(metadata: CallMetadata) {
-        executeOnConnection(metadata, "HungUpCall") {
-            it.hungUp()
-        }
-
-        logger.d("Stopping proximity sensor (HungUpCall)")
-        proximitySensorManager.stopListening()
+        executeOnConnection(metadata, "HungUpCall", PhoneConnection::hungUp)
+        updateSensorsState()
     }
 
     private fun handleEstablishCall(metadata: CallMetadata) {
-        logger.d("Starting proximity sensor for EstablishCall")
-        proximitySensorManager.startListening()
-
-        executeOnConnection(metadata, "EstablishCall") {
-            it.establish()
-        }
+        logger.d("Processing EstablishCall. Updating sensors.")
+        executeOnConnection(metadata, "EstablishCall", PhoneConnection::establish)
+        updateSensorsState()
     }
 
     private fun handleMute(metadata: CallMetadata) {
@@ -130,19 +114,16 @@ class PhoneConnectionServiceDispatcher(
     }
 
     private fun handleUpdateCall(metadata: CallMetadata) {
-        if (metadata.hasVideo) {
-            activityWakelockManager.acquireScreenWakeLock()
-        } else {
-            activityWakelockManager.releaseScreenWakeLock()
-        }
-
         val connection = connectionManager.getConnection(metadata.callId)
         if (connection != null) {
             logger.v("Updating data for connection: ${metadata.callId}")
             connection.updateData(metadata)
         } else {
             logger.d("Connection not found for update, ignoring. CallId: ${metadata.callId}")
+            return
         }
+
+        updateSensorsState()
     }
 
     private fun handleSendDTMF(metadata: CallMetadata) {
@@ -180,34 +161,66 @@ class PhoneConnectionServiceDispatcher(
         logger.i("Tearing down all ${connections.size} active connections")
 
         connections.forEach { it.hungUp() }
+        updateSensorsState()
     }
 
-
     private fun handleConnectionCreated(metadata: CallMetadata) {
-        if (metadata.hasVideo) {
-            logger.d("Video connection created. Requesting Screen WakeLock. CallId: ${metadata.callId}")
-            activityWakelockManager.acquireScreenWakeLock()
-        }
-
-        // Handle Proximity Sensor Logic
-        // If it is a video call, the proximity sensor should be disabled.
-        // If it is an audio call, we respect the 'proximityEnabled' flag (defaulting to true for audio).
-        val shouldListenProximity = if (metadata.hasVideo) false else metadata.proximityEnabled
-        logger.d("Setting proximity listen state to: $shouldListenProximity for callId: ${metadata.callId}")
-        proximitySensorManager.setShouldListenProximity(shouldListenProximity)
+        logger.d("Connection created for CallId: ${metadata.callId}. Syncing sensors state.")
+        updateSensorsState()
     }
 
     private fun handleConnectionChanged() {
-        if (!connectionManager.hasVideoConnections()) {
-            logger.d("No active video connections remaining. Releasing Screen WakeLock.")
-            activityWakelockManager.releaseScreenWakeLock()
-        }
-        proximitySensorManager.stopListening()
+        logger.d("Connection list changed. Syncing sensors state.")
+        updateSensorsState()
     }
 
     private fun handleServiceDestroyed() {
         logger.i("Service destroyed. Disposing resources.")
+        activityWakelockManager.releaseScreenWakeLock()
+        proximitySensorManager.setShouldListenProximity(false)
         activityWakelockManager.dispose()
+    }
+
+    /**
+     * Centralized logic to manage Proximity Sensor and Screen WakeLock based on
+     * the global state of all connections.
+     *
+     * Rule:
+     * 1. If ANY video connection exists -> Screen ON (WakeLock), Proximity OFF.
+     * 2. If NO video but ANY audio connection -> Screen managed by Proximity (WakeLock OFF).
+     * 3. If NO connections -> All sensors OFF.
+     */
+    private fun updateSensorsState() {
+        // Get ONLY active (non-disconnected) connections directly
+        val activeConnections = connectionManager.getConnections()
+        val hasAnyConnection = activeConnections.isNotEmpty()
+
+        // Check metadata specifically on the active connections list.
+        // This avoids race conditions where the map might still contain a stale connection
+        // or a connecting call hasn't updated its metadata yet.
+        val hasVideo = activeConnections.any { it.metadata.hasVideo }
+        // Proximity should only be enabled for audio-only calls that explicitly allow it.
+        val shouldEnableProximity = activeConnections.any {
+            !it.metadata.hasVideo && it.metadata.proximityEnabled
+        }
+        logger.v(
+            "Updating sensors state. HasVideo: $hasVideo, HasAnyConnection: $hasAnyConnection, ShouldEnableProximity: $shouldEnableProximity"
+        )
+        if (hasVideo) {
+            activityWakelockManager.acquireScreenWakeLock()
+            proximitySensorManager.setShouldListenProximity(false)
+            proximitySensorManager.stopListening()
+        } else {
+            activityWakelockManager.releaseScreenWakeLock()
+
+            if (shouldEnableProximity) {
+                proximitySensorManager.setShouldListenProximity(true)
+                proximitySensorManager.startListening()
+            } else {
+                proximitySensorManager.setShouldListenProximity(false)
+                proximitySensorManager.stopListening()
+            }
+        }
     }
 
     /**
