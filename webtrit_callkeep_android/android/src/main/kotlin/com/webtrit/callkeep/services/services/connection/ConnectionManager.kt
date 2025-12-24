@@ -54,7 +54,7 @@ class ConnectionManager {
      */
     fun hasVideoConnections(): Boolean {
         synchronized(connectionResourceLock) {
-            return connections.any { it.value.metadata.hasVideo }
+            return connections.any { it.value.hasVideo }
         }
     }
 

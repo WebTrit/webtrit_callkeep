@@ -58,7 +58,7 @@ class ActiveCallService : Service() {
     private fun getForegroundServiceTypes(callsMetadata: List<CallMetadata>): Int? {
         return when {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
-                val hasVideo = callsMetadata.any { it.hasVideo }
+                val hasVideo = callsMetadata.any { it.hasVideo ?: false }
                 val hasCameraPermission = PermissionsHelper(this).hasCameraPermission()
                 val audioDevice = callsMetadata.any { it.audioDevice != null }
                 val audioDevices = callsMetadata.any { it.audioDevices.isNotEmpty() }

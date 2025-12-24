@@ -255,7 +255,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         isolateCalkeepFlutterApi?.performReceivedCall(
             metadata.callId,
             metadata.number,
-            metadata.hasVideo,
+            metadata.hasVideo ?: false,
             metadata.createdTime ?: System.currentTimeMillis(),
             metadata.displayName,
             null,

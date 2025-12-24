@@ -2,8 +2,10 @@ package com.webtrit.callkeep.models
 
 import android.os.Bundle
 import com.webtrit.callkeep.common.CallDataConst
+import com.webtrit.callkeep.common.extensions.getBooleanOrNull
 import com.webtrit.callkeep.common.extensions.getCharOrNull
 import com.webtrit.callkeep.common.extensions.getLongOrNull
+import com.webtrit.callkeep.common.extensions.getStringOrNull
 import com.webtrit.callkeep.common.parcelableArrayList
 
 /**
@@ -28,13 +30,13 @@ data class CallMetadata(
     val callId: String,
     val displayName: String? = null,
     val handle: CallHandle? = null,
-    val hasVideo: Boolean = false,
-    val hasSpeaker: Boolean = false,
+    val hasVideo: Boolean? = null,
+    val hasSpeaker: Boolean? = null,
     val audioDevice: AudioDevice? = null,
     val audioDevices: List<AudioDevice> = emptyList(),
-    val proximityEnabled: Boolean = false,
-    val hasMute: Boolean = false,
-    val hasHold: Boolean = false,
+    val proximityEnabled: Boolean? = null,
+    val hasMute: Boolean? = null,
+    val hasHold: Boolean? = null,
     val dualToneMultiFrequency: Char? = null,
     val ringtonePath: String? = null,
     val createdTime: Long? = null,
@@ -45,11 +47,11 @@ data class CallMetadata(
 
     fun toBundle(): Bundle = Bundle().apply {
         putString(CallDataConst.CALL_ID, callId)
-        putBoolean(CallDataConst.HAS_VIDEO, hasVideo)
-        putBoolean(CallDataConst.HAS_SPEAKER, hasSpeaker)
-        putBoolean(CallDataConst.PROXIMITY_ENABLED, proximityEnabled)
-        putBoolean(CallDataConst.HAS_MUTE, hasMute)
-        putBoolean(CallDataConst.HAS_HOLD, hasHold)
+        hasVideo?.let { putBoolean(CallDataConst.HAS_VIDEO, it) }
+        hasSpeaker?.let { putBoolean(CallDataConst.HAS_SPEAKER, it) }
+        proximityEnabled?.let { putBoolean(CallDataConst.PROXIMITY_ENABLED, it) }
+        hasMute?.let { putBoolean(CallDataConst.HAS_MUTE, it) }
+        hasHold?.let { putBoolean(CallDataConst.HAS_HOLD, it) }
 
         audioDevice?.let { putBundle(CallDataConst.AUDIO_DEVICE, it.toBundle()) }
         // Mandatory use of ArrayList<Bundle> to prevent ClassNotFoundException in the system process when unmarshalling Telecom extras.
@@ -83,11 +85,6 @@ data class CallMetadata(
     fun updateFrom(other: CallMetadata?): CallMetadata {
         if (other == null) return this
 
-        // TODO: Fix boolean state overwrite issue.
-        // Currently, boolean fields (hasVideo, etc.) default to 'false' in 'other'.
-        // If 'other' is a partial update where these fields are missing,
-        // they will overwrite the current 'true' state with 'false'.
-        // Consider changing these fields to Boolean? (nullable) to support partial updates correctly.
         return copy(
             callId = other.callId,
             displayName = other.displayName ?: displayName,
@@ -121,19 +118,19 @@ data class CallMetadata(
 
             return CallMetadata(
                 callId = callId,
-                displayName = bundle.getString(CallDataConst.DISPLAY_NAME),
+                displayName = bundle.getStringOrNull(CallDataConst.DISPLAY_NAME),
                 handle = bundle.getBundle(CallDataConst.NUMBER)?.let { CallHandle.fromBundle(it) },
-                hasVideo = bundle.getBoolean(CallDataConst.HAS_VIDEO, false),
-                hasSpeaker = bundle.getBoolean(CallDataConst.HAS_SPEAKER, false),
+                hasVideo = bundle.getBooleanOrNull(CallDataConst.HAS_VIDEO),
+                hasSpeaker = bundle.getBooleanOrNull(CallDataConst.HAS_SPEAKER),
                 audioDevice = bundle.getBundle(CallDataConst.AUDIO_DEVICE)
                     ?.let { AudioDevice.fromBundle(it) },
                 audioDevices = bundle.extractAudioDevices(),
-                proximityEnabled = bundle.getBoolean(CallDataConst.PROXIMITY_ENABLED, false),
-                hasMute = bundle.getBoolean(CallDataConst.HAS_MUTE, false),
-                hasHold = bundle.getBoolean(CallDataConst.HAS_HOLD, false),
+                proximityEnabled = bundle.getBooleanOrNull(CallDataConst.PROXIMITY_ENABLED),
+                hasMute = bundle.getBooleanOrNull(CallDataConst.HAS_MUTE),
+                hasHold = bundle.getBooleanOrNull(CallDataConst.HAS_HOLD),
                 dualToneMultiFrequency = bundle.getCharOrNull(CallDataConst.DTMF)
                     .takeIf { it != DEFAULT_CHAR_VALUE },
-                ringtonePath = bundle.getString(CALL_RINGTONE_PATH),
+                ringtonePath = bundle.getStringOrNull(CALL_RINGTONE_PATH),
                 createdTime = bundle.getLongOrNull(CALL_METADATA_CREATED_TIME),
                 acceptedTime = bundle.getLongOrNull(CALL_METADATA_ACCEPTED_TIME)
             )

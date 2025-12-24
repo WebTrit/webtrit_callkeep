@@ -33,7 +33,7 @@ import com.webtrit.callkeep.services.services.connection.models.PerformDispatchH
 class PhoneConnection internal constructor(
     private val context: Context,
     private val dispatcher: PerformDispatchHandle,
-    var metadata: CallMetadata,
+    private var metadata: CallMetadata,
     var onDisconnectCallback: (connection: PhoneConnection) -> Unit,
     var timeout: ConnectionTimeout? = null,
 ) : Connection() {
@@ -352,12 +352,13 @@ class PhoneConnection internal constructor(
     /**
      * Updates call identity and visual parameters.
      */
-    fun updateData(metadata: CallMetadata) {
-        this.metadata = this.metadata.updateFrom(metadata)
+    fun updateData(requestCallMetadata: CallMetadata) {
+        metadata = metadata.updateFrom(requestCallMetadata)
         extras = metadata.toBundle()
+
         setAddress(metadata.number.toUri(), TelecomManager.PRESENTATION_ALLOWED)
         setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
-        applyVideoState(metadata.hasVideo)
+        applyVideoState(metadata.hasVideo == true)
     }
 
     /**
