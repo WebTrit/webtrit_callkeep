@@ -2,6 +2,8 @@ package com.webtrit.callkeep.models
 
 import android.os.Bundle
 import com.webtrit.callkeep.common.CallDataConst
+import com.webtrit.callkeep.common.extensions.getLongOrNull
+import com.webtrit.callkeep.common.parcelableArrayList
 
 /**
  * WARNING: DO NOT USE @Parcelize OR Parcelable FOR THIS CLASS.
@@ -44,44 +46,49 @@ data class CallMetadata(
         putString(CallDataConst.CALL_ID, callId)
         putBoolean(CallDataConst.HAS_VIDEO, hasVideo)
         putBoolean(CallDataConst.HAS_SPEAKER, hasSpeaker)
-        audioDevice?.let { putBundle(CallDataConst.AUDIO_DEVICE, it.toBundle()) }
-        putBundle(CallDataConst.AUDIO_DEVICES, Bundle().apply {
-            audioDevices.forEachIndexed { index, device ->
-                putBundle("device_$index", device.toBundle())
-            }
-        })
         putBoolean(CallDataConst.PROXIMITY_ENABLED, proximityEnabled)
         putBoolean(CallDataConst.HAS_MUTE, hasMute)
         putBoolean(CallDataConst.HAS_HOLD, hasHold)
+
+        audioDevice?.let { putBundle(CallDataConst.AUDIO_DEVICE, it.toBundle()) }
+        // Mandatory use of ArrayList<Bundle> to prevent ClassNotFoundException in the system process when unmarshalling Telecom extras.
+        val deviceBundles = ArrayList(audioDevices.map { it.toBundle() })
+        putParcelableArrayList(CallDataConst.AUDIO_DEVICES, deviceBundles)
+
         ringtonePath?.let { putString(CALL_RINGTONE_PATH, it) }
         displayName?.let { putString(CallDataConst.DISPLAY_NAME, it) }
         handle?.let { putBundle(CallDataConst.NUMBER, it.toBundle()) }
+
         dualToneMultiFrequency?.let { putChar(CallDataConst.DTMF, it) }
         createdTime?.let { putLong(CALL_METADATA_CREATED_TIME, it) }
         acceptedTime?.let { putLong(CALL_METADATA_ACCEPTED_TIME, it) }
     }
 
     fun mergeWith(other: CallMetadata?): CallMetadata {
-        return CallMetadata(
-            callId = other?.callId ?: callId,
-            displayName = other?.displayName ?: displayName,
-            handle = other?.handle ?: handle,
-            hasVideo = other?.hasVideo ?: hasVideo,
-            hasSpeaker = other?.hasSpeaker ?: hasSpeaker,
-            audioDevice = other?.audioDevice ?: audioDevice,
-            audioDevices = other?.audioDevices ?: audioDevices,
-            proximityEnabled = other?.proximityEnabled ?: proximityEnabled,
-            hasMute = other?.hasMute ?: hasMute,
-            hasHold = other?.hasHold ?: hasHold,
-            dualToneMultiFrequency = other?.dualToneMultiFrequency ?: dualToneMultiFrequency,
-            ringtonePath = other?.ringtonePath ?: ringtonePath,
-            createdTime = other?.createdTime ?: createdTime,
-            acceptedTime = other?.acceptedTime ?: acceptedTime
+        if (other == null) return this
+
+        return copy(
+            callId = other.callId,
+            displayName = other.displayName ?: displayName,
+            handle = other.handle ?: handle,
+            hasVideo = other.hasVideo,
+            hasSpeaker = other.hasSpeaker,
+            audioDevice = other.audioDevice ?: audioDevice,
+            // logic: only replace if new list is not empty.
+            // Warning: prevents clearing the list via merge.
+            audioDevices = other.audioDevices.ifEmpty { audioDevices },
+            proximityEnabled = other.proximityEnabled,
+            hasMute = other.hasMute,
+            hasHold = other.hasHold,
+            dualToneMultiFrequency = other.dualToneMultiFrequency ?: dualToneMultiFrequency,
+            ringtonePath = other.ringtonePath ?: ringtonePath,
+            createdTime = other.createdTime ?: createdTime,
+            acceptedTime = other.acceptedTime ?: acceptedTime
         )
     }
 
     override fun toString(): String {
-        return "CallMetadata(callId=$callId, displayName=$displayName, handle=$handle, hasVideo=$hasVideo, hasSpeaker=$hasSpeaker, hasMute=$hasMute, hasHold=$hasHold, dualToneMultiFrequency=$dualToneMultiFrequency)"
+        return "CallMetadata(" + "callId='$callId', " + "displayName=${displayName?.let { "'$it'" }}, " + "handle=$handle, " + "hasVideo=$hasVideo, " + "hasSpeaker=$hasSpeaker, " + "audioDevice=$audioDevice, " + "audioDevices=$audioDevices, " + "proximityEnabled=$proximityEnabled, " + "hasMute=$hasMute, " + "hasHold=$hasHold, " + "dualToneMultiFrequency=$dualToneMultiFrequency, " + "ringtonePath=${ringtonePath?.let { "'$it'" }}, " + "createdTime=$createdTime, " + "acceptedTime=$acceptedTime" + ")"
     }
 
     companion object {
@@ -89,11 +96,10 @@ data class CallMetadata(
         private const val CALL_METADATA_ACCEPTED_TIME = "CALL_METADATA_ACCEPTED_TIME"
         private const val CALL_RINGTONE_PATH = "CALL_RINGTONE_PATH"
 
-        fun fromBundle(bundle: Bundle): CallMetadata {
-            val metadata = fromBundleOrNull(bundle)
-            return metadata
-                ?: throw IllegalArgumentException("Missing required callId property in Bundle")
-        }
+        private const val DEFAULT_CHAR_VALUE = '\u0000'
+
+        fun fromBundle(bundle: Bundle): CallMetadata = fromBundleOrNull(bundle)
+            ?: throw IllegalArgumentException("Missing required callId property in Bundle")
 
         fun fromBundleOrNull(bundle: Bundle): CallMetadata? {
             val callId = bundle.getString(CallDataConst.CALL_ID) ?: return null
@@ -106,19 +112,21 @@ data class CallMetadata(
                 hasSpeaker = bundle.getBoolean(CallDataConst.HAS_SPEAKER, false),
                 audioDevice = bundle.getBundle(CallDataConst.AUDIO_DEVICE)
                     ?.let { AudioDevice.fromBundle(it) },
-                audioDevices = bundle.getBundle(CallDataConst.AUDIO_DEVICES)
-                    ?.let { audioDevicesBundle ->
-                        audioDevicesBundle.keySet().mapNotNull { key ->
-                            audioDevicesBundle.getBundle(key)?.let { AudioDevice.fromBundle(it) }
-                        }
-                    } ?: emptyList(),
+                audioDevices = bundle.extractAudioDevices(),
                 proximityEnabled = bundle.getBoolean(CallDataConst.PROXIMITY_ENABLED, false),
                 hasMute = bundle.getBoolean(CallDataConst.HAS_MUTE, false),
                 hasHold = bundle.getBoolean(CallDataConst.HAS_HOLD, false),
-                dualToneMultiFrequency = bundle.getChar(CallDataConst.DTMF),
+                dualToneMultiFrequency = bundle.getChar(CallDataConst.DTMF)
+                    .takeIf { it != DEFAULT_CHAR_VALUE },
                 ringtonePath = bundle.getString(CALL_RINGTONE_PATH),
-                createdTime = bundle.getLong(CALL_METADATA_CREATED_TIME),
-                acceptedTime = bundle.getLong(CALL_METADATA_ACCEPTED_TIME))
+                createdTime = bundle.getLongOrNull(CALL_METADATA_CREATED_TIME),
+                acceptedTime = bundle.getLongOrNull(CALL_METADATA_ACCEPTED_TIME)
+            )
+        }
+
+        private fun Bundle.extractAudioDevices(): List<AudioDevice> {
+            val list = parcelableArrayList<Bundle>(CallDataConst.AUDIO_DEVICES)
+            return list?.mapNotNull { AudioDevice.fromBundle(it) } ?: emptyList()
         }
     }
 }
