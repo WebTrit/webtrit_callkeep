@@ -103,13 +103,13 @@ class PhoneConnectionServiceDispatcher(
 
     private fun handleMute(metadata: CallMetadata) {
         executeOnConnection(metadata, "SetMute(${metadata.hasMute})") {
-            it.changeMuteState(metadata.hasMute)
+            it.changeMuteState(metadata.hasMute ?: false)
         }
     }
 
     private fun handleHold(metadata: CallMetadata) {
         executeOnConnection(metadata, "SetHold(${metadata.hasHold})") {
-            if (metadata.hasHold) it.onHold() else it.onUnhold()
+            if (metadata.hasHold ?: false) it.onHold() else it.onUnhold()
         }
     }
 
@@ -140,7 +140,7 @@ class PhoneConnectionServiceDispatcher(
 
     private fun handleSpeaker(metadata: CallMetadata) {
         executeOnConnection(metadata, "SetSpeaker(${metadata.hasSpeaker})") {
-            it.changeSpeakerState(metadata.hasSpeaker)
+            it.changeSpeakerState(metadata.hasSpeaker ?: false)
         }
     }
 
@@ -198,10 +198,10 @@ class PhoneConnectionServiceDispatcher(
         // Check metadata specifically on the active connections list.
         // This avoids race conditions where the map might still contain a stale connection
         // or a connecting call hasn't updated its metadata yet.
-        val hasVideo = activeConnections.any { it.metadata.hasVideo }
+        val hasVideo = activeConnections.any { it.hasVideo }
         // Proximity should only be enabled for audio-only calls that explicitly allow it.
         val shouldEnableProximity = activeConnections.any {
-            !it.metadata.hasVideo && it.metadata.proximityEnabled
+            !it.hasVideo && it.proximityEnabled
         }
         logger.v(
             "Updating sensors state. HasVideo: $hasVideo, HasAnyConnection: $hasAnyConnection, ShouldEnableProximity: $shouldEnableProximity"

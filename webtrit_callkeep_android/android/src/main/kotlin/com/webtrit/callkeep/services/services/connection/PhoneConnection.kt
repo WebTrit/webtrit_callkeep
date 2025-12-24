@@ -47,6 +47,30 @@ class PhoneConnection internal constructor(
     private val notificationManager = NotificationManager()
     private val audioManager = AudioManager(context)
 
+    val callId: String
+        get() = metadata.callId
+
+    val displayName: String?
+        get() = metadata.displayName
+
+    val handle: com.webtrit.callkeep.models.CallHandle?
+        get() = metadata.handle
+
+    val hasVideo: Boolean
+        get() = metadata.hasVideo ?: false
+
+    val hasSpeaker: Boolean
+        get() = isHasSpeaker
+
+    val proximityEnabled: Boolean
+        get() = metadata.proximityEnabled ?: false
+
+    val hasMute: Boolean
+        get() = isMute
+
+    val hasHold: Boolean
+        get() = state == STATE_HOLDING
+
     init {
         audioModeIsVoip = true
         connectionProperties = PROPERTY_SELF_MANAGED
