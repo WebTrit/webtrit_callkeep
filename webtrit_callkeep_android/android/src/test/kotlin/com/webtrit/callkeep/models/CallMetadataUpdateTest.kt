@@ -10,16 +10,6 @@ import org.junit.Test
  * specific fields can be updated without resetting other fields to null/defaults.
  */
 class CallMetadataUpdateTest {
-
-    private class FakePhoneConnection(initialMetadata: CallMetadata) {
-        var metadata: CallMetadata = initialMetadata
-            private set
-
-        fun updateData(requestCallMetadata: CallMetadata) {
-            metadata = metadata.mergeWith(requestCallMetadata)
-        }
-    }
-
     /**
      * Scenario: Incoming Push Event.
      * We receive a push update containing only the new display name.
@@ -33,15 +23,14 @@ class CallMetadataUpdateTest {
             hasSpeaker = false,
             displayName = "Unknown"
         )
-        val connection = FakePhoneConnection(initial)
 
         val update = CallMetadata(
             callId = "call-uuid-1",
             displayName = "John Doe"
         )
-        connection.updateData(update)
 
-        val result = connection.metadata
+        val result = initial.mergeWith(update)
+
         assertEquals("John Doe", result.displayName)
         assertEquals(true, result.hasVideo)
         assertEquals(false, result.hasSpeaker)
@@ -61,15 +50,14 @@ class CallMetadataUpdateTest {
             handle = handle,
             proximityEnabled = false
         )
-        val connection = FakePhoneConnection(initial)
 
         val update = CallMetadata(
             callId = "call-uuid-2",
             proximityEnabled = true
         )
-        connection.updateData(update)
 
-        val result = connection.metadata
+        val result = initial.mergeWith(update)
+
         assertEquals(true, result.proximityEnabled)
         assertEquals("Alice", result.displayName)
         assertEquals(handle, result.handle)
@@ -87,15 +75,14 @@ class CallMetadataUpdateTest {
             hasVideo = false,
             hasMute = true
         )
-        val connection = FakePhoneConnection(initial)
 
         val update = CallMetadata(
             callId = "call-uuid-3",
             hasVideo = true
         )
-        connection.updateData(update)
 
-        val result = connection.metadata
+        val result = initial.mergeWith(update)
+
         assertEquals(true, result.hasVideo)
         assertEquals(true, result.hasMute)
     }
@@ -108,12 +95,11 @@ class CallMetadataUpdateTest {
     @Test
     fun `mergeWith overwrites true with explicit false`() {
         val initial = CallMetadata("id", hasVideo = true)
-        val connection = FakePhoneConnection(initial)
-
         val update = CallMetadata("id", hasVideo = false)
-        connection.updateData(update)
 
-        assertEquals(false, connection.metadata.hasVideo)
+        val result = initial.mergeWith(update)
+
+        assertEquals(false, result.hasVideo)
     }
 
     /**
@@ -125,13 +111,13 @@ class CallMetadataUpdateTest {
     fun `mergeWith preserves audio devices when update contains empty list`() {
         val device = AudioDevice(AudioDeviceType.EARPIECE, "Ear", "1")
         val initial = CallMetadata("id", audioDevices = listOf(device))
-        val connection = FakePhoneConnection(initial)
 
         val update = CallMetadata("id", audioDevices = emptyList())
-        connection.updateData(update)
 
-        assertEquals(1, connection.metadata.audioDevices.size)
-        assertEquals(device, connection.metadata.audioDevices[0])
+        val result = initial.mergeWith(update)
+
+        assertEquals(1, result.audioDevices.size)
+        assertEquals(device, result.audioDevices[0])
     }
 
     /**
@@ -143,13 +129,92 @@ class CallMetadataUpdateTest {
     fun `mergeWith replaces audio devices when update contains new list`() {
         val device1 = AudioDevice(AudioDeviceType.EARPIECE, "Ear", "1")
         val initial = CallMetadata("id", audioDevices = listOf(device1))
-        val connection = FakePhoneConnection(initial)
 
         val device2 = AudioDevice(AudioDeviceType.SPEAKER, "Spk", "2")
         val update = CallMetadata("id", audioDevices = listOf(device2))
-        connection.updateData(update)
 
-        assertEquals(1, connection.metadata.audioDevices.size)
-        assertEquals(device2, connection.metadata.audioDevices[0])
+        val result = initial.mergeWith(update)
+
+        assertEquals(1, result.audioDevices.size)
+        assertEquals(device2, result.audioDevices[0])
+    }
+
+    /**
+     * Scenario: Default Configuration Preservation.
+     * The `speakerOnVideo` defaults to NULL (indicating "use system default").
+     * Receiving an update for another field (e.g., displayName) must preserve this NULL state.
+     */
+    @Test
+    fun `mergeWith preserves default speakerOnVideo value when updating other fields`() {
+        val initial = CallMetadata(callId = "config-test-1") // speakerOnVideo is null
+        val update = CallMetadata(callId = "config-test-1", displayName = "Jane")
+
+        val result = initial.mergeWith(update)
+
+        assertEquals("Jane", result.displayName)
+        // Should remain null (no override)
+        assertEquals(null, result.speakerOnVideo)
+    }
+
+    /**
+     * Scenario: Custom Configuration Preservation.
+     * If `speakerOnVideo` was explicitly set to FALSE, a partial update
+     * (which contains a null `speakerOnVideo`) must NOT overwrite the explicit setting.
+     */
+    @Test
+    fun `mergeWith preserves explicit false for speakerOnVideo`() {
+        val initial = CallMetadata(
+            callId = "config-test-2",
+            speakerOnVideo = false
+        )
+        val update = CallMetadata(
+            callId = "config-test-2",
+            hasMute = true
+        )
+
+        val result = initial.mergeWith(update)
+
+        assertEquals(true, result.hasMute)
+        // Must remain false (NOT overwritten by default null)
+        assertEquals(false, result.speakerOnVideo)
+    }
+
+    /**
+     * Scenario: Explicit Update (Disable).
+     * Verifies that `speakerOnVideo` can be updated from the default state (null)
+     * to explicitly disabled (false).
+     */
+    @Test
+    fun `mergeWith updates speakerOnVideo from null to false`() {
+        val initial = CallMetadata(callId = "config-test-3")
+        val update = CallMetadata(
+            callId = "config-test-3",
+            speakerOnVideo = false
+        )
+
+        val result = initial.mergeWith(update)
+
+        assertEquals(false, result.speakerOnVideo)
+    }
+
+    /**
+     * Scenario: Explicit Update (Re-enable).
+     * Verifies that `speakerOnVideo` can be updated from explicitly disabled (false)
+     * back to explicitly enabled (true).
+     */
+    @Test
+    fun `mergeWith updates speakerOnVideo from false to true`() {
+        val initial = CallMetadata(
+            callId = "config-test-4",
+            speakerOnVideo = false
+        )
+        val update = com.webtrit.callkeep.models.CallMetadata(
+            callId = "config-test-4",
+            speakerOnVideo = true
+        )
+
+        val result = initial.mergeWith(update)
+
+        assertEquals(true, result.speakerOnVideo)
     }
 }
