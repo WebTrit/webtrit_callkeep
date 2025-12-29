@@ -140,7 +140,7 @@ class PhoneConnectionServiceDispatcher(
 
     private fun handleSpeaker(metadata: CallMetadata) {
         executeOnConnection(metadata, "SetSpeaker(${metadata.hasSpeaker})") {
-            it.changeSpeakerState(metadata.hasSpeaker ?: false)
+            it.toggleSpeaker(metadata.hasSpeaker ?: false)
         }
     }
 

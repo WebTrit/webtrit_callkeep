@@ -337,15 +337,26 @@ class PhoneConnection internal constructor(
     }
 
     /**
-     * Legacy helper to toggle speakerphone state.
+     * Toggles the speakerphone state.
+     *
+     * Consolidates logic for selecting the appropriate audio device based on whether
+     * the speaker is being enabled or disabled, handling both Legacy and Modern (API 34+) paths.
      */
-    @Deprecated("Use setAudioDevice instead")
-    fun changeSpeakerState(isActive: Boolean) {
-        logger.d("Changing speaker state: $isActive for callId: $id")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            findSpeakerEndpoint(isActive)?.let(::performEndpointChange)
+    fun toggleSpeaker(isActive: Boolean) {
+        logger.d("Toggling speaker state: $isActive for callId: $id")
+
+        val targetDevice: AudioDevice? =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                findSpeakerEndpoint(isActive)?.let(::mapEndpointToAudioDevice)
+            } else {
+                val route = determineLegacyRoute(isActive)
+                mapRouteToAudioDevice(route)
+            }
+
+        if (targetDevice != null) {
+            setAudioDevice(targetDevice)
         } else {
-            setAudioRoute(determineLegacyRoute(isActive))
+            logger.w("Could not resolve target device for speaker state: $isActive")
         }
     }
 
@@ -489,6 +500,8 @@ class PhoneConnection internal constructor(
         if (isActive) {
             return availableCallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_SPEAKER }
         }
+
+        // Fallback priority: Bluetooth -> Wired -> Streaming -> Earpiece
         return availableCallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_BLUETOOTH }
             ?: availableCallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_WIRED_HEADSET }
             ?: availableCallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_STREAMING }
@@ -500,6 +513,8 @@ class PhoneConnection internal constructor(
      */
     private fun determineLegacyRoute(isActive: Boolean): Int {
         if (isActive) return CallAudioState.ROUTE_SPEAKER
+
+        // Fallback priority: Bluetooth -> Wired -> Earpiece
         return when {
             audioManager.isBluetoothConnected() -> CallAudioState.ROUTE_BLUETOOTH
             audioManager.isWiredHeadsetConnected() -> CallAudioState.ROUTE_WIRED_HEADSET
