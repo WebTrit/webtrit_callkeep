@@ -53,7 +53,7 @@ data class CallMetadata(
         putString(CallDataConst.CALL_ID, callId)
         hasVideo?.let { putBoolean(CallDataConst.HAS_VIDEO, it) }
         hasSpeaker?.let { putBoolean(CallDataConst.HAS_SPEAKER, it) }
-        speakerOnVideo?.let { putBoolean(EXTRA_SPEAKER_ON_VIDEO, it) }
+        speakerOnVideo?.let { putBoolean(CALL_METADATA_EXTRA_SPEAKER_ON_VIDEO, it) }
         proximityEnabled?.let { putBoolean(CallDataConst.PROXIMITY_ENABLED, it) }
         hasMute?.let { putBoolean(CallDataConst.HAS_MUTE, it) }
         hasHold?.let { putBoolean(CallDataConst.HAS_HOLD, it) }
@@ -112,7 +112,7 @@ data class CallMetadata(
         private const val CALL_METADATA_CREATED_TIME = "CALL_METADATA_CREATED_TIME"
         private const val CALL_METADATA_ACCEPTED_TIME = "CALL_METADATA_ACCEPTED_TIME"
         private const val CALL_RINGTONE_PATH = "CALL_RINGTONE_PATH"
-        private const val EXTRA_SPEAKER_ON_VIDEO = "EXTRA_SPEAKER_ON_VIDEO"
+        private const val CALL_METADATA_EXTRA_SPEAKER_ON_VIDEO = "EXTRA_SPEAKER_ON_VIDEO"
         private const val DEFAULT_CHAR_VALUE = '\u0000'
 
         fun fromBundle(bundle: Bundle): CallMetadata = fromBundleOrNull(bundle)
@@ -127,7 +127,7 @@ data class CallMetadata(
                 handle = bundle.getBundle(CallDataConst.NUMBER)?.let { CallHandle.fromBundle(it) },
                 hasVideo = bundle.getBooleanOrNull(CallDataConst.HAS_VIDEO),
                 hasSpeaker = bundle.getBooleanOrNull(CallDataConst.HAS_SPEAKER),
-                speakerOnVideo = bundle.getBooleanOrNull(EXTRA_SPEAKER_ON_VIDEO),
+                speakerOnVideo = bundle.getBooleanOrNull(CALL_METADATA_EXTRA_SPEAKER_ON_VIDEO),
                 audioDevice = bundle.getBundle(CallDataConst.AUDIO_DEVICE)
                     ?.let { AudioDevice.fromBundle(it) },
                 audioDevices = bundle.extractAudioDevices(),
