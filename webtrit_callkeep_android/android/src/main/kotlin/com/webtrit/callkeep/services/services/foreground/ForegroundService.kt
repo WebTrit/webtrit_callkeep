@@ -331,8 +331,8 @@ class ForegroundService : Service(), PHostApi {
             callId = callId,
             handle = handle?.toCallHandle(),
             displayName = displayName,
-            hasVideo = hasVideo == true,
-            proximityEnabled = proximityEnabled == true,
+            hasVideo = hasVideo,
+            proximityEnabled = proximityEnabled,
         )
         PhoneConnectionService.startUpdateCall(baseContext, metadata)
         callback.invoke(Result.success(Unit))

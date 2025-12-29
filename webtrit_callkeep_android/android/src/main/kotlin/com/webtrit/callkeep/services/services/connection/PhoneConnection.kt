@@ -358,7 +358,7 @@ class PhoneConnection internal constructor(
 
         setAddress(metadata.number.toUri(), TelecomManager.PRESENTATION_ALLOWED)
         setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
-        applyVideoState(metadata.hasVideo == true)
+        metadata.hasVideo?.let { applyVideoState(it) }
     }
 
     /**
