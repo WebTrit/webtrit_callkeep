@@ -280,8 +280,13 @@ class PhoneConnection internal constructor(
         super.onAvailableCallEndpointsChanged(callEndpoints)
         logger.d("Available call endpoints changed: $callEndpoints")
         availableCallEndpoints = callEndpoints
+
         val devices = callEndpoints.map(::mapEndpointToAudioDevice)
         dispatcher(ConnectionPerform.AudioDevicesUpdate, metadata.copy(audioDevices = devices))
+
+        // Re-evaluate audio routing now that the system has loaded the available devices.
+        // This fixes the "null device" race condition at call startup.
+        enforceVideoSpeakerLogic()
     }
 
     /**
@@ -296,6 +301,10 @@ class PhoneConnection internal constructor(
 
         isHasSpeaker = callEndpoint.endpointType == CallEndpoint.TYPE_SPEAKER
         dispatcher(ConnectionPerform.ConnectionHasSpeaker, metadata.copy(hasSpeaker = isHasSpeaker))
+
+        // Guard against the system automatically switching back to Earpiece/Wired.
+        // If the system forces a switch during a video call, we force it back.
+        enforceVideoSpeakerLogic()
     }
 
     /**
@@ -361,6 +370,48 @@ class PhoneConnection internal constructor(
     }
 
     /**
+     * Centralized logic to enforce speakerphone for video calls.
+     * Checks requirements: Video enabled, not ringing, and NO Bluetooth connected.
+     */
+    private fun enforceVideoSpeakerLogic() {
+        // Must be video, must not be just ringing (incoming)
+        if (!hasVideo || state == STATE_RINGING) {
+            return
+        }
+
+        // Prevent log warning on API 34 if endpoints aren't loaded yet
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && availableCallEndpoints.isEmpty()) {
+            return
+        }
+
+        // Bluetooth Guard: If Bluetooth is available/connected, prefer it over Speaker.
+        if (isBluetoothAvailable()) {
+            logger.d("Bluetooth device detected. Skipping auto-speaker enforcement.")
+            return
+        }
+
+        // Enforce Speaker if not already active
+        if (!isHasSpeaker) {
+            logger.i("Enforcing speaker for video call. State: $state")
+            toggleSpeaker(true)
+        }
+    }
+
+    /**
+     * Helper to detect if a Bluetooth audio device is available/connected.
+     */
+    private fun isBluetoothAvailable(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            // API 34+: Check if any endpoint is Bluetooth
+            availableCallEndpoints.any { it.endpointType == CallEndpoint.TYPE_BLUETOOTH }
+        } else {
+            // Legacy: Check supported routes from CallAudioState
+            val supportedMask = callAudioState?.supportedRouteMask ?: 0
+            (supportedMask and CallAudioState.ROUTE_BLUETOOTH) != 0
+        }
+    }
+
+    /**
      * Updates call identity and visual parameters.
      */
     fun updateData(requestCallMetadata: CallMetadata) {
@@ -408,6 +459,10 @@ class PhoneConnection internal constructor(
             dispatcher(ConnectionPerform.AudioMuting, update)
             dispatcher(ConnectionPerform.ConnectionHasSpeaker, update)
         }
+
+        // Apply speaker logic immediately when the user answers an incoming call
+        // (transitions from STATE_RINGING to STATE_ACTIVE).
+        enforceVideoSpeakerLogic()
     }
 
     /**
@@ -416,6 +471,9 @@ class PhoneConnection internal constructor(
     private fun onDialing() {
         logger.i("Dialing callId: $id")
         dispatcher(ConnectionPerform.OngoingCall, metadata)
+
+        // Enable speaker immediately for outgoing video calls so the dial tone is audible via speaker.
+        enforceVideoSpeakerLogic()
     }
 
     /**
@@ -425,6 +483,9 @@ class PhoneConnection internal constructor(
         if (hasVideo) {
             videoProvider = PhoneVideoProvider()
             videoState = VideoProfile.STATE_BIDIRECTIONAL
+
+            // Immediately enforce speaker if the user upgrades to video during an active call.
+            enforceVideoSpeakerLogic()
         } else {
             videoProvider = null
             videoState = VideoProfile.STATE_AUDIO_ONLY
