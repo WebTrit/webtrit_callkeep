@@ -25,12 +25,16 @@ import com.webtrit.callkeep.common.parcelableArrayList
  * Use manual serialization by packing individual fields into a [Bundle] using standard Android
  * types (String, Boolean, Long, etc.). These types can be safely unmarshalled by the system
  * without loading application-specific classes.
+ *
+ * @property speakerOnVideo Controls whether the speakerphone should be automatically enabled when a video call
+ * is established or upgraded. If null, the system defaults to true (enabled).
  */
 data class CallMetadata(
     val callId: String,
     val displayName: String? = null,
     val handle: CallHandle? = null,
     val hasVideo: Boolean? = null,
+    val speakerOnVideo: Boolean? = null,
     val hasSpeaker: Boolean? = null,
     val audioDevice: AudioDevice? = null,
     val audioDevices: List<AudioDevice> = emptyList(),
@@ -49,6 +53,7 @@ data class CallMetadata(
         putString(CallDataConst.CALL_ID, callId)
         hasVideo?.let { putBoolean(CallDataConst.HAS_VIDEO, it) }
         hasSpeaker?.let { putBoolean(CallDataConst.HAS_SPEAKER, it) }
+        speakerOnVideo?.let { putBoolean(EXTRA_SPEAKER_ON_VIDEO, it) }
         proximityEnabled?.let { putBoolean(CallDataConst.PROXIMITY_ENABLED, it) }
         hasMute?.let { putBoolean(CallDataConst.HAS_MUTE, it) }
         hasHold?.let { putBoolean(CallDataConst.HAS_HOLD, it) }
@@ -90,6 +95,7 @@ data class CallMetadata(
             handle = other.handle ?: handle,
             hasVideo = other.hasVideo ?: hasVideo,
             hasSpeaker = other.hasSpeaker ?: hasSpeaker,
+            speakerOnVideo = other.speakerOnVideo ?: speakerOnVideo,
             audioDevice = other.audioDevice ?: audioDevice,
             audioDevices = other.audioDevices.ifEmpty { audioDevices },
             proximityEnabled = other.proximityEnabled ?: proximityEnabled,
@@ -106,7 +112,7 @@ data class CallMetadata(
         private const val CALL_METADATA_CREATED_TIME = "CALL_METADATA_CREATED_TIME"
         private const val CALL_METADATA_ACCEPTED_TIME = "CALL_METADATA_ACCEPTED_TIME"
         private const val CALL_RINGTONE_PATH = "CALL_RINGTONE_PATH"
-
+        private const val EXTRA_SPEAKER_ON_VIDEO = "EXTRA_SPEAKER_ON_VIDEO"
         private const val DEFAULT_CHAR_VALUE = '\u0000'
 
         fun fromBundle(bundle: Bundle): CallMetadata = fromBundleOrNull(bundle)
@@ -121,6 +127,7 @@ data class CallMetadata(
                 handle = bundle.getBundle(CallDataConst.NUMBER)?.let { CallHandle.fromBundle(it) },
                 hasVideo = bundle.getBooleanOrNull(CallDataConst.HAS_VIDEO),
                 hasSpeaker = bundle.getBooleanOrNull(CallDataConst.HAS_SPEAKER),
+                speakerOnVideo = bundle.getBooleanOrNull(EXTRA_SPEAKER_ON_VIDEO),
                 audioDevice = bundle.getBundle(CallDataConst.AUDIO_DEVICE)
                     ?.let { AudioDevice.fromBundle(it) },
                 audioDevices = bundle.extractAudioDevices(),

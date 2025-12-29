@@ -62,6 +62,9 @@ class PhoneConnection internal constructor(
     val hasSpeaker: Boolean
         get() = isHasSpeaker
 
+    val isSpeakerOnVideoEnabled: Boolean
+        get() = metadata.speakerOnVideo ?: true
+
     val proximityEnabled: Boolean
         get() = metadata.proximityEnabled ?: false
 
@@ -374,6 +377,11 @@ class PhoneConnection internal constructor(
      * Checks requirements: Video enabled, not ringing, and NO Bluetooth connected.
      */
     private fun enforceVideoSpeakerLogic() {
+        // Exit immediately if this behavior is disabled in metadata
+        if (!isSpeakerOnVideoEnabled) {
+            return
+        }
+
         // Must be video, must not be just ringing (incoming)
         if (!hasVideo || state == STATE_RINGING) {
             return
