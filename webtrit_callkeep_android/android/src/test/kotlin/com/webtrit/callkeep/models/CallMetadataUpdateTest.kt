@@ -208,7 +208,7 @@ class CallMetadataUpdateTest {
             callId = "config-test-4",
             speakerOnVideo = false
         )
-        val update = com.webtrit.callkeep.models.CallMetadata(
+        val update = CallMetadata(
             callId = "config-test-4",
             speakerOnVideo = true
         )
