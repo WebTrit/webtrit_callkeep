@@ -62,6 +62,9 @@ class PhoneConnection internal constructor(
     val hasSpeaker: Boolean
         get() = isHasSpeaker
 
+    val isSpeakerOnVideoEnabled: Boolean
+        get() = metadata.speakerOnVideo ?: true
+
     val proximityEnabled: Boolean
         get() = metadata.proximityEnabled ?: false
 
@@ -280,8 +283,13 @@ class PhoneConnection internal constructor(
         super.onAvailableCallEndpointsChanged(callEndpoints)
         logger.d("Available call endpoints changed: $callEndpoints")
         availableCallEndpoints = callEndpoints
+
         val devices = callEndpoints.map(::mapEndpointToAudioDevice)
         dispatcher(ConnectionPerform.AudioDevicesUpdate, metadata.copy(audioDevices = devices))
+
+        // Re-evaluate audio routing now that the system has loaded the available devices.
+        // This fixes the "null device" race condition at call startup.
+        enforceVideoSpeakerLogic()
     }
 
     /**
@@ -296,6 +304,10 @@ class PhoneConnection internal constructor(
 
         isHasSpeaker = callEndpoint.endpointType == CallEndpoint.TYPE_SPEAKER
         dispatcher(ConnectionPerform.ConnectionHasSpeaker, metadata.copy(hasSpeaker = isHasSpeaker))
+
+        // Guard against the system automatically switching back to Earpiece/Wired.
+        // If the system forces a switch during a video call, we force it back.
+        enforceVideoSpeakerLogic()
     }
 
     /**
@@ -337,15 +349,73 @@ class PhoneConnection internal constructor(
     }
 
     /**
-     * Legacy helper to toggle speakerphone state.
+     * Toggles the speakerphone state.
+     *
+     * Consolidates logic for selecting the appropriate audio device based on whether
+     * the speaker is being enabled or disabled, handling both Legacy and Modern (API 34+) paths.
      */
-    @Deprecated("Use setAudioDevice instead")
-    fun changeSpeakerState(isActive: Boolean) {
-        logger.d("Changing speaker state: $isActive for callId: $id")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            findSpeakerEndpoint(isActive)?.let(::performEndpointChange)
+    fun toggleSpeaker(isActive: Boolean) {
+        logger.d("Toggling speaker state: $isActive for callId: $id")
+
+        val targetDevice: AudioDevice? =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                findSpeakerEndpoint(isActive)?.let(::mapEndpointToAudioDevice)
+            } else {
+                val route = determineLegacyRoute(isActive)
+                mapRouteToAudioDevice(route)
+            }
+
+        if (targetDevice != null) {
+            setAudioDevice(targetDevice)
         } else {
-            setAudioRoute(determineLegacyRoute(isActive))
+            logger.w("Could not resolve target device for speaker state: $isActive")
+        }
+    }
+
+    /**
+     * Centralized logic to enforce speakerphone for video calls.
+     * Checks requirements: Video enabled, not ringing, and NO Bluetooth connected.
+     */
+    private fun enforceVideoSpeakerLogic() {
+        // Exit immediately if this behavior is disabled in metadata
+        if (!isSpeakerOnVideoEnabled) {
+            return
+        }
+
+        // Must be video, must not be just ringing (incoming)
+        if (!hasVideo || state == STATE_RINGING) {
+            return
+        }
+
+        // Prevent log warning on API 34 if endpoints aren't loaded yet
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && availableCallEndpoints.isEmpty()) {
+            return
+        }
+
+        // Bluetooth Guard: If Bluetooth is available/connected, prefer it over Speaker.
+        if (isBluetoothAvailable()) {
+            logger.d("Bluetooth device detected. Skipping auto-speaker enforcement.")
+            return
+        }
+
+        // Enforce Speaker if not already active
+        if (!isHasSpeaker) {
+            logger.i("Enforcing speaker for video call. State: $state")
+            toggleSpeaker(true)
+        }
+    }
+
+    /**
+     * Helper to detect if a Bluetooth audio device is available/connected.
+     */
+    private fun isBluetoothAvailable(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            // API 34+: Check if any endpoint is Bluetooth
+            availableCallEndpoints.any { it.endpointType == CallEndpoint.TYPE_BLUETOOTH }
+        } else {
+            // Legacy: Check supported routes from CallAudioState
+            val supportedMask = callAudioState?.supportedRouteMask ?: 0
+            (supportedMask and CallAudioState.ROUTE_BLUETOOTH) != 0
         }
     }
 
@@ -397,6 +467,10 @@ class PhoneConnection internal constructor(
             dispatcher(ConnectionPerform.AudioMuting, update)
             dispatcher(ConnectionPerform.ConnectionHasSpeaker, update)
         }
+
+        // Apply speaker logic immediately when the user answers an incoming call
+        // (transitions from STATE_RINGING to STATE_ACTIVE).
+        enforceVideoSpeakerLogic()
     }
 
     /**
@@ -405,6 +479,9 @@ class PhoneConnection internal constructor(
     private fun onDialing() {
         logger.i("Dialing callId: $id")
         dispatcher(ConnectionPerform.OngoingCall, metadata)
+
+        // Enable speaker immediately for outgoing video calls so the dial tone is audible via speaker.
+        enforceVideoSpeakerLogic()
     }
 
     /**
@@ -414,6 +491,9 @@ class PhoneConnection internal constructor(
         if (hasVideo) {
             videoProvider = PhoneVideoProvider()
             videoState = VideoProfile.STATE_BIDIRECTIONAL
+
+            // Immediately enforce speaker if the user upgrades to video during an active call.
+            enforceVideoSpeakerLogic()
         } else {
             videoProvider = null
             videoState = VideoProfile.STATE_AUDIO_ONLY
@@ -489,6 +569,8 @@ class PhoneConnection internal constructor(
         if (isActive) {
             return availableCallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_SPEAKER }
         }
+
+        // Fallback priority: Bluetooth -> Wired -> Streaming -> Earpiece
         return availableCallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_BLUETOOTH }
             ?: availableCallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_WIRED_HEADSET }
             ?: availableCallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_STREAMING }
@@ -500,6 +582,8 @@ class PhoneConnection internal constructor(
      */
     private fun determineLegacyRoute(isActive: Boolean): Int {
         if (isActive) return CallAudioState.ROUTE_SPEAKER
+
+        // Fallback priority: Bluetooth -> Wired -> Earpiece
         return when {
             audioManager.isBluetoothConnected() -> CallAudioState.ROUTE_BLUETOOTH
             audioManager.isWiredHeadsetConnected() -> CallAudioState.ROUTE_WIRED_HEADSET
