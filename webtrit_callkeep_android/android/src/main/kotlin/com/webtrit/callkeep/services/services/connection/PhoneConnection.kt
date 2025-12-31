@@ -39,7 +39,6 @@ class PhoneConnection internal constructor(
 ) : Connection() {
     private var isMute = false
     private var isHasSpeaker = false
-    private var answer = false
     private var disconnected = false
 
     private var availableCallEndpoints: List<CallEndpoint> = emptyList()
@@ -74,6 +73,9 @@ class PhoneConnection internal constructor(
     val hasHold: Boolean
         get() = state == STATE_HOLDING
 
+    var hasAnswered: Boolean = false
+        private set
+
     init {
         audioModeIsVoip = true
         connectionProperties = PROPERTY_SELF_MANAGED
@@ -84,21 +86,10 @@ class PhoneConnection internal constructor(
     }
 
     /**
-     * Unique identifier for the call session.
-     */
-    val id: String
-        get() = metadata.callId
-
-    /**
-     * Indicates whether the user has performed the answer action.
-     */
-    fun isAnswered(): Boolean = answer
-
-    /**
      * Transitions the connection to an active state and ensures the UI is visible.
      */
     fun establish() {
-        logger.d("Establishing connection for callId: $id")
+        logger.d("Establishing connection for callId: $callId")
         context.startActivity(Platform.getLaunchActivity(context))
         setActive()
     }
@@ -107,7 +98,7 @@ class PhoneConnection internal constructor(
      * Synchronizes the internal mute state and notifies the application.
      */
     fun changeMuteState(muted: Boolean) {
-        logger.d("Changing mute state to: $muted for callId: $id")
+        logger.d("Changing mute state to: $muted for callId: $callId")
         this.isMute = muted
         dispatcher(ConnectionPerform.AudioMuting, metadata.copy(hasMute = this.isMute))
     }
@@ -116,7 +107,7 @@ class PhoneConnection internal constructor(
      * Invoked by the system when the incoming call interface should be displayed.
      */
     override fun onShowIncomingCallUi() {
-        logger.d("Showing incoming call UI for callId: $id")
+        logger.d("Showing incoming call UI for callId: $callId")
         notificationManager.showIncomingCallNotification(metadata)
         audioManager.startRingtone(metadata.ringtonePath)
     }
@@ -127,7 +118,7 @@ class PhoneConnection internal constructor(
     override fun onAnswer() {
         logger.i("Answering call: $metadata")
         super.onAnswer()
-        answer = true
+        hasAnswered = true
         setActive()
         dispatcher(ConnectionPerform.AnswerCall, metadata)
         ActivityHolder.start(context)
@@ -137,7 +128,7 @@ class PhoneConnection internal constructor(
      * Handles the transition when a user rejects an incoming call.
      */
     override fun onReject() {
-        logger.i("Rejecting call: $id")
+        logger.i("Rejecting call: $callId")
         super.onReject()
         setDisconnected(DisconnectCause(DisconnectCause.REJECTED))
     }
@@ -146,12 +137,12 @@ class PhoneConnection internal constructor(
      * Performs final cleanup when the connection is terminated.
      */
     override fun onDisconnect() {
-        logger.i("Disconnecting call: $id")
+        logger.i("Disconnecting call: $callId")
         super.onDisconnect()
 
         timeout?.cancel()
-        notificationManager.cancelIncomingNotification(isAnswered())
-        notificationManager.cancelActiveCallNotification(id)
+        notificationManager.cancelIncomingNotification(hasAnswered)
+        notificationManager.cancelActiveCallNotification(callId)
         audioManager.stopRingtone()
 
         val event = if (disconnectCause?.code == DisconnectCause.REMOTE) {
@@ -168,7 +159,7 @@ class PhoneConnection internal constructor(
      * Updates the internal state to reflect a held call.
      */
     override fun onHold() {
-        logger.d("Putting call on hold: $id")
+        logger.d("Putting call on hold: $callId")
         super.onHold()
         setOnHold()
         dispatcher(ConnectionPerform.ConnectionHolding, metadata.copy(hasHold = true))
@@ -178,7 +169,7 @@ class PhoneConnection internal constructor(
      * Resumes the call from a held state.
      */
     override fun onUnhold() {
-        logger.d("Taking call off hold: $id")
+        logger.d("Taking call off hold: $callId")
         super.onUnhold()
         setActive()
         dispatcher(ConnectionPerform.ConnectionHolding, metadata.copy(hasHold = false))
@@ -188,7 +179,7 @@ class PhoneConnection internal constructor(
      * Dispatches a DTMF tone event to the application.
      */
     override fun onPlayDtmfTone(c: Char) {
-        logger.d("Playing DTMF tone: $c for callId: $id")
+        logger.d("Playing DTMF tone: $c for callId: $callId")
         super.onPlayDtmfTone(c)
         dispatcher(ConnectionPerform.SentDTMF, metadata.copy(dualToneMultiFrequency = c))
     }
@@ -197,7 +188,7 @@ class PhoneConnection internal constructor(
      * Orchestrates logical transitions based on the underlying Telecom state.
      */
     override fun onStateChanged(state: Int) {
-        logger.v("Connection state changed to: $state for callId: $id")
+        logger.v("Connection state changed to: $state for callId: $callId")
         super.onStateChanged(state)
         handleConnectionTimeout(state)
 
@@ -222,7 +213,7 @@ class PhoneConnection internal constructor(
      * Executed when the [ConnectionTimeout] timer elapses.
      */
     private fun onTimeoutTriggered() {
-        logger.w("Timeout reached for callId: $id")
+        logger.w("Timeout reached for callId: $callId")
         setDisconnected(DisconnectCause(DisconnectCause.CANCELED, "Timeout reached"))
         onDisconnect()
     }
@@ -255,7 +246,7 @@ class PhoneConnection internal constructor(
      * Refreshes the audio state and endpoints for the application layer.
      */
     fun forceUpdateAudioState() {
-        logger.d("Force updating audio state for callId: $id")
+        logger.d("Force updating audio state for callId: $callId")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             updateModernAudioState()
         } else {
@@ -325,12 +316,12 @@ class PhoneConnection internal constructor(
      * Requests a change to a specific audio device.
      */
     fun setAudioDevice(device: AudioDevice) {
-        logger.i("Setting audio device: $device for callId: $id")
+        logger.i("Setting audio device: $device for callId: $callId")
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             val deviceId = device.id
             if (deviceId == null) {
-                logger.e("Cannot set audio device: null device id. Requested device: $device, callId: $id")
+                logger.e("Cannot set audio device: null device id. Requested device: $device, callId: $callId")
                 return
             }
 
@@ -341,7 +332,7 @@ class PhoneConnection internal constructor(
             if (endpoint != null) {
                 performEndpointChange(endpoint)
             } else {
-                logger.e("No suitable call endpoint found for the current audio state. Requested device: $device, callId: $id")
+                logger.e("No suitable call endpoint found for the current audio state. Requested device: $device, callId: $callId")
             }
         } else {
             setAudioRoute(mapDeviceTypeToRoute(device.type))
@@ -355,7 +346,7 @@ class PhoneConnection internal constructor(
      * the speaker is being enabled or disabled, handling both Legacy and Modern (API 34+) paths.
      */
     fun toggleSpeaker(isActive: Boolean) {
-        logger.d("Toggling speaker state: $isActive for callId: $id")
+        logger.d("Toggling speaker state: $isActive for callId: $callId")
 
         val targetDevice: AudioDevice? =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -435,7 +426,7 @@ class PhoneConnection internal constructor(
      * Terminates the connection from the local side before acceptance.
      */
     fun declineCall() {
-        logger.d("Local decline for callId: $id")
+        logger.d("Local decline for callId: $callId")
         if (state == STATE_RINGING) {
             notificationManager.showMissedCallNotification(metadata)
             dispatcher(ConnectionPerform.MissedCall, metadata)
@@ -447,7 +438,7 @@ class PhoneConnection internal constructor(
      * Terminates the active connection.
      */
     fun hungUp() {
-        logger.d("Local hang up for callId: $id")
+        logger.d("Local hang up for callId: $callId")
         dispatcher(ConnectionPerform.AudioMuting, metadata.copy(hasMute = isMute))
         terminateWithCause(DisconnectCause(DisconnectCause.LOCAL))
     }
@@ -456,11 +447,11 @@ class PhoneConnection internal constructor(
      * Logic triggered when the call enters an active talking state.
      */
     private fun onActiveConnection() {
-        logger.i("Connection became active for callId: $id")
+        logger.i("Connection became active for callId: $callId")
         audioManager.stopRingtone()
         notificationManager.cancelIncomingNotification(true)
         notificationManager.cancelMissedCall(metadata)
-        notificationManager.showActiveCallNotification(id, metadata)
+        notificationManager.showActiveCallNotification(callId, metadata)
 
         if (Build.VERSION.SDK_INT == Build.VERSION_CODES.O_MR1) {
             val update = metadata.copy(hasMute = isMute, hasSpeaker = isHasSpeaker)
@@ -477,7 +468,7 @@ class PhoneConnection internal constructor(
      * Logic triggered when the local side starts dialing.
      */
     private fun onDialing() {
-        logger.i("Dialing callId: $id")
+        logger.i("Dialing callId: $callId")
         dispatcher(ConnectionPerform.OngoingCall, metadata)
 
         // Enable speaker immediately for outgoing video calls so the dial tone is audible via speaker.
@@ -600,7 +591,7 @@ class PhoneConnection internal constructor(
             setDisconnected(disconnectCause)
             onDisconnect()
         } else {
-            logger.v("terminateWithCause: already disconnected for callId: $id")
+            logger.v("terminateWithCause: already disconnected for callId: $callId")
         }
     }
 

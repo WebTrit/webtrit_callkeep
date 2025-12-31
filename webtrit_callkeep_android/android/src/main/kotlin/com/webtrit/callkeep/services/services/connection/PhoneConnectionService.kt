@@ -229,7 +229,7 @@ class PhoneConnectionService : ConnectionService() {
         isRunning = false
         phoneConnectionServiceDispatcher.dispatchLifecycle(ConnectionLifecycleAction.ServiceDestroyed)
         connectionManager.getConnections().forEach {
-            Log.i(TAG, "onDetachActivity, disconnect outgoing call, callId: ${it.id}")
+            Log.i(TAG, "onDetachActivity, disconnect outgoing call, callId: ${it.callId}")
             it.onDisconnect()
         }
         super.onDestroy()
