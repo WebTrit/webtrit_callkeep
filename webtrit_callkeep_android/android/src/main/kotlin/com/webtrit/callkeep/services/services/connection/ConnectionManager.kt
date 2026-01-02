@@ -102,7 +102,7 @@ class ConnectionManager {
      * @return `true` if the connection has been answered, `false` otherwise.
      */
     fun isConnectionAnswered(id: String): Boolean {
-        return connections[id]?.isAnswered() == true
+        return connections[id]?.hasAnswered == true
     }
 
     override fun toString(): String {
