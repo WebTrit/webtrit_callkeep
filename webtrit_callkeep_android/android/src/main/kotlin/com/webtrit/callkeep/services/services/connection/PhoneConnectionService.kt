@@ -225,14 +225,36 @@ class PhoneConnectionService : ConnectionService() {
 
     override fun onDestroy() {
         Log.i(TAG, "onDestroy")
-        // Set the service state to false when the system destroys the service.
+        cleanupResources()
+        super.onDestroy()
+    }
+
+    /**
+     * Called when the user removes the application from the recent tasks list (swipes away the app).
+     * This ensures that active connections are forcefully disconnected to remove the system call UI
+     * and the service is stopped to prevent it from running as a zombie process.
+     */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        Log.i(TAG, "onTaskRemoved: App swiped away. Force cleaning connections.")
+
+        cleanupResources()
+        stopSelf()
+
+        super.onTaskRemoved(rootIntent)
+    }
+
+    /**
+     * Initiates cleanup of resources and active connections by updating service state
+     * and dispatching a ServiceDestroyed lifecycle event to the dispatcher.
+     *
+     * This unifies the cleanup flow for both onDestroy and onTaskRemoved. Actual resource
+     * release and disconnection of active calls are performed by the
+     * phoneConnectionServiceDispatcher in response to the ServiceDestroyed event.
+     */
+    private fun cleanupResources() {
+        // Update service state
         isRunning = false
         phoneConnectionServiceDispatcher.dispatchLifecycle(ConnectionLifecycleAction.ServiceDestroyed)
-        connectionManager.getConnections().forEach {
-            Log.i(TAG, "onDetachActivity, disconnect outgoing call, callId: ${it.callId}")
-            it.onDisconnect()
-        }
-        super.onDestroy()
     }
 
     companion object {
