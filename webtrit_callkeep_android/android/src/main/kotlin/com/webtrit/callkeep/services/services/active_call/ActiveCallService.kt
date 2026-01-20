@@ -60,10 +60,22 @@ class ActiveCallService : Service() {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
                 val hasVideo = callsMetadata.any { it.hasVideo ?: false }
                 val hasCameraPermission = PermissionsHelper(this).hasCameraPermission()
-                val audioDevice = callsMetadata.any { it.audioDevice != null }
-                val audioDevices = callsMetadata.any { it.audioDevices.isNotEmpty() }
                 val hasMicrophonePermission = PermissionsHelper(this).hasMicrophonePermission()
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL or if (audioDevice && audioDevices && hasMicrophonePermission) ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE else 0 or if (hasVideo && hasCameraPermission) ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA else 0
+                var types = ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
+
+                // CRITICAL: Explicitly register MICROPHONE type if permission is granted.
+                // Do NOT condition this on 'audioDevice' or output state.
+                // Strict OS implementations (e.g., Samsung OneUI) will block microphone access
+                // when the screen is off if this type is missing, even for active calls.
+                if (hasMicrophonePermission) {
+                    types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                }
+
+                if (hasVideo && hasCameraPermission) {
+                    types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+                }
+
+                types
             }
 
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
