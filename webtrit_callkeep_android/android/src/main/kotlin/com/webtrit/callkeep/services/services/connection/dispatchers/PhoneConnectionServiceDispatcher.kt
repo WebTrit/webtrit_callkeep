@@ -176,9 +176,39 @@ class PhoneConnectionServiceDispatcher(
 
     private fun handleServiceDestroyed() {
         logger.i("Service destroyed. Disposing resources.")
-        activityWakelockManager.releaseScreenWakeLock()
-        proximitySensorManager.setShouldListenProximity(false)
-        activityWakelockManager.dispose()
+
+        runCatching {
+            activityWakelockManager.releaseScreenWakeLock()
+        }.onFailure { e ->
+            logger.e("Failed to release screen wake lock", e)
+        }
+
+        runCatching {
+            proximitySensorManager.setShouldListenProximity(false)
+            proximitySensorManager.stopListening()
+        }.onFailure { e ->
+            logger.e("Failed to stop proximity sensor", e)
+        }
+
+        runCatching {
+            activityWakelockManager.dispose()
+        }.onFailure { e ->
+            logger.e("Failed to dispose wakelock manager", e)
+        }
+
+        runCatching {
+            val connections = connectionManager.getConnections()
+            logger.i("Cleaning up ${connections.size} connections on service destroy")
+            connections.forEach { connection ->
+                runCatching {
+                    connection.hungUp()
+                }.onFailure { e ->
+                    logger.e("Failed to hung up connection ${connection.callId}", e)
+                }
+            }
+        }.onFailure { e ->
+            logger.e("Failed to process connections cleanup", e)
+        }
     }
 
     /**
