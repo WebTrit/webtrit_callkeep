@@ -12,10 +12,6 @@ import com.webtrit.callkeep.models.CallMetadata
 interface FlutterIsolateCommunicator {
     fun performAnswer(callId: String, onSuccess: () -> Unit, onFailure: (Throwable) -> Unit)
     fun performEndCall(callId: String, onSuccess: () -> Unit, onFailure: (Throwable) -> Unit)
-    fun notifyMissedCall(
-        metadata: CallMetadata, onSuccess: () -> Unit, onFailure: (Throwable) -> Unit
-    )
-
     fun syncPushIsolate(onSuccess: () -> Unit, onFailure: (Throwable) -> Unit)
     fun releaseResources(onComplete: () -> Unit)
 }
@@ -38,22 +34,6 @@ class DefaultFlutterIsolateCommunicator(
         callId: String, onSuccess: () -> Unit, onFailure: (Throwable) -> Unit
     ) {
         serviceApi?.performEndCall(callId) { result ->
-            result.onSuccess { onSuccess() }.onFailure { onFailure(it) }
-        } ?: onFailure(IllegalStateException("Service API unavailable"))
-    }
-
-    override fun notifyMissedCall(
-        metadata: CallMetadata, onSuccess: () -> Unit, onFailure: (Throwable) -> Unit
-    ) {
-        serviceApi?.performReceivedCall(
-            metadata.callId,
-            metadata.number,
-            metadata.hasVideo ?: false,
-            metadata.createdTime ?: System.currentTimeMillis(),
-            metadata.displayName,
-            null,
-            System.currentTimeMillis()
-        ) { result ->
             result.onSuccess { onSuccess() }.onFailure { onFailure(it) }
         } ?: onFailure(IllegalStateException("Service API unavailable"))
     }

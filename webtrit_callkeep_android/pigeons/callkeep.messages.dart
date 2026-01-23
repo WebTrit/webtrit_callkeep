@@ -520,17 +520,6 @@ abstract class PDelegateBackgroundServiceFlutterApi {
 
   @async
   void performEndCall(String callId);
-
-  @async
-  void performReceivedCall(
-    String callId,
-    String number,
-    bool video,
-    int createdTime,
-    String? displayName,
-    int? acceptedTime,
-    int? hungUpTime,
-  );
 }
 
 @HostApi()

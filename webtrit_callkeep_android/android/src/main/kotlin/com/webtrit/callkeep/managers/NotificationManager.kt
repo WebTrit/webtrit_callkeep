@@ -5,7 +5,6 @@ import android.content.Intent
 import androidx.core.app.NotificationManagerCompat
 import com.webtrit.callkeep.common.ContextHolder.context
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.notifications.MissedCallNotificationBuilder
 import com.webtrit.callkeep.services.services.active_call.ActiveCallService
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallRelease
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
@@ -13,7 +12,6 @@ import io.flutter.Log
 
 class NotificationManager() {
     private val notificationManager by lazy { NotificationManagerCompat.from(context) }
-    private val missedCallNotificationBuilder by lazy { MissedCallNotificationBuilder() }
 
     fun showIncomingCallNotification(callMetaData: CallMetadata) {
         IncomingCallService.start(context, callMetaData)
@@ -27,15 +25,6 @@ class NotificationManager() {
                 IncomingCallRelease.IC_RELEASE_WITH_DECLINE
             }
         )
-    }
-
-    fun showMissedCallNotification(callMetaData: CallMetadata) {
-        val notification = missedCallNotificationBuilder.apply {
-            setCallMetaData(callMetaData)
-        }.build()
-        val id = callMetaData.number.hashCode()
-
-        showRegularNotification(notification, id)
     }
 
     fun cancelMissedCall(callMetaData: CallMetadata) {
