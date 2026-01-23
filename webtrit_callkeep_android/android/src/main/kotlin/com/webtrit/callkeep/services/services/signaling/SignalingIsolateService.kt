@@ -85,16 +85,6 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         }
     }
 
-    private val connectionServicePerformReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            when (intent?.action) {
-                ConnectionPerform.MissedCall.name -> {
-                    intent.extras?.let { handleMissedCall(CallMetadata.fromBundle(it)) }
-                }
-            }
-        }
-    }
-
     override fun onCreate() {
         super.onCreate()
         ContextHolder.init(applicationContext)
@@ -107,12 +97,6 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         // Register the service to receive lifecycle events
         latestLifecycleActivityEvent = ActivityLifecycleBroadcaster.currentValue
         ActivityLifecycleBroadcaster.register(this, lifecycleEventReceiver)
-
-
-        // Register the service to receive connection service perform events
-        registerReceiverCompat(
-            connectionServicePerformReceiver, IntentFilter(ConnectionPerform.MissedCall.name)
-        )
 
         notificationBuilder = ForegroundCallNotificationBuilder()
 
@@ -135,10 +119,6 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         // Unregister the service from receiving lifecycle events
         ActivityLifecycleBroadcaster.unregister(baseContext, lifecycleEventReceiver)
         latestLifecycleActivityEvent = null
-
-        // Unregister the service from receiving connection service perform events
-        unregisterReceiver(connectionServicePerformReceiver)
-
 
         if (StorageDelegate.SignalingService.isSignalingServiceEnabled(context = applicationContext)) {
             SignalingServiceBootWorker.enqueue(this)
@@ -242,37 +222,6 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         flutterEngineHelper.startOrAttachEngine()
 
         return START_STICKY
-    }
-
-    /**
-     * Records a missed call event when the main isolate is not running.
-     *
-     * @param metadata The missed call information.
-     */
-    private fun handleMissedCall(metadata: CallMetadata) {
-        Log.d(TAG, "handleMissedCall: $metadata")
-
-        isolateCalkeepFlutterApi?.performReceivedCall(
-            metadata.callId,
-            metadata.number,
-            metadata.hasVideo ?: false,
-            metadata.createdTime ?: System.currentTimeMillis(),
-            metadata.displayName,
-            null,
-            System.currentTimeMillis()
-        ) { response ->
-            response.onSuccess {
-                // Do not directly invoke PhoneConnectionService.startHungUpCall here. Instead, wait for the signaling
-                // response (RELEASE_RESOURCES). After successful signaling, DeclineSource.USER will be triggered from Flutter.
-                Log.d(TAG, "handleMissedCall success: $it")
-            }
-            response.onFailure {
-                // If signaling fails, directly end the call and close the isolate.
-                Log.e(TAG, "handleMissedCall failure: $it")
-                PhoneConnectionService.startHungUpCall(baseContext, metadata)
-                stopSelf()
-            }
-        }
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {

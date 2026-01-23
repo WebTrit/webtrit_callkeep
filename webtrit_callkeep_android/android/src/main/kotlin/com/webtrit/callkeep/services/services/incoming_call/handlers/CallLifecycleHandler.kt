@@ -65,16 +65,6 @@ class CallLifecycleHandler(
         }
     }
 
-    fun handleMissedCall(metadata: CallMetadata) {
-        flutterApi?.notifyMissedCall(metadata, onSuccess = {
-            Log.d(TAG, "Missed call handled successfully")
-        }, onFailure = {
-            Log.e(TAG, "Missed call sync failed: $it")
-            connectionController.hangUp(metadata)
-            stopService()
-        })
-    }
-
     private fun handleUserDecline(metadata: CallMetadata) {
         if (isolateHandler.isReady == true) {
             performSafeEndCall(metadata.callId, metadata)

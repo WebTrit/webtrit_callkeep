@@ -13,7 +13,6 @@ import com.webtrit.callkeep.R
 object NotificationChannelManager {
 
     // Constants for notification channel IDs
-    const val MISSED_CALL_NOTIFICATION_CHANNEL_ID = "MISSED_CALL_NOTIFICATION_CHANNEL_ID"
     const val INCOMING_CALL_NOTIFICATION_CHANNEL_ID = "INCOMING_CALL_NOTIFICATION_CHANNEL_ID"
     const val FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID = "FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID"
     const val NOTIFICATION_ACTIVE_CALL_CHANNEL_ID = "NOTIFICATION_ACTIVE_CALL_CHANNEL_ID"
@@ -29,7 +28,6 @@ object NotificationChannelManager {
     fun registerNotificationChannels(context: Context) {
         registerActiveCallChannel(context)
         registerIncomingCallChannel(context)
-        registerMissedCallChannel(context)
         registerForegroundCallChannel(context)
     }
 
@@ -67,23 +65,6 @@ object NotificationChannelManager {
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC,
             customSound = true,
             showBadge = true
-        )
-    }
-
-    /**
-     * Registers the notification channel for missed calls.
-     *
-     * This channel is used for notifications related to missed calls.
-     *
-     * @param context The context used to access system services and resources.
-     */
-    private fun registerMissedCallChannel(context: Context) {
-        registerNotificationChannel(
-            context,
-            channelId = MISSED_CALL_NOTIFICATION_CHANNEL_ID,
-            title = context.getString(R.string.push_notification_missed_call_channel_title),
-            description = context.getString(R.string.push_notification_missed_call_channel_description),
-            importance = NotificationManager.IMPORTANCE_LOW
         )
     }
 

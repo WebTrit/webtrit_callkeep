@@ -2325,23 +2325,6 @@ class PDelegateBackgroundServiceFlutterApi(private val binaryMessenger: BinaryMe
       } 
     }
   }
-  fun performReceivedCall(callIdArg: String, numberArg: String, videoArg: Boolean, createdTimeArg: Long, displayNameArg: String?, acceptedTimeArg: Long?, hungUpTimeArg: Long?, callback: (Result<Unit>) -> Unit)
-{
-    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundServiceFlutterApi.performReceivedCall$separatedMessageChannelSuffix"
-    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-    channel.send(listOf(callIdArg, numberArg, videoArg, createdTimeArg, displayNameArg, acceptedTimeArg, hungUpTimeArg)) {
-      if (it is List<*>) {
-        if (it.size > 1) {
-          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
-        } else {
-          callback(Result.success(Unit))
-        }
-      } else {
-        callback(Result.failure(GeneratedPigeonUtils.createConnectionError(channelName)))
-      } 
-    }
-  }
 }
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface PPushRegistryHostApi {

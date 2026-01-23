@@ -41,7 +41,6 @@ class IncomingCallService : Service() {
         ConnectionPerform.AnswerCall,
         ConnectionPerform.DeclineCall,
         ConnectionPerform.HungUp,
-        ConnectionPerform.MissedCall
     )
 
     private val connectionServicePerformReceiver = object : BroadcastReceiver() {
@@ -53,8 +52,6 @@ class IncomingCallService : Service() {
                 ConnectionPerform.AnswerCall.name -> performAnswerCall(metadata!!)
                 ConnectionPerform.DeclineCall.name -> performDeclineCall(metadata!!)
                 ConnectionPerform.HungUp.name -> performDeclineCall(metadata!!)
-                ConnectionPerform.MissedCall.name -> performMissedCall(metadata!!)
-
             }
         }
     }
@@ -154,11 +151,6 @@ class IncomingCallService : Service() {
     private fun performAnswerCall(metadata: CallMetadata): Int {
         callLifecycleHandler.performAnswerCall(metadata)
         return START_STICKY
-    }
-
-    private fun performMissedCall(metadata: CallMetadata): Int {
-        callLifecycleHandler.handleMissedCall(metadata)
-        return START_NOT_STICKY
     }
 
     // Starts the service with the RELEASE action and schedules a timeout,

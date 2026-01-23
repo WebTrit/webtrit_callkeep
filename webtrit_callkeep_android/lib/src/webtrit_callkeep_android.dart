@@ -669,27 +669,6 @@ class _CallkeepBackgroundServiceDelegateRelay implements PDelegateBackgroundServ
   }
 
   @override
-  Future<void> performReceivedCall(
-    String callId,
-    String number,
-    bool video,
-    int createdTime,
-    String? displayName,
-    int? acceptedTime,
-    int? hungUpTime,
-  ) async {
-    return _delegate.performReceivedCall(
-      callId,
-      number,
-      DateTime.fromMillisecondsSinceEpoch(createdTime),
-      displayName,
-      acceptedTime != null ? DateTime.fromMillisecondsSinceEpoch(acceptedTime) : null,
-      hungUpTime != null ? DateTime.fromMillisecondsSinceEpoch(hungUpTime) : null,
-      video: video,
-    );
-  }
-
-  @override
   Future<void> performAnswerCall(String callId) async {
     return _delegate.performAnswerCall(callId);
   }

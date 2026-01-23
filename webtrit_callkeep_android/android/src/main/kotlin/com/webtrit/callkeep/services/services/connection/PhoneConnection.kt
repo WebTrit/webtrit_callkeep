@@ -427,10 +427,6 @@ class PhoneConnection internal constructor(
      */
     fun declineCall() {
         logger.d("Local decline for callId: $callId")
-        if (state == STATE_RINGING) {
-            notificationManager.showMissedCallNotification(metadata)
-            dispatcher(ConnectionPerform.MissedCall, metadata)
-        }
         terminateWithCause(DisconnectCause(DisconnectCause.REMOTE))
     }
 
@@ -450,7 +446,6 @@ class PhoneConnection internal constructor(
         logger.i("Connection became active for callId: $callId")
         audioManager.stopRingtone()
         notificationManager.cancelIncomingNotification(true)
-        notificationManager.cancelMissedCall(metadata)
         notificationManager.showActiveCallNotification(callId, metadata)
 
         if (Build.VERSION.SDK_INT == Build.VERSION_CODES.O_MR1) {
