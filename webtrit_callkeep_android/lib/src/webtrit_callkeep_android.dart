@@ -577,14 +577,6 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
   }
 
   @override
-  Future<bool> performSetSpeaker(
-    String callId,
-    bool enabled,
-  ) {
-    return _delegate.performSetSpeaker(callId, enabled);
-  }
-
-  @override
   Future<bool> performAudioDeviceSet(
     String callId,
     PAudioDevice device,

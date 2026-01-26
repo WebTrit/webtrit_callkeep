@@ -957,26 +957,6 @@ void SetUpWTPHostApiWithSuffix(id<FlutterBinaryMessenger> binaryMessenger, NSObj
     } 
   }];
 }
-- (void)performSetSpeaker:(NSString *)arg_uuidString enabled:(BOOL)arg_enabled completion:(void (^)(NSNumber *_Nullable, FlutterError *_Nullable))completion {
-  NSString *channelName = [NSString stringWithFormat:@"%@%@", @"dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.performSetSpeaker", _messageChannelSuffix];
-  FlutterBasicMessageChannel *channel =
-    [FlutterBasicMessageChannel
-      messageChannelWithName:channelName
-      binaryMessenger:self.binaryMessenger
-      codec:WTGetGeneratedCodec()];
-  [channel sendMessage:@[arg_uuidString ?: [NSNull null], @(arg_enabled)] reply:^(NSArray<id> *reply) {
-    if (reply != nil) {
-      if (reply.count > 1) {
-        completion(nil, [FlutterError errorWithCode:reply[0] message:reply[1] details:reply[2]]);
-      } else {
-        NSNumber *output = reply[0] == [NSNull null] ? nil : reply[0];
-        completion(output, nil);
-      }
-    } else {
-      completion(nil, createConnectionError(channelName));
-    } 
-  }];
-}
 - (void)performSendDTMF:(NSString *)arg_uuidString key:(NSString *)arg_key completion:(void (^)(NSNumber *_Nullable, FlutterError *_Nullable))completion {
   NSString *channelName = [NSString stringWithFormat:@"%@%@", @"dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.performSendDTMF", _messageChannelSuffix];
   FlutterBasicMessageChannel *channel =

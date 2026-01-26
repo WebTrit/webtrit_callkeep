@@ -965,8 +965,6 @@ abstract class PDelegateFlutterApi {
 
   Future<bool> performSetMuted(String uuidString, bool muted);
 
-  Future<bool> performSetSpeaker(String uuidString, bool enabled);
-
   Future<bool> performSendDTMF(String uuidString, String key);
 
   void didActivateAudioSession();
@@ -1171,34 +1169,6 @@ abstract class PDelegateFlutterApi {
               'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.performSetMuted was null, expected non-null bool.');
           try {
             final bool output = await api.performSetMuted(arg_uuidString!, arg_muted!);
-            return wrapResponse(result: output);
-          } on PlatformException catch (e) {
-            return wrapResponse(error: e);
-          }          catch (e) {
-            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
-          }
-        });
-      }
-    }
-    {
-      final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.performSetSpeaker$messageChannelSuffix', pigeonChannelCodec,
-          binaryMessenger: binaryMessenger);
-      if (api == null) {
-        pigeonVar_channel.setMessageHandler(null);
-      } else {
-        pigeonVar_channel.setMessageHandler((Object? message) async {
-          assert(message != null,
-          'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.performSetSpeaker was null.');
-          final List<Object?> args = (message as List<Object?>?)!;
-          final String? arg_uuidString = (args[0] as String?);
-          assert(arg_uuidString != null,
-              'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.performSetSpeaker was null, expected non-null String.');
-          final bool? arg_enabled = (args[1] as bool?);
-          assert(arg_enabled != null,
-              'Argument for dev.flutter.pigeon.webtrit_callkeep_ios.PDelegateFlutterApi.performSetSpeaker was null, expected non-null bool.');
-          try {
-            final bool output = await api.performSetSpeaker(arg_uuidString!, arg_enabled!);
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);

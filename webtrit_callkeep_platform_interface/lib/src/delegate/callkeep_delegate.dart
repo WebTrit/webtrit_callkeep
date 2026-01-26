@@ -42,9 +42,6 @@ abstract class CallkeepDelegate {
   /// Perform reject call
   Future<bool> performSendDTMF(String callId, String key);
 
-  /// Perform reject call
-  Future<bool> performSetSpeaker(String callId, bool enabled);
-
   /// Perform audio device changed
   Future<bool> performAudioDeviceSet(String callId, CallkeepAudioDevice device);
 

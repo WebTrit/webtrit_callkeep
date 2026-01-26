@@ -487,10 +487,6 @@ abstract class PDelegateFlutterApi {
   @async
   bool performSetMuted(String callId, bool muted);
 
-  @ObjCSelector('performSetSpeaker:enabled:')
-  @async
-  bool performSetSpeaker(String callId, bool enabled);
-
   @ObjCSelector('performSendDTMF:key:')
   @async
   bool performSendDTMF(String callId, String key);

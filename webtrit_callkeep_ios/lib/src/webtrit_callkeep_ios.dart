@@ -276,11 +276,6 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
   void didReset() {
     _delegate.didReset();
   }
-
-  @override
-  Future<bool> performSetSpeaker(String uuid, bool enabled) async {
-    return _delegate.performSetSpeaker(_uuidToCallIdMapping.getCallId(uuid: uuid), enabled);
-  }
 }
 
 class _PushRegistryDelegateRelay implements PPushRegistryDelegateFlutterApi {
