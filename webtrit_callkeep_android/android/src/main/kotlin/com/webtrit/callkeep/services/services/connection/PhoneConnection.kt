@@ -58,9 +58,6 @@ class PhoneConnection internal constructor(
     val hasVideo: Boolean
         get() = metadata.hasVideo ?: false
 
-    val hasSpeaker: Boolean
-        get() = isHasSpeaker
-
     val isSpeakerOnVideoEnabled: Boolean
         get() = metadata.speakerOnVideo ?: true
 
@@ -227,13 +224,6 @@ class PhoneConnection internal constructor(
         logger.d("Legacy audio state changed: $state")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
 
-        state?.route?.let {
-            isHasSpeaker = it == CallAudioState.ROUTE_SPEAKER
-            dispatcher(
-                ConnectionPerform.ConnectionHasSpeaker, metadata.copy(hasSpeaker = isHasSpeaker)
-            )
-        }
-
         val audioDevices = state?.supportedRouteMask?.let(::mapSupportedRoutes) ?: emptyList()
         dispatcher(ConnectionPerform.AudioDevicesUpdate, metadata.copy(audioDevices = audioDevices))
 
@@ -294,8 +284,6 @@ class PhoneConnection internal constructor(
         dispatcher(ConnectionPerform.AudioDeviceSet, metadata.copy(audioDevice = device))
 
         isHasSpeaker = callEndpoint.endpointType == CallEndpoint.TYPE_SPEAKER
-        dispatcher(ConnectionPerform.ConnectionHasSpeaker, metadata.copy(hasSpeaker = isHasSpeaker))
-
         // Guard against the system automatically switching back to Earpiece/Wired.
         // If the system forces a switch during a video call, we force it back.
         enforceVideoSpeakerLogic()
@@ -449,9 +437,8 @@ class PhoneConnection internal constructor(
         notificationManager.showActiveCallNotification(callId, metadata)
 
         if (Build.VERSION.SDK_INT == Build.VERSION_CODES.O_MR1) {
-            val update = metadata.copy(hasMute = isMute, hasSpeaker = isHasSpeaker)
+            val update = metadata.copy(hasMute = isMute)
             dispatcher(ConnectionPerform.AudioMuting, update)
-            dispatcher(ConnectionPerform.ConnectionHasSpeaker, update)
         }
 
         // Apply speaker logic immediately when the user answers an incoming call

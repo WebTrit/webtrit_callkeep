@@ -2151,26 +2151,6 @@ class PDelegateFlutterApi(private val binaryMessenger: BinaryMessenger, private 
       } 
     }
   }
-  fun performSetSpeaker(callIdArg: String, enabledArg: Boolean, callback: (Result<Boolean>) -> Unit)
-{
-    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.performSetSpeaker$separatedMessageChannelSuffix"
-    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-    channel.send(listOf(callIdArg, enabledArg)) {
-      if (it is List<*>) {
-        if (it.size > 1) {
-          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
-        } else if (it[0] == null) {
-          callback(Result.failure(FlutterError("null-error", "Flutter api returned null value for non-null return value.", "")))
-        } else {
-          val output = it[0] as Boolean
-          callback(Result.success(output))
-        }
-      } else {
-        callback(Result.failure(GeneratedPigeonUtils.createConnectionError(channelName)))
-      } 
-    }
-  }
   fun performSendDTMF(callIdArg: String, keyArg: String, callback: (Result<Boolean>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""

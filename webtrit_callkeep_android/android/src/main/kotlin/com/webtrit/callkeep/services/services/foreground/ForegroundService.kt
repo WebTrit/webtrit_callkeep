@@ -126,10 +126,6 @@ class ForegroundService : Service(), PHostApi {
                 ConnectionPerform.HungUp.name -> handleCSReportDeclineCall(intent.extras)
                 ConnectionPerform.AnswerCall.name -> handleCSReportAnswerCall(intent.extras)
                 ConnectionPerform.OngoingCall.name -> handleCSReportOngoingCall(intent.extras)
-                ConnectionPerform.ConnectionHasSpeaker.name -> handleCSReportConnectionHasSpeaker(
-                    intent.extras
-                )
-
                 ConnectionPerform.AudioDeviceSet.name -> handleCSReportAudioDeviceSet(intent.extras)
                 ConnectionPerform.AudioDevicesUpdate.name -> handleCsReportAudioDevicesUpdate(intent.extras)
                 ConnectionPerform.AudioMuting.name -> handleCSReportAudioMuting(intent.extras)
@@ -459,15 +455,6 @@ class ForegroundService : Service(), PHostApi {
                 callMetaData.handle!!.toPHandle(),
                 callMetaData.name,
                 callMetaData.hasVideo ?: false,
-            ) {}
-        }
-    }
-
-    private fun handleCSReportConnectionHasSpeaker(extras: Bundle?) {
-        extras?.let {
-            val callMetaData = CallMetadata.fromBundle(it)
-            flutterDelegateApi?.performSetSpeaker(
-                callMetaData.callId, callMetaData.hasSpeaker ?: false
             ) {}
         }
     }
