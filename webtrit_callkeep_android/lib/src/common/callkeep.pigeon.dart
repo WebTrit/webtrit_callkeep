@@ -124,6 +124,20 @@ enum PCallRequestErrorEnum {
   /// `CALL_PHONE permission required to place calls`, because it attempts
   /// to use the GSM dialer instead of VoIP.
   selfManagedPhoneAccountNotRegistered,
+  /// Android only.
+  ///
+  /// Occurs when the outgoing/incoming call request times out because the
+  /// system TelecomManager failed to bind to the ConnectionService or provide
+  /// a response within the expected timeframe.
+  ///
+  /// Typical causes:
+  /// - Zombie State: After an app crash or OS kill, TelecomManager might
+  ///   retain a stale binder connection to the previous (dead) process.
+  /// - Stale Binding: The system assumes the PhoneAccount is active but
+  ///   fails to trigger `onCreateOutgoingConnection`.
+  /// - Cold Start Latency: On certain vendors (e.g., Itel, Android One),
+  ///   the OS may deadlock or time out during service binding after a cold start.
+  timeout,
 }
 
 enum PCallkeepLifecycleEvent {

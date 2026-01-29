@@ -198,7 +198,7 @@ class ForegroundService : Service(), PHostApi {
             val exception = Exception("Overall timeout reached")
             logger.w("$logContext: ", exception)
             saveFailedOutgoingCall(metadata, OutgoingFailureSource.TIMEOUT, exception)
-            cb(Result.success(PCallRequestError(PCallRequestErrorEnum.INTERNAL)))
+            cb(Result.success(PCallRequestError(PCallRequestErrorEnum.TIMEOUT)))
             // ensure retry is stopped
             retryManager.cancel(callId)
         }
@@ -222,7 +222,8 @@ class ForegroundService : Service(), PHostApi {
                         is SecurityException if err.isCallPhoneSecurityException() -> PCallRequestError(
                             PCallRequestErrorEnum.SELF_MANAGED_PHONE_ACCOUNT_NOT_REGISTERED
                         )
-
+                        // Captures unexpected exceptions (e.g., IllegalArgumentException, RuntimeException)
+                        // that were thrown synchronously during the execution.
                         else -> PCallRequestError(PCallRequestErrorEnum.INTERNAL)
                     }
                 )
