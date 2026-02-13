@@ -491,11 +491,13 @@ class PhoneConnection internal constructor(
      */
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     private fun performEndpointChange(endpoint: CallEndpoint) {
-        if (pendingEndpointRequest?.identifier == endpoint.identifier) {
-            return
+        synchronized(this) {
+            if (pendingEndpointRequest?.identifier == endpoint.identifier) {
+                logger.d("Skipping duplicate endpoint change request for endpoint: ${endpoint.identifier}")
+                return
+            }
+            pendingEndpointRequest = endpoint
         }
-
-        pendingEndpointRequest = endpoint
         requestCallEndpointChange(
             endpoint, audioEndpointChangeExecutor, EndpointChangeReceiver(endpoint)
         )
@@ -604,15 +606,19 @@ class PhoneConnection internal constructor(
 
         override fun onResult(p0: Void?) {
             logger.d("Endpoint successfully changed to: $endpoint")
-            if (pendingEndpointRequest?.identifier == endpoint.identifier) {
-                pendingEndpointRequest = null
+            synchronized(this@PhoneConnection) {
+                if (pendingEndpointRequest?.identifier == endpoint.identifier) {
+                    pendingEndpointRequest = null
+                }
             }
         }
 
         override fun onError(error: CallEndpointException) {
             logger.e("Endpoint change failed for $endpoint: ${error.message}")
-            if (pendingEndpointRequest?.identifier == endpoint.identifier) {
-                pendingEndpointRequest = null
+            synchronized(this@PhoneConnection) {
+                if (pendingEndpointRequest?.identifier == endpoint.identifier) {
+                    pendingEndpointRequest = null
+                }
             }
         }
     }
