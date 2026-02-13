@@ -488,6 +488,10 @@ class PhoneConnection internal constructor(
 
     /**
      * Executes an asynchronous endpoint switch for API 34+.
+     *
+     * Prevents duplicate requests and potential race conditions by tracking the
+     * [pendingEndpointRequest] and ensuring only one active transition per
+     * endpoint occurs at a time.
      */
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     private fun performEndpointChange(endpoint: CallEndpoint) {
