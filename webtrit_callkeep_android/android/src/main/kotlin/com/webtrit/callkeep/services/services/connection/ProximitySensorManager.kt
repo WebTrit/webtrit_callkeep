@@ -1,5 +1,8 @@
 package com.webtrit.callkeep.services.services.connection
 
+import android.annotation.SuppressLint
+import android.os.PowerManager
+import android.telecom.ConnectionService
 import android.content.Context
 import com.webtrit.callkeep.common.Log
 
@@ -8,60 +11,87 @@ class ProximitySensorManager(
 ) {
     private val sensorListener = PhoneSensorListener()
 
+    @Volatile
+    private var isListening = false
+
+    @Volatile
+    private var isWakelockActive = false
+
     init {
         logger.d("Initializing ProximitySensorManager")
-        sensorListener.setSensorHandler { isUserNear ->
-            handleSensorChange(isUserNear)
-        }
     }
 
-    /**
-     * Updates the proximity listening preference.
-     */
     fun setShouldListenProximity(shouldListen: Boolean) {
+        if (state.shouldListenProximity() == shouldListen) return
+
         logger.d("Setting shouldListenProximity: $shouldListen")
         state.setShouldListenProximity(shouldListen)
+        updateProximityWakelock()
     }
 
-    /**
-     * Updates the proximity wake lock based on the current state and sensor readings.
-     */
     fun updateProximityWakelock() {
-        val isNear = state.isUserNear()
-        val shouldListen = state.shouldListenProximity()
-        val active = shouldListen && isNear
+        val active = isListening && state.shouldListenProximity()
 
-        logger.v("Updating proximity wakelock. State: [isNear: $isNear, shouldListen: $shouldListen] -> Active: $active")
-        sensorListener.upsertProximityWakelock(active)
+        if (isWakelockActive == active) return
+        isWakelockActive = active
+
+        logger.v("Updating proximity wakelock. State: [shouldListen: ${state.shouldListenProximity()}, isListening: $isListening] -> Active: $active")
+        sensorListener.upsertProximityWakelock(context, active)
     }
 
-    /**
-     * Starts listening to proximity sensor changes.
-     */
     fun startListening() {
+        if (isListening) return
+
         logger.i("Starting proximity sensor listening")
-        sensorListener.listen(context)
+        isListening = true
+        updateProximityWakelock()
     }
 
-    /**
-     * Stops listening to proximity sensor changes.
-     */
     fun stopListening() {
-        logger.i("Stopping proximity sensor listening")
-        sensorListener.unListen(context)
-    }
+        if (!isListening) return
 
-    /**
-     * Internal handler for sensor state changes to keep the callback concise.
-     */
-    private fun handleSensorChange(isUserNear: Boolean) {
-        logger.v("Proximity sensor change detected. Is user near: $isUserNear")
-        state.setNearestState(isUserNear)
+        logger.i("Stopping proximity sensor listening")
+        isListening = false
         updateProximityWakelock()
     }
 
     companion object {
         private const val TAG = "ProximitySensorManager"
         private val logger = Log(TAG)
+    }
+}
+
+class PhoneSensorListener {
+    private var proximityWakelock: PowerManager.WakeLock? = null
+
+    @Synchronized
+    @SuppressLint("InvalidWakeLockTag")
+    fun upsertProximityWakelock(context: Context, turnOn: Boolean) {
+        try {
+            if (proximityWakelock == null) {
+                val manager =
+                    context.getSystemService(ConnectionService.POWER_SERVICE) as PowerManager
+                proximityWakelock = manager.newWakeLock(
+                    PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK, "callkeep-voip"
+                ).apply {
+                    setReferenceCounted(false)
+                }
+            }
+
+            val wakelock = proximityWakelock ?: return
+            val alreadyHeld = wakelock.isHeld
+
+            if (turnOn && !alreadyHeld) {
+                wakelock.acquire(60 * 60 * 1000L)
+            } else if (!turnOn && alreadyHeld) {
+                wakelock.release(1)
+            }
+        } catch (x: Exception) {
+            Log.e(LOG_TAG, x.toString())
+        }
+    }
+
+    companion object {
+        private const val LOG_TAG = "PhoneSensorListener"
     }
 }
