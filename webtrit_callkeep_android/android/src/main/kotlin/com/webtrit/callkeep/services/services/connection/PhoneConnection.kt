@@ -41,8 +41,12 @@ class PhoneConnection internal constructor(
     private var isHasSpeaker = false
     private var disconnected = false
 
+    /**
+     * Tracks a pending [CallEndpoint] change request, ensuring only one is active at a time.
+     */
+    @Volatile
+    private var pendingEndpointRequest: CallEndpoint? = null
     private var availableCallEndpoints: List<CallEndpoint> = emptyList()
-
     private val notificationManager = NotificationManager()
     private val audioManager = AudioManager(context)
 
@@ -356,31 +360,38 @@ class PhoneConnection internal constructor(
      * Checks requirements: Video enabled, not ringing, and NO Bluetooth connected.
      */
     private fun enforceVideoSpeakerLogic() {
+        logger.d("enforceVideoSpeakerLogic: CHECKING... [hasVideo=$hasVideo, state=$state, isSpeakerOnVideoEnabled=$isSpeakerOnVideoEnabled, isHasSpeaker=$isHasSpeaker]")
+
         // Exit immediately if this behavior is disabled in metadata
         if (!isSpeakerOnVideoEnabled) {
+            logger.d("enforceVideoSpeakerLogic: SKIP -> Feature disabled in metadata (isSpeakerOnVideoEnabled=false)")
             return
         }
 
         // Must be video, must not be just ringing (incoming)
         if (!hasVideo || state == STATE_RINGING) {
+            logger.d("enforceVideoSpeakerLogic: SKIP -> Condition failed: hasVideo=$hasVideo (needs true) OR state=$state (needs != STATE_RINGING/2)")
             return
         }
 
         // Prevent log warning on API 34 if endpoints aren't loaded yet
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && availableCallEndpoints.isEmpty()) {
+            logger.d("enforceVideoSpeakerLogic: SKIP -> API 34+ and endpoints not loaded yet")
             return
         }
 
         // Bluetooth Guard: If Bluetooth is available/connected, prefer it over Speaker.
         if (isBluetoothAvailable()) {
-            logger.d("Bluetooth device detected. Skipping auto-speaker enforcement.")
+            logger.d("enforceVideoSpeakerLogic: SKIP -> Bluetooth device detected.")
             return
         }
 
         // Enforce Speaker if not already active
         if (!isHasSpeaker) {
-            logger.i("Enforcing speaker for video call. State: $state")
+            logger.i("enforceVideoSpeakerLogic: ACTION -> Enforcing speaker for video call. State: $state")
             toggleSpeaker(true)
+        } else {
+            logger.d("enforceVideoSpeakerLogic: SKIP -> Speaker is already active (isHasSpeaker=true)")
         }
     }
 
@@ -402,6 +413,8 @@ class PhoneConnection internal constructor(
      * Updates call identity and visual parameters.
      */
     fun updateData(requestCallMetadata: CallMetadata) {
+        logger.d("updateData called with: hasVideo=${requestCallMetadata.hasVideo}, speakerOnVideo=${requestCallMetadata.speakerOnVideo}")
+
         metadata = metadata.mergeWith(requestCallMetadata)
         extras = metadata.toBundle()
 
@@ -475,9 +488,20 @@ class PhoneConnection internal constructor(
 
     /**
      * Executes an asynchronous endpoint switch for API 34+.
+     *
+     * Prevents duplicate requests and potential race conditions by tracking the
+     * [pendingEndpointRequest] and ensuring only one active transition per
+     * endpoint occurs at a time.
      */
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     private fun performEndpointChange(endpoint: CallEndpoint) {
+        synchronized(this) {
+            if (pendingEndpointRequest?.identifier == endpoint.identifier) {
+                logger.d("Skipping duplicate endpoint change request for endpoint: ${endpoint.identifier}")
+                return
+            }
+            pendingEndpointRequest = endpoint
+        }
         requestCallEndpointChange(
             endpoint, audioEndpointChangeExecutor, EndpointChangeReceiver(endpoint)
         )
@@ -583,9 +607,24 @@ class PhoneConnection internal constructor(
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     private inner class EndpointChangeReceiver(private val endpoint: CallEndpoint) :
         OutcomeReceiver<Void, CallEndpointException> {
-        override fun onResult(p0: Void?) = logger.d("Endpoint successfully changed to: $endpoint")
-        override fun onError(error: CallEndpointException) =
+
+        override fun onResult(p0: Void?) {
+            logger.d("Endpoint successfully changed to: $endpoint")
+            synchronized(this@PhoneConnection) {
+                if (pendingEndpointRequest?.identifier == endpoint.identifier) {
+                    pendingEndpointRequest = null
+                }
+            }
+        }
+
+        override fun onError(error: CallEndpointException) {
             logger.e("Endpoint change failed for $endpoint: ${error.message}")
+            synchronized(this@PhoneConnection) {
+                if (pendingEndpointRequest?.identifier == endpoint.identifier) {
+                    pendingEndpointRequest = null
+                }
+            }
+        }
     }
 
     companion object {
