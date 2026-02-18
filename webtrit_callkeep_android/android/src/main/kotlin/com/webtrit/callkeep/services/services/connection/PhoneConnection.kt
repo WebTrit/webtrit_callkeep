@@ -268,10 +268,10 @@ class PhoneConnection internal constructor(
 
     /**
      * Updates available audio destinations for API 34+.
-     * * This method contains a critical fix for the "Sticky Speaker State" issue.
-     * Android Telecom Framework often caches the last used audio route. If a previous
-     * call ended on SPEAKER (common for video calls), the system might incorrectly
-     * initialize a new audio-only call on speakerphone.
+     *
+     * This method intercepts the initial hardware report to resolve the "Sticky Speaker State."
+     * On some devices, the Telecom Framework caches the last used route. By forcing the
+     * EARPIECE during the first load of an audio-only call, we override this behavior.
      */
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     override fun onAvailableCallEndpointsChanged(callEndpoints: List<CallEndpoint>) {
@@ -283,21 +283,26 @@ class PhoneConnection internal constructor(
         val devices = callEndpoints.map(::mapEndpointToAudioDevice)
         dispatcher(ConnectionPerform.AudioDevicesUpdate, metadata.copy(audioDevices = devices))
 
-        /**
-         * Core Fix: Force EARPIECE on initialization for audio-only calls.
-         * * By intercepting the very first endpoint update, we override any
-         * system-inherited "sticky" routes (like Speaker from a prior video call).
-         * This ensures audio calls consistently start on the earpiece.
-         */
-        if (isFirstLoad && !hasVideo) {
-            val earpiece =
-                callEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_EARPIECE }
-            val current = currentCallEndpoint
-
-            if (earpiece != null && current.endpointType != CallEndpoint.TYPE_EARPIECE) {
-                logger.i("Startup: Correcting sticky speaker state. Forcing EARPIECE.")
-                performEndpointChange(earpiece)
+        try {
+            /**
+             * Core Fix: Force EARPIECE on initialization for audio-only calls.
+             * By forcing the switch blindly on the first load, we preemptively correct
+             * any "sticky" speaker state without risking a crash.
+             */
+            if (isFirstLoad && !hasVideo) {
+                val earpiece =
+                    callEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_EARPIECE }
+                if (earpiece != null) {
+                    logger.i("Startup: Preemptively forcing EARPIECE to clear sticky state.")
+                    performEndpointChange(earpiece)
+                }
             }
+        } catch (e: Exception) {
+            /**
+             * Defensive logging: Ensures the call remains active even if
+             * the platform-specific routing request fails.
+             */
+            logger.w("Failed to perform initial audio endpoint correction: ${e.message}", e)
         }
 
         enforceVideoSpeakerLogic()
