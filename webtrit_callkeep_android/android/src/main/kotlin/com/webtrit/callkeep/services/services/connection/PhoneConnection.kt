@@ -262,9 +262,14 @@ class PhoneConnection internal constructor(
 
     /**
      * Updates available audio destinations for API 34+.
+     * * This method contains a critical fix for the "Sticky Speaker State" issue.
+     * Android Telecom Framework often caches the last used audio route. If a previous
+     * call ended on SPEAKER (common for video calls), the system might incorrectly
+     * initialize a new audio-only call on speakerphone.
      */
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     override fun onAvailableCallEndpointsChanged(callEndpoints: List<CallEndpoint>) {
+        val isFirstLoad = availableCallEndpoints.isEmpty()
         super.onAvailableCallEndpointsChanged(callEndpoints)
         logger.d("Available call endpoints changed: $callEndpoints")
         availableCallEndpoints = callEndpoints
@@ -272,8 +277,23 @@ class PhoneConnection internal constructor(
         val devices = callEndpoints.map(::mapEndpointToAudioDevice)
         dispatcher(ConnectionPerform.AudioDevicesUpdate, metadata.copy(audioDevices = devices))
 
-        // Re-evaluate audio routing now that the system has loaded the available devices.
-        // This fixes the "null device" race condition at call startup.
+        /**
+         * Core Fix: Force EARPIECE on initialization for audio-only calls.
+         * * By intercepting the very first endpoint update, we override any
+         * system-inherited "sticky" routes (like Speaker from a prior video call).
+         * This ensures audio calls consistently start on the earpiece.
+         */
+        if (isFirstLoad && !hasVideo) {
+            val earpiece =
+                callEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_EARPIECE }
+            val current = currentCallEndpoint
+
+            if (earpiece != null && current.endpointType != CallEndpoint.TYPE_EARPIECE) {
+                logger.i("Startup: Correcting sticky speaker state. Forcing EARPIECE.")
+                performEndpointChange(earpiece)
+            }
+        }
+
         enforceVideoSpeakerLogic()
     }
 
