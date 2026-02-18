@@ -42,6 +42,12 @@ class PhoneConnection internal constructor(
     private var disconnected = false
 
     /**
+     * Tracks whether the speaker was manually disabled by the user.
+     * Prevents automatic re-enabling during video calls.
+     */
+    private var isSpeakerManuallyDisabled = false
+
+    /**
      * Tracks a pending [CallEndpoint] change request, ensuring only one is active at a time.
      */
     @Volatile
@@ -310,6 +316,8 @@ class PhoneConnection internal constructor(
     fun setAudioDevice(device: AudioDevice) {
         logger.i("Setting audio device: $device for callId: $callId")
 
+        isSpeakerManuallyDisabled = device.type != AudioDeviceType.SPEAKER
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             val deviceId = device.id
             if (deviceId == null) {
@@ -339,6 +347,8 @@ class PhoneConnection internal constructor(
      */
     fun toggleSpeaker(isActive: Boolean) {
         logger.d("Toggling speaker state: $isActive for callId: $callId")
+
+        isSpeakerManuallyDisabled = !isActive
 
         val targetDevice: AudioDevice? =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -387,6 +397,11 @@ class PhoneConnection internal constructor(
         }
 
         // Enforce Speaker if not already active
+        if (isSpeakerManuallyDisabled) {
+            logger.d("enforceVideoSpeakerLogic: SKIP -> User manually disabled speaker")
+            return
+        }
+
         if (!isHasSpeaker) {
             logger.i("enforceVideoSpeakerLogic: ACTION -> Enforcing speaker for video call. State: $state")
             toggleSpeaker(true)
@@ -415,12 +430,17 @@ class PhoneConnection internal constructor(
     fun updateData(requestCallMetadata: CallMetadata) {
         logger.d("updateData called with: hasVideo=${requestCallMetadata.hasVideo}, speakerOnVideo=${requestCallMetadata.speakerOnVideo}")
 
+        val previousHasVideo = metadata.hasVideo
+
         metadata = metadata.mergeWith(requestCallMetadata)
         extras = metadata.toBundle()
 
         setAddress(metadata.number.toUri(), TelecomManager.PRESENTATION_ALLOWED)
         setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
-        metadata.hasVideo?.let { applyVideoState(it) }
+
+        if (previousHasVideo != metadata.hasVideo) {
+            metadata.hasVideo?.let { applyVideoState(it) }
+        }
     }
 
     /**
@@ -475,6 +495,7 @@ class PhoneConnection internal constructor(
      */
     private fun applyVideoState(hasVideo: Boolean) {
         if (hasVideo) {
+            isSpeakerManuallyDisabled = false
             videoProvider = PhoneVideoProvider()
             videoState = VideoProfile.STATE_BIDIRECTIONAL
 
