@@ -8,9 +8,9 @@ import 'package:fluttertoast/fluttertoast.dart';
 final _log = Logger('Isolates');
 
 @pragma('vm:entry-point')
-Future<void> onStartForegroundService(CallkeepServiceStatus status) async {
+Future<void> onStartForegroundService(CallkeepServiceStatus status, CallkeepIncomingCallMetadata? metadata) async {
   initializeLogs();
-  _log.info('onStartForegroundService: $status');
+  _log.info('onStartForegroundService: $status, metadata: $metadata');
   CallkeepConnections().cleanConnections();
 
   _log.info('Starting call after 3 seconds');

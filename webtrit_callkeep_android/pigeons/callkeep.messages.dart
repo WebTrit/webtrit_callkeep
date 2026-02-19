@@ -356,7 +356,7 @@ abstract class PHostSoundApi {
 @FlutterApi()
 abstract class PDelegateBackgroundRegisterFlutterApi {
   @async
-  void onWakeUpBackgroundHandler(int userCallbackHandle, PCallkeepServiceStatus status);
+  void onWakeUpBackgroundHandler(int userCallbackHandle, PCallkeepServiceStatus status, PCallkeepIncomingCallData? callData);
 
   @async
   void onApplicationStatusChanged(int applicationStatusCallbackHandle, PCallkeepServiceStatus status);

@@ -681,11 +681,12 @@ class _BackgroundServiceDelegate implements PDelegateBackgroundRegisterFlutterAp
   Future<void> onWakeUpBackgroundHandler(
     int userCallbackHandle,
     PCallkeepServiceStatus status,
+    PCallkeepIncomingCallData? callData,
   ) async {
     final handle = CallbackHandle.fromRawHandle(userCallbackHandle);
     final closure = PluginUtilities.getCallbackFromHandle(handle)! as ForegroundStartServiceHandle;
 
-    await closure(status.toCallkeep());
+    await closure(status.toCallkeep(), callData?.toCallkeep());
   }
 
   @override

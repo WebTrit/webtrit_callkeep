@@ -407,7 +407,7 @@ indicating the current signaling status if provided by the main isolate; otherwi
 
 ```dart
 @pragma('vm:entry-point')
-Future<void> onSignalingSyncCallback(CallkeepServiceStatus status) async {
+Future<void> onSignalingSyncCallback(CallkeepServiceStatus status, CallkeepIncomingCallMetadata? metadata) async {
   await _initializeDependencies();
 
   await _signalingForegroundIsolateManager?.sync(status);
