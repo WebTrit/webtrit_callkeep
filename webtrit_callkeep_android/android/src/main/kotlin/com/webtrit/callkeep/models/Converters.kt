@@ -7,6 +7,7 @@ import com.webtrit.callkeep.PCallkeepConnection
 import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PCallkeepDisconnectCause
 import com.webtrit.callkeep.PCallkeepDisconnectCauseType
+import com.webtrit.callkeep.PCallkeepIncomingCallData
 import com.webtrit.callkeep.PHandle
 import com.webtrit.callkeep.PHandleTypeEnum
 import com.webtrit.callkeep.services.services.connection.PhoneConnection
@@ -63,5 +64,14 @@ fun AudioDevice.toPAudioDevice(): PAudioDevice {
         },
         name = this.name,
         id = this.id,
+    )
+}
+
+fun CallMetadata.toPCallkeepIncomingCallData(): PCallkeepIncomingCallData {
+    return PCallkeepIncomingCallData(
+        callId = callId,
+        handle = handle?.toPHandle(),
+        displayName = displayName,
+        hasVideo = hasVideo ?: false,
     )
 }

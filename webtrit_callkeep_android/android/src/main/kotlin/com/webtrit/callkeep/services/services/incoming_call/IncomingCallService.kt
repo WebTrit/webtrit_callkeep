@@ -13,6 +13,7 @@ import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.models.toPCallkeepIncomingCallData
 import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
 import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
@@ -69,7 +70,7 @@ class IncomingCallService : Service() {
         )
 
         isolateHandler = FlutterIsolateHandler(this@IncomingCallService, this@IncomingCallService) {
-            callLifecycleHandler.flutterApi?.syncPushIsolate(onSuccess = {}, onFailure = {})
+            callLifecycleHandler.flutterApi?.syncPushIsolate(callLifecycleHandler.currentCallData, onSuccess = {}, onFailure = {})
         }
 
         incomingCallHandler = IncomingCallHandler(
@@ -163,6 +164,7 @@ class IncomingCallService : Service() {
     // Launches the service with the LAUNCH action and cancels the timeout
     private fun handleLaunch(metadata: CallMetadata): Int {
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
+        callLifecycleHandler.currentCallData = metadata.toPCallkeepIncomingCallData()
         incomingCallHandler.handle(metadata)
         return START_STICKY
     }

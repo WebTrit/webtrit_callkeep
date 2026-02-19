@@ -90,14 +90,17 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is PCallRequestError) {
       buffer.putUint8(152);
       writeValue(buffer, value.encode());
-    }    else if (value is PCallkeepServiceStatus) {
+    }    else if (value is PCallkeepIncomingCallData) {
       buffer.putUint8(153);
       writeValue(buffer, value.encode());
-    }    else if (value is PCallkeepDisconnectCause) {
+    }    else if (value is PCallkeepServiceStatus) {
       buffer.putUint8(154);
       writeValue(buffer, value.encode());
-    }    else if (value is PCallkeepConnection) {
+    }    else if (value is PCallkeepDisconnectCause) {
       buffer.putUint8(155);
+      writeValue(buffer, value.encode());
+    }    else if (value is PCallkeepConnection) {
+      buffer.putUint8(156);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -171,10 +174,12 @@ class _PigeonCodec extends StandardMessageCodec {
       case 152: 
         return PCallRequestError.decode(readValue(buffer)!);
       case 153: 
-        return PCallkeepServiceStatus.decode(readValue(buffer)!);
+        return PCallkeepIncomingCallData.decode(readValue(buffer)!);
       case 154: 
-        return PCallkeepDisconnectCause.decode(readValue(buffer)!);
+        return PCallkeepServiceStatus.decode(readValue(buffer)!);
       case 155: 
+        return PCallkeepDisconnectCause.decode(readValue(buffer)!);
+      case 156: 
         return PCallkeepConnection.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);

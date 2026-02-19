@@ -3,6 +3,9 @@ package com.webtrit.callkeep.services.services.incoming_call.handlers
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import com.webtrit.callkeep.PCallkeepIncomingCallData
+import com.webtrit.callkeep.PHandle
+import com.webtrit.callkeep.PHandleTypeEnum
 import com.webtrit.callkeep.PHostBackgroundPushNotificationIsolateApi
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.common.IsolateSelector
@@ -20,6 +23,8 @@ class CallLifecycleHandler(
 ) : PHostBackgroundPushNotificationIsolateApi {
 
     internal var flutterApi: FlutterIsolateCommunicator? = null
+
+    var currentCallData: PCallkeepIncomingCallData? = null
 
     // Notify connection service about answering the call
     fun reportAnswerToConnectionService(metadata: CallMetadata) {
@@ -69,7 +74,7 @@ class CallLifecycleHandler(
         if (isolateHandler.isReady == true) {
             performSafeEndCall(metadata.callId, metadata)
         } else {
-            flutterApi?.syncPushIsolate(onSuccess = {
+            flutterApi?.syncPushIsolate(currentCallData, onSuccess = {
                 performSafeEndCall(metadata.callId, metadata)
             }, onFailure = {
                 Log.e(TAG, "Sync before decline failed: $it")
@@ -100,7 +105,7 @@ class CallLifecycleHandler(
     }
 
     override fun endAllCalls(callback: (Result<Unit>) -> Unit) {
-        flutterApi?.releaseResources {
+        flutterApi?.releaseResources(currentCallData) {
             connectionController.tearDown()
         }
         callback(Result.success(Unit))
@@ -109,7 +114,7 @@ class CallLifecycleHandler(
     // Isolate
     fun release() {
         Log.d(TAG, "Resources released")
-        flutterApi?.releaseResources {
+        flutterApi?.releaseResources(currentCallData) {
             stopServiceWithDelay()
         } ?: run { stopService() }
     }

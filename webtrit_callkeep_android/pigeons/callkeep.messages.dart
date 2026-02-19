@@ -186,6 +186,13 @@ enum PCallkeepPushNotificationSyncStatus {
   releaseResources,
 }
 
+class PCallkeepIncomingCallData {
+  late String callId;
+  late PHandle? handle;
+  late String? displayName;
+  late bool hasVideo;
+}
+
 class PCallkeepServiceStatus {
   late PCallkeepLifecycleEvent lifecycleEvent;
   late PCallkeepSignalingStatus? mainSignalingStatus;
@@ -349,13 +356,13 @@ abstract class PHostSoundApi {
 @FlutterApi()
 abstract class PDelegateBackgroundRegisterFlutterApi {
   @async
-  void onWakeUpBackgroundHandler(int userCallbackHandle, PCallkeepServiceStatus status);
+  void onWakeUpBackgroundHandler(int userCallbackHandle, PCallkeepServiceStatus status, PCallkeepIncomingCallData? callData);
 
   @async
   void onApplicationStatusChanged(int applicationStatusCallbackHandle, PCallkeepServiceStatus status);
 
   @async
-  void onNotificationSync(int pushNotificationSyncStatusHandle, PCallkeepPushNotificationSyncStatus status);
+  void onNotificationSync(int pushNotificationSyncStatusHandle, PCallkeepPushNotificationSyncStatus status, PCallkeepIncomingCallData? callData);
 }
 
 @HostApi()
