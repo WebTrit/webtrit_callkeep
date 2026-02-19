@@ -703,9 +703,10 @@ class _BackgroundServiceDelegate implements PDelegateBackgroundRegisterFlutterAp
   Future<void> onNotificationSync(
     int pushNotificationSyncStatusHandle,
     PCallkeepPushNotificationSyncStatus status,
+    PCallkeepIncomingCallData? callData,
   ) async {
     final handle = CallbackHandle.fromRawHandle(pushNotificationSyncStatusHandle);
     final closure = PluginUtilities.getCallbackFromHandle(handle)! as CallKeepPushNotificationSyncStatusHandle;
-    await closure(status.toCallkeep());
+    await closure(status.toCallkeep(), callData?.toCallkeep());
   }
 }

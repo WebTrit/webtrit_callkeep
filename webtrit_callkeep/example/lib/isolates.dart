@@ -41,9 +41,9 @@ Future<void> onChangedLifecycle(CallkeepServiceStatus status) async {
 }
 
 @pragma('vm:entry-point')
-Future<void> onPushNotificationCallback(CallkeepPushNotificationSyncStatus status) async {
+Future<void> onPushNotificationCallback(CallkeepPushNotificationSyncStatus status, CallkeepIncomingCallMetadata? metadata) async {
   initializeLogs();
-  _log.info('onPushNotificationCallback: $status');
+  _log.info('onPushNotificationCallback: $status, metadata: $metadata');
 
   if (status == CallkeepPushNotificationSyncStatus.synchronizeCallStatus) {
     Future.delayed(Duration(seconds: 3), () {

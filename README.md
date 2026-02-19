@@ -328,7 +328,7 @@ To manage resources and synchronize signaling from push notifications, implement
 
 ```dart
 @pragma('vm:entry-point')
-Future<void> onPushNotificationCallback(CallkeepPushNotificationSyncStatus status) async {
+Future<void> onPushNotificationCallback(CallkeepPushNotificationSyncStatus status, CallkeepIncomingCallMetadata? metadata) async {
   await _initializeDependencies();
 
   switch (status) {

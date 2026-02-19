@@ -99,6 +99,9 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is PCallkeepConnection) {
       buffer.putUint8(155);
       writeValue(buffer, value.encode());
+    }    else if (value is PCallkeepIncomingCallData) {
+      buffer.putUint8(156);
+      writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
     }
@@ -176,6 +179,8 @@ class _PigeonCodec extends StandardMessageCodec {
         return PCallkeepDisconnectCause.decode(readValue(buffer)!);
       case 155: 
         return PCallkeepConnection.decode(readValue(buffer)!);
+      case 156: 
+        return PCallkeepIncomingCallData.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
     }
