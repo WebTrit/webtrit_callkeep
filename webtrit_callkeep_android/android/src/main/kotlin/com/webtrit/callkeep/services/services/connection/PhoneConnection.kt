@@ -48,6 +48,12 @@ class PhoneConnection internal constructor(
     private var isSpeakerManuallyDisabled = false
 
     /**
+     * Prevents automatic speaker enforcement if the call originally started as audio-only.
+     * This ensures mid-call video upgrades from the remote party do not force the speaker on.
+     */
+    private var preventAutoSpeakerEnforcement = false
+
+    /**
      * Tracks a pending [CallEndpoint] change request, ensuring only one is active at a time.
      */
     @Volatile
@@ -421,7 +427,14 @@ class PhoneConnection internal constructor(
             return
         }
 
-        // Enforce Speaker if not already active
+        // Guard: If the call originally started as an audio-only session, we must not
+        // abruptly switch to the speakerphone when a remote video upgrade occurs.
+        // The user is likely still holding the phone to their ear.
+        if (preventAutoSpeakerEnforcement) {
+            logger.d("enforceVideoSpeakerLogic: SKIP -> Call started as audio. Ignoring mid-call video upgrade.")
+            return
+        }
+
         if (isSpeakerManuallyDisabled) {
             logger.d("enforceVideoSpeakerLogic: SKIP -> User manually disabled speaker")
             return
@@ -499,8 +512,13 @@ class PhoneConnection internal constructor(
             dispatcher(ConnectionPerform.AudioMuting, update)
         }
 
-        // Apply speaker logic immediately when the user answers an incoming call
-        // (transitions from STATE_RINGING to STATE_ACTIVE).
+        // If the incoming call is answered as audio-only, we set a flag to prevent
+        // the speaker from turning on automatically if the remote party adds video later.
+        // This prevents blasting audio into the user's ear.
+        if (!hasVideo) {
+            preventAutoSpeakerEnforcement = true
+        }
+
         enforceVideoSpeakerLogic()
     }
 
@@ -511,7 +529,12 @@ class PhoneConnection internal constructor(
         logger.i("Dialing callId: $callId")
         dispatcher(ConnectionPerform.OngoingCall, metadata)
 
-        // Enable speaker immediately for outgoing video calls so the dial tone is audible via speaker.
+        // If the outgoing call is initiated as audio-only, we prevent the speaker
+        // from being forced on if the remote party answers with video or upgrades mid-call.
+        if (!hasVideo) {
+            preventAutoSpeakerEnforcement = true
+        }
+
         enforceVideoSpeakerLogic()
     }
 
@@ -520,7 +543,6 @@ class PhoneConnection internal constructor(
      */
     private fun applyVideoState(hasVideo: Boolean) {
         if (hasVideo) {
-            isSpeakerManuallyDisabled = false
             videoProvider = PhoneVideoProvider()
             videoState = VideoProfile.STATE_BIDIRECTIONAL
 
