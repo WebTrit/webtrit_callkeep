@@ -23,6 +23,7 @@ import com.webtrit.callkeep.PCallkeepLifecycleEvent
 import com.webtrit.callkeep.PCallkeepPermission
 import com.webtrit.callkeep.PCallkeepPushNotificationSyncStatus
 import com.webtrit.callkeep.PCallkeepSignalingStatus
+import com.webtrit.callkeep.PCallkeepIncomingCallData
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PPermissionResult
 import com.webtrit.callkeep.PSpecialPermissionStatusTypeEnum
@@ -146,23 +147,24 @@ fun PCallkeepSignalingStatus.toSignalingStatus(): SignalingStatus {
 }
 
 fun PDelegateBackgroundRegisterFlutterApi.syncPushIsolate(
-    context: Context, callback: (Result<Unit>) -> Unit
+    context: Context, callData: PCallkeepIncomingCallData?, callback: (Result<Unit>) -> Unit
 ) {
-    isolateEvent(context, PCallkeepPushNotificationSyncStatus.SYNCHRONIZE_CALL_STATUS, callback)
+    isolateEvent(context, PCallkeepPushNotificationSyncStatus.SYNCHRONIZE_CALL_STATUS, callData, callback)
 }
 
 fun PDelegateBackgroundRegisterFlutterApi.releasePushIsolate(
-    context: Context, callback: (Result<Unit>) -> Unit
+    context: Context, callData: PCallkeepIncomingCallData?, callback: (Result<Unit>) -> Unit
 ) {
-    isolateEvent(context, PCallkeepPushNotificationSyncStatus.RELEASE_RESOURCES, callback)
+    isolateEvent(context, PCallkeepPushNotificationSyncStatus.RELEASE_RESOURCES, callData, callback)
 }
 
 private fun PDelegateBackgroundRegisterFlutterApi.isolateEvent(
-    context: Context, event: PCallkeepPushNotificationSyncStatus, callback: (Result<Unit>) -> Unit
+    context: Context, event: PCallkeepPushNotificationSyncStatus, callData: PCallkeepIncomingCallData?, callback: (Result<Unit>) -> Unit
 ) {
     this.onNotificationSync(
         StorageDelegate.IncomingCallService.getOnNotificationSync(context),
         event,
+        callData,
         callback = callback
     )
 }

@@ -242,7 +242,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
             wakeUpHandler, PCallkeepServiceStatus(
                 activityLifecycle.toPCallkeepLifecycleType(),
                 mainSignalingStatus = status?.toPCallkeepSignalingStatus()
-            )
+            ), null
         ) { response -> }
     }
 

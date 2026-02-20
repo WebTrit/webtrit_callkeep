@@ -630,6 +630,43 @@ data class PCallRequestError (
 }
 
 /** Generated class from Pigeon that represents data sent in messages. */
+data class PCallkeepIncomingCallData (
+  val callId: String,
+  val handle: PHandle? = null,
+  val displayName: String? = null,
+  val hasVideo: Boolean
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): PCallkeepIncomingCallData {
+      val callId = pigeonVar_list[0] as String
+      val handle = pigeonVar_list[1] as PHandle?
+      val displayName = pigeonVar_list[2] as String?
+      val hasVideo = pigeonVar_list[3] as Boolean
+      return PCallkeepIncomingCallData(callId, handle, displayName, hasVideo)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      callId,
+      handle,
+      displayName,
+      hasVideo,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is PCallkeepIncomingCallData) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return GeneratedPigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
 data class PCallkeepServiceStatus (
   val lifecycleEvent: PCallkeepLifecycleEvent,
   val mainSignalingStatus: PCallkeepSignalingStatus? = null
@@ -849,15 +886,20 @@ private open class GeneratedPigeonCodec : StandardMessageCodec() {
       }
       153.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PCallkeepServiceStatus.fromList(it)
+          PCallkeepIncomingCallData.fromList(it)
         }
       }
       154.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PCallkeepDisconnectCause.fromList(it)
+          PCallkeepServiceStatus.fromList(it)
         }
       }
       155.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          PCallkeepDisconnectCause.fromList(it)
+        }
+      }
+      156.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           PCallkeepConnection.fromList(it)
         }
@@ -963,16 +1005,20 @@ private open class GeneratedPigeonCodec : StandardMessageCodec() {
         stream.write(152)
         writeValue(stream, value.toList())
       }
-      is PCallkeepServiceStatus -> {
+      is PCallkeepIncomingCallData -> {
         stream.write(153)
         writeValue(stream, value.toList())
       }
-      is PCallkeepDisconnectCause -> {
+      is PCallkeepServiceStatus -> {
         stream.write(154)
         writeValue(stream, value.toList())
       }
-      is PCallkeepConnection -> {
+      is PCallkeepDisconnectCause -> {
         stream.write(155)
+        writeValue(stream, value.toList())
+      }
+      is PCallkeepConnection -> {
+        stream.write(156)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -1507,12 +1553,12 @@ class PDelegateBackgroundRegisterFlutterApi(private val binaryMessenger: BinaryM
       GeneratedPigeonCodec()
     }
   }
-  fun onWakeUpBackgroundHandler(userCallbackHandleArg: Long, statusArg: PCallkeepServiceStatus, callback: (Result<Unit>) -> Unit)
+  fun onWakeUpBackgroundHandler(userCallbackHandleArg: Long, statusArg: PCallkeepServiceStatus, callDataArg: PCallkeepIncomingCallData?, callback: (Result<Unit>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
     val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onWakeUpBackgroundHandler$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-    channel.send(listOf(userCallbackHandleArg, statusArg)) {
+    channel.send(listOf(userCallbackHandleArg, statusArg, callDataArg)) {
       if (it is List<*>) {
         if (it.size > 1) {
           callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
@@ -1541,12 +1587,12 @@ class PDelegateBackgroundRegisterFlutterApi(private val binaryMessenger: BinaryM
       } 
     }
   }
-  fun onNotificationSync(pushNotificationSyncStatusHandleArg: Long, statusArg: PCallkeepPushNotificationSyncStatus, callback: (Result<Unit>) -> Unit)
+  fun onNotificationSync(pushNotificationSyncStatusHandleArg: Long, statusArg: PCallkeepPushNotificationSyncStatus, callDataArg: PCallkeepIncomingCallData?, callback: (Result<Unit>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
     val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onNotificationSync$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-    channel.send(listOf(pushNotificationSyncStatusHandleArg, statusArg)) {
+    channel.send(listOf(pushNotificationSyncStatusHandleArg, statusArg, callDataArg)) {
       if (it is List<*>) {
         if (it.size > 1) {
           callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))

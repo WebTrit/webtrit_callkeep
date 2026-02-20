@@ -8,9 +8,9 @@ import 'package:fluttertoast/fluttertoast.dart';
 final _log = Logger('Isolates');
 
 @pragma('vm:entry-point')
-Future<void> onStartForegroundService(CallkeepServiceStatus status) async {
+Future<void> onStartForegroundService(CallkeepServiceStatus status, CallkeepIncomingCallMetadata? metadata) async {
   initializeLogs();
-  _log.info('onStartForegroundService: $status');
+  _log.info('onStartForegroundService: $status, metadata: $metadata');
   CallkeepConnections().cleanConnections();
 
   _log.info('Starting call after 3 seconds');
@@ -41,9 +41,9 @@ Future<void> onChangedLifecycle(CallkeepServiceStatus status) async {
 }
 
 @pragma('vm:entry-point')
-Future<void> onPushNotificationCallback(CallkeepPushNotificationSyncStatus status) async {
+Future<void> onPushNotificationCallback(CallkeepPushNotificationSyncStatus status, CallkeepIncomingCallMetadata? metadata) async {
   initializeLogs();
-  _log.info('onPushNotificationCallback: $status');
+  _log.info('onPushNotificationCallback: $status, metadata: $metadata');
 
   if (status == CallkeepPushNotificationSyncStatus.synchronizeCallStatus) {
     Future.delayed(Duration(seconds: 3), () {

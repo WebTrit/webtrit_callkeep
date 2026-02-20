@@ -328,7 +328,7 @@ To manage resources and synchronize signaling from push notifications, implement
 
 ```dart
 @pragma('vm:entry-point')
-Future<void> onPushNotificationCallback(CallkeepPushNotificationSyncStatus status) async {
+Future<void> onPushNotificationCallback(CallkeepPushNotificationSyncStatus status, CallkeepIncomingCallMetadata? metadata) async {
   await _initializeDependencies();
 
   switch (status) {
@@ -407,7 +407,7 @@ indicating the current signaling status if provided by the main isolate; otherwi
 
 ```dart
 @pragma('vm:entry-point')
-Future<void> onSignalingSyncCallback(CallkeepServiceStatus status) async {
+Future<void> onSignalingSyncCallback(CallkeepServiceStatus status, CallkeepIncomingCallMetadata? metadata) async {
   await _initializeDependencies();
 
   await _signalingForegroundIsolateManager?.sync(status);

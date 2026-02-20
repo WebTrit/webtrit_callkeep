@@ -1,6 +1,7 @@
 package com.webtrit.callkeep.services.services.incoming_call
 
 import android.content.Context
+import com.webtrit.callkeep.PCallkeepIncomingCallData
 import com.webtrit.callkeep.PCallkeepPushNotificationSyncStatus
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
@@ -12,8 +13,8 @@ import com.webtrit.callkeep.models.CallMetadata
 interface FlutterIsolateCommunicator {
     fun performAnswer(callId: String, onSuccess: () -> Unit, onFailure: (Throwable) -> Unit)
     fun performEndCall(callId: String, onSuccess: () -> Unit, onFailure: (Throwable) -> Unit)
-    fun syncPushIsolate(onSuccess: () -> Unit, onFailure: (Throwable) -> Unit)
-    fun releaseResources(onComplete: () -> Unit)
+    fun syncPushIsolate(callData: PCallkeepIncomingCallData?, onSuccess: () -> Unit, onFailure: (Throwable) -> Unit)
+    fun releaseResources(callData: PCallkeepIncomingCallData?, onComplete: () -> Unit)
 }
 
 class DefaultFlutterIsolateCommunicator(
@@ -38,16 +39,17 @@ class DefaultFlutterIsolateCommunicator(
         } ?: onFailure(IllegalStateException("Service API unavailable"))
     }
 
-    override fun syncPushIsolate(onSuccess: () -> Unit, onFailure: (Throwable) -> Unit) {
-        registerApi?.syncPushIsolate(context) { result ->
+    override fun syncPushIsolate(callData: PCallkeepIncomingCallData?, onSuccess: () -> Unit, onFailure: (Throwable) -> Unit) {
+        registerApi?.syncPushIsolate(context, callData) { result ->
             result.onSuccess { onSuccess() }.onFailure { onFailure(it) }
         } ?: onFailure(IllegalStateException("Register API unavailable"))
     }
 
-    override fun releaseResources(onComplete: () -> Unit) {
+    override fun releaseResources(callData: PCallkeepIncomingCallData?, onComplete: () -> Unit) {
         registerApi?.onNotificationSync(
             StorageDelegate.IncomingCallService.getOnNotificationSync(context),
-            PCallkeepPushNotificationSyncStatus.RELEASE_RESOURCES
+            PCallkeepPushNotificationSyncStatus.RELEASE_RESOURCES,
+            callData
         ) {
             onComplete()
         } ?: onComplete()
