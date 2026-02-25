@@ -78,8 +78,11 @@ class PhoneConnectionService : ConnectionService() {
         dispatcher.dispatch(baseContext, event, data?.toBundle())
     }
 
-    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-        val action = ServiceAction.from(intent.action)
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val action = intent?.action?.let { ServiceAction.from(it) } ?: run {
+            Log.w(TAG, "onStartCommand called with null intent or action, ignoring")
+            return START_NOT_STICKY
+        }
         val metadata = intent.extras?.let { CallMetadata.fromBundle(it) }
 
         try {
@@ -87,7 +90,6 @@ class PhoneConnectionService : ConnectionService() {
         } catch (e: Exception) {
             Log.e(TAG, "Exception $e with service action: ${intent.action},")
         }
-
 
         return START_NOT_STICKY
     }
