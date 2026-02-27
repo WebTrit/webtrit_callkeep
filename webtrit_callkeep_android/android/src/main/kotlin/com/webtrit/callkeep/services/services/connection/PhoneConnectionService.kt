@@ -264,7 +264,9 @@ class PhoneConnectionService : ConnectionService() {
     companion object {
         private const val TAG = "PhoneConnectionService"
 
-        // The service state is used to determine if the service is running. This is useful to avoid invoking onStartCommand when the service is down.
+        // Tracks whether the service is running. Valid ONLY within the :callkeep_core process.
+        // Do NOT read this field from the main process — it is a JVM-static that is always false
+        // there. Use ActivityManager.getRunningServices() for cross-process service detection.
         private var _isRunning = false
 
         var isRunning: Boolean
@@ -273,6 +275,10 @@ class PhoneConnectionService : ConnectionService() {
                 _isRunning = value
             }
 
+        // The ConnectionManager instance for the :callkeep_core process.
+        // Do NOT access this field from the main process — each Android process has its own JVM,
+        // so the main process sees an empty ConnectionManager regardless of core-process state.
+        // Use IPC (communicate / ServiceAction) to interact with connections cross-process.
         var connectionManager: ConnectionManager = ConnectionManager()
 
         fun startAnswerCall(context: Context, metadata: CallMetadata) {

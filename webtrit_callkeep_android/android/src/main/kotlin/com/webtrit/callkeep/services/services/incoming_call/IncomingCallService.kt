@@ -210,15 +210,16 @@ class IncomingCallService : Service() {
         // During this time, the notification is replaced with a special "release" notification
         // using IncomingCallNotificationBuilder.buildReleaseNotification to inform the user that the call is being finalized.
         fun release(context: Context, type: IncomingCallRelease) {
-            if (isRunning) {
-                context.startService(
-                    Intent(
-                        context, IncomingCallService::class.java
-                    ).apply { this.action = type.name })
-                Log.d(TAG, "Service is running. Release action $type initiated.")
-            } else {
-                Log.w(TAG, "Service is not running. Release action $type ignored.")
-            }
+            // Do NOT guard with isRunning here. This method is called from PhoneConnection
+            // which runs in the :callkeep_core process where isRunning is always false
+            // (each Android process has its own JVM and companion-object statics).
+            // The startService() call crosses the process boundary and reaches
+            // IncomingCallService running in the main process correctly.
+            context.startService(
+                Intent(
+                    context, IncomingCallService::class.java
+                ).apply { this.action = type.name })
+            Log.d(TAG, "Release action $type initiated.")
         }
     }
 }
