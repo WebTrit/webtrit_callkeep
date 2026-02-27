@@ -134,6 +134,18 @@ class ForegroundService : Service(), PHostApi {
                 ConnectionPerform.ConnectionHolding.name -> handleCSReportConnectionHolding(intent.extras)
                 ConnectionPerform.SentDTMF.name -> handleCSReportSentDTMF(intent.extras)
                 ConnectionPerform.OutgoingFailure.name -> handleCSReportOutgoingFailure(intent.extras)
+                ConnectionPerform.ConnectionAdded.name -> {
+                    intent.extras?.let {
+                        val m = CallMetadata.fromBundle(it)
+                        connectionTracker.add(m.callId, m)
+                    }
+                }
+                ConnectionPerform.ConnectionRemoved.name -> {
+                    intent.extras?.let {
+                        val m = CallMetadata.fromBundle(it)
+                        connectionTracker.remove(m.callId)
+                    }
+                }
             }
         }
     }
@@ -326,6 +338,8 @@ class ForegroundService : Service(), PHostApi {
     override fun reportConnectedOutgoingCall(callId: String, callback: (Result<Unit>) -> Unit) {
         logger.i("reportConnectedOutgoingCall: callId=$callId")
         val metadata = CallMetadata(callId = callId)
+        try { baseContext.startActivity(Platform.getLaunchActivity(baseContext)) }
+        catch (e: Exception) { logger.w("Activity launch failed: ${e.message}") }
         PhoneConnectionService.startEstablishCall(baseContext, metadata)
         callback.invoke(Result.success(Unit))
     }
@@ -364,7 +378,7 @@ class ForegroundService : Service(), PHostApi {
 
     override fun answerCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit) {
         val metadata = CallMetadata(callId = callId)
-        if (PhoneConnectionService.connectionManager.isConnectionAlreadyExists(metadata.callId)) {
+        if (connectionTracker.exists(metadata.callId)) {
             logger.i("answerCall ${metadata.callId}.")
             PhoneConnectionService.startAnswerCall(baseContext, metadata)
             callback.invoke(Result.success(null))
@@ -451,6 +465,7 @@ class ForegroundService : Service(), PHostApi {
         logger.d("handleCSReportDeclineCall")
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
+            connectionTracker.remove(callMetaData.callId)
             flutterDelegateApi?.performEndCall(callMetaData.callId) {}
             flutterDelegateApi?.didDeactivateAudioSession {}
 
@@ -466,6 +481,7 @@ class ForegroundService : Service(), PHostApi {
             val callMetaData = CallMetadata.fromBundle(it)
             flutterDelegateApi?.performAnswerCall(callMetaData.callId) {}
             flutterDelegateApi?.didActivateAudioSession {}
+            ActivityHolder.start(baseContext)
         }
     }
 
@@ -575,24 +591,15 @@ class ForegroundService : Service(), PHostApi {
      * foreground and re-establishes its communication channel with this service.
      */
     override fun onDelegateSet() {
-        logger.d("onDelegateSet: Flutter delegate attached. Checking for active connections to restore...")
-        val connections = PhoneConnectionService.connectionManager.getConnections()
-
-        if (connections.isEmpty()) {
+        logger.d("onDelegateSet: Checking for active connections to restore...")
+        val tracked = connectionTracker.getAll()
+        if (tracked.isEmpty()) {
             Log.d(TAG, "onDelegateSet: No active connections found.")
             return
         }
-
         Handler(Looper.getMainLooper()).post {
-            connections.forEach { connection ->
-                val handle = connection.handle
-
-                if (handle == null) {
-                    Log.w(TAG, "onDelegateSet: Skipping connection with null handle")
-                    return@forEach
-                }
-
-                connection.forceUpdateAudioState()
+            tracked.forEach { metadata ->
+                PhoneConnectionService.forceUpdateAudioState(baseContext, metadata)
             }
         }
     }
@@ -647,6 +654,7 @@ class ForegroundService : Service(), PHostApi {
         )
 
         val failedCallsStore = FailedCallsStore()
+        val connectionTracker = MainProcessConnectionTracker()
 
         var isRunning = false
     }

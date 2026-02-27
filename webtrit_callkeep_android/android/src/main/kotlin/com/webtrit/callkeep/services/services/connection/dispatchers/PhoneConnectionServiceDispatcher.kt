@@ -61,6 +61,7 @@ class PhoneConnectionServiceDispatcher(
             ServiceAction.Speaker -> metadata?.let { handleSpeaker(it) }
             ServiceAction.AudioDeviceSet -> metadata?.let { handleAudioDeviceSet(it) }
             ServiceAction.TearDown -> handleTearDown()
+            ServiceAction.ForceUpdateAudioState -> metadata?.let { handleForceUpdateAudioState(it) }
         }
     }
 
@@ -154,6 +155,10 @@ class PhoneConnectionServiceDispatcher(
         executeOnConnection(metadata, "SetAudioDevice($device)") {
             it.setAudioDevice(device)
         }
+    }
+
+    private fun handleForceUpdateAudioState(metadata: CallMetadata) {
+        executeOnConnection(metadata, "ForceUpdateAudioState") { it.forceUpdateAudioState() }
     }
 
     private fun handleTearDown() {

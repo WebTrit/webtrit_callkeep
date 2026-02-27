@@ -22,9 +22,10 @@ import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.models.OutgoingFailureType
 import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
+import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.services.services.connection.dispatchers.ConnectionLifecycleAction
 import com.webtrit.callkeep.services.services.connection.dispatchers.PhoneConnectionServiceDispatcher
-import com.webtrit.callkeep.services.services.foreground.ForegroundService
+
 
 /**
  * `PhoneConnectionService` is a service class responsible for managing phone call connections
@@ -43,6 +44,9 @@ class PhoneConnectionService : ConnectionService() {
 
     override fun onCreate() {
         super.onCreate()
+        // Initialize ContextHolder for the :callkeep_core process (normally done by WebtritCallkeepPlugin in the main process)
+        ContextHolder.init(applicationContext)
+
         // Set the service state to true when the system starts the service.
         isRunning = true
         telephonyUtils = TelephonyUtils(applicationContext)
@@ -115,6 +119,7 @@ class PhoneConnectionService : ConnectionService() {
             applicationContext, ::performEventHandle, metadata, ::disconnectConnection
         )
         connectionManager.addConnection(metadata.callId, connection)
+        performEventHandle(ConnectionPerform.ConnectionAdded, metadata)
         phoneConnectionServiceDispatcher.dispatchLifecycle(
             ConnectionLifecycleAction.ConnectionCreated, metadata
         )
@@ -180,14 +185,12 @@ class PhoneConnectionService : ConnectionService() {
             applicationContext, ::performEventHandle, metadata, ::disconnectConnection
         )
         connectionManager.addConnection(metadata.callId, connection)
+        performEventHandle(ConnectionPerform.ConnectionAdded, metadata)
 
         phoneConnectionServiceDispatcher.dispatchLifecycle(
             ConnectionLifecycleAction.ConnectionCreated, metadata
         )
 
-        startService(Intent(applicationContext, ForegroundService::class.java).apply {
-            action = "test"
-        })
         return connection
     }
 
@@ -219,7 +222,8 @@ class PhoneConnectionService : ConnectionService() {
 
     private fun disconnectConnection(connection: PhoneConnection) {
         Log.i(TAG, "disconnectConnection:: $connection")
-
+        val metadata = CallMetadata(callId = connection.callId)
+        performEventHandle(ConnectionPerform.ConnectionRemoved, metadata)
         phoneConnectionServiceDispatcher.dispatchLifecycle(ConnectionLifecycleAction.ConnectionChanged)
     }
 
@@ -313,6 +317,10 @@ class PhoneConnectionService : ConnectionService() {
 
         fun tearDown(context: Context) {
             communicate(context, ServiceAction.TearDown, null)
+        }
+
+        fun forceUpdateAudioState(context: Context, metadata: CallMetadata) {
+            communicate(context, ServiceAction.ForceUpdateAudioState, metadata)
         }
 
         /**

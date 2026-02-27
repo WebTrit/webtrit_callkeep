@@ -10,7 +10,7 @@ import com.webtrit.callkeep.common.sendInternalBroadcast
 import com.webtrit.callkeep.managers.NotificationManager
 
 enum class ConnectionPerform {
-    AnswerCall, DeclineCall, HungUp, OngoingCall, AudioMuting, ConnectionHolding, SentDTMF, DidPushIncomingCall, AudioDeviceSet, AudioDevicesUpdate, OutgoingFailure, IncomingFailure, ConnectionNotFound;
+    AnswerCall, DeclineCall, HungUp, OngoingCall, AudioMuting, ConnectionHolding, SentDTMF, DidPushIncomingCall, AudioDeviceSet, AudioDevicesUpdate, OutgoingFailure, IncomingFailure, ConnectionNotFound, ConnectionAdded, ConnectionRemoved;
 }
 
 /**

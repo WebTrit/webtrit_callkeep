@@ -12,7 +12,6 @@ class ConnectionManager {
 
     // TODO(Serdun): The current modifier is incorrect; this method is public but should be restricted.
     // Consider limiting its accessibility to the connection service only.
-    @Synchronized
     fun addConnection(
         callId: String,
         connection: PhoneConnection,
@@ -125,25 +124,12 @@ class ConnectionManager {
         fun validateConnectionAddition(
             metadata: CallMetadata, onSuccess: () -> Unit, onError: (PIncomingCallError) -> Unit
         ) {
-            val manager = PhoneConnectionService.connectionManager
-
+            val tracker = com.webtrit.callkeep.services.services.foreground.ForegroundService.connectionTracker
             when {
-                manager.isConnectionDisconnected(metadata.callId) -> {
-                    onError(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED))
+                tracker.exists(metadata.callId) -> {
+                    onError(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS))
                 }
-
-                manager.isConnectionAlreadyExists(metadata.callId) -> {
-                    val errorEnum = if (manager.isConnectionAnswered(metadata.callId)) {
-                        PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED
-                    } else {
-                        PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS
-                    }
-                    onError(PIncomingCallError(errorEnum))
-                }
-
-                else -> {
-                    onSuccess()
-                }
+                else -> onSuccess()
             }
         }
     }

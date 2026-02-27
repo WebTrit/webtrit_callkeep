@@ -46,9 +46,7 @@ object CallDiagnostics {
             "isForegroundServiceRunning" to ForegroundService.isRunning,
             "isPhoneConnectionServiceRunning" to PhoneConnectionService.isRunning,
             "isLockScreen" to Platform.isLockScreen(context),
-            "connectionManagerState" to runCatching {
-                PhoneConnectionService.connectionManager.toString()
-            }.getOrElse { "Error: ${it.message}" })
+            "connectionManagerState" to ForegroundService.connectionTracker.toString())
 
     private fun getPermissionsState(context: Context): Map<String, Boolean> {
         val permsToCheck = mutableListOf(

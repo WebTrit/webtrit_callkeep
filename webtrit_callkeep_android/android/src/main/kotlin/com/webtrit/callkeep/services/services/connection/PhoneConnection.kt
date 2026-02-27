@@ -16,9 +16,7 @@ import android.telecom.TelecomManager
 import android.telecom.VideoProfile
 import androidx.annotation.RequiresApi
 import androidx.core.net.toUri
-import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.Log
-import com.webtrit.callkeep.common.Platform
 import com.webtrit.callkeep.managers.AudioManager
 import com.webtrit.callkeep.managers.NotificationManager
 import com.webtrit.callkeep.models.AudioDevice
@@ -103,7 +101,6 @@ class PhoneConnection internal constructor(
      */
     fun establish() {
         logger.d("Establishing connection for callId: $callId")
-        context.startActivity(Platform.getLaunchActivity(context))
         setActive()
     }
 
@@ -121,8 +118,12 @@ class PhoneConnection internal constructor(
      */
     override fun onShowIncomingCallUi() {
         logger.d("Showing incoming call UI for callId: $callId")
-        notificationManager.showIncomingCallNotification(metadata)
-        audioManager.startRingtone(metadata.ringtonePath)
+        try {
+            notificationManager.showIncomingCallNotification(metadata)
+            audioManager.startRingtone(metadata.ringtonePath)
+        } catch (e: Exception) {
+            logger.w("onShowIncomingCallUi: notification/ringtone failed: ${e.message}", e)
+        }
     }
 
     /**
@@ -134,7 +135,6 @@ class PhoneConnection internal constructor(
         hasAnswered = true
         setActive()
         dispatcher(ConnectionPerform.AnswerCall, metadata)
-        ActivityHolder.start(context)
     }
 
     /**
@@ -265,7 +265,19 @@ class PhoneConnection internal constructor(
      */
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     private fun updateModernAudioState() {
-        onCallEndpointChanged(currentCallEndpoint)
+        // currentCallEndpoint is annotated @NonNull in the Android SDK, but the framework can
+        // return null before onCallEndpointChanged has been invoked. Kotlin adds an intrinsic
+        // null check that throws NPE, so we catch it here.
+        val endpoint: CallEndpoint? = try {
+            currentCallEndpoint
+        } catch (_: NullPointerException) {
+            null
+        }
+        if (endpoint == null) {
+            logger.w("currentCallEndpoint is null, skipping modern audio state update")
+            return
+        }
+        onCallEndpointChanged(endpoint)
         if (availableCallEndpoints.isNotEmpty()) {
             onAvailableCallEndpointsChanged(availableCallEndpoints)
         }
@@ -281,37 +293,35 @@ class PhoneConnection internal constructor(
      */
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     override fun onAvailableCallEndpointsChanged(callEndpoints: List<CallEndpoint>) {
-        val isFirstLoad = availableCallEndpoints.isEmpty()
-        super.onAvailableCallEndpointsChanged(callEndpoints)
-        logger.d("Available call endpoints changed: $callEndpoints")
-        availableCallEndpoints = callEndpoints
-
-        val devices = callEndpoints.map(::mapEndpointToAudioDevice)
-        dispatcher(ConnectionPerform.AudioDevicesUpdate, metadata.copy(audioDevices = devices))
-
+        // Guard: currentCallEndpoint can be null before onCallEndpointChanged is invoked,
+        // despite being annotated @NonNull in the SDK. Kotlin's intrinsic null-check
+        // throws NPE. Catch and continue — the callback will fire again with valid state.
         try {
-            /**
-             * Core Fix: Force EARPIECE on initialization for audio-only calls.
-             * By forcing the switch blindly on the first load, we preemptively correct
-             * any "sticky" speaker state without risking a crash.
-             */
-            if (isFirstLoad && !hasVideo) {
-                val earpiece =
-                    callEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_EARPIECE }
-                if (earpiece != null) {
-                    logger.i("Startup: Preemptively forcing EARPIECE to clear sticky state.")
-                    performEndpointChange(earpiece)
-                }
-            }
-        } catch (e: Exception) {
-            /**
-             * Defensive logging: Ensures the call remains active even if
-             * the platform-specific routing request fails.
-             */
-            logger.w("Failed to perform initial audio endpoint correction: ${e.message}", e)
-        }
+            val isFirstLoad = availableCallEndpoints.isEmpty()
+            super.onAvailableCallEndpointsChanged(callEndpoints)
+            logger.d("Available call endpoints changed: $callEndpoints")
+            availableCallEndpoints = callEndpoints
 
-        enforceVideoSpeakerLogic()
+            val devices = callEndpoints.map(::mapEndpointToAudioDevice)
+            dispatcher(ConnectionPerform.AudioDevicesUpdate, metadata.copy(audioDevices = devices))
+
+            try {
+                if (isFirstLoad && !hasVideo) {
+                    val earpiece =
+                        callEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_EARPIECE }
+                    if (earpiece != null) {
+                        logger.i("Startup: Preemptively forcing EARPIECE to clear sticky state.")
+                        performEndpointChange(earpiece)
+                    }
+                }
+            } catch (e: Exception) {
+                logger.w("Failed to perform initial audio endpoint correction: ${e.message}", e)
+            }
+
+            enforceVideoSpeakerLogic()
+        } catch (_: NullPointerException) {
+            logger.w("onAvailableCallEndpointsChanged: currentCallEndpoint is null, skipping")
+        }
     }
 
     /**
