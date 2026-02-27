@@ -126,6 +126,12 @@ class ConnectionManager {
         ) {
             val tracker = com.webtrit.callkeep.services.services.foreground.ForegroundService.connectionTracker
             when {
+                // Check answered state first: the user pressed answer on the notification
+                // while the main app was in the background. The main app must send a signaling
+                // answer to establish the call at the SIP level.
+                tracker.isAnswered(metadata.callId) -> {
+                    onError(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED))
+                }
                 tracker.exists(metadata.callId) -> {
                     onError(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS))
                 }

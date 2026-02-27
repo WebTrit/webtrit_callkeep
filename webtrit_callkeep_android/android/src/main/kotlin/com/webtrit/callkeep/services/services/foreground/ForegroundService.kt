@@ -21,6 +21,7 @@ import com.webtrit.callkeep.PEndCallReason
 import com.webtrit.callkeep.PHandle
 import com.webtrit.callkeep.PHostApi
 import com.webtrit.callkeep.PIncomingCallError
+import com.webtrit.callkeep.PIncomingCallErrorEnum
 import com.webtrit.callkeep.POptions
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.Log
@@ -316,7 +317,16 @@ class ForegroundService : Service(), PHostApi {
                 callback(Result.success(null))
             },
             onError = { error ->
-                logger.e("reportNewIncomingCall: startIncomingCall failed callId=$callId, error=$error")
+                if (error?.value == PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS ||
+                    error?.value == PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED
+                ) {
+                    // Expected: the call was already registered by IncomingCallService (background
+                    // isolate) before the main app reconnected to signaling. Pass the error code
+                    // through to Flutter so it can decide whether to auto-answer.
+                    logger.d("reportNewIncomingCall: callId=$callId already registered (${error.value})")
+                } else {
+                    logger.e("reportNewIncomingCall: startIncomingCall failed callId=$callId, error=$error")
+                }
                 callback(Result.success(error))
             })
     }
@@ -481,6 +491,9 @@ class ForegroundService : Service(), PHostApi {
         logger.d("handleCSReportAnswerCall")
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
+            // Mark the connection as answered so that validateConnectionAddition can return
+            // CALL_ID_ALREADY_EXISTS_AND_ANSWERED when the main app reconnects to signaling.
+            connectionTracker.markAnswered(callMetaData.callId)
             flutterDelegateApi?.performAnswerCall(callMetaData.callId) {}
             flutterDelegateApi?.didActivateAudioSession {}
             ActivityHolder.start(baseContext)

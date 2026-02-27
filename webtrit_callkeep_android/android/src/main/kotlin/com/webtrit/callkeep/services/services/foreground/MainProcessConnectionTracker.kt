@@ -6,16 +6,33 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * Lightweight tracker that mirrors connection state in the main process.
  * Updated via broadcast events (ConnectionAdded/ConnectionRemoved) from the core process.
+ * Also tracks whether a connection has been answered (via AnswerCall broadcast) so that
+ * when the main app reconnects to signaling after a background-isolate answer,
+ * [ConnectionManager.validateConnectionAddition] can return CALL_ID_ALREADY_EXISTS_AND_ANSWERED.
  */
 class MainProcessConnectionTracker {
     private val connections = ConcurrentHashMap<String, CallMetadata>()
+    private val answeredCallIds = ConcurrentHashMap.newKeySet<String>()
 
     fun add(callId: String, metadata: CallMetadata) { connections[callId] = metadata }
-    fun remove(callId: String) { connections.remove(callId) }
+    fun remove(callId: String) {
+        connections.remove(callId)
+        answeredCallIds.remove(callId)
+    }
     fun exists(callId: String): Boolean = connections.containsKey(callId)
     fun getAll(): List<CallMetadata> = connections.values.toList()
     fun get(callId: String): CallMetadata? = connections[callId]
-    fun clear() { connections.clear() }
+    fun clear() {
+        connections.clear()
+        answeredCallIds.clear()
+    }
     fun isEmpty(): Boolean = connections.isEmpty()
-    override fun toString(): String = "Tracked connections: ${connections.keys}"
+
+    /** Marks a connection as answered (called when AnswerCall broadcast is received). */
+    fun markAnswered(callId: String) { answeredCallIds.add(callId) }
+
+    /** Returns true if the connection has been answered via a native AnswerCall event. */
+    fun isAnswered(callId: String): Boolean = answeredCallIds.contains(callId)
+
+    override fun toString(): String = "Tracked connections: ${connections.keys}, answered: $answeredCallIds"
 }

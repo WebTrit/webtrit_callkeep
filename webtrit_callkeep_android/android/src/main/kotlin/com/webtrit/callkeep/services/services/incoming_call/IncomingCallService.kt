@@ -169,8 +169,16 @@ class IncomingCallService : Service() {
         return START_STICKY
     }
 
-    // Handles the RELEASE action and cancels the timeout
+    // Handles the RELEASE action and cancels the timeout.
+    // Guards against cold-start: if the service was started directly by release() without a prior
+    // IC_INITIALIZE (e.g. from the :callkeep_core process after a crash), currentCallData is null
+    // and there is no notification to dismiss — just stop immediately to avoid a crash.
     private fun handleRelease(answered: Boolean = false): Int {
+        if (callLifecycleHandler.currentCallData == null) {
+            Log.w(TAG, "handleRelease: no active call data (cold start), stopping immediately")
+            stopSelf()
+            return START_NOT_STICKY
+        }
         incomingCallHandler.releaseIncomingCallNotification(answered)
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
         timeoutHandler.postDelayed(stopTimeoutRunnable, SERVICE_TIMEOUT_MS)
