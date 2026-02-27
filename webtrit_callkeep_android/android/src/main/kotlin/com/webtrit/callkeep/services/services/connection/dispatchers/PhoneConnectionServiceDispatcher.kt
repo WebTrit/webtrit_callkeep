@@ -5,6 +5,7 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
 import com.webtrit.callkeep.services.services.connection.ActivityWakelockManager
 import com.webtrit.callkeep.services.services.connection.ConnectionManager
+import android.telecom.Connection
 import com.webtrit.callkeep.services.services.connection.PhoneConnection
 import com.webtrit.callkeep.services.services.connection.ProximitySensorManager
 import com.webtrit.callkeep.services.services.connection.ServiceAction
@@ -62,6 +63,7 @@ class PhoneConnectionServiceDispatcher(
             ServiceAction.AudioDeviceSet -> metadata?.let { handleAudioDeviceSet(it) }
             ServiceAction.TearDown -> handleTearDown()
             ServiceAction.ForceUpdateAudioState -> metadata?.let { handleForceUpdateAudioState(it) }
+            ServiceAction.CleanStaleConnections -> handleCleanStaleConnections()
         }
     }
 
@@ -159,6 +161,20 @@ class PhoneConnectionServiceDispatcher(
 
     private fun handleForceUpdateAudioState(metadata: CallMetadata) {
         executeOnConnection(metadata, "ForceUpdateAudioState") { it.forceUpdateAudioState() }
+    }
+
+    private fun handleCleanStaleConnections() {
+        val stale = connectionManager.getConnections().filter {
+            it.state != Connection.STATE_ACTIVE && it.state != Connection.STATE_HOLDING
+        }
+        if (stale.isNotEmpty()) {
+            logger.w("Cleaning ${stale.size} stale connection(s)")
+            stale.forEach { conn ->
+                runCatching { conn.hungUp() }.onFailure { e ->
+                    logger.e("Failed to clean stale connection ${conn.callId}", e)
+                }
+            }
+        }
     }
 
     private fun handleTearDown() {

@@ -97,10 +97,14 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         PHostPermissionsApi.setUp(messenger, null)
         permissionsApi = null
 
+        // Safety net: PHostApi is normally cleared in onDetachedFromActivity,
+        // but guard here in case the engine is torn down without a prior activity detach.
         PHostApi.setUp(this.messenger, null)
+        PHostActivityControlApi.setUp(messenger, null)
 
         PHostBackgroundSignalingIsolateBootstrapApi.setUp(messenger, null)
         PHostBackgroundPushNotificationIsolateBootstrapApi.setUp(messenger, null)
+        PHostSmsReceptionConfigApi.setUp(messenger, null)
 
         PHostDiagnosticsApi.setUp(messenger, null)
         PHostSoundApi.setUp(messenger, null)
@@ -124,9 +128,9 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         lifeCycle = (binding.lifecycle as HiddenLifecycleReference).lifecycle
         lifeCycle!!.addObserver(this)
 
-        // Launch the signaling service manually on Android 15+ (API 34 / UPSIDE_DOWN_CAKE) if enabled.
+        // Launch the signaling service manually on Android 14+ (API 34 / UPSIDE_DOWN_CAKE) if enabled.
         //
-        // On Android 15 and above, the system no longer allows ForegroundServices of type "phone call"
+        // On Android 14 and above, the system no longer allows ForegroundServices of type "phone call"
         // to be started from BOOT_COMPLETED or similar system broadcasts. As a result, the service must
         // be started explicitly from the app lifecycle — in this case, from the plugin/activity attachment.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -196,7 +200,12 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     }
 
     override fun onDetachedFromService() {
-        Log.i(TAG, "onDetachedFromService id:${activityPluginBinding?.hashCode()}")
+        val detachedService = when {
+            signalingIsolateService != null -> "SignalingIsolateService"
+            pushNotificationIsolateService != null -> "IncomingCallService"
+            else -> "unknown"
+        }
+        Log.i(TAG, "onDetachedFromService: $detachedService")
         PHostBackgroundSignalingIsolateApi.setUp(messenger, null)
         PHostBackgroundPushNotificationIsolateApi.setUp(messenger, null)
 

@@ -3,7 +3,7 @@ package com.webtrit.callkeep.services.services.connection
 import com.webtrit.callkeep.common.ContextHolder
 
 enum class ServiceAction {
-    HungUpCall, DeclineCall, AnswerCall, EstablishCall, Muting, Speaker, AudioDeviceSet, Holding, UpdateCall, SendDTMF, TearDown, ForceUpdateAudioState;
+    HungUpCall, DeclineCall, AnswerCall, EstablishCall, Muting, Speaker, AudioDeviceSet, Holding, UpdateCall, SendDTMF, TearDown, ForceUpdateAudioState, CleanStaleConnections;
 
     companion object {
         fun from(action: String?): ServiceAction {

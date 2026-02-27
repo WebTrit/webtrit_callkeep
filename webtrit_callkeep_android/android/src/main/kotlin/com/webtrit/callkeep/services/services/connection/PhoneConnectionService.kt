@@ -349,12 +349,10 @@ class PhoneConnectionService : ConnectionService() {
                 throw EmergencyNumberException(failureMetadata)
 
             } else {
-                // If there is already an active call not on hold, we terminate it and start a new one,
-                // otherwise, we would encounter an exception when placing the outgoing call.
-                connectionManager.getActiveConnection()?.let {
-                    Log.i(TAG, "onOutgoingCall, hung up previous call: $it")
-                    it.hungUp()
-                }
+                // Clean stale connections in the :callkeep_core process via IPC before placing the new call.
+                // The companion's connectionManager is in the main process (empty), so we must send
+                // CleanStaleConnections to the core process to disconnect any leftover connections.
+                communicate(context, ServiceAction.CleanStaleConnections, null)
 
                 telephonyUtils.placeOutgoingCall(uri, metadata)
             }

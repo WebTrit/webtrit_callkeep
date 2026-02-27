@@ -217,6 +217,8 @@ class ForegroundService : Service(), PHostApi {
             cb(Result.success(PCallRequestError(PCallRequestErrorEnum.TIMEOUT)))
             // ensure retry is stopped
             retryManager.cancel(callId)
+            // disconnect any stale connection in the :callkeep_core process
+            PhoneConnectionService.startHungUpCall(baseContext, CallMetadata(callId = callId))
         }
 
         // Kick off retry loop that wraps the "start outgoing call" attempt + PA re-registration on SecurityException(CALL_PHONE)
