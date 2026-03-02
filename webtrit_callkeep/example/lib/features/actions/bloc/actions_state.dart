@@ -1,29 +1,37 @@
 part of 'actions_cubit.dart';
 
-@freezed
-class ActionsState with _$ActionsState {
+class ActionsState {
   const ActionsState({
-    required this.actions,
-    this.speakerEnabled = false,
-    this.isMuted = false,
+    this.entries = const [],
+    this.isSetUp = false,
     this.isHold = false,
+    this.isMuted = false,
+    this.connections = const [],
   });
 
-  @override
-  final List<String> actions;
-
-  @override
-  final bool speakerEnabled;
-
-  @override
-  final bool isMuted;
-
-  @override
+  final List<LogEntry> entries;
+  final bool isSetUp;
   final bool isHold;
+  final bool isMuted;
+  final List<CallkeepConnection> connections;
 
-  /// Returns a copy with the new action appended.
-  ActionsState addAction(String action) => copyWith(actions: [...actions, action]);
+  ActionsState copyWith({
+    List<LogEntry>? entries,
+    bool? isSetUp,
+    bool? isHold,
+    bool? isMuted,
+    List<CallkeepConnection>? connections,
+  }) {
+    return ActionsState(
+      entries: entries ?? this.entries,
+      isSetUp: isSetUp ?? this.isSetUp,
+      isHold: isHold ?? this.isHold,
+      isMuted: isMuted ?? this.isMuted,
+      connections: connections ?? this.connections,
+    );
+  }
 
-  /// Returns the last action or throws if empty.
-  String get lastAction => actions.last;
+  ActionsState log(LogEntry entry) => copyWith(entries: [...entries, entry]);
+
+  ActionsState clearLog() => copyWith(entries: []);
 }
