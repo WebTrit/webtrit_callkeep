@@ -29,6 +29,7 @@ import com.webtrit.callkeep.common.registerReceiverCompat
 import com.webtrit.callkeep.common.startForegroundServiceCompat
 import com.webtrit.callkeep.common.toPCallkeepLifecycleType
 import com.webtrit.callkeep.common.toPCallkeepSignalingStatus
+import com.webtrit.callkeep.managers.NotificationChannelManager
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.SignalingStatus
 import com.webtrit.callkeep.models.toCallHandle
@@ -100,6 +101,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
         notificationBuilder = ForegroundCallNotificationBuilder()
 
+        NotificationChannelManager.registerNotificationChannels(applicationContext)
         startForegroundService()
 
         val callbackDispatcher =
@@ -213,7 +215,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
             }
 
             else -> {
-                ensureNotification()
+                Log.d(TAG, "onStartCommand: no action, foreground already started in onCreate")
             }
         }
 
