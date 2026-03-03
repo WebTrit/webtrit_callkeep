@@ -345,6 +345,7 @@ class _LinesPanel extends StatelessWidget {
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    if (line.isAnswered) _Badge('ACTV', Colors.green),
                     if (line.isHold) _Badge('HOLD', Colors.orange),
                     if (line.isMuted) _Badge('MUTE', Colors.red),
                     IconButton(

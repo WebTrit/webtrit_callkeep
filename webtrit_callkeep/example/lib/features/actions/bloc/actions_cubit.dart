@@ -209,7 +209,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
       if (err != null) {
         emit(state.log(LogEntry.error('answerCall: ${err.name}')));
       } else {
-        emit(state.log(LogEntry.success('answerCall: ok')));
+        emit(state.updateLine(state.currentCallId, isAnswered: true).log(LogEntry.success('answerCall: ok')));
         await _syncConnections();
       }
     } catch (e) {
@@ -351,7 +351,9 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   @override
   Future<bool> performAnswerCall(String callId) async {
-    emit(state.log(LogEntry.event('[cb] performAnswerCall id=$callId')));
+    emit(_ensureLine(state, callId).updateLine(callId, isAnswered: true).log(
+          LogEntry.event('[cb] performAnswerCall id=$callId'),
+        ));
     await _syncConnections();
     return true;
   }

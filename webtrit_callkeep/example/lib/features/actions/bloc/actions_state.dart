@@ -1,17 +1,25 @@
 part of 'actions_cubit.dart';
 
 class CallLine {
-  const CallLine({required this.id, required this.label, this.isHold = false, this.isMuted = false});
+  const CallLine({
+    required this.id,
+    required this.label,
+    this.isAnswered = false,
+    this.isHold = false,
+    this.isMuted = false,
+  });
 
   final String id;
   final String label;
+  final bool isAnswered;
   final bool isHold;
   final bool isMuted;
 
-  CallLine copyWith({String? id, String? label, bool? isHold, bool? isMuted}) {
+  CallLine copyWith({String? id, String? label, bool? isAnswered, bool? isHold, bool? isMuted}) {
     return CallLine(
       id: id ?? this.id,
       label: label ?? this.label,
+      isAnswered: isAnswered ?? this.isAnswered,
       isHold: isHold ?? this.isHold,
       isMuted: isMuted ?? this.isMuted,
     );
@@ -64,9 +72,9 @@ class ActionsState {
     );
   }
 
-  ActionsState updateLine(String id, {bool? isHold, bool? isMuted}) {
+  ActionsState updateLine(String id, {bool? isAnswered, bool? isHold, bool? isMuted}) {
     final updatedLines = lines.map((l) {
-      if (l.id == id) return l.copyWith(isHold: isHold, isMuted: isMuted);
+      if (l.id == id) return l.copyWith(isAnswered: isAnswered, isHold: isHold, isMuted: isMuted);
       return l;
     }).toList();
     return copyWith(lines: updatedLines);
