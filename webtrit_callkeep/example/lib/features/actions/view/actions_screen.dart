@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 
 import 'package:webtrit_callkeep_example/app/constants.dart';
 import 'package:webtrit_callkeep_example/core/event_log.dart';
@@ -31,6 +32,7 @@ class ActionsScreen extends StatelessWidget {
                       _Btn('Setup', cubit.setup),
                       _Btn('Is Setup', cubit.isSetup),
                       _Btn('Tear Down', cubit.tearDown, destructive: true),
+                      _Btn('Push Token', cubit.getPushToken),
                     ],
                   ),
 
@@ -40,7 +42,7 @@ class ActionsScreen extends StatelessWidget {
                     children: [
                       _Btn('Incoming Call', cubit.reportIncomingCall),
                       _Btn('Incoming via Push', cubit.incomingCallViaPush),
-                      _Btn('Report End Call', cubit.reportEndCall),
+                      _Btn('Report End Call', () => _showEndCallReasonDialog(context, cubit)),
                     ],
                   ),
 
@@ -71,7 +73,30 @@ class ActionsScreen extends StatelessWidget {
                         active: state.isMuted,
                         onPressed: cubit.setMuted,
                       ),
-                      _Btn('DTMF A', cubit.sendDTMF),
+                      _Btn('DTMF', () => _showDtmfDialog(context, cubit)),
+                    ],
+                  ),
+
+                  // --- Audio Device ---
+                  _Section(
+                    title: 'Audio Device',
+                    children: [
+                      _Btn('Earpiece', () => cubit.setAudioDevice(CallkeepAudioDeviceType.earpiece)),
+                      _Btn('Speaker', () => cubit.setAudioDevice(CallkeepAudioDeviceType.speaker)),
+                      _Btn('Bluetooth', () => cubit.setAudioDevice(CallkeepAudioDeviceType.bluetooth)),
+                      _Btn('Wired', () => cubit.setAudioDevice(CallkeepAudioDeviceType.wiredHeadset)),
+                    ],
+                  ),
+
+                  // --- Sound ---
+                  _Section(
+                    title: 'Sound (Ringback)',
+                    children: [
+                      _ToggleBtn(
+                        label: state.isRingbackPlaying ? 'Stop Ringback' : 'Play Ringback',
+                        active: state.isRingbackPlaying,
+                        onPressed: state.isRingbackPlaying ? cubit.stopRingback : cubit.playRingback,
+                      ),
                     ],
                   ),
 
@@ -93,26 +118,60 @@ class ActionsScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    children: state.connections.isEmpty
-                        ? [
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 8),
-                              child: Text(
-                                'No active connections',
-                                style: TextStyle(color: Colors.grey, fontSize: 13),
-                              ),
-                            )
-                          ]
-                        : state.connections
-                            .map(
-                              (c) => Chip(
-                                label: Text(
-                                  '${c.callId}  ${c.state.name}',
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                              ),
-                            )
-                            .toList(),
+                    children: [
+                      if (state.connections.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 4),
+                          child: Text(
+                            'No active connections',
+                            style: TextStyle(color: Colors.grey, fontSize: 13),
+                          ),
+                        )
+                      else
+                        ...state.connections.map(
+                          (c) => Chip(
+                            label: Text(
+                              '${c.callId}  ${c.state.name}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ),
+                      const SizedBox(width: double.infinity), // force wrap
+                      _Btn('Get [active]', cubit.getConnectionByCallId),
+                    ],
+                  ),
+
+                  // --- Signaling Status ---
+                  _Section(
+                    title: 'Signaling Status',
+                    children: CallkeepSignalingStatus.values
+                        .map((s) => _Btn('→ ${s.name}', () => cubit.updateSignalingStatus(s)))
+                        .toList(),
+                  ),
+
+                  // --- Permissions ---
+                  _Section(
+                    title: 'Permissions',
+                    children: [
+                      _Btn('Check Status', cubit.checkPermissions),
+                      _Btn('Request', cubit.requestPermissions),
+                      _Btn('Battery Mode', cubit.getBatteryMode),
+                      _Btn('FS Intent Status', cubit.getFullScreenIntentStatus),
+                      _Btn('FS Intent Settings', cubit.openFullScreenIntentSettings),
+                      _Btn('Open Settings', cubit.openSettings),
+                    ],
+                  ),
+
+                  // --- Logs ---
+                  _Section(
+                    title: 'Native Logs',
+                    children: [
+                      _ToggleBtn(
+                        label: state.isLogsDelegateActive ? 'Logs: ON' : 'Logs: OFF',
+                        active: state.isLogsDelegateActive,
+                        onPressed: cubit.toggleLogsDelegate,
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -132,6 +191,10 @@ class ActionsScreen extends StatelessWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Dialogs
+// ---------------------------------------------------------------------------
+
 void _showStartCallDialog(BuildContext context, ActionsState state, ActionsCubit cubit) {
   showDialog<void>(
     context: context,
@@ -141,6 +204,72 @@ void _showStartCallDialog(BuildContext context, ActionsState state, ActionsCubit
       onCall: cubit.startOutgoingCall,
     ),
   );
+}
+
+void _showEndCallReasonDialog(BuildContext context, ActionsCubit cubit) {
+  showDialog<void>(
+    context: context,
+    builder: (ctx) => SimpleDialog(
+      title: const Text('End Call Reason'),
+      children: CallkeepEndCallReason.values
+          .map(
+            (r) => SimpleDialogOption(
+              onPressed: () {
+                Navigator.pop(ctx);
+                cubit.reportEndCall(r);
+              },
+              child: Text(r.name),
+            ),
+          )
+          .toList(),
+    ),
+  );
+}
+
+void _showDtmfDialog(BuildContext context, ActionsCubit cubit) {
+  showDialog<void>(
+    context: context,
+    builder: (_) => _DtmfDialog(onSend: cubit.sendDTMF),
+  );
+}
+
+class _DtmfDialog extends StatefulWidget {
+  const _DtmfDialog({required this.onSend});
+  final void Function(String key) onSend;
+
+  @override
+  State<_DtmfDialog> createState() => _DtmfDialogState();
+}
+
+class _DtmfDialogState extends State<_DtmfDialog> {
+  static const _keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#', 'A', 'B', 'C', 'D'];
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Send DTMF'),
+      content: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: _keys
+            .map(
+              (k) => SizedBox(
+                width: 52,
+                height: 44,
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    widget.onSend(k);
+                  },
+                  child: Text(k, style: const TextStyle(fontSize: 16)),
+                ),
+              ),
+            )
+            .toList(),
+      ),
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel'))],
+    );
+  }
 }
 
 class _StartCallDialog extends StatefulWidget {
@@ -239,6 +368,10 @@ class _StartCallDialogState extends State<_StartCallDialog> {
     widget.onCall(number);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Lines panel
+// ---------------------------------------------------------------------------
 
 class _LinesPanel extends StatelessWidget {
   const _LinesPanel({required this.scrollController, required this.state, required this.cubit});
@@ -384,6 +517,10 @@ class _Badge extends StatelessWidget {
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Shared widgets
+// ---------------------------------------------------------------------------
 
 class _Section extends StatelessWidget {
   const _Section({required this.title, required this.children, this.trailing});

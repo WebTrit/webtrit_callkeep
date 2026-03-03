@@ -33,6 +33,8 @@ class ActionsState {
     this.lines = const [],
     this.activeLineId,
     this.connections = const [],
+    this.isLogsDelegateActive = false,
+    this.isRingbackPlaying = false,
   });
 
   final List<LogEntry> entries;
@@ -40,6 +42,8 @@ class ActionsState {
   final List<CallLine> lines;
   final String? activeLineId;
   final List<CallkeepConnection> connections;
+  final bool isLogsDelegateActive;
+  final bool isRingbackPlaying;
 
   CallLine? get activeLine => lines.where((l) => l.id == activeLineId).firstOrNull;
   bool get isHold => activeLine?.isHold ?? false;
@@ -52,6 +56,8 @@ class ActionsState {
     List<CallLine>? lines,
     String? activeLineId,
     List<CallkeepConnection>? connections,
+    bool? isLogsDelegateActive,
+    bool? isRingbackPlaying,
   }) {
     return ActionsState(
       entries: entries ?? this.entries,
@@ -59,6 +65,8 @@ class ActionsState {
       lines: lines ?? this.lines,
       activeLineId: activeLineId ?? this.activeLineId,
       connections: connections ?? this.connections,
+      isLogsDelegateActive: isLogsDelegateActive ?? this.isLogsDelegateActive,
+      isRingbackPlaying: isRingbackPlaying ?? this.isRingbackPlaying,
     );
   }
 
@@ -69,6 +77,8 @@ class ActionsState {
       lines: lines,
       activeLineId: null,
       connections: connections,
+      isLogsDelegateActive: isLogsDelegateActive,
+      isRingbackPlaying: isRingbackPlaying,
     );
   }
 

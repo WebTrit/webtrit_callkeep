@@ -5,7 +5,8 @@ import 'package:webtrit_callkeep_example/core/log_entry.dart';
 
 part 'actions_state.dart';
 
-class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, CallkeepBackgroundServiceDelegate {
+class ActionsCubit extends Cubit<ActionsState>
+    implements CallkeepDelegate, CallkeepBackgroundServiceDelegate, CallkeepLogsDelegate {
   ActionsCubit(this._callkeep) : super(const ActionsState()) {
     _callkeep.setDelegate(this);
   }
@@ -33,6 +34,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
   @override
   Future<void> close() {
     _callkeep.setDelegate(null);
+    WebtritCallkeepLogs().setLogsDelegate(null);
     return super.close();
   }
 
@@ -94,6 +96,15 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
     }
   }
 
+  void getPushToken() async {
+    try {
+      final token = await _callkeep.pushTokenForPushTypeVoIP();
+      emit(state.log(LogEntry.info('pushToken: ${token ?? "null"}')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('pushToken: $e')));
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Incoming calls
   // ---------------------------------------------------------------------------
@@ -127,6 +138,16 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
       emit(state.log(LogEntry.info('reportIncoming via push: dispatched')));
     } catch (e) {
       emit(state.log(LogEntry.error('reportIncoming via push: $e')));
+    }
+  }
+
+  void reportEndCall(CallkeepEndCallReason reason) async {
+    try {
+      await _callkeep.reportEndCall(state.currentCallId, call1Name, reason);
+      emit(state.log(LogEntry.success('reportEndCall(${reason.name}): ok')));
+      await _syncConnections();
+    } catch (e) {
+      emit(state.log(LogEntry.error('reportEndCall: $e')));
     }
   }
 
@@ -186,16 +207,6 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
       await _syncConnections();
     } catch (e) {
       emit(state.log(LogEntry.error('reportUpdate: $e')));
-    }
-  }
-
-  void reportEndCall() async {
-    try {
-      await _callkeep.reportEndCall(state.currentCallId, call1Name, CallkeepEndCallReason.declinedElsewhere);
-      emit(state.log(LogEntry.success('reportEndCall: ok')));
-      await _syncConnections();
-    } catch (e) {
-      emit(state.log(LogEntry.error('reportEndCall: $e')));
     }
   }
 
@@ -261,16 +272,52 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
     }
   }
 
-  void sendDTMF() async {
+  void sendDTMF(String key) async {
     try {
-      final err = await _callkeep.sendDTMF(state.currentCallId, 'A');
+      final err = await _callkeep.sendDTMF(state.currentCallId, key);
       if (err != null) {
-        emit(state.log(LogEntry.error('sendDTMF(A): ${err.name}')));
+        emit(state.log(LogEntry.error('sendDTMF($key): ${err.name}')));
       } else {
-        emit(state.log(LogEntry.success('sendDTMF(A): ok')));
+        emit(state.log(LogEntry.success('sendDTMF($key): ok')));
       }
     } catch (e) {
       emit(state.log(LogEntry.error('sendDTMF: $e')));
+    }
+  }
+
+  void setAudioDevice(CallkeepAudioDeviceType type) async {
+    final device = CallkeepAudioDevice(type: type);
+    try {
+      final err = await _callkeep.setAudioDevice(state.currentCallId, device);
+      if (err != null) {
+        emit(state.log(LogEntry.error('setAudioDevice(${type.name}): ${err.name}')));
+      } else {
+        emit(state.log(LogEntry.success('setAudioDevice(${type.name}): ok')));
+      }
+    } catch (e) {
+      emit(state.log(LogEntry.error('setAudioDevice: $e')));
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sound
+  // ---------------------------------------------------------------------------
+
+  void playRingback() async {
+    try {
+      await WebtritCallkeepSound().playRingbackSound();
+      emit(state.copyWith(isRingbackPlaying: true).log(LogEntry.success('playRingback: ok')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('playRingback: $e')));
+    }
+  }
+
+  void stopRingback() async {
+    try {
+      await WebtritCallkeepSound().stopRingbackSound();
+      emit(state.copyWith(isRingbackPlaying: false).log(LogEntry.success('stopRingback: ok')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('stopRingback: $e')));
     }
   }
 
@@ -296,6 +343,31 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
     }
   }
 
+  void getConnectionByCallId() async {
+    try {
+      final conn = await CallkeepConnections().getConnection(state.currentCallId);
+      if (conn == null) {
+        emit(state.log(LogEntry.info('getConnection[${state.currentCallId}]: not found')));
+      } else {
+        emit(state.log(LogEntry.info(
+          'getConnection[${conn.callId}]: state=${conn.state.name}'
+          '${conn.disconnectCause != null ? " cause=${conn.disconnectCause!.type.name}" : ""}',
+        )));
+      }
+    } catch (e) {
+      emit(state.log(LogEntry.error('getConnection: $e')));
+    }
+  }
+
+  void updateSignalingStatus(CallkeepSignalingStatus status) async {
+    try {
+      await CallkeepConnections().updateActivitySignalingStatus(status);
+      emit(state.log(LogEntry.success('signalingStatus → ${status.name}: ok')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('signalingStatus: $e')));
+    }
+  }
+
   /// Silently fetches the current native connections and updates state.
   /// Does not add a log entry so it can be called frequently without noise.
   Future<void> _syncConnections() async {
@@ -305,6 +377,85 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
     } catch (_) {
       // best-effort: ignore errors from background syncs
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Permissions
+  // ---------------------------------------------------------------------------
+
+  void checkPermissions() async {
+    try {
+      final result = await WebtritCallkeepPermissions().checkPermissionsStatus(CallkeepPermission.values);
+      final str = result.entries.map((e) => '${e.key.name}=${e.value.name}').join(', ');
+      emit(state.log(LogEntry.info('checkPerms: ${str.isEmpty ? "n/a" : str}')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('checkPerms: $e')));
+    }
+  }
+
+  void requestPermissions() async {
+    try {
+      final result = await WebtritCallkeepPermissions().requestPermissions(CallkeepPermission.values);
+      final str = result.entries.map((e) => '${e.key.name}=${e.value.name}').join(', ');
+      emit(state.log(LogEntry.info('requestPerms: ${str.isEmpty ? "n/a" : str}')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('requestPerms: $e')));
+    }
+  }
+
+  void getBatteryMode() async {
+    try {
+      final mode = await WebtritCallkeepPermissions().getBatteryMode();
+      emit(state.log(LogEntry.info('batteryMode: ${mode.name}')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('batteryMode: $e')));
+    }
+  }
+
+  void getFullScreenIntentStatus() async {
+    try {
+      final status = await WebtritCallkeepPermissions().getFullScreenIntentPermissionStatus();
+      emit(state.log(LogEntry.info('fullScreenIntent: ${status.name}')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('fullScreenIntent: $e')));
+    }
+  }
+
+  void openFullScreenIntentSettings() async {
+    try {
+      await WebtritCallkeepPermissions().openFullScreenIntentSettings();
+      emit(state.log(LogEntry.info('openFullScreenIntentSettings: ok')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('openFullScreenIntentSettings: $e')));
+    }
+  }
+
+  void openSettings() async {
+    try {
+      await WebtritCallkeepPermissions().openSettings();
+      emit(state.log(LogEntry.info('openSettings: ok')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('openSettings: $e')));
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Logs
+  // ---------------------------------------------------------------------------
+
+  void toggleLogsDelegate() {
+    if (state.isLogsDelegateActive) {
+      WebtritCallkeepLogs().setLogsDelegate(null);
+      emit(state.copyWith(isLogsDelegateActive: false).log(LogEntry.info('logs delegate: OFF')));
+    } else {
+      WebtritCallkeepLogs().setLogsDelegate(this);
+      emit(state.copyWith(isLogsDelegateActive: true).log(LogEntry.info('logs delegate: ON')));
+    }
+  }
+
+  @override
+  void onLog(CallkeepLogType type, String tag, String message) {
+    emit(state.log(LogEntry.event('[native/${type.name}] $tag: $message')));
   }
 
   // ---------------------------------------------------------------------------
@@ -392,14 +543,14 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   @override
   Future<bool> performAudioDeviceSet(String callId, CallkeepAudioDevice device) {
-    emit(state.log(LogEntry.event('[cb] performAudioDeviceSet id=$callId device=${device.name}')));
+    emit(state.log(LogEntry.event('[cb] performAudioDeviceSet id=$callId device=${device.type.name}')));
     return Future.value(true);
   }
 
   @override
   Future<bool> performAudioDevicesUpdate(String callId, List<CallkeepAudioDevice> devices) {
     emit(state.log(
-      LogEntry.event('[cb] performAudioDevicesUpdate id=$callId [${devices.map((d) => d.name).join(',')}]'),
+      LogEntry.event('[cb] performAudioDevicesUpdate id=$callId [${devices.map((d) => d.type.name).join(',')}]'),
     ));
     return Future.value(true);
   }
