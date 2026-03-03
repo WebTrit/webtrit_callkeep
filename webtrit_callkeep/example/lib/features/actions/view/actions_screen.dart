@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:webtrit_callkeep_example/app/constants.dart';
 import 'package:webtrit_callkeep_example/core/event_log.dart';
 
 import '../bloc/actions_cubit.dart';
@@ -47,7 +48,7 @@ class ActionsScreen extends StatelessWidget {
                   _Section(
                     title: 'Outgoing Call',
                     children: [
-                      _Btn('Start Call', cubit.startOutgoingCall),
+                      _Btn('Start Call', () => _showStartCallDialog(context, state, cubit)),
                       _Btn('Report Connecting', cubit.reportConnectingOutgoingCall),
                       _Btn('Report Connected', cubit.reportConnectedOutgoingCall),
                       _Btn('Report Update', cubit.reportUpdateCall),
@@ -128,6 +129,114 @@ class ActionsScreen extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+void _showStartCallDialog(BuildContext context, ActionsState state, ActionsCubit cubit) {
+  showDialog<void>(
+    context: context,
+    builder: (_) => _StartCallDialog(
+      callerLineId: state.activeLineId,
+      lines: state.lines,
+      onCall: cubit.startOutgoingCall,
+    ),
+  );
+}
+
+class _StartCallDialog extends StatefulWidget {
+  const _StartCallDialog({required this.callerLineId, required this.lines, required this.onCall});
+
+  final String? callerLineId;
+  final List<CallLine> lines;
+  final void Function(String number) onCall;
+
+  @override
+  State<_StartCallDialog> createState() => _StartCallDialogState();
+}
+
+class _StartCallDialogState extends State<_StartCallDialog> {
+  late final TextEditingController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: call1Number.value);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Start Outgoing Call'),
+      content: SizedBox(
+        width: 320,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (widget.callerLineId != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.phone_forwarded, size: 16, color: Colors.grey),
+                      const SizedBox(width: 6),
+                      Text(
+                        'From: ${widget.callerLineId}',
+                        style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+              TextField(
+                controller: _ctrl,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Number / handle',
+                  border: OutlineInputBorder(),
+                ),
+                onSubmitted: (_) => _submit(),
+              ),
+              if (widget.lines.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                const Text('Or dial a line:', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 4),
+                ...widget.lines.map(
+                  (l) => ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.phone, size: 18),
+                    title: Text(l.label, style: const TextStyle(fontSize: 13)),
+                    subtitle: Text(
+                      l.id,
+                      style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+                    ),
+                    selected: _ctrl.text == l.id,
+                    onTap: () => setState(() => _ctrl.text = l.id),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        FilledButton(onPressed: _submit, child: const Text('Call')),
+      ],
+    );
+  }
+
+  void _submit() {
+    final number = _ctrl.text.trim();
+    if (number.isEmpty) return;
+    Navigator.pop(context);
+    widget.onCall(number);
   }
 }
 

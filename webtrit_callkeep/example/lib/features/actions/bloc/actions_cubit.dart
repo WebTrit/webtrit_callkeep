@@ -133,18 +133,19 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
   // Outgoing calls
   // ---------------------------------------------------------------------------
 
-  void startOutgoingCall() async {
+  void startOutgoingCall(String number) async {
+    final handle = CallkeepHandle.number(number);
     try {
       final err = await _callkeep.startCall(
         state.currentCallId,
-        call1Number,
-        displayNameOrContactIdentifier: call1Name,
+        handle,
+        displayNameOrContactIdentifier: number,
         hasVideo: false,
       );
       if (err != null) {
-        emit(state.log(LogEntry.error('startCall: ${err.name}')));
+        emit(state.log(LogEntry.error('startCall → $number: ${err.name}')));
       } else {
-        emit(state.log(LogEntry.success('startCall: ok')));
+        emit(state.log(LogEntry.success('startCall → $number: ok')));
       }
     } catch (e) {
       emit(state.log(LogEntry.error('startCall: $e')));
