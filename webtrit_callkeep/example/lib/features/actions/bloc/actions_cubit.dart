@@ -11,6 +11,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
   }
 
   final Callkeep _callkeep;
+  int _lineCounter = 0;
 
   @override
   Future<void> close() {
@@ -19,6 +20,32 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
   }
 
   void clearLog() => emit(state.clearLog());
+
+  // ---------------------------------------------------------------------------
+  // Line management
+  // ---------------------------------------------------------------------------
+
+  void addLine() {
+    final id = 'line-${++_lineCounter}';
+    final label = 'Line $_lineCounter';
+    final newLine = CallLine(id: id, label: label);
+    emit(state.copyWith(lines: [...state.lines, newLine], activeLineId: id));
+  }
+
+  void selectLine(String id) => emit(state.copyWith(activeLineId: id));
+
+  void removeLine(String id) {
+    final newLines = state.lines.where((l) => l.id != id).toList();
+    ActionsState newState = state.copyWith(lines: newLines);
+    if (state.activeLineId == id) {
+      if (newLines.isNotEmpty) {
+        newState = newState.copyWith(activeLineId: newLines.last.id);
+      } else {
+        newState = newState.withNoActiveLine();
+      }
+    }
+    emit(newState);
+  }
 
   // ---------------------------------------------------------------------------
   // Lifecycle
@@ -54,9 +81,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
     try {
       await _callkeep.tearDown();
       emit(
-        state
-            .copyWith(isSetUp: false, isHold: false, isMuted: false, connections: [])
-            .log(LogEntry.success('tearDown: ok')),
+        state.copyWith(isSetUp: false, connections: []).log(LogEntry.success('tearDown: ok')),
       );
     } catch (e) {
       emit(state.log(LogEntry.error('tearDown: $e')));
@@ -67,46 +92,28 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
   // Incoming calls
   // ---------------------------------------------------------------------------
 
-  void reportIncomingCall1() async {
+  void reportIncomingCall() async {
     try {
       final err = await _callkeep.reportNewIncomingCall(
-        call1Identifier,
+        state.currentCallId,
         call1Number,
         displayName: call1Name,
         hasVideo: false,
       );
       if (err != null) {
-        emit(state.log(LogEntry.error('reportIncoming[1]: ${err.name}')));
+        emit(state.log(LogEntry.error('reportIncoming[${state.currentCallId}]: ${err.name}')));
       } else {
-        emit(state.log(LogEntry.success('reportIncoming[1]: ok')));
+        emit(state.log(LogEntry.success('reportIncoming[${state.currentCallId}]: ok')));
       }
     } catch (e) {
-      emit(state.log(LogEntry.error('reportIncoming[1]: $e')));
-    }
-  }
-
-  void reportIncomingCall2() async {
-    try {
-      final err = await _callkeep.reportNewIncomingCall(
-        call2Identifier,
-        call2Number,
-        displayName: call2Name,
-        hasVideo: false,
-      );
-      if (err != null) {
-        emit(state.log(LogEntry.error('reportIncoming[2]: ${err.name}')));
-      } else {
-        emit(state.log(LogEntry.success('reportIncoming[2]: ok')));
-      }
-    } catch (e) {
-      emit(state.log(LogEntry.error('reportIncoming[2]: $e')));
+      emit(state.log(LogEntry.error('reportIncoming: $e')));
     }
   }
 
   void incomingCallViaPush() {
     try {
       AndroidCallkeepServices.backgroundPushNotificationBootstrapService.reportNewIncomingCall(
-        call1Identifier,
+        state.currentCallId,
         call1Number,
         displayName: call1Name,
       );
@@ -123,7 +130,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
   void startOutgoingCall() async {
     try {
       final err = await _callkeep.startCall(
-        call1Identifier,
+        state.currentCallId,
         call1Number,
         displayNameOrContactIdentifier: call1Name,
         hasVideo: false,
@@ -140,7 +147,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   void reportConnectingOutgoingCall() async {
     try {
-      await _callkeep.reportConnectingOutgoingCall(call1Identifier);
+      await _callkeep.reportConnectingOutgoingCall(state.currentCallId);
       emit(state.log(LogEntry.success('reportConnecting: ok')));
     } catch (e) {
       emit(state.log(LogEntry.error('reportConnecting: $e')));
@@ -149,7 +156,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   void reportConnectedOutgoingCall() async {
     try {
-      await _callkeep.reportConnectedOutgoingCall(call1Identifier);
+      await _callkeep.reportConnectedOutgoingCall(state.currentCallId);
       emit(state.log(LogEntry.success('reportConnected: ok')));
     } catch (e) {
       emit(state.log(LogEntry.error('reportConnected: $e')));
@@ -159,7 +166,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
   void reportUpdateCall() async {
     try {
       await _callkeep.reportUpdateCall(
-        call1Identifier,
+        state.currentCallId,
         handle: call1Number,
         displayName: call1Name,
         hasVideo: false,
@@ -172,7 +179,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   void reportEndCall() async {
     try {
-      await _callkeep.reportEndCall(call1Identifier, call1Name, CallkeepEndCallReason.declinedElsewhere);
+      await _callkeep.reportEndCall(state.currentCallId, call1Name, CallkeepEndCallReason.declinedElsewhere);
       emit(state.log(LogEntry.success('reportEndCall: ok')));
     } catch (e) {
       emit(state.log(LogEntry.error('reportEndCall: $e')));
@@ -185,7 +192,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   void answerCall() async {
     try {
-      final err = await _callkeep.answerCall(call1Identifier);
+      final err = await _callkeep.answerCall(state.currentCallId);
       if (err != null) {
         emit(state.log(LogEntry.error('answerCall: ${err.name}')));
       } else {
@@ -198,7 +205,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   void endCall() async {
     try {
-      final err = await _callkeep.endCall(call1Identifier);
+      final err = await _callkeep.endCall(state.currentCallId);
       if (err != null) {
         emit(state.log(LogEntry.error('endCall: ${err.name}')));
       } else {
@@ -212,11 +219,11 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
   void setHeld() async {
     try {
       final onHold = !state.isHold;
-      final err = await _callkeep.setHeld(call1Identifier, onHold: onHold);
+      final err = await _callkeep.setHeld(state.currentCallId, onHold: onHold);
       if (err != null) {
         emit(state.log(LogEntry.error('setHeld($onHold): ${err.name}')));
       } else {
-        emit(state.copyWith(isHold: onHold).log(LogEntry.success('setHeld($onHold): ok')));
+        emit(state.updateLine(state.currentCallId, isHold: onHold).log(LogEntry.success('setHeld($onHold): ok')));
       }
     } catch (e) {
       emit(state.log(LogEntry.error('setHeld: $e')));
@@ -226,11 +233,11 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
   void setMuted() async {
     try {
       final muted = !state.isMuted;
-      final err = await _callkeep.setMuted(call1Identifier, muted: muted);
+      final err = await _callkeep.setMuted(state.currentCallId, muted: muted);
       if (err != null) {
         emit(state.log(LogEntry.error('setMuted($muted): ${err.name}')));
       } else {
-        emit(state.copyWith(isMuted: muted).log(LogEntry.success('setMuted($muted): ok')));
+        emit(state.updateLine(state.currentCallId, isMuted: muted).log(LogEntry.success('setMuted($muted): ok')));
       }
     } catch (e) {
       emit(state.log(LogEntry.error('setMuted: $e')));
@@ -239,7 +246,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   void sendDTMF() async {
     try {
-      final err = await _callkeep.sendDTMF(call1Identifier, 'A');
+      final err = await _callkeep.sendDTMF(state.currentCallId, 'A');
       if (err != null) {
         emit(state.log(LogEntry.error('sendDTMF(A): ${err.name}')));
       } else {
@@ -299,7 +306,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
   void didDeactivateAudioSession() => emit(state.log(LogEntry.event('[cb] didDeactivateAudioSession')));
 
   @override
-  void didReset() => emit(state.copyWith(isHold: false, isMuted: false).log(LogEntry.event('[cb] didReset')));
+  void didReset() => emit(state.log(LogEntry.event('[cb] didReset')));
 
   @override
   Future<bool> performStartCall(String callId, CallkeepHandle handle, String? displayName, bool video) {
@@ -321,13 +328,13 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   @override
   Future<bool> performSetHeld(String callId, bool onHold) {
-    emit(state.copyWith(isHold: onHold).log(LogEntry.event('[cb] performSetHeld id=$callId held=$onHold')));
+    emit(state.updateLine(callId, isHold: onHold).log(LogEntry.event('[cb] performSetHeld id=$callId held=$onHold')));
     return Future.value(true);
   }
 
   @override
   Future<bool> performSetMuted(String callId, bool muted) {
-    emit(state.copyWith(isMuted: muted).log(LogEntry.event('[cb] performSetMuted id=$callId muted=$muted')));
+    emit(state.updateLine(callId, isMuted: muted).log(LogEntry.event('[cb] performSetMuted id=$callId muted=$muted')));
     return Future.value(true);
   }
 

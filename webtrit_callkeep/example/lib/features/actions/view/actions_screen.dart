@@ -15,107 +15,262 @@ class ActionsScreen extends StatelessWidget {
         final cubit = context.read<ActionsCubit>();
         return Scaffold(
           appBar: AppBar(title: const Text('Callkeep API')),
-          body: ListView(
-            padding: const EdgeInsets.all(12),
+          body: Stack(
             children: [
-              EventLogView(entries: state.entries, onClear: cubit.clearLog),
-              const SizedBox(height: 12),
-
-              // --- Lifecycle ---
-              _Section(
-                title: 'Lifecycle',
+              ListView(
+                padding: const EdgeInsets.only(left: 12, right: 12, top: 12, bottom: 88),
                 children: [
-                  _Btn('Setup', cubit.setup),
-                  _Btn('Is Setup', cubit.isSetup),
-                  _Btn('Tear Down', cubit.tearDown, destructive: true),
-                ],
-              ),
+                  EventLogView(entries: state.entries, onClear: cubit.clearLog),
+                  const SizedBox(height: 12),
 
-              // --- Incoming ---
-              _Section(
-                title: 'Incoming Call',
-                children: [
-                  _Btn('Incoming Call 1', cubit.reportIncomingCall1),
-                  _Btn('Incoming Call 2', cubit.reportIncomingCall2),
-                  _Btn('Incoming via Push', cubit.incomingCallViaPush),
-                  _Btn('Report End Call', cubit.reportEndCall),
-                ],
-              ),
-
-              // --- Outgoing ---
-              _Section(
-                title: 'Outgoing Call',
-                children: [
-                  _Btn('Start Call', cubit.startOutgoingCall),
-                  _Btn('Report Connecting', cubit.reportConnectingOutgoingCall),
-                  _Btn('Report Connected', cubit.reportConnectedOutgoingCall),
-                  _Btn('Report Update', cubit.reportUpdateCall),
-                ],
-              ),
-
-              // --- In-call controls ---
-              _Section(
-                title: 'In-Call Controls  (call 1)',
-                children: [
-                  _Btn('Answer', cubit.answerCall),
-                  _Btn('End', cubit.endCall, destructive: true),
-                  _ToggleBtn(
-                    label: state.isHold ? 'Unhold' : 'Hold',
-                    active: state.isHold,
-                    onPressed: cubit.setHeld,
+                  // --- Lifecycle ---
+                  _Section(
+                    title: 'Lifecycle',
+                    children: [
+                      _Btn('Setup', cubit.setup),
+                      _Btn('Is Setup', cubit.isSetup),
+                      _Btn('Tear Down', cubit.tearDown, destructive: true),
+                    ],
                   ),
-                  _ToggleBtn(
-                    label: state.isMuted ? 'Unmute' : 'Mute',
-                    active: state.isMuted,
-                    onPressed: cubit.setMuted,
+
+                  // --- Incoming ---
+                  _Section(
+                    title: 'Incoming Call',
+                    children: [
+                      _Btn('Incoming Call', cubit.reportIncomingCall),
+                      _Btn('Incoming via Push', cubit.incomingCallViaPush),
+                      _Btn('Report End Call', cubit.reportEndCall),
+                    ],
                   ),
-                  _Btn('DTMF A', cubit.sendDTMF),
+
+                  // --- Outgoing ---
+                  _Section(
+                    title: 'Outgoing Call',
+                    children: [
+                      _Btn('Start Call', cubit.startOutgoingCall),
+                      _Btn('Report Connecting', cubit.reportConnectingOutgoingCall),
+                      _Btn('Report Connected', cubit.reportConnectedOutgoingCall),
+                      _Btn('Report Update', cubit.reportUpdateCall),
+                    ],
+                  ),
+
+                  // --- In-call controls ---
+                  _Section(
+                    title: 'In-Call Controls  (${state.activeLineId ?? "none"})',
+                    children: [
+                      _Btn('Answer', cubit.answerCall),
+                      _Btn('End', cubit.endCall, destructive: true),
+                      _ToggleBtn(
+                        label: state.isHold ? 'Unhold' : 'Hold',
+                        active: state.isHold,
+                        onPressed: cubit.setHeld,
+                      ),
+                      _ToggleBtn(
+                        label: state.isMuted ? 'Unmute' : 'Mute',
+                        active: state.isMuted,
+                        onPressed: cubit.setMuted,
+                      ),
+                      _Btn('DTMF A', cubit.sendDTMF),
+                    ],
+                  ),
+
+                  // --- Connections ---
+                  _Section(
+                    title: 'Connections',
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextButton.icon(
+                          onPressed: cubit.refreshConnections,
+                          icon: const Icon(Icons.refresh, size: 16),
+                          label: const Text('Refresh'),
+                        ),
+                        TextButton.icon(
+                          onPressed: cubit.cleanConnections,
+                          icon: const Icon(Icons.delete_sweep, size: 16),
+                          label: const Text('Clean'),
+                        ),
+                      ],
+                    ),
+                    children: state.connections.isEmpty
+                        ? [
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: Text(
+                                'No active connections',
+                                style: TextStyle(color: Colors.grey, fontSize: 13),
+                              ),
+                            )
+                          ]
+                        : state.connections
+                            .map(
+                              (c) => Chip(
+                                label: Text(
+                                  '${c.callId}  ${c.state.name}',
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                  ),
                 ],
               ),
-
-              // --- Connections ---
-              _Section(
-                title: 'Connections',
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextButton.icon(
-                      onPressed: cubit.refreshConnections,
-                      icon: const Icon(Icons.refresh, size: 16),
-                      label: const Text('Refresh'),
-                    ),
-                    TextButton.icon(
-                      onPressed: cubit.cleanConnections,
-                      icon: const Icon(Icons.delete_sweep, size: 16),
-                      label: const Text('Clean'),
-                    ),
-                  ],
-                ),
-                children: state.connections.isEmpty
-                    ? [
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                          child: Text(
-                            'No active connections',
-                            style: TextStyle(color: Colors.grey, fontSize: 13),
-                          ),
-                        )
-                      ]
-                    : state.connections
-                        .map(
-                          (c) => Chip(
-                            label: Text(
-                              '${c.callId}  ${c.state.name}',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ),
-                        )
-                        .toList(),
+              DraggableScrollableSheet(
+                initialChildSize: 0.13,
+                minChildSize: 0.13,
+                maxChildSize: 0.45,
+                snap: true,
+                snapSizes: const [0.13, 0.45],
+                builder: (ctx, sc) => _LinesPanel(scrollController: sc, state: state, cubit: cubit),
               ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+class _LinesPanel extends StatelessWidget {
+  const _LinesPanel({required this.scrollController, required this.state, required this.cubit});
+
+  final ScrollController scrollController;
+  final ActionsState state;
+  final ActionsCubit cubit;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: ListView(
+        controller: scrollController,
+        padding: EdgeInsets.zero,
+        children: [
+          // Drag handle
+          Center(
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              width: 32,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+
+          // Chips row — always visible in collapsed state
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 4, 4),
+            child: Row(
+              children: [
+                const Text('Lines:', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SizedBox(
+                    height: 36,
+                    child: state.lines.isEmpty
+                        ? const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text('No lines yet', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                          )
+                        : ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: state.lines.length,
+                            separatorBuilder: (_, __) => const SizedBox(width: 6),
+                            itemBuilder: (_, i) {
+                              final line = state.lines[i];
+                              return ChoiceChip(
+                                label: Text(line.label, style: const TextStyle(fontSize: 12)),
+                                selected: line.id == state.activeLineId,
+                                onSelected: (_) => cubit.selectLine(line.id),
+                              );
+                            },
+                          ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  tooltip: 'New Line',
+                  onPressed: cubit.addLine,
+                ),
+              ],
+            ),
+          ),
+
+          // Expanded list — visible when panel is dragged up
+          if (state.lines.isEmpty)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 4, 16, 16),
+              child: Text(
+                'Tap + to create a line. Each line has a unique call ID for multi-line testing.',
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+            )
+          else
+            ...state.lines.map((line) {
+              final isActive = line.id == state.activeLineId;
+              return ListTile(
+                dense: true,
+                leading: Icon(
+                  isActive ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                  color: isActive ? colorScheme.primary : Colors.grey,
+                  size: 20,
+                ),
+                title: Text(line.label, style: const TextStyle(fontSize: 13)),
+                subtitle: Text(
+                  line.id,
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: Colors.grey),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (line.isHold) _Badge('HOLD', Colors.orange),
+                    if (line.isMuted) _Badge('MUTE', Colors.red),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 18),
+                      onPressed: () => cubit.removeLine(line.id),
+                      color: Colors.grey,
+                    ),
+                  ],
+                ),
+                onTap: () => cubit.selectLine(line.id),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  const _Badge(this.label, this.color);
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(right: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Text(label, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600)),
     );
   }
 }
