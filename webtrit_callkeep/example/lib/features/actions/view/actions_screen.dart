@@ -16,7 +16,20 @@ class ActionsScreen extends StatelessWidget {
       builder: (context, state) {
         final cubit = context.read<ActionsCubit>();
         return Scaffold(
-          appBar: AppBar(title: const Text('Callkeep API')),
+          appBar: AppBar(
+            title: const Text('Callkeep API'),
+            actions: [
+              Builder(
+                builder: (ctx) => IconButton(
+                  icon: const Icon(Icons.tune_rounded),
+                  tooltip: 'Tools & Settings',
+                  onPressed: () => Scaffold.of(ctx).openEndDrawer(),
+                ),
+              ),
+              const SizedBox(width: 4),
+            ],
+          ),
+          endDrawer: _HelperDrawer(state: state, cubit: cubit),
           body: Stack(
             children: [
               ListView(
@@ -74,103 +87,6 @@ class ActionsScreen extends StatelessWidget {
                         onPressed: cubit.setMuted,
                       ),
                       _Btn('DTMF', () => _showDtmfDialog(context, cubit)),
-                    ],
-                  ),
-
-                  // --- Audio Device ---
-                  _Section(
-                    title: 'Audio Device',
-                    children: [
-                      _Btn('Earpiece', () => cubit.setAudioDevice(CallkeepAudioDeviceType.earpiece)),
-                      _Btn('Speaker', () => cubit.setAudioDevice(CallkeepAudioDeviceType.speaker)),
-                      _Btn('Bluetooth', () => cubit.setAudioDevice(CallkeepAudioDeviceType.bluetooth)),
-                      _Btn('Wired', () => cubit.setAudioDevice(CallkeepAudioDeviceType.wiredHeadset)),
-                    ],
-                  ),
-
-                  // --- Sound ---
-                  _Section(
-                    title: 'Sound (Ringback)',
-                    children: [
-                      _ToggleBtn(
-                        label: state.isRingbackPlaying ? 'Stop Ringback' : 'Play Ringback',
-                        active: state.isRingbackPlaying,
-                        onPressed: state.isRingbackPlaying ? cubit.stopRingback : cubit.playRingback,
-                      ),
-                    ],
-                  ),
-
-                  // --- Connections ---
-                  _Section(
-                    title: 'Connections',
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TextButton.icon(
-                          onPressed: cubit.refreshConnections,
-                          icon: const Icon(Icons.refresh, size: 16),
-                          label: const Text('Refresh'),
-                        ),
-                        TextButton.icon(
-                          onPressed: cubit.cleanConnections,
-                          icon: const Icon(Icons.delete_sweep, size: 16),
-                          label: const Text('Clean'),
-                        ),
-                      ],
-                    ),
-                    children: [
-                      if (state.connections.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 4),
-                          child: Text(
-                            'No active connections',
-                            style: TextStyle(color: Colors.grey, fontSize: 13),
-                          ),
-                        )
-                      else
-                        ...state.connections.map(
-                          (c) => Chip(
-                            label: Text(
-                              '${c.callId}  ${c.state.name}',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ),
-                        ),
-                      const SizedBox(width: double.infinity), // force wrap
-                      _Btn('Get [active]', cubit.getConnectionByCallId),
-                    ],
-                  ),
-
-                  // --- Signaling Status ---
-                  _Section(
-                    title: 'Signaling Status',
-                    children: CallkeepSignalingStatus.values
-                        .map((s) => _Btn('→ ${s.name}', () => cubit.updateSignalingStatus(s)))
-                        .toList(),
-                  ),
-
-                  // --- Permissions ---
-                  _Section(
-                    title: 'Permissions',
-                    children: [
-                      _Btn('Check Status', cubit.checkPermissions),
-                      _Btn('Request', cubit.requestPermissions),
-                      _Btn('Battery Mode', cubit.getBatteryMode),
-                      _Btn('FS Intent Status', cubit.getFullScreenIntentStatus),
-                      _Btn('FS Intent Settings', cubit.openFullScreenIntentSettings),
-                      _Btn('Open Settings', cubit.openSettings),
-                    ],
-                  ),
-
-                  // --- Logs ---
-                  _Section(
-                    title: 'Native Logs',
-                    children: [
-                      _ToggleBtn(
-                        label: state.isLogsDelegateActive ? 'Logs: ON' : 'Logs: OFF',
-                        active: state.isLogsDelegateActive,
-                        onPressed: cubit.toggleLogsDelegate,
-                      ),
                     ],
                   ),
                 ],
@@ -370,7 +286,7 @@ class _StartCallDialogState extends State<_StartCallDialog> {
 }
 
 // ---------------------------------------------------------------------------
-// Lines panel
+// Lines panel (bottom draggable sheet)
 // ---------------------------------------------------------------------------
 
 class _LinesPanel extends StatelessWidget {
@@ -497,6 +413,151 @@ class _LinesPanel extends StatelessWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Helper drawer (right-side end drawer)
+// ---------------------------------------------------------------------------
+
+class _HelperDrawer extends StatelessWidget {
+  const _HelperDrawer({required this.state, required this.cubit});
+
+  final ActionsState state;
+  final ActionsCubit cubit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.tune_rounded, size: 20),
+                  const SizedBox(width: 8),
+                  Text('Tools & Settings', style: Theme.of(context).textTheme.titleMedium),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+
+            // Scrollable content
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(12),
+                children: [
+                  // --- Audio Device ---
+                  _Section(
+                    title: 'Audio Device',
+                    children: [
+                      _Btn('Earpiece', () => cubit.setAudioDevice(CallkeepAudioDeviceType.earpiece)),
+                      _Btn('Speaker', () => cubit.setAudioDevice(CallkeepAudioDeviceType.speaker)),
+                      _Btn('Bluetooth', () => cubit.setAudioDevice(CallkeepAudioDeviceType.bluetooth)),
+                      _Btn('Wired', () => cubit.setAudioDevice(CallkeepAudioDeviceType.wiredHeadset)),
+                    ],
+                  ),
+
+                  // --- Sound ---
+                  _Section(
+                    title: 'Sound (Ringback)',
+                    children: [
+                      _ToggleBtn(
+                        label: state.isRingbackPlaying ? 'Stop Ringback' : 'Play Ringback',
+                        active: state.isRingbackPlaying,
+                        onPressed: state.isRingbackPlaying ? cubit.stopRingback : cubit.playRingback,
+                      ),
+                    ],
+                  ),
+
+                  // --- Connections ---
+                  _Section(
+                    title: 'Connections',
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextButton.icon(
+                          onPressed: cubit.refreshConnections,
+                          icon: const Icon(Icons.refresh, size: 16),
+                          label: const Text('Refresh'),
+                        ),
+                        TextButton.icon(
+                          onPressed: cubit.cleanConnections,
+                          icon: const Icon(Icons.delete_sweep, size: 16),
+                          label: const Text('Clean'),
+                        ),
+                      ],
+                    ),
+                    children: [
+                      if (state.connections.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 4),
+                          child: Text(
+                            'No active connections',
+                            style: TextStyle(color: Colors.grey, fontSize: 13),
+                          ),
+                        )
+                      else
+                        ...state.connections.map(
+                          (c) => Chip(
+                            label: Text(
+                              '${c.callId}  ${c.state.name}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ),
+                      const SizedBox(width: double.infinity),
+                      _Btn('Get [active]', cubit.getConnectionByCallId),
+                    ],
+                  ),
+
+                  // --- Signaling Status ---
+                  _Section(
+                    title: 'Signaling Status',
+                    children: CallkeepSignalingStatus.values
+                        .map((s) => _Btn('→ ${s.name}', () => cubit.updateSignalingStatus(s)))
+                        .toList(),
+                  ),
+
+                  // --- Permissions ---
+                  _Section(
+                    title: 'Permissions',
+                    children: [
+                      _Btn('Check Status', cubit.checkPermissions),
+                      _Btn('Request', cubit.requestPermissions),
+                      _Btn('Battery Mode', cubit.getBatteryMode),
+                      _Btn('FS Intent Status', cubit.getFullScreenIntentStatus),
+                      _Btn('FS Intent Settings', cubit.openFullScreenIntentSettings),
+                      _Btn('Open Settings', cubit.openSettings),
+                    ],
+                  ),
+
+                  // --- Native Logs ---
+                  _Section(
+                    title: 'Native Logs',
+                    children: [
+                      _ToggleBtn(
+                        label: state.isLogsDelegateActive ? 'Logs: ON' : 'Logs: OFF',
+                        active: state.isLogsDelegateActive,
+                        onPressed: cubit.toggleLogsDelegate,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Shared widgets
+// ---------------------------------------------------------------------------
+
 class _Badge extends StatelessWidget {
   const _Badge(this.label, this.color);
 
@@ -517,10 +578,6 @@ class _Badge extends StatelessWidget {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Shared widgets
-// ---------------------------------------------------------------------------
 
 class _Section extends StatelessWidget {
   const _Section({required this.title, required this.children, this.trailing});
