@@ -13,6 +13,23 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
   final Callkeep _callkeep;
   int _lineCounter = 0;
 
+  /// Ensures a [CallLine] with [callId] exists in [s].
+  /// If absent, appends a new line using [callId] as both id and label.
+  ActionsState _ensureLine(ActionsState s, String callId) {
+    if (s.lines.any((l) => l.id == callId)) return s;
+    return s.copyWith(lines: [...s.lines, CallLine(id: callId, label: callId)]);
+  }
+
+  /// Removes the line with [callId] and adjusts activeLineId if needed.
+  ActionsState _removeLine(ActionsState s, String callId) {
+    final newLines = s.lines.where((l) => l.id != callId).toList();
+    ActionsState next = s.copyWith(lines: newLines);
+    if (s.activeLineId == callId) {
+      next = newLines.isNotEmpty ? next.copyWith(activeLineId: newLines.last.id) : next.withNoActiveLine();
+    }
+    return next;
+  }
+
   @override
   Future<void> close() {
     _callkeep.setDelegate(null);
@@ -34,18 +51,7 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   void selectLine(String id) => emit(state.copyWith(activeLineId: id));
 
-  void removeLine(String id) {
-    final newLines = state.lines.where((l) => l.id != id).toList();
-    ActionsState newState = state.copyWith(lines: newLines);
-    if (state.activeLineId == id) {
-      if (newLines.isNotEmpty) {
-        newState = newState.copyWith(activeLineId: newLines.last.id);
-      } else {
-        newState = newState.withNoActiveLine();
-      }
-    }
-    emit(newState);
-  }
+  void removeLine(String id) => emit(_removeLine(state, id));
 
   // ---------------------------------------------------------------------------
   // Lifecycle
@@ -296,7 +302,10 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
     CallkeepIncomingCallError? error,
   ) {
     final errStr = error != null ? ' err=${error.name}' : '';
-    emit(state.log(LogEntry.event('[cb] didPushIncomingCall id=$callId$errStr')));
+    // Ensure a line exists for this callId; select it when there is no error.
+    var s = _ensureLine(state, callId);
+    if (error == null) s = s.copyWith(activeLineId: callId);
+    emit(s.log(LogEntry.event('[cb] didPushIncomingCall id=$callId$errStr')));
   }
 
   @override
@@ -310,7 +319,9 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   @override
   Future<bool> performStartCall(String callId, CallkeepHandle handle, String? displayName, bool video) {
-    emit(state.log(LogEntry.event('[cb] performStartCall id=$callId')));
+    // Ensure a line exists and select it so all controls target this call.
+    final s = _ensureLine(state, callId).copyWith(activeLineId: callId);
+    emit(s.log(LogEntry.event('[cb] performStartCall id=$callId')));
     return Future.value(true);
   }
 
@@ -322,19 +333,24 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
 
   @override
   Future<bool> performEndCall(String callId) {
-    emit(state.log(LogEntry.event('[cb] performEndCall id=$callId')));
+    // Remove the line when the native side ends the call.
+    emit(_removeLine(state, callId).log(LogEntry.event('[cb] performEndCall id=$callId')));
     return Future.value(true);
   }
 
   @override
   Future<bool> performSetHeld(String callId, bool onHold) {
-    emit(state.updateLine(callId, isHold: onHold).log(LogEntry.event('[cb] performSetHeld id=$callId held=$onHold')));
+    emit(_ensureLine(state, callId).updateLine(callId, isHold: onHold).log(
+          LogEntry.event('[cb] performSetHeld id=$callId held=$onHold'),
+        ));
     return Future.value(true);
   }
 
   @override
   Future<bool> performSetMuted(String callId, bool muted) {
-    emit(state.updateLine(callId, isMuted: muted).log(LogEntry.event('[cb] performSetMuted id=$callId muted=$muted')));
+    emit(_ensureLine(state, callId).updateLine(callId, isMuted: muted).log(
+          LogEntry.event('[cb] performSetMuted id=$callId muted=$muted'),
+        ));
     return Future.value(true);
   }
 
