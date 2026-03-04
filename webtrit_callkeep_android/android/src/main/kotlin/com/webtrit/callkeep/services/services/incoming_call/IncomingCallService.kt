@@ -20,6 +20,7 @@ import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
 import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.common.DefaultIsolateLaunchPolicy
+import com.webtrit.callkeep.services.services.foreground.ForegroundService
 import com.webtrit.callkeep.services.services.incoming_call.handlers.CallLifecycleHandler
 import com.webtrit.callkeep.services.services.incoming_call.handlers.FlutterIsolateHandler
 import com.webtrit.callkeep.services.services.incoming_call.handlers.IncomingCallHandler
@@ -151,6 +152,13 @@ class IncomingCallService : Service() {
     }
 
     private fun performAnswerCall(metadata: CallMetadata): Int {
+        // Pre-populate the tracker before the Activity (and ForegroundService) starts.
+        // ForegroundService missed ConnectionAdded and AnswerCall broadcasts because it
+        // was not running. Both services share the same JVM/process, so the companion
+        // object is directly accessible. This is idempotent when the app is already open.
+        ForegroundService.connectionTracker.add(metadata.callId, metadata)
+        ForegroundService.connectionTracker.markAnswered(metadata.callId)
+
         callLifecycleHandler.performAnswerCall(metadata)
         if (ActivityHolder.getActivity() == null) {
             ActivityHolder.start(baseContext)

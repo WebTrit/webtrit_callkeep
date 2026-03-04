@@ -614,6 +614,11 @@ class ForegroundService : Service(), PHostApi {
         }
         Handler(Looper.getMainLooper()).post {
             tracked.forEach { metadata ->
+                if (connectionTracker.isAnswered(metadata.callId)) {
+                    logger.d("onDelegateSet: restoring answered state for callId=${metadata.callId}")
+                    flutterDelegateApi?.performAnswerCall(metadata.callId) {}
+                    flutterDelegateApi?.didActivateAudioSession {}
+                }
                 PhoneConnectionService.forceUpdateAudioState(baseContext, metadata)
             }
         }
