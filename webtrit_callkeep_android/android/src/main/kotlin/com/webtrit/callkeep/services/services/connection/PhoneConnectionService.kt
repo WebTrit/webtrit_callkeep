@@ -22,6 +22,7 @@ import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.models.OutgoingFailureType
 import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
+import com.webtrit.callkeep.common.AssetHolder
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.services.services.connection.dispatchers.ConnectionLifecycleAction
 import com.webtrit.callkeep.services.services.connection.dispatchers.PhoneConnectionServiceDispatcher
@@ -46,6 +47,7 @@ class PhoneConnectionService : ConnectionService() {
         super.onCreate()
         // Initialize ContextHolder for the :callkeep_core process (normally done by WebtritCallkeepPlugin in the main process)
         ContextHolder.init(applicationContext)
+        AssetHolder.initForIsolatedProcess(applicationContext)
 
         // Set the service state to true when the system starts the service.
         isRunning = true

@@ -37,8 +37,10 @@ object StorageDelegate {
         }
 
         fun initRingtonePath(context: Context, path: String?) {
-            if (path == null) return
-            getSharedPreferences(context)?.edit()?.apply { putString(RINGTONE_PATH, path).apply() }
+            getSharedPreferences(context)?.edit()?.apply {
+                if (path != null) putString(RINGTONE_PATH, path) else remove(RINGTONE_PATH)
+                apply()
+            }
         }
 
         fun getRingtonePath(context: Context): String? {
@@ -46,8 +48,10 @@ object StorageDelegate {
         }
 
         fun initRingbackPath(context: Context, path: String?) {
-            if (path == null) return
-            getSharedPreferences(context)?.edit()?.apply { putString(RINGBACK_PATH, path)?.apply() }
+            getSharedPreferences(context)?.edit()?.apply {
+                if (path != null) putString(RINGBACK_PATH, path) else remove(RINGBACK_PATH)
+                apply()
+            }
         }
 
         fun getRingbackPath(context: Context): String? {

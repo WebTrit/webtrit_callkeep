@@ -24,4 +24,21 @@ object AssetHolder {
             Log.i("AssetHolder", "AssetManagerHolder is already initialized.")
         }
     }
+
+    /**
+     * Initializes the asset manager for isolated processes (e.g. :callkeep_core) that have no
+     * Flutter engine attached. Uses a minimal FlutterAssets implementation that replicates the
+     * standard Flutter asset path convention ("flutter_assets/<name>"), allowing
+     * FlutterAssetManager to read assets from the APK and cache them to disk without a live engine.
+     */
+    @Synchronized
+    fun initForIsolatedProcess(context: Context) {
+        if (_flutterAssetManager != null) return
+        val isolatedAssets = object : FlutterAssets {
+            override fun getAssetFilePathByName(asset: String) = "flutter_assets/$asset"
+            override fun getAssetFilePathByName(asset: String, packageName: String) =
+                "flutter_assets/packages/$packageName/$asset"
+        }
+        _flutterAssetManager = FlutterAssetManager(context, isolatedAssets)
+    }
 }
