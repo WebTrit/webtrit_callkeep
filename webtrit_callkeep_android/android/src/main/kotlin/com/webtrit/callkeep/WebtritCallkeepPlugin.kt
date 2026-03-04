@@ -17,7 +17,6 @@ import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.setShowWhenLockedCompat
 import com.webtrit.callkeep.common.setTurnScreenOnCompat
 import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
-import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 import com.webtrit.callkeep.services.services.foreground.ForegroundService
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
 import com.webtrit.callkeep.services.services.signaling.SignalingIsolateService
@@ -49,7 +48,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     private var permissionsApi: PermissionsApi? = null
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-        // Store binnyMessenger for later use if instance of the flutter engine belongs to main isolate OR call service isolate
+        // Store binaryMessenger for later use if instance of the flutter engine belongs to main isolate OR call service isolate
         messenger = flutterPluginBinding.binaryMessenger
         assets = flutterPluginBinding.flutterAssets
         context = flutterPluginBinding.applicationContext
@@ -98,10 +97,14 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         PHostPermissionsApi.setUp(messenger, null)
         permissionsApi = null
 
+        // Safety net: PHostApi is normally cleared in onDetachedFromActivity,
+        // but guard here in case the engine is torn down without a prior activity detach.
         PHostApi.setUp(this.messenger, null)
+        PHostActivityControlApi.setUp(messenger, null)
 
         PHostBackgroundSignalingIsolateBootstrapApi.setUp(messenger, null)
         PHostBackgroundPushNotificationIsolateBootstrapApi.setUp(messenger, null)
+        PHostSmsReceptionConfigApi.setUp(messenger, null)
 
         PHostDiagnosticsApi.setUp(messenger, null)
         PHostSoundApi.setUp(messenger, null)
@@ -125,9 +128,9 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         lifeCycle = (binding.lifecycle as HiddenLifecycleReference).lifecycle
         lifeCycle!!.addObserver(this)
 
-        // Launch the signaling service manually on Android 15+ (API 34 / UPSIDE_DOWN_CAKE) if enabled.
+        // Launch the signaling service manually on Android 14+ (API 34 / UPSIDE_DOWN_CAKE) if enabled.
         //
-        // On Android 15 and above, the system no longer allows ForegroundServices of type "phone call"
+        // On Android 14 and above, the system no longer allows ForegroundServices of type "phone call"
         // to be started from BOOT_COMPLETED or similar system broadcasts. As a result, the service must
         // be started explicitly from the app lifecycle — in this case, from the plugin/activity attachment.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -197,7 +200,12 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     }
 
     override fun onDetachedFromService() {
-        Log.i(TAG, "onDetachedFromService id:${activityPluginBinding?.hashCode()}")
+        val detachedService = when {
+            signalingIsolateService != null -> "SignalingIsolateService"
+            pushNotificationIsolateService != null -> "IncomingCallService"
+            else -> "unknown"
+        }
+        Log.i(TAG, "onDetachedFromService: $detachedService")
         PHostBackgroundSignalingIsolateApi.setUp(messenger, null)
         PHostBackgroundPushNotificationIsolateApi.setUp(messenger, null)
 
@@ -256,14 +264,10 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
          * the app was force-stopped).
          */
         if (event == Lifecycle.Event.ON_START) {
-            val connections = PhoneConnectionService.connectionManager.getConnections()
-            val hasActiveConnections = connections.isNotEmpty()
-            Log.i(
-                TAG,
-                "onStateChanged: ON_START. Has active connections: $hasActiveConnections (${connections.size})"
-            )
-            activityPluginBinding?.activity?.setShowWhenLockedCompat(hasActiveConnections)
-            activityPluginBinding?.activity?.setTurnScreenOnCompat(hasActiveConnections)
+            val hasActive = !ForegroundService.connectionTracker.isEmpty()
+            Log.i(TAG, "onStateChanged: ON_START. Has active connections: $hasActive")
+            activityPluginBinding?.activity?.setShowWhenLockedCompat(hasActive)
+            activityPluginBinding?.activity?.setTurnScreenOnCompat(hasActive)
         }
     }
 

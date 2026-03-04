@@ -55,14 +55,17 @@ class CallkeepAndroidOptions extends Equatable {
   const CallkeepAndroidOptions({
     this.ringtoneSound,
     this.ringbackSound,
+    this.incomingCallFullScreen = true,
   });
 
   final String? ringtoneSound;
   final String? ringbackSound;
+  final bool incomingCallFullScreen;
 
   @override
   List<Object?> get props => [
     ringtoneSound,
     ringbackSound,
+    incomingCallFullScreen,
   ];
 }

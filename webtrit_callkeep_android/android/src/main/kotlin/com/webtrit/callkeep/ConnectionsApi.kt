@@ -2,21 +2,29 @@ package com.webtrit.callkeep
 
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.toSignalingStatus
-import com.webtrit.callkeep.models.toPConnection
 import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
 import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
+import com.webtrit.callkeep.services.services.foreground.ForegroundService
 
 class ConnectionsApi() : PHostConnectionsApi {
     override fun getConnection(
         callId: String, callback: (Result<PCallkeepConnection?>) -> Unit
     ) {
-        val connection = PhoneConnectionService.connectionManager.getConnection(callId)
-        callback.invoke(Result.success(connection?.toPConnection()))
+        val tracker = ForegroundService.connectionTracker
+        val pConn = tracker.get(callId)?.let {
+            PCallkeepConnection(it.callId, tracker.getState(it.callId),
+                PCallkeepDisconnectCause(PCallkeepDisconnectCauseType.UNKNOWN, ""))
+        }
+        callback.invoke(Result.success(pConn))
     }
 
     override fun getConnections(callback: (Result<List<PCallkeepConnection>>) -> Unit) {
-        val connections = PhoneConnectionService.connectionManager.getConnections()
-        callback.invoke(Result.success(connections.mapNotNull { it.toPConnection() }))
+        val tracker = ForegroundService.connectionTracker
+        val connections = tracker.getAll().map {
+            PCallkeepConnection(it.callId, tracker.getState(it.callId),
+                PCallkeepDisconnectCause(PCallkeepDisconnectCauseType.UNKNOWN, ""))
+        }
+        callback.invoke(Result.success(connections))
     }
 
     override fun updateActivitySignalingStatus(
@@ -29,7 +37,8 @@ class ConnectionsApi() : PHostConnectionsApi {
     override fun cleanConnections(
         callback: (Result<Unit>) -> Unit
     ) {
-        PhoneConnectionService.connectionManager.cleanConnections()
+        PhoneConnectionService.tearDown(ContextHolder.context)
+        ForegroundService.connectionTracker.clear()
         callback(Result.success(Unit))
     }
 }

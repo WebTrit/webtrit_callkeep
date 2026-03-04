@@ -40,7 +40,7 @@ class CallLifecycleHandler(
     fun performAnswerCall(metadata: CallMetadata) {
         IsolateSelector.executeIfBackground {
             flutterApi?.performAnswer(metadata.callId, onSuccess = {
-                connectionController.answer(metadata)
+                Log.d(TAG, "performAnswerCall: Flutter isolate acknowledged answer for callId=${metadata.callId}")
             }, onFailure = {
                 Log.d(TAG, "Tear down connection due to answer failure: $it")
                 connectionController.tearDown()

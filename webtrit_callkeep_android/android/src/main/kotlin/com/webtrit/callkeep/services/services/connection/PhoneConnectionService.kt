@@ -22,9 +22,11 @@ import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.models.OutgoingFailureType
 import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
+import com.webtrit.callkeep.common.AssetHolder
+import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.services.services.connection.dispatchers.ConnectionLifecycleAction
 import com.webtrit.callkeep.services.services.connection.dispatchers.PhoneConnectionServiceDispatcher
-import com.webtrit.callkeep.services.services.foreground.ForegroundService
+
 
 /**
  * `PhoneConnectionService` is a service class responsible for managing phone call connections
@@ -43,6 +45,10 @@ class PhoneConnectionService : ConnectionService() {
 
     override fun onCreate() {
         super.onCreate()
+        // Initialize ContextHolder for the :callkeep_core process (normally done by WebtritCallkeepPlugin in the main process)
+        ContextHolder.init(applicationContext)
+        AssetHolder.initForIsolatedProcess(applicationContext)
+
         // Set the service state to true when the system starts the service.
         isRunning = true
         telephonyUtils = TelephonyUtils(applicationContext)
@@ -113,10 +119,15 @@ class PhoneConnectionService : ConnectionService() {
             return Connection.createFailedConnection(DisconnectCause(DisconnectCause.BUSY))
         }
 
+        // Clean stale connections in-process before creating the new outgoing connection.
+        // This is deterministic and replaces the IPC-based CleanStaleConnections approach.
+        phoneConnectionServiceDispatcher.dispatch(ServiceAction.CleanStaleConnections, null)
+
         val connection = PhoneConnection.createOutgoingPhoneConnection(
             applicationContext, ::performEventHandle, metadata, ::disconnectConnection
         )
         connectionManager.addConnection(metadata.callId, connection)
+        performEventHandle(ConnectionPerform.ConnectionAdded, metadata.copy(isIncomingCall = false))
         phoneConnectionServiceDispatcher.dispatchLifecycle(
             ConnectionLifecycleAction.ConnectionCreated, metadata
         )
@@ -182,14 +193,12 @@ class PhoneConnectionService : ConnectionService() {
             applicationContext, ::performEventHandle, metadata, ::disconnectConnection
         )
         connectionManager.addConnection(metadata.callId, connection)
+        performEventHandle(ConnectionPerform.ConnectionAdded, metadata.copy(isIncomingCall = true))
 
         phoneConnectionServiceDispatcher.dispatchLifecycle(
             ConnectionLifecycleAction.ConnectionCreated, metadata
         )
 
-        startService(Intent(applicationContext, ForegroundService::class.java).apply {
-            action = "test"
-        })
         return connection
     }
 
@@ -221,7 +230,8 @@ class PhoneConnectionService : ConnectionService() {
 
     private fun disconnectConnection(connection: PhoneConnection) {
         Log.i(TAG, "disconnectConnection:: $connection")
-
+        val metadata = CallMetadata(callId = connection.callId)
+        performEventHandle(ConnectionPerform.ConnectionRemoved, metadata)
         phoneConnectionServiceDispatcher.dispatchLifecycle(ConnectionLifecycleAction.ConnectionChanged)
     }
 
@@ -262,7 +272,9 @@ class PhoneConnectionService : ConnectionService() {
     companion object {
         private const val TAG = "PhoneConnectionService"
 
-        // The service state is used to determine if the service is running. This is useful to avoid invoking onStartCommand when the service is down.
+        // Tracks whether the service is running. Valid ONLY within the :callkeep_core process.
+        // Do NOT read this field from the main process — it is a JVM-static that is always false
+        // there. Use ActivityManager.getRunningServices() for cross-process service detection.
         private var _isRunning = false
 
         var isRunning: Boolean
@@ -271,6 +283,10 @@ class PhoneConnectionService : ConnectionService() {
                 _isRunning = value
             }
 
+        // The ConnectionManager instance for the :callkeep_core process.
+        // Do NOT access this field from the main process — each Android process has its own JVM,
+        // so the main process sees an empty ConnectionManager regardless of core-process state.
+        // Use IPC (communicate / ServiceAction) to interact with connections cross-process.
         var connectionManager: ConnectionManager = ConnectionManager()
 
         fun startAnswerCall(context: Context, metadata: CallMetadata) {
@@ -317,6 +333,10 @@ class PhoneConnectionService : ConnectionService() {
             communicate(context, ServiceAction.TearDown, null)
         }
 
+        fun forceUpdateAudioState(context: Context, metadata: CallMetadata) {
+            communicate(context, ServiceAction.ForceUpdateAudioState, metadata)
+        }
+
         /**
          * Handles new outgoing calls and starts the connection service if the service is not running.
          * For more information on system management of creating connection services,
@@ -343,13 +363,6 @@ class PhoneConnectionService : ConnectionService() {
                 throw EmergencyNumberException(failureMetadata)
 
             } else {
-                // If there is already an active call not on hold, we terminate it and start a new one,
-                // otherwise, we would encounter an exception when placing the outgoing call.
-                connectionManager.getActiveConnection()?.let {
-                    Log.i(TAG, "onOutgoingCall, hung up previous call: $it")
-                    it.hungUp()
-                }
-
                 telephonyUtils.placeOutgoingCall(uri, metadata)
             }
         }

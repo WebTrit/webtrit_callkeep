@@ -11,7 +11,9 @@ import android.util.Log
 import androidx.annotation.Keep
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
+import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.ContextHolder
+import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.toPCallkeepIncomingCallData
 import com.webtrit.callkeep.models.NotificationAction
@@ -19,6 +21,7 @@ import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
 import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.common.DefaultIsolateLaunchPolicy
+import com.webtrit.callkeep.services.services.foreground.ForegroundService
 import com.webtrit.callkeep.services.services.incoming_call.handlers.CallLifecycleHandler
 import com.webtrit.callkeep.services.services.incoming_call.handlers.FlutterIsolateHandler
 import com.webtrit.callkeep.services.services.incoming_call.handlers.IncomingCallHandler
@@ -150,13 +153,24 @@ class IncomingCallService : Service() {
     }
 
     private fun performAnswerCall(metadata: CallMetadata): Int {
+        // Pre-populate the tracker before the Activity (and ForegroundService) starts.
+        // ForegroundService missed ConnectionAdded and AnswerCall broadcasts because it
+        // was not running. Both services share the same JVM/process, so the companion
+        // object is directly accessible. This is idempotent when the app is already open.
+        ForegroundService.connectionTracker.add(metadata.callId, metadata)
+        ForegroundService.connectionTracker.markAnswered(metadata.callId)
+
         callLifecycleHandler.performAnswerCall(metadata)
+        if (ActivityHolder.getActivity() == null) {
+            ActivityHolder.start(baseContext)
+        }
         return START_STICKY
     }
 
     // Starts the service with the RELEASE action and schedules a timeout,
     // in case the Flutter isolate doesn't stop the service correctly
     private fun performDeclineCall(metadata: CallMetadata): Int {
+        ForegroundService.connectionTracker.remove(metadata.callId)
         callLifecycleHandler.performEndCall(metadata)
         return START_NOT_STICKY
     }
@@ -165,12 +179,28 @@ class IncomingCallService : Service() {
     private fun handleLaunch(metadata: CallMetadata): Int {
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
         callLifecycleHandler.currentCallData = metadata.toPCallkeepIncomingCallData()
+
+        // When full-screen mode is enabled, pre-populate the tracker so the Activity
+        // launched by the full-screen intent can display over the lock screen.
+        // The tracker is cleaned up in performDeclineCall() if the call is never answered.
+        if (StorageDelegate.Sound.isIncomingCallFullScreen(baseContext)) {
+            ForegroundService.connectionTracker.add(metadata.callId, metadata)
+        }
+
         incomingCallHandler.handle(metadata)
         return START_STICKY
     }
 
-    // Handles the RELEASE action and cancels the timeout
+    // Handles the RELEASE action and cancels the timeout.
+    // Guards against cold-start: if the service was started directly by release() without a prior
+    // IC_INITIALIZE (e.g. from the :callkeep_core process after a crash), currentCallData is null
+    // and there is no notification to dismiss — just stop immediately to avoid a crash.
     private fun handleRelease(answered: Boolean = false): Int {
+        if (callLifecycleHandler.currentCallData == null) {
+            Log.w(TAG, "handleRelease: no active call data (cold start), stopping immediately")
+            stopSelf()
+            return START_NOT_STICKY
+        }
         incomingCallHandler.releaseIncomingCallNotification(answered)
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
         timeoutHandler.postDelayed(stopTimeoutRunnable, SERVICE_TIMEOUT_MS)
@@ -210,15 +240,16 @@ class IncomingCallService : Service() {
         // During this time, the notification is replaced with a special "release" notification
         // using IncomingCallNotificationBuilder.buildReleaseNotification to inform the user that the call is being finalized.
         fun release(context: Context, type: IncomingCallRelease) {
-            if (isRunning) {
-                context.startService(
-                    Intent(
-                        context, IncomingCallService::class.java
-                    ).apply { this.action = type.name })
-                Log.d(TAG, "Service is running. Release action $type initiated.")
-            } else {
-                Log.w(TAG, "Service is not running. Release action $type ignored.")
-            }
+            // Do NOT guard with isRunning here. This method is called from PhoneConnection
+            // which runs in the :callkeep_core process where isRunning is always false
+            // (each Android process has its own JVM and companion-object statics).
+            // The startService() call crosses the process boundary and reaches
+            // IncomingCallService running in the main process correctly.
+            context.startService(
+                Intent(
+                    context, IncomingCallService::class.java
+                ).apply { this.action = type.name })
+            Log.d(TAG, "Release action $type initiated.")
         }
     }
 }

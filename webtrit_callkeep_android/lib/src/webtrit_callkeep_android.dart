@@ -671,7 +671,6 @@ void _isolatePluginCallbackDispatcher() {
   // Initialize the Flutter framework necessary for method channels and Pigeon.
   WidgetsFlutterBinding.ensureInitialized();
 
-  // WebtritCallkeepAndroid().wakeUpBackgroundHandler();
   // Set up the Pigeon API for the background service.
   PDelegateBackgroundRegisterFlutterApi.setUp(_BackgroundServiceDelegate());
 }

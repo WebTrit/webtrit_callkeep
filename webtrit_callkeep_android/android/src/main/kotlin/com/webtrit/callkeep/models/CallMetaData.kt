@@ -45,6 +45,7 @@ data class CallMetadata(
     val ringtonePath: String? = null,
     val createdTime: Long? = null,
     val acceptedTime: Long? = null,
+    val isIncomingCall: Boolean? = null,
 ) {
     val number: String get() = handle?.number ?: "Undefined"
     val name: String get() = displayName?.takeIf { it.isNotEmpty() } ?: number
@@ -70,6 +71,7 @@ data class CallMetadata(
         dualToneMultiFrequency?.let { putChar(CallDataConst.DTMF, it) }
         createdTime?.let { putLong(CALL_METADATA_CREATED_TIME, it) }
         acceptedTime?.let { putLong(CALL_METADATA_ACCEPTED_TIME, it) }
+        isIncomingCall?.let { putBoolean(CALL_METADATA_IS_INCOMING, it) }
     }
 
     /**
@@ -113,6 +115,7 @@ data class CallMetadata(
         private const val CALL_METADATA_ACCEPTED_TIME = "CALL_METADATA_ACCEPTED_TIME"
         private const val CALL_RINGTONE_PATH = "CALL_RINGTONE_PATH"
         private const val CALL_METADATA_EXTRA_SPEAKER_ON_VIDEO = "EXTRA_SPEAKER_ON_VIDEO"
+        private const val CALL_METADATA_IS_INCOMING = "CALL_METADATA_IS_INCOMING"
         private const val DEFAULT_CHAR_VALUE = '\u0000'
 
         fun fromBundle(bundle: Bundle): CallMetadata = fromBundleOrNull(bundle)
@@ -138,7 +141,8 @@ data class CallMetadata(
                     .takeIf { it != DEFAULT_CHAR_VALUE },
                 ringtonePath = bundle.getStringOrNull(CALL_RINGTONE_PATH),
                 createdTime = bundle.getLongOrNull(CALL_METADATA_CREATED_TIME),
-                acceptedTime = bundle.getLongOrNull(CALL_METADATA_ACCEPTED_TIME)
+                acceptedTime = bundle.getLongOrNull(CALL_METADATA_ACCEPTED_TIME),
+                isIncomingCall = bundle.getBooleanOrNull(CALL_METADATA_IS_INCOMING)
             )
         }
 

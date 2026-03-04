@@ -16,11 +16,13 @@ import androidx.annotation.Keep
 import com.webtrit.callkeep.PAudioDevice
 import com.webtrit.callkeep.PCallRequestError
 import com.webtrit.callkeep.PCallRequestErrorEnum
+import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PDelegateFlutterApi
 import com.webtrit.callkeep.PEndCallReason
 import com.webtrit.callkeep.PHandle
 import com.webtrit.callkeep.PHostApi
 import com.webtrit.callkeep.PIncomingCallError
+import com.webtrit.callkeep.PIncomingCallErrorEnum
 import com.webtrit.callkeep.POptions
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.Log
@@ -134,6 +136,23 @@ class ForegroundService : Service(), PHostApi {
                 ConnectionPerform.ConnectionHolding.name -> handleCSReportConnectionHolding(intent.extras)
                 ConnectionPerform.SentDTMF.name -> handleCSReportSentDTMF(intent.extras)
                 ConnectionPerform.OutgoingFailure.name -> handleCSReportOutgoingFailure(intent.extras)
+                ConnectionPerform.ConnectionAdded.name -> {
+                    intent.extras?.let {
+                        val m = CallMetadata.fromBundle(it)
+                        val initialState = if (m.isIncomingCall == true) {
+                            PCallkeepConnectionState.STATE_RINGING
+                        } else {
+                            PCallkeepConnectionState.STATE_DIALING
+                        }
+                        connectionTracker.addWithState(m.callId, m, initialState)
+                    }
+                }
+                ConnectionPerform.ConnectionRemoved.name -> {
+                    intent.extras?.let {
+                        val m = CallMetadata.fromBundle(it)
+                        connectionTracker.remove(m.callId)
+                    }
+                }
             }
         }
     }
@@ -170,6 +189,9 @@ class ForegroundService : Service(), PHostApi {
         runCatching {
             StorageDelegate.Sound.initRingtonePath(baseContext, options.android.ringtoneSound)
             StorageDelegate.Sound.initRingbackPath(baseContext, options.android.ringbackSound)
+            StorageDelegate.Sound.setIncomingCallFullScreen(
+                baseContext, options.android.incomingCallFullScreen ?: true
+            )
         }.onFailure { Log.w("CallKeep", "Sound init failed: ${it.message}", it) }
 
         callback.invoke(Result.success(Unit))
@@ -205,6 +227,8 @@ class ForegroundService : Service(), PHostApi {
             cb(Result.success(PCallRequestError(PCallRequestErrorEnum.TIMEOUT)))
             // ensure retry is stopped
             retryManager.cancel(callId)
+            // disconnect any stale connection in the :callkeep_core process
+            PhoneConnectionService.startHungUpCall(baseContext, CallMetadata(callId = callId))
         }
 
         // Kick off retry loop that wraps the "start outgoing call" attempt + PA re-registration on SecurityException(CALL_PHONE)
@@ -302,7 +326,16 @@ class ForegroundService : Service(), PHostApi {
                 callback(Result.success(null))
             },
             onError = { error ->
-                logger.e("reportNewIncomingCall: startIncomingCall failed callId=$callId, error=$error")
+                if (error?.value == PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS ||
+                    error?.value == PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED
+                ) {
+                    // Expected: the call was already registered by IncomingCallService (background
+                    // isolate) before the main app reconnected to signaling. Pass the error code
+                    // through to Flutter so it can decide whether to auto-answer.
+                    logger.d("reportNewIncomingCall: callId=$callId already registered (${error.value})")
+                } else {
+                    logger.e("reportNewIncomingCall: startIncomingCall failed callId=$callId, error=$error")
+                }
                 callback(Result.success(error))
             })
     }
@@ -326,6 +359,8 @@ class ForegroundService : Service(), PHostApi {
     override fun reportConnectedOutgoingCall(callId: String, callback: (Result<Unit>) -> Unit) {
         logger.i("reportConnectedOutgoingCall: callId=$callId")
         val metadata = CallMetadata(callId = callId)
+        try { baseContext.startActivity(Platform.getLaunchActivity(baseContext)) }
+        catch (e: Exception) { logger.w("Activity launch failed: ${e.message}") }
         PhoneConnectionService.startEstablishCall(baseContext, metadata)
         callback.invoke(Result.success(Unit))
     }
@@ -364,7 +399,7 @@ class ForegroundService : Service(), PHostApi {
 
     override fun answerCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit) {
         val metadata = CallMetadata(callId = callId)
-        if (PhoneConnectionService.connectionManager.isConnectionAlreadyExists(metadata.callId)) {
+        if (connectionTracker.exists(metadata.callId)) {
             logger.i("answerCall ${metadata.callId}.")
             PhoneConnectionService.startAnswerCall(baseContext, metadata)
             callback.invoke(Result.success(null))
@@ -451,6 +486,7 @@ class ForegroundService : Service(), PHostApi {
         logger.d("handleCSReportDeclineCall")
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
+            connectionTracker.remove(callMetaData.callId)
             flutterDelegateApi?.performEndCall(callMetaData.callId) {}
             flutterDelegateApi?.didDeactivateAudioSession {}
 
@@ -464,8 +500,13 @@ class ForegroundService : Service(), PHostApi {
         logger.d("handleCSReportAnswerCall")
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
+            // Mark the connection as answered so that validateConnectionAddition can return
+            // CALL_ID_ALREADY_EXISTS_AND_ANSWERED when the main app reconnects to signaling.
+            connectionTracker.markAnswered(callMetaData.callId)
+            connectionTracker.updateState(callMetaData.callId, PCallkeepConnectionState.STATE_ACTIVE)
             flutterDelegateApi?.performAnswerCall(callMetaData.callId) {}
             flutterDelegateApi?.didActivateAudioSession {}
+            ActivityHolder.start(baseContext)
         }
     }
 
@@ -473,6 +514,7 @@ class ForegroundService : Service(), PHostApi {
         logger.d("handleCSReportOngoingCall")
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
+            connectionTracker.updateState(callMetaData.callId, PCallkeepConnectionState.STATE_ACTIVE)
             retryManager.cancel(callMetaData.callId)
             outgoingCallbacksManager.invokeAndRemove(callMetaData.callId, Result.success(null))
 
@@ -519,9 +561,12 @@ class ForegroundService : Service(), PHostApi {
         logger.d("handleCSReportConnectionHolding")
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
-            flutterDelegateApi?.performSetHeld(
-                callMetaData.callId, callMetaData.hasHold ?: false
-            ) {}
+            val isHeld = callMetaData.hasHold ?: false
+            connectionTracker.updateState(
+                callMetaData.callId,
+                if (isHeld) PCallkeepConnectionState.STATE_HOLDING else PCallkeepConnectionState.STATE_ACTIVE
+            )
+            flutterDelegateApi?.performSetHeld(callMetaData.callId, isHeld) {}
         }
     }
 
@@ -575,24 +620,20 @@ class ForegroundService : Service(), PHostApi {
      * foreground and re-establishes its communication channel with this service.
      */
     override fun onDelegateSet() {
-        logger.d("onDelegateSet: Flutter delegate attached. Checking for active connections to restore...")
-        val connections = PhoneConnectionService.connectionManager.getConnections()
-
-        if (connections.isEmpty()) {
+        logger.d("onDelegateSet: Checking for active connections to restore...")
+        val tracked = connectionTracker.getAll()
+        if (tracked.isEmpty()) {
             Log.d(TAG, "onDelegateSet: No active connections found.")
             return
         }
-
         Handler(Looper.getMainLooper()).post {
-            connections.forEach { connection ->
-                val handle = connection.handle
-
-                if (handle == null) {
-                    Log.w(TAG, "onDelegateSet: Skipping connection with null handle")
-                    return@forEach
+            tracked.forEach { metadata ->
+                if (connectionTracker.isAnswered(metadata.callId)) {
+                    logger.d("onDelegateSet: restoring answered state for callId=${metadata.callId}")
+                    flutterDelegateApi?.performAnswerCall(metadata.callId) {}
+                    flutterDelegateApi?.didActivateAudioSession {}
                 }
-
-                connection.forceUpdateAudioState()
+                PhoneConnectionService.forceUpdateAudioState(baseContext, metadata)
             }
         }
     }
@@ -647,6 +688,7 @@ class ForegroundService : Service(), PHostApi {
         )
 
         val failedCallsStore = FailedCallsStore()
+        val connectionTracker = MainProcessConnectionTracker()
 
         var isRunning = false
     }
