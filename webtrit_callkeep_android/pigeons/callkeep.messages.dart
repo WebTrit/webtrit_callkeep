@@ -30,6 +30,7 @@ class PIOSOptions {
 class PAndroidOptions {
   late String? ringtoneSound;
   late String? ringbackSound;
+  late bool? incomingCallFullScreen;
 }
 
 class POptions {

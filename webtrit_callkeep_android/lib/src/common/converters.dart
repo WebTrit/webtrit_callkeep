@@ -181,6 +181,7 @@ extension CallkeepAndroidOptionsConverter on CallkeepAndroidOptions {
     return PAndroidOptions(
       ringtoneSound: ringtoneSound,
       ringbackSound: ringbackSound,
+      incomingCallFullScreen: incomingCallFullScreen,
     );
   }
 }

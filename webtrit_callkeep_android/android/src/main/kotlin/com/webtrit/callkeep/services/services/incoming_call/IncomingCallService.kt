@@ -13,6 +13,7 @@ import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.ContextHolder
+import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.toPCallkeepIncomingCallData
 import com.webtrit.callkeep.models.NotificationAction
@@ -169,6 +170,7 @@ class IncomingCallService : Service() {
     // Starts the service with the RELEASE action and schedules a timeout,
     // in case the Flutter isolate doesn't stop the service correctly
     private fun performDeclineCall(metadata: CallMetadata): Int {
+        ForegroundService.connectionTracker.remove(metadata.callId)
         callLifecycleHandler.performEndCall(metadata)
         return START_NOT_STICKY
     }
@@ -177,6 +179,14 @@ class IncomingCallService : Service() {
     private fun handleLaunch(metadata: CallMetadata): Int {
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
         callLifecycleHandler.currentCallData = metadata.toPCallkeepIncomingCallData()
+
+        // When full-screen mode is enabled, pre-populate the tracker so the Activity
+        // launched by the full-screen intent can display over the lock screen.
+        // The tracker is cleaned up in performDeclineCall() if the call is never answered.
+        if (StorageDelegate.Sound.isIncomingCallFullScreen(baseContext)) {
+            ForegroundService.connectionTracker.add(metadata.callId, metadata)
+        }
+
         incomingCallHandler.handle(metadata)
         return START_STICKY
     }

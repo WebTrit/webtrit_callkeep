@@ -23,6 +23,18 @@ object StorageDelegate {
     object Sound {
         private const val RINGTONE_PATH = "RINGTONE_PATH_KEY"
         private const val RINGBACK_PATH = "RINGBACK_PATH_KEY"
+        private const val INCOMING_CALL_FULL_SCREEN = "INCOMING_CALL_FULL_SCREEN"
+
+        fun setIncomingCallFullScreen(context: Context, enabled: Boolean) {
+            getSharedPreferences(context)?.edit()?.apply {
+                putBoolean(INCOMING_CALL_FULL_SCREEN, enabled)
+                apply()
+            }
+        }
+
+        fun isIncomingCallFullScreen(context: Context): Boolean {
+            return getSharedPreferences(context)?.getBoolean(INCOMING_CALL_FULL_SCREEN, true) ?: true
+        }
 
         fun initRingtonePath(context: Context, path: String?) {
             if (path == null) return

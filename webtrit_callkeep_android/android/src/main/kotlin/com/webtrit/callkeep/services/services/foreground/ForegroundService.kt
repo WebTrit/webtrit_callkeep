@@ -183,6 +183,9 @@ class ForegroundService : Service(), PHostApi {
         runCatching {
             StorageDelegate.Sound.initRingtonePath(baseContext, options.android.ringtoneSound)
             StorageDelegate.Sound.initRingbackPath(baseContext, options.android.ringbackSound)
+            StorageDelegate.Sound.setIncomingCallFullScreen(
+                baseContext, options.android.incomingCallFullScreen ?: true
+            )
         }.onFailure { Log.w("CallKeep", "Sound init failed: ${it.message}", it) }
 
         callback.invoke(Result.success(Unit))
