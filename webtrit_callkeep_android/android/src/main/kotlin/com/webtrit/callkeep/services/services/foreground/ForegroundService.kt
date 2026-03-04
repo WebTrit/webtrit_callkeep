@@ -16,6 +16,7 @@ import androidx.annotation.Keep
 import com.webtrit.callkeep.PAudioDevice
 import com.webtrit.callkeep.PCallRequestError
 import com.webtrit.callkeep.PCallRequestErrorEnum
+import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PDelegateFlutterApi
 import com.webtrit.callkeep.PEndCallReason
 import com.webtrit.callkeep.PHandle
@@ -138,7 +139,12 @@ class ForegroundService : Service(), PHostApi {
                 ConnectionPerform.ConnectionAdded.name -> {
                     intent.extras?.let {
                         val m = CallMetadata.fromBundle(it)
-                        connectionTracker.add(m.callId, m)
+                        val initialState = if (m.isIncomingCall == true) {
+                            PCallkeepConnectionState.STATE_RINGING
+                        } else {
+                            PCallkeepConnectionState.STATE_DIALING
+                        }
+                        connectionTracker.addWithState(m.callId, m, initialState)
                     }
                 }
                 ConnectionPerform.ConnectionRemoved.name -> {
@@ -497,6 +503,7 @@ class ForegroundService : Service(), PHostApi {
             // Mark the connection as answered so that validateConnectionAddition can return
             // CALL_ID_ALREADY_EXISTS_AND_ANSWERED when the main app reconnects to signaling.
             connectionTracker.markAnswered(callMetaData.callId)
+            connectionTracker.updateState(callMetaData.callId, PCallkeepConnectionState.STATE_ACTIVE)
             flutterDelegateApi?.performAnswerCall(callMetaData.callId) {}
             flutterDelegateApi?.didActivateAudioSession {}
             ActivityHolder.start(baseContext)
@@ -507,6 +514,7 @@ class ForegroundService : Service(), PHostApi {
         logger.d("handleCSReportOngoingCall")
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
+            connectionTracker.updateState(callMetaData.callId, PCallkeepConnectionState.STATE_ACTIVE)
             retryManager.cancel(callMetaData.callId)
             outgoingCallbacksManager.invokeAndRemove(callMetaData.callId, Result.success(null))
 
@@ -553,9 +561,12 @@ class ForegroundService : Service(), PHostApi {
         logger.d("handleCSReportConnectionHolding")
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
-            flutterDelegateApi?.performSetHeld(
-                callMetaData.callId, callMetaData.hasHold ?: false
-            ) {}
+            val isHeld = callMetaData.hasHold ?: false
+            connectionTracker.updateState(
+                callMetaData.callId,
+                if (isHeld) PCallkeepConnectionState.STATE_HOLDING else PCallkeepConnectionState.STATE_ACTIVE
+            )
+            flutterDelegateApi?.performSetHeld(callMetaData.callId, isHeld) {}
         }
     }
 

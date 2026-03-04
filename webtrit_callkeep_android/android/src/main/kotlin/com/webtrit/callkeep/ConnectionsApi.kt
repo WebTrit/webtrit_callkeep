@@ -10,17 +10,18 @@ class ConnectionsApi() : PHostConnectionsApi {
     override fun getConnection(
         callId: String, callback: (Result<PCallkeepConnection?>) -> Unit
     ) {
-        val metadata = ForegroundService.connectionTracker.get(callId)
-        val pConn = metadata?.let {
-            PCallkeepConnection(it.callId, PCallkeepConnectionState.STATE_ACTIVE,
+        val tracker = ForegroundService.connectionTracker
+        val pConn = tracker.get(callId)?.let {
+            PCallkeepConnection(it.callId, tracker.getState(it.callId),
                 PCallkeepDisconnectCause(PCallkeepDisconnectCauseType.UNKNOWN, ""))
         }
         callback.invoke(Result.success(pConn))
     }
 
     override fun getConnections(callback: (Result<List<PCallkeepConnection>>) -> Unit) {
-        val connections = ForegroundService.connectionTracker.getAll().map {
-            PCallkeepConnection(it.callId, PCallkeepConnectionState.STATE_ACTIVE,
+        val tracker = ForegroundService.connectionTracker
+        val connections = tracker.getAll().map {
+            PCallkeepConnection(it.callId, tracker.getState(it.callId),
                 PCallkeepDisconnectCause(PCallkeepDisconnectCauseType.UNKNOWN, ""))
         }
         callback.invoke(Result.success(connections))

@@ -117,11 +117,15 @@ class PhoneConnectionService : ConnectionService() {
             return Connection.createFailedConnection(DisconnectCause(DisconnectCause.BUSY))
         }
 
+        // Clean stale connections in-process before creating the new outgoing connection.
+        // This is deterministic and replaces the IPC-based CleanStaleConnections approach.
+        phoneConnectionServiceDispatcher.dispatch(ServiceAction.CleanStaleConnections, null)
+
         val connection = PhoneConnection.createOutgoingPhoneConnection(
             applicationContext, ::performEventHandle, metadata, ::disconnectConnection
         )
         connectionManager.addConnection(metadata.callId, connection)
-        performEventHandle(ConnectionPerform.ConnectionAdded, metadata)
+        performEventHandle(ConnectionPerform.ConnectionAdded, metadata.copy(isIncomingCall = false))
         phoneConnectionServiceDispatcher.dispatchLifecycle(
             ConnectionLifecycleAction.ConnectionCreated, metadata
         )
@@ -187,7 +191,7 @@ class PhoneConnectionService : ConnectionService() {
             applicationContext, ::performEventHandle, metadata, ::disconnectConnection
         )
         connectionManager.addConnection(metadata.callId, connection)
-        performEventHandle(ConnectionPerform.ConnectionAdded, metadata)
+        performEventHandle(ConnectionPerform.ConnectionAdded, metadata.copy(isIncomingCall = true))
 
         phoneConnectionServiceDispatcher.dispatchLifecycle(
             ConnectionLifecycleAction.ConnectionCreated, metadata
@@ -357,11 +361,6 @@ class PhoneConnectionService : ConnectionService() {
                 throw EmergencyNumberException(failureMetadata)
 
             } else {
-                // Clean stale connections in the :callkeep_core process via IPC before placing the new call.
-                // The companion's connectionManager is in the main process (empty), so we must send
-                // CleanStaleConnections to the core process to disconnect any leftover connections.
-                communicate(context, ServiceAction.CleanStaleConnections, null)
-
                 telephonyUtils.placeOutgoingCall(uri, metadata)
             }
         }

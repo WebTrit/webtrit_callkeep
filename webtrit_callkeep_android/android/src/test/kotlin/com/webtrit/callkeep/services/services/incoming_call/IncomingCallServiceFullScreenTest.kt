@@ -75,15 +75,12 @@ class IncomingCallServiceFullScreenTest {
 
     /**
      * Creates the service (registers broadcast receiver) and sends IC_INITIALIZE.
+     * Returns the service instance so tests can simulate broadcasts via [simulateDecline].
      *
      * Notification building may throw Resources$NotFoundException in the Robolectric environment
      * because library string resources are not always resolvable in library-module unit tests.
      * The tracker update in handleLaunch executes before showNotification(), so the exception
      * does not affect the tracker assertion below.
-     */
-    /**
-     * Creates the service (registers broadcast receiver) and sends IC_INITIALIZE.
-     * Returns the service instance so tests can simulate broadcasts via [simulateDecline].
      */
     private fun launchService(metadata: CallMetadata): IncomingCallService {
         val service = Robolectric.buildService(IncomingCallService::class.java, buildLaunchIntent(metadata))

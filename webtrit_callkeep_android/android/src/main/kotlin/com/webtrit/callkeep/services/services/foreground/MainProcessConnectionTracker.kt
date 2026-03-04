@@ -1,5 +1,6 @@
 package com.webtrit.callkeep.services.services.foreground
 
+import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.models.CallMetadata
 import java.util.concurrent.ConcurrentHashMap
 
@@ -13,11 +14,26 @@ import java.util.concurrent.ConcurrentHashMap
 class MainProcessConnectionTracker {
     private val connections = ConcurrentHashMap<String, CallMetadata>()
     private val answeredCallIds = ConcurrentHashMap.newKeySet<String>()
+    private val connectionStates = ConcurrentHashMap<String, PCallkeepConnectionState>()
 
     fun add(callId: String, metadata: CallMetadata) { connections[callId] = metadata }
+
+    fun addWithState(callId: String, metadata: CallMetadata, state: PCallkeepConnectionState) {
+        connections[callId] = metadata
+        connectionStates[callId] = state
+    }
+
+    fun updateState(callId: String, state: PCallkeepConnectionState) {
+        if (connections.containsKey(callId)) connectionStates[callId] = state
+    }
+
+    fun getState(callId: String): PCallkeepConnectionState =
+        connectionStates[callId] ?: PCallkeepConnectionState.STATE_ACTIVE
+
     fun remove(callId: String) {
         connections.remove(callId)
         answeredCallIds.remove(callId)
+        connectionStates.remove(callId)
     }
     fun exists(callId: String): Boolean = connections.containsKey(callId)
     fun getAll(): List<CallMetadata> = connections.values.toList()
@@ -25,6 +41,7 @@ class MainProcessConnectionTracker {
     fun clear() {
         connections.clear()
         answeredCallIds.clear()
+        connectionStates.clear()
     }
     fun isEmpty(): Boolean = connections.isEmpty()
 
@@ -34,5 +51,6 @@ class MainProcessConnectionTracker {
     /** Returns true if the connection has been answered via a native AnswerCall event. */
     fun isAnswered(callId: String): Boolean = answeredCallIds.contains(callId)
 
-    override fun toString(): String = "Tracked connections: ${connections.keys}, answered: $answeredCallIds"
+    override fun toString(): String =
+        "Tracked connections: ${connections.keys}, answered: $answeredCallIds, states: $connectionStates"
 }
