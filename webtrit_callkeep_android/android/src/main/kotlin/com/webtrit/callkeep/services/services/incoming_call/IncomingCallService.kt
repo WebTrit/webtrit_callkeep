@@ -11,6 +11,7 @@ import android.util.Log
 import androidx.annotation.Keep
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
+import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.toPCallkeepIncomingCallData
@@ -151,6 +152,9 @@ class IncomingCallService : Service() {
 
     private fun performAnswerCall(metadata: CallMetadata): Int {
         callLifecycleHandler.performAnswerCall(metadata)
+        if (ActivityHolder.getActivity() == null) {
+            ActivityHolder.start(baseContext)
+        }
         return START_STICKY
     }
 
