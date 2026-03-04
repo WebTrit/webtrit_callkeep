@@ -1,8 +1,14 @@
 # Call Flows
 
+Step-by-step traces for every call scenario. For the entry points that initiate each flow,
+see [call-triggers.md](call-triggers.md).
+
+---
+
 ## Incoming Call — Signaling Service Path
 
-Used when the app has a persistent WebSocket connection via `SignalingIsolateService`.
+The app has a persistent WebSocket connection via `SignalingIsolateService`. The Flutter background
+isolate detects the incoming call and notifies Telecom.
 
 ```
 Signaling server
@@ -70,7 +76,8 @@ ConnectionManager.validateConnectionAddition()
 
 ## Incoming Call — Push Notification Path
 
-Used when the app is not in the foreground and a push notification (e.g., FCM) triggers the call.
+The app is not in the foreground; a push notification (e.g., FCM) triggers the incoming call
+handling.
 
 ```
 Push notification (FCM)
@@ -114,6 +121,8 @@ After call answered:
 ---
 
 ## Outgoing Call
+
+The Flutter app initiates a call via the Dart API.
 
 ```
 Flutter main isolate
@@ -178,6 +187,8 @@ ForegroundService.startCall()
 
 ## Call End (from Flutter)
 
+Flutter requests the call to end (user hangs up or call is programmatically terminated).
+
 ```
 Flutter: WebtritCallkeepAndroid.reportEndCall(callId, displayName, reason)
     │
@@ -201,6 +212,8 @@ ForegroundService.reportEndCall()
 ---
 
 ## Audio Device Change
+
+Flutter requests switching the audio output device.
 
 ```
 Flutter: WebtritCallkeepAndroid.setAudioDevice(callId, device)
@@ -227,7 +240,8 @@ ForegroundService.setAudioDevice()
 
 ## Lock Screen Flow
 
-When an incoming call arrives while the device is locked:
+When an incoming call arrives while the device is locked, the Activity must be configured to show
+over the lock screen.
 
 ```
 PhoneConnection.onShowIncomingCallUi()
@@ -239,4 +253,5 @@ WebtritCallkeepPlugin.onStateChanged(ON_START)
             └── false: activity.setShowWhenLocked(false) + setTurnScreenOn(false)
 ```
 
-The flags are set dynamically (not in manifest) and cleared on the next `ON_START` after the call ends, avoiding them being permanently enabled.
+The flags are set dynamically (not in the manifest) and cleared on the next `ON_START` after the
+call ends, avoiding them being permanently enabled.
