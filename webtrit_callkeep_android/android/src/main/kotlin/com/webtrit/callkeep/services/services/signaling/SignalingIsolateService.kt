@@ -124,7 +124,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
             SignalingServiceBootWorker.enqueue(this)
         }
 
-        getLock(applicationContext)?.let { lock ->
+        getLock(applicationContext).let { lock ->
             if (lock.isHeld) {
                 lock.release()
             }
@@ -217,7 +217,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
             }
         }
 
-        getLock(applicationContext)?.acquire(10 * 60 * 1000L)
+        getLock(applicationContext).acquire(10 * 60 * 1000L)
 
         flutterEngineHelper.startOrAttachEngine()
 
@@ -286,8 +286,32 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
     companion object {
         private const val TAG = "SignalingIsolateService"
+        private const val WAKE_LOCK_TAG = "com.webtrit.callkeep:SignalingIsolateService.Lock"
 
         var isRunning = false
+
+        @Volatile
+        private var wakeLock: PowerManager.WakeLock? = null
+
+        /**
+         * Returns the cached partial wake lock, creating it on first call.
+         * Using a single instance ensures acquire/release operate on the same object.
+         */
+        @Synchronized
+        fun getLock(context: Context): PowerManager.WakeLock {
+            return wakeLock ?: run {
+                val mgr = context.applicationContext.getSystemService(POWER_SERVICE) as PowerManager
+                mgr.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKE_LOCK_TAG).apply {
+                    setReferenceCounted(false)
+                }.also { wakeLock = it }
+            }
+        }
+
+        /** Resets the cached wake lock. Intended for use in tests only. */
+        @androidx.annotation.VisibleForTesting(otherwise = androidx.annotation.VisibleForTesting.PRIVATE)
+        internal fun resetWakeLock() {
+            wakeLock = null
+        }
 
         /**
          * Communicates with the service by starting it with the specified action and metadata.
@@ -312,17 +336,6 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
             context.stopService(Intent(context, SignalingIsolateService::class.java))
         }
 
-        /**
-         * Acquires a partial wake lock to keep the CPU running.
-         */
-        @Synchronized
-        fun getLock(context: Context): PowerManager.WakeLock? {
-            val mgr = context.getSystemService(POWER_SERVICE) as PowerManager
-            val lockName = "com.webtrit.callkeep:ForegroundCallService.Lock"
-            return mgr.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, lockName).apply {
-                setReferenceCounted(false)
-            }
-        }
     }
 }
 
