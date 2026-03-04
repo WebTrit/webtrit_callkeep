@@ -49,7 +49,7 @@ import com.webtrit.callkeep.services.services.signaling.workers.SignalingService
 @Keep
 class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
     private var latestSignalingStatus: SignalingStatus? = null
-    private var latestLifecycleActivityEvent: Lifecycle.Event? = Lifecycle.Event.ON_DESTROY
+    private var latestLifecycleActivityEvent: Lifecycle.Event = Lifecycle.Event.ON_DESTROY
 
     private lateinit var notificationBuilder: ForegroundCallNotificationBuilder
     private lateinit var flutterEngineHelper: FlutterEngineHelper
@@ -71,17 +71,15 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
     private val signalingStatusReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             latestSignalingStatus = SignalingStatus.fromBundle(intent?.extras)
-            synchronizeSignalingIsolate(latestLifecycleActivityEvent!!, latestSignalingStatus)
+            synchronizeSignalingIsolate(latestLifecycleActivityEvent, latestSignalingStatus)
 
         }
     }
 
     private val lifecycleEventReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            latestLifecycleActivityEvent = Lifecycle.Event.fromBundle(intent?.extras)
-            synchronizeSignalingIsolate(
-                latestLifecycleActivityEvent!!, latestSignalingStatus
-            )
+            latestLifecycleActivityEvent = Lifecycle.Event.fromBundle(intent?.extras) ?: return
+            synchronizeSignalingIsolate(latestLifecycleActivityEvent, latestSignalingStatus)
         }
     }
 
@@ -95,7 +93,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         SignalingStatusBroadcaster.register(this, signalingStatusReceiver)
 
         // Register the service to receive lifecycle events
-        latestLifecycleActivityEvent = ActivityLifecycleBroadcaster.currentValue
+        latestLifecycleActivityEvent = ActivityLifecycleBroadcaster.currentValue ?: Lifecycle.Event.ON_DESTROY
         ActivityLifecycleBroadcaster.register(this, lifecycleEventReceiver)
 
         notificationBuilder = ForegroundCallNotificationBuilder()
@@ -118,7 +116,6 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
         // Unregister the service from receiving lifecycle events
         ActivityLifecycleBroadcaster.unregister(this, lifecycleEventReceiver)
-        latestLifecycleActivityEvent = null
 
         if (StorageDelegate.SignalingService.isSignalingServiceEnabled(context = applicationContext)) {
             SignalingServiceBootWorker.enqueue(this)
