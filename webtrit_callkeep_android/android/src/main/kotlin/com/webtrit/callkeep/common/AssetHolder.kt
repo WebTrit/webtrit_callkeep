@@ -38,6 +38,9 @@ object AssetHolder {
             override fun getAssetFilePathByName(asset: String) = "flutter_assets/$asset"
             override fun getAssetFilePathByName(asset: String, packageName: String) =
                 "flutter_assets/packages/$packageName/$asset"
+            override fun getAssetFilePathBySubpath(subpath: String) = "flutter_assets/$subpath"
+            override fun getAssetFilePathBySubpath(subpath: String, packageName: String) =
+                "flutter_assets/packages/$packageName/$subpath"
         }
         _flutterAssetManager = FlutterAssetManager(context, isolatedAssets)
     }
