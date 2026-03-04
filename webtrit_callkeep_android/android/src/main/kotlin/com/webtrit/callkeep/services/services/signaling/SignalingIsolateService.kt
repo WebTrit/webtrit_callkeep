@@ -288,7 +288,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
     companion object {
         private const val TAG = "SignalingIsolateService"
-        private const val WAKE_LOCK_TAG = "com.webtrit.callkeep:ForegroundCallService.Lock"
+        private const val WAKE_LOCK_TAG = "com.webtrit.callkeep:SignalingIsolateService.Lock"
 
         var isRunning = false
 
@@ -310,8 +310,8 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         }
 
         /** Resets the cached wake lock. Intended for use in tests only. */
-        @androidx.annotation.VisibleForTesting
-        fun resetWakeLock() {
+        @androidx.annotation.VisibleForTesting(otherwise = androidx.annotation.VisibleForTesting.PRIVATE)
+        internal fun resetWakeLock() {
             wakeLock = null
         }
 
