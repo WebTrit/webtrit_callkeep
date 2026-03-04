@@ -10,7 +10,9 @@ import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Build.VERSION.SDK_INT
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.PowerManager
 import androidx.annotation.Keep
 import androidx.lifecycle.Lifecycle
@@ -19,6 +21,7 @@ import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.PHandle
 import com.webtrit.callkeep.PHostBackgroundSignalingIsolateApi
+import com.webtrit.callkeep.common.CallDataConst
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.FlutterEngineHelper
 import com.webtrit.callkeep.common.Log
@@ -37,9 +40,13 @@ import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder.Companion.ACTION_RESTORE_NOTIFICATION
 import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
 import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
+import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
 import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
+import com.webtrit.callkeep.services.services.foreground.ForegroundService
 import com.webtrit.callkeep.services.services.signaling.workers.SignalingServiceBootWorker
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * A foreground service that manages the call state and Flutter background isolate.
@@ -271,14 +278,73 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
     }
 
     override fun endCall(callId: String, callback: (Result<Unit>) -> Unit) {
-        val metadata = CallMetadata(callId = callId)
-        PhoneConnectionService.startHungUpCall(baseContext, metadata)
-        callback.invoke(Result.success(Unit)) // TODO: Ensure proper cleanup of connections
+        val handler = Handler(Looper.getMainLooper())
+        val resolved = AtomicBoolean(false)
+        lateinit var receiver: BroadcastReceiver
+
+        fun finish() {
+            if (!resolved.compareAndSet(false, true)) return
+            handler.removeCallbacksAndMessages(null)
+            try { ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, receiver) } catch (_: Exception) {}
+            callback(Result.success(Unit))
+        }
+
+        receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                val id = intent?.extras?.getString(CallDataConst.CALL_ID) ?: return
+                if (id == callId) finish()
+            }
+        }
+
+        ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
+            listOf(ConnectionPerform.HungUp, ConnectionPerform.DeclineCall), baseContext, receiver
+        )
+
+        handler.postDelayed({
+            Log.w(TAG, "endCall timeout waiting for confirmation, callId: $callId")
+            finish()
+        }, END_CALL_TIMEOUT_MS)
+
+        PhoneConnectionService.startHungUpCall(baseContext, CallMetadata(callId = callId))
     }
 
     override fun endAllCalls(callback: (Result<Unit>) -> Unit) {
+        val active = ForegroundService.connectionTracker.getAll()
+
+        if (active.isEmpty()) {
+            PhoneConnectionService.tearDown(baseContext)
+            callback(Result.success(Unit))
+            return
+        }
+
+        val remaining = AtomicInteger(active.size)
+        val handler = Handler(Looper.getMainLooper())
+        val resolved = AtomicBoolean(false)
+        lateinit var receiver: BroadcastReceiver
+
+        fun finish() {
+            if (!resolved.compareAndSet(false, true)) return
+            handler.removeCallbacksAndMessages(null)
+            try { ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, receiver) } catch (_: Exception) {}
+            callback(Result.success(Unit))
+        }
+
+        receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (remaining.decrementAndGet() <= 0) finish()
+            }
+        }
+
+        ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
+            listOf(ConnectionPerform.HungUp, ConnectionPerform.DeclineCall), baseContext, receiver
+        )
+
+        handler.postDelayed({
+            Log.w(TAG, "endAllCalls timeout waiting for ${remaining.get()} remaining confirmation(s)")
+            finish()
+        }, END_CALL_TIMEOUT_MS)
+
         PhoneConnectionService.tearDown(baseContext)
-        callback.invoke(Result.success(Unit)) // TODO: Ensure proper cleanup of connections
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -286,6 +352,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
     companion object {
         private const val TAG = "SignalingIsolateService"
         private const val WAKE_LOCK_TAG = "com.webtrit.callkeep:SignalingIsolateService.Lock"
+        private const val END_CALL_TIMEOUT_MS = 5_000L
 
         var isRunning = false
 
