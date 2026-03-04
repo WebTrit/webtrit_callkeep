@@ -277,6 +277,24 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
             onError = { error -> callback(Result.failure(Exception("Incoming call failed with error: $error"))) })
     }
 
+    /**
+     * Ends a single active call identified by [callId].
+     *
+     * Sends a hang-up intent to [PhoneConnectionService] and then waits for a
+     * [ConnectionPerform.HungUp] or [ConnectionPerform.DeclineCall] broadcast that carries
+     * the same [callId] before resolving [callback] with success. This ensures Dart is not
+     * notified before the Telecom framework has actually torn down the connection.
+     *
+     * If no confirmation broadcast arrives within [END_CALL_TIMEOUT_MS] milliseconds the
+     * callback is resolved anyway and a warning is logged, so the Dart side is never left
+     * hanging indefinitely.
+     *
+     * [AtomicBoolean] guarantees the callback is invoked exactly once even when the broadcast
+     * and the timeout race each other.
+     *
+     * @param callId  Identifier of the call to terminate.
+     * @param callback Pigeon-generated callback; receives [Result.success] on completion.
+     */
     override fun endCall(callId: String, callback: (Result<Unit>) -> Unit) {
         val handler = Handler(Looper.getMainLooper())
         val resolved = AtomicBoolean(false)
@@ -308,6 +326,27 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         PhoneConnectionService.startHungUpCall(baseContext, CallMetadata(callId = callId))
     }
 
+    /**
+     * Tears down all active calls managed by [PhoneConnectionService].
+     *
+     * Snapshots the currently tracked connections from [ForegroundService.connectionTracker]
+     * before issuing the teardown intent:
+     *
+     * - **No active connections** — teardown is sent and [callback] is resolved immediately,
+     *   since there are no broadcasts to wait for.
+     * - **One or more active connections** — a [BroadcastReceiver] is registered for
+     *   [ConnectionPerform.HungUp] / [ConnectionPerform.DeclineCall]. An [AtomicInteger]
+     *   counts down each arriving broadcast; [callback] is resolved once the counter reaches
+     *   zero, meaning every tracked connection has confirmed teardown.
+     *
+     * A [END_CALL_TIMEOUT_MS]-millisecond safety timeout resolves the callback and unregisters
+     * the receiver if not all confirmations arrive in time, logging how many were still pending.
+     *
+     * [AtomicBoolean] guarantees the callback is invoked exactly once regardless of whether
+     * the countdown or the timeout wins the race.
+     *
+     * @param callback Pigeon-generated callback; receives [Result.success] on completion.
+     */
     override fun endAllCalls(callback: (Result<Unit>) -> Unit) {
         val active = ForegroundService.connectionTracker.getAll()
 
