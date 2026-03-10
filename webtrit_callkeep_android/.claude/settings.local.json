@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout:*)",
+      "Bash(flutter pub:*)",
+      "Bash(flutter test:*)",
+      "Bash(./gradlew test:*)",
+      "Bash(./gradlew testDebugUnitTest:*)",
+      "Bash(xargs cat:*)",
+      "Bash(./gradlew assembleDebug:*)",
+      "Bash(xargs dirname:*)",
+      "Bash(./gradlew compileDebugKotlin:*)",
+      "mcp__youtrack__youtrack_get_issue",
+      "Bash(./gradlew :android:testDebugUnitTest:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr:*)",
+      "Bash(git:*)",
+      "Bash(gh api:*)"
+    ]
+  }
+}

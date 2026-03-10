@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__youtrack__youtrack_get_issue",
+      "Bash(adb logcat:*)",
+      "Bash(adb devices:*)",
+      "mcp__youtrack__youtrack_add_comment",
+      "Bash(/tmp/ck_rebase_todo.py:*)",
+      "Bash(./gradlew test:*)",
+      "Bash(flutter:*)"
+    ]
+  }
+}
