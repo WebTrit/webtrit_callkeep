@@ -62,7 +62,7 @@ When adding a converter for a new Pigeon type, add an extension in `lib/src/comm
 - **Push Notifications** capability.
 - **Background Modes → Voice over IP**.
 
-Without these, `reportNewIncomingCall` will silently fail when the app is backgrounded.
+Without these, `reportNewIncomingCall` will silently fail when the app is in the background.
 
 ---
 
