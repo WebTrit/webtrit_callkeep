@@ -6,8 +6,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 import 'package:webtrit_callkeep_example/app/routes.dart';
 
-import '../../app/constants.dart';
-
 class MainScreen extends StatefulWidget {
   const MainScreen({
     super.key,
@@ -24,153 +22,120 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Webtrit Callkeep Example'),
-      ),
+      appBar: AppBar(title: const Text('Webtrit Callkeep')),
       body: ListView(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.all(12),
         children: [
-          // Section for API navigation
+          // Navigation
           _SectionCard(
-            title: 'API Sections',
+            title: 'Screens',
             children: [
-              ElevatedButton(
-                child: const Text('Callkeep API'),
-                onPressed: () => GoRouter.of(context).pushNamed(AppRoute.actions),
+              _NavTile(
+                icon: Icons.phone,
+                label: 'Callkeep API',
+                subtitle: 'setUp · reportIncoming · in-call controls · connections',
+                onTap: () => GoRouter.of(context).pushNamed(AppRoute.actions),
               ),
-              ElevatedButton(
-                child: const Text('Tests API'),
-                onPressed: () => GoRouter.of(context).pushNamed(AppRoute.tests),
+              _NavTile(
+                icon: Icons.bug_report,
+                label: 'Stress Tests',
+                subtitle: 'Duplicate call, mixed push/direct scenarios',
+                onTap: () => GoRouter.of(context).pushNamed(AppRoute.tests),
               ),
-              // New button to navigate to ActivityControlScreen
-              ElevatedButton(
-                child: const Text('Activity Control API'),
-                onPressed: () => GoRouter.of(context).pushNamed(AppRoute.activityControl),
+              _NavTile(
+                icon: Icons.screen_lock_portrait,
+                label: 'Activity Control',
+                subtitle: 'Lock-screen, wake, background (Android)',
+                onTap: () => GoRouter.of(context).pushNamed(AppRoute.activityControl),
               ),
             ],
           ),
 
-          // Section for basic app permissions
+          // OS permissions
           _SectionCard(
             title: 'App Permissions',
             children: [
-              ElevatedButton(
-                child: const Text('Request All Permissions'),
-                onPressed: () => _requestPermissions([
-                  Permission.notification,
-                  Permission.ignoreBatteryOptimizations,
-                  Permission.microphone,
-                  Permission.camera,
-                ]),
+              ListTile(
+                dense: true,
+                leading: const Icon(Icons.notifications),
+                title: const Text('Notification'),
+                trailing: _PermBtn(Permission.notification),
               ),
-              ElevatedButton(
-                child: const Text('Check All Permissions'),
-                onPressed: () {
-                  // TODO: Implement permission check logic
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Check logic not implemented yet.')),
-                  );
-                },
+              ListTile(
+                dense: true,
+                leading: const Icon(Icons.battery_charging_full),
+                title: const Text('Battery optimization'),
+                trailing: _PermBtn(Permission.ignoreBatteryOptimizations),
+              ),
+              ListTile(
+                dense: true,
+                leading: const Icon(Icons.mic),
+                title: const Text('Microphone'),
+                trailing: _PermBtn(Permission.microphone),
               ),
             ],
           ),
 
-          // Section for special Callkeep permissions
+          // Callkeep-specific permissions
           _SectionCard(
             title: 'Callkeep Permissions (Android)',
             children: [
-              ElevatedButton(
-                child: const Text('Full Screen Intent Status'),
-                onPressed: () async {
-                  var status = await WebtritCallkeepPermissions().getFullScreenIntentPermissionStatus();
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Permission status: $status')),
-                  );
-                },
+              ListTile(
+                dense: true,
+                title: const Text('Full Screen Intent'),
+                trailing: ElevatedButton(
+                  onPressed: () async {
+                    final status = await WebtritCallkeepPermissions().getFullScreenIntentPermissionStatus();
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Full-screen intent: $status')));
+                  },
+                  child: const Text('Check'),
+                ),
               ),
-              ElevatedButton(
-                child: const Text('Open Full Screen Settings'),
-                onPressed: () => WebtritCallkeepPermissions().openFullScreenIntentSettings(),
+              ListTile(
+                dense: true,
+                title: const Text('Open Full Screen Intent Settings'),
+                trailing: ElevatedButton(
+                  onPressed: () => WebtritCallkeepPermissions().openFullScreenIntentSettings(),
+                  child: const Text('Open'),
+                ),
               ),
-              ElevatedButton(
-                child: const Text('Battery Optimization Status'),
-                onPressed: () async {
-                  var status = await WebtritCallkeepPermissions().getBatteryMode();
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Permission status: $status')),
-                  );
-                },
-              ),
-            ],
-          ),
-
-          // Section for Signaling Isolate
-          _SectionCard(
-            title: 'Android Signaling Isolate API',
-            children: [
-              ElevatedButton(
-                child: const Text('Start Foreground Service'),
-                onPressed: () {
-                  Permission.notification.request().then((value) {
-                    if (value.isGranted) {
-                      AndroidCallkeepServices.backgroundSignalingBootstrapService.startService();
-                    } else {
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Notification permission is required'),
-                        ),
-                      );
-                    }
-                  });
-                },
-              ),
-              ElevatedButton(
-                child: const Text('Stop Foreground Service'),
-                onPressed: () {
-                  AndroidCallkeepServices.backgroundSignalingBootstrapService.stopService();
-                },
+              ListTile(
+                dense: true,
+                title: const Text('Battery Mode'),
+                trailing: ElevatedButton(
+                  onPressed: () async {
+                    final mode = await WebtritCallkeepPermissions().getBatteryMode();
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Battery mode: $mode')));
+                  },
+                  child: const Text('Check'),
+                ),
               ),
             ],
           ),
 
-          // Section for Push Notification Isolate
+          // Android background services
           _SectionCard(
-            title: 'Push Notification Isolate API',
+            title: 'Android Background Services',
             children: [
-              ElevatedButton(
-                child: const Text('Trigger Incoming Call (Push)'),
-                onPressed: () {
-                  CallkeepConnections().cleanConnections();
-                  AndroidCallkeepServices.backgroundPushNotificationBootstrapService.reportNewIncomingCall(
-                    call1Identifier,
-                    call1Number,
-                    displayName: call1Name,
-                    hasVideo: false,
-                  );
-                },
-              ),
-            ],
-          ),
-
-          // Section for Base Callkeep API
-          _SectionCard(
-            title: 'Base Callkeep API (Main Isolate)',
-            children: [
-              ElevatedButton(
-                child: const Text('Report Incoming Call'),
-                onPressed: () => Callkeep()
-                    .reportNewIncomingCall(call1Identifier, call1Number, displayName: call1Name, hasVideo: false),
-              ),
-              ElevatedButton(
-                child: const Text('Hangup Incoming Call'),
-                onPressed: () => Callkeep().endCall(call1Identifier),
-              ),
-              ElevatedButton(
-                child: const Text('Answer Incoming Call'),
-                onPressed: () => Callkeep().answerCall(call1Identifier),
+              ListTile(
+                dense: true,
+                title: const Text('Signaling Service'),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    OutlinedButton(
+                      onPressed: () => AndroidCallkeepServices.backgroundSignalingBootstrapService.startService(),
+                      child: const Text('Start'),
+                    ),
+                    const SizedBox(width: 6),
+                    OutlinedButton(
+                      onPressed: () => AndroidCallkeepServices.backgroundSignalingBootstrapService.stopService(),
+                      child: const Text('Stop'),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -178,26 +143,10 @@ class _MainScreenState extends State<MainScreen> {
       ),
     );
   }
-
-  Future<void> _requestPermissions(List<Permission> permissions) async {
-    final statuses = await permissions.request();
-    if (!mounted) return;
-
-    statuses.forEach((permission, status) {
-      debugPrint('$permission: $status');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$permission: $status')),
-      );
-    });
-  }
 }
 
-/// A helper widget to create a consistent section card.
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({
-    required this.title,
-    required this.children,
-  });
+  const _SectionCard({required this.title, required this.children});
 
   final String title;
   final List<Widget> children;
@@ -205,25 +154,73 @@ class _SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12.0),
+      margin: const EdgeInsets.only(bottom: 10),
       child: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const Divider(),
-            Wrap(
-              spacing: 8.0,
-              runSpacing: 4.0,
-              children: children,
-            ),
+            Text(title, style: Theme.of(context).textTheme.titleSmall),
+            const Divider(height: 12),
+            ...children,
           ],
         ),
       ),
+    );
+  }
+}
+
+class _NavTile extends StatelessWidget {
+  const _NavTile({required this.icon, required this.label, required this.subtitle, required this.onTap});
+
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      dense: true,
+      leading: Icon(icon),
+      title: Text(label),
+      subtitle: Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: onTap,
+    );
+  }
+}
+
+class _PermBtn extends StatefulWidget {
+  const _PermBtn(this.permission);
+
+  final Permission permission;
+
+  @override
+  State<_PermBtn> createState() => _PermBtnState();
+}
+
+class _PermBtnState extends State<_PermBtn> {
+  PermissionStatus? _status;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.permission.status.then((s) {
+      if (mounted) setState(() => _status = s);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final granted = _status?.isGranted ?? false;
+    return ElevatedButton(
+      onPressed: () async {
+        final result = await widget.permission.request();
+        if (mounted) setState(() => _status = result);
+      },
+      style: granted ? ElevatedButton.styleFrom(backgroundColor: Colors.green) : null,
+      child: Text(granted ? 'Granted' : 'Request'),
     );
   }
 }
