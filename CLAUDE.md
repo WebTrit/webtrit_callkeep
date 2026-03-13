@@ -12,9 +12,6 @@ Each platform package has its own AGENTS.md with package-specific guidance:
 - [`webtrit_callkeep_android/AGENTS.md`](webtrit_callkeep_android/AGENTS.md) — Android dual-process architecture, services, Pigeon, background modes
 - [`webtrit_callkeep_ios/AGENTS.md`](webtrit_callkeep_ios/AGENTS.md) — iOS CallKit/PushKit integration
 
-## Git / PR conventions
+## Contributing
 
-- Commit messages: imperative mood, describe what and why. No AI/tool mentions.
-- Fix branches created from base branch; PRs target base branch (not `main`).
-- Always `git pull` on base branch before creating a fix branch.
-- After creating a PR, switch back to your base branch.
+Branch naming, commit message format, git hooks setup, and PR conventions are documented in **[CONTRIBUTING.md](CONTRIBUTING.md)**.
