@@ -61,6 +61,14 @@ object AssetCacheManager {
         return cacheAsset(ctx, assetPath, fileName).let { Uri.fromFile(File(it)) }
     }
 
+    /**
+     * Copies an asset from the APK to [Context.getCacheDir] and returns the absolute path.
+     *
+     * This step is required because the Android media stack ([android.media.RingtoneManager],
+     * [android.media.MediaPlayer]) expects a `file://` URI pointing to a real file on disk.
+     * APK assets are only accessible as an [java.io.InputStream] via [android.content.res.AssetManager]
+     * and cannot be referenced by a file URI directly.
+     */
     private fun cacheAsset(context: Context, assetPath: String, fileName: String): String {
         val cachedFile = File(context.cacheDir, fileName)
         val inputStream = context.assets.open(assetPath)
