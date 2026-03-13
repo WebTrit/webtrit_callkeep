@@ -20,8 +20,8 @@ into a separate `:callkeep_core` OS process.
 **Current overall phase:** Planning complete. No PRs opened yet.
 
 **Next action to take:** Wave 1 — open all of these simultaneously:
-PR-1, PR-2a, PR-2b, PR-2c, PR-2d, PR-2e, PR-3, PR-4a, PR-4b, PR-4d
-(all independent, no prerequisites).
+PR-2a, PR-2b, PR-2c, PR-2d, PR-2e, PR-3, PR-4a, PR-4b, PR-4d
+(PR-1 skipped — develop reverted to flutter_lints, no delta).
 
 ---
 
@@ -38,7 +38,7 @@ PR-1, PR-2a, PR-2b, PR-2c, PR-2d, PR-2e, PR-3, PR-4a, PR-4b, PR-4d
 
 | PR | Branch | Status | Merged commit | Date |
 |----|--------|--------|--------------|------|
-| PR-1 | `fix/standardize-analysis-options` | `not started` | — | — |
+| PR-1 | ~~`fix/standardize-analysis-options`~~ | `skipped` | — | 2026-03-13 |
 | PR-2a | `fix/signaling-wakelock-cache` | `not started` | — | — |
 | PR-2b | `fix/signaling-logging` | `not started` | — | — |
 | PR-2c | `fix/broadcast-receiver-context` | `not started` | — | — |
@@ -75,6 +75,7 @@ Decisions already made — do not re-litigate without strong reason.
 | 2026-03-13 | Split PR-9 into PR-9a (transport) + PR-9b (manifest) | Core decomposition principle: cross-process mechanisms work in-process; migrate transport first while still single-process, then the manifest change becomes trivial |
 | 2026-03-13 | `ConnectionsApi` switches to `MainProcessConnectionTracker` in PR-6, not PR-9 | Tracker is already the cross-process-safe read path; doing it early keeps PR-9b minimal |
 | 2026-03-13 | docs/ in PR-3 should carry a "planned architecture" warning header | docs describe dual-process which isn't on develop yet when PR-3 lands |
+| 2026-03-13 | PR-1 skipped — develop reverted to flutter_lints | Both branches now use same linter; no delta to apply |
 | 2026-03-13 | Split PR-2 into 2a-2e (one fix = one PR) | Smaller scope = faster review, easier revert, cleaner history |
 | 2026-03-13 | Split PR-4 into 4a-4d (one utility concern = one PR) | Same principle — additive changes are independent, split reduces risk |
 | 2026-03-13 | Split PR-5 into 5a-5e (one test file = one PR) | Tests are fully independent; splitting enables parallel merges |
@@ -89,8 +90,7 @@ Decisions already made — do not re-litigate without strong reason.
 | Question | Relevant PR | Status |
 |----------|-------------|--------|
 | Commit `2620715` labeled "tmp" — verify actual content before porting | PR-2e | **open** — run `git show 2620715` |
-| PR-1 may be already done by `344b9d5` — check delta first | PR-1 | **open** — run `git diff develop -- '*/analysis_options.yaml'` |
-| CI/CD workflow changes on feature branch — include or skip? | PR-1 or skip | **open** |
+| CI/CD workflow changes on feature branch — include or skip? | skip | **open** |
 | Exact fields added to `CallMetaData.kt`? | PR-4c | **open** — run `git show 6af63bd -- '*CallMetaData.kt'` |
 | `StorageDelegate` existing keys on develop — conflict risk? | PR-4a | **open** — read current `StorageDelegate.kt` on develop |
 | `RetryManager` — does it reference `StorageDelegate`? (affects PR-5a prerequisite) | PR-5a | **open** |

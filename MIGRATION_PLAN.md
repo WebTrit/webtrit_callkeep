@@ -74,7 +74,7 @@ The feature branch deleted repo-wide files that must stay on `develop`:
 ## Migration Sequence
 
 ```
-PR-1    analysis_options check (verify delta vs develop)
+PR-1    SKIPPED — develop reverted to flutter_lints, no delta
 
 PR-2a   fix: WakeLock cache in SignalingIsolateService
 PR-2b   fix: println -> Log.d in SignalingIsolateService
@@ -127,24 +127,12 @@ PR-10   feat: example app multi-line calls rewrite
 
 ---
 
-### PR-1 — Verify analysis_options delta
+### PR-1 — SKIPPED
 
-**Branch:** `fix/standardize-analysis-options`
-**Target:** `develop`
-**Risk:** Very low
+**Status:** `[x] skipped`
 
-**First, check if there is any delta at all:**
-```bash
-git diff develop feat/android-callkeep-core-process-migration \
-  -- '*/analysis_options.yaml' '*/pubspec.yaml'
-```
-
-If no meaningful delta -> close as `already done` (commit `344b9d5` likely covered it).
-If delta exists -> apply only `analysis_options.yaml` and `pubspec.yaml` changes.
-
-**Validate:** `flutter analyze lib test` in all packages.
-
-**Status:** `[ ] not started`
+**Reason:** `develop` was reverted to `flutter_lints`. Both branches now use
+the same linter config — no delta to apply.
 
 ---
 
@@ -668,7 +656,7 @@ This PR just tells the OS to run `PhoneConnectionService` in a new process.
 
 | PR | Title | Branch | Status | Merged |
 |----|-------|--------|--------|--------|
-| PR-1 | analysis_options check | `fix/standardize-analysis-options` | `not started` | — |
+| PR-1 | ~~analysis_options check~~ | ~~`fix/standardize-analysis-options`~~ | `skipped` | — |
 | PR-2a | fix: WakeLock cache | `fix/signaling-wakelock-cache` | `not started` | — |
 | PR-2b | fix: println -> Log.d | `fix/signaling-logging` | `not started` | — |
 | PR-2c | fix: broadcast receiver context | `fix/broadcast-receiver-context` | `not started` | — |
