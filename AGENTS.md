@@ -14,12 +14,12 @@ very_good packages get --recursive
 
 ### Format (run inside a package directory)
 ```bash
-dart format --line-length 80 --set-exit-if-changed lib test
+dart format --line-length 120 --set-exit-if-changed lib
 ```
 
 ### Analyze
 ```bash
-flutter analyze lib test
+flutter analyze
 ```
 
 ### Test
@@ -44,7 +44,7 @@ Generated files (`*.pigeon.dart`, Kotlin/Swift output) must be committed togethe
 ## Code style
 
 - **Quotes**: single quotes everywhere.
-- **Line length**: 80 characters (CI enforces this). Some older files use 120 — match the file you are editing.
+- **Line length**: 120 characters (`formatter: page_width: 120` in all `analysis_options.yaml`).
 - **Trailing commas**: required on multi-line argument lists and collection literals.
 - **Import order** (four groups, alphabetical within each, blank line between groups):
   1. `dart:` SDK imports
