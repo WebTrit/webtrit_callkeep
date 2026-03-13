@@ -52,7 +52,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         context = flutterPluginBinding.applicationContext
 
         ContextHolder.init(context)
-        AssetHolder.init(context)
+        AssetHolder.init(context) { flutterPluginBinding.flutterAssets.getAssetFilePathByName(it) }
 
         // Bootstrap isolate APIs
         BackgroundSignalingIsolateBootstrapApi(context).let {

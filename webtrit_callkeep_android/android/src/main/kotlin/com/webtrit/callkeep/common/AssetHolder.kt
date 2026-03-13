@@ -5,27 +5,27 @@ import android.content.Context
 import io.flutter.Log
 
 /**
- * Singleton that provides a process-wide [FlutterAssetManager].
+ * Singleton that provides a process-wide [AssetCacheManager].
  *
- * Call [init] once with any [Context] — from the Flutter plugin binding,
- * from a background service, or from an isolated OS process. There is no
- * dependency on the Flutter plugin API, so initialization is identical
- * regardless of whether a FlutterEngine is present.
+ * Call [init] once, supplying a [Context] and an [assetPathResolver] that maps
+ * logical asset names to paths understood by [android.content.res.AssetManager].
+ * The resolver is the only caller-specific detail — the rest of the class is
+ * process-agnostic.
  */
 @SuppressLint("StaticFieldLeak")
 object AssetHolder {
-    private var _flutterAssetManager: FlutterAssetManager? = null
+    private var _assetCacheManager: AssetCacheManager? = null
 
-    val flutterAssetManager: FlutterAssetManager
-        get() = _flutterAssetManager
+    val assetCacheManager: AssetCacheManager
+        get() = _assetCacheManager
             ?: throw IllegalStateException("AssetHolder is not initialized. Call init() first.")
 
     @Synchronized
-    fun init(context: Context) {
-        if (_flutterAssetManager == null) {
-            _flutterAssetManager = FlutterAssetManager(context)
+    fun init(context: Context, assetPathResolver: (String) -> String) {
+        if (_assetCacheManager == null) {
+            _assetCacheManager = AssetCacheManager(context, assetPathResolver)
         } else {
-            Log.i("AssetHolder", "AssetManagerHolder is already initialized.")
+            Log.i("AssetHolder", "AssetHolder is already initialized.")
         }
     }
 }

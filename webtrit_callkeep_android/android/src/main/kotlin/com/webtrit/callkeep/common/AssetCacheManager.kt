@@ -8,19 +8,22 @@ import java.io.FileOutputStream
 import java.io.IOException
 
 /**
- * Manages caching operations for Flutter assets.
+ * Caches Android assets to disk and returns file URIs for use by the media stack.
  *
- * Resolves asset names using the standard Flutter asset path convention
- * ("flutter_assets/<name>") and caches them to disk for use by the Android
- * media stack. This class has no dependency on the Flutter plugin API and can
- * be used from any OS process, including isolated processes without a live
- * FlutterEngine.
+ * Asset name → path resolution is fully delegated to [assetPathResolver], so this
+ * class has no knowledge of any SDK conventions and works in any OS process.
+ *
+ * @param assetPathResolver maps a logical asset name (e.g. "ringtone.mp3") to the
+ *   path understood by [android.content.res.AssetManager] (e.g. "flutter_assets/ringtone.mp3").
  */
-class FlutterAssetManager(private val context: Context) {
+class AssetCacheManager(
+    private val context: Context,
+    private val assetPathResolver: (String) -> String,
+) {
     private val cacheDir: File by lazy { context.cacheDir }
 
     fun getAsset(asset: String): Uri? {
-        val assetPath = "flutter_assets/$asset"
+        val assetPath = assetPathResolver(asset)
         val fileName = assetPath.toUri().lastPathSegment ?: "cache"
 
         // For note: there may be issues with cached data if, for example,
