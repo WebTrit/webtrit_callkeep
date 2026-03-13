@@ -20,6 +20,46 @@ isolation) lands last.
 
 ---
 
+## Core Decomposition Principle
+
+> **Cross-process-compatible mechanisms work in-process too.
+> In-process-only mechanisms do NOT work cross-process.**
+
+This asymmetry is the key to safe decomposition:
+
+| Mechanism | Works in single process | Works cross-process |
+|-----------|------------------------|---------------------|
+| Direct object calls (e.g. `connectionManager.addCall()`) | ✅ | ❌ |
+| Shared memory / singletons | ✅ | ❌ |
+| Local broadcasts (`sendBroadcast`) | ✅ | ✅ |
+| `BroadcastReceiver` with `exported=false` | ✅ | ✅ (same app) |
+
+**Strategic implication:** First, replace all direct in-process calls with
+broadcast-based IPC **while staying in a single process**. The system continues
+to work identically. Then, in a separate PR, just move
+`PhoneConnectionService` to `:callkeep_core` in `AndroidManifest.xml`.
+The process split becomes a near-trivial one-line change because the transport
+layer is already in place.
+
+```
+Direct calls   →   Broadcasts (still 1 process)   →   2 processes
+   today           PR-9a (safe, testable)            PR-9b (manifest only)
+```
+
+This principle applies to any future refactoring in this codebase: if you need
+to extract a component to a separate process, migrate its transport first.
+
+### Where the principle guides each PR
+
+| PR | Application of principle |
+|----|--------------------------|
+| PR-6 | `ConnectionsApi` switches from querying `ConnectionManager` directly to querying `MainProcessConnectionTracker` — the tracker is the cross-process-compatible read path, safe to introduce while still single-process |
+| PR-7 | `ForegroundService` switches from direct calls to events-via-replay — same mechanism that works cross-process |
+| **PR-9a** | ALL remaining direct `ForegroundService → ConnectionManager / PhoneConnectionService` calls replaced by `ConnectionServicePerformBroadcaster` sends + `BroadcastReceiver` handling. **Still single process. Zero user-visible change.** |
+| **PR-9b** | One manifest line: `android:process=":callkeep_core"`. Transport already ready. |
+
+---
+
 ## Branch State Snapshot
 
 ### `develop` (baseline, 2026-03-13)
@@ -77,17 +117,23 @@ files that must stay on `develop`:
 ## Migration Phases
 
 ```
-PR-1  Code quality (analysis_options, pubspec)     [no logic change]
-PR-2  Isolated bug fixes (5 commits from feature)  [safe, independent]
-PR-3  Documentation (docs/ directory)              [additive]
-PR-4  Utility improvements                         [additive, no API break]
-PR-5  New unit tests for existing code             [additive]
-PR-6  MainProcessConnectionTracker + ConnectionManager [foundational]
-PR-7  IncomingCallService + ForegroundService      [integration]
-PR-8  Pigeon API additions (new options + enum)    [API surface change]
-PR-9  PhoneConnectionService process isolation     [THE RADICAL CHANGE]
-PR-10 Example app rewrite                          [cosmetic, last]
+PR-1   Code quality (analysis_options, pubspec)          [no logic change]
+PR-2   Isolated bug fixes (5 commits from feature)       [safe, independent]
+PR-3   Documentation (docs/ directory)                   [additive]
+PR-4   Utility improvements                              [additive, no API break]
+PR-5   New unit tests for existing code                  [additive]
+PR-6   MainProcessConnectionTracker + ConnectionManager  [foundational]
+PR-7   IncomingCallService + ForegroundService           [integration]
+PR-8   Pigeon API additions (new options + enum)         [API surface change]
+PR-9a  Transport migration: direct calls → broadcasts    [single process, testable]
+PR-9b  Process declaration: android:process=callkeep_core [manifest only, payoff]
+PR-10  Example app rewrite                               [cosmetic, last]
 ```
+
+**Key insight (PR-9a → PR-9b split):** Cross-process-compatible mechanisms
+(local broadcasts) work inside a single process too. By migrating the
+transport first (PR-9a), PR-9b becomes a near-mechanical manifest change
+with all the hard work already tested and merged.
 
 ---
 
@@ -383,66 +429,113 @@ dart run pigeon --input pigeons/callkeep.messages.dart
 
 ---
 
-### PR-9 — PhoneConnectionService process isolation (**THE RADICAL CHANGE**)
+### PR-9a — Broadcast transport migration (still single process)
 
-**Branch:** `feat/android-phone-connection-service-isolation`
+**Branch:** `feat/android-broadcast-transport-migration`
 **Target:** `develop`
-**Risk:** HIGH — core architectural change, requires thorough QA
+**Risk:** Medium — replaces call paths, but single-process so fully debuggable
 
 **Prerequisites:** PR-1 through PR-8 all merged
 
-**Changes:**
+**The principle in action:** Replace every remaining place where
+`ForegroundService` (or anyone in the main process) calls into
+`PhoneConnectionService` / `ConnectionManager` directly with a
+`ConnectionServicePerformBroadcaster.send(event)` + matching
+`BroadcastReceiver`. **`PhoneConnectionService` still runs in the main
+process.** Broadcasts are delivered in-process at nanosecond latency.
+Behavior is identical to before.
+
+**After this PR, the system is cross-process-ready without being cross-process.**
+
+#### `ConnectionServicePerformBroadcaster.kt`
+- Verify `sendBroadcast` uses `applicationContext` (required for cross-process
+  delivery later)
+- Remove any synchronous return values — all results must now flow back as
+  separate broadcast events (callbacks)
+
+#### `ForegroundService.kt`
+- Remove all direct calls to `PhoneConnectionService` methods
+- Register `BroadcastReceiver` for `ConnectionPerform` result events
+- Send `ConnectionServicePerformBroadcaster` events instead of direct calls
+
+#### `PhoneConnectionService.kt`
+- Register `BroadcastReceiver` for incoming `ConnectionPerform` command events
+- Remove any direct references to main-process singletons (prepare for isolation)
+- Result callbacks sent back via broadcasts
+
+#### `PhoneConnection.kt`
+- State machine: any remaining direct callbacks to main process → broadcasts
+- Endpoint change race condition guard (API 34+)
+
+#### `PhoneConnectionServiceDispatcher.kt`
+- Full dispatch through broadcast events only
+
+#### `ConnectionsApi.kt`
+- Switch from `ConnectionManager` direct queries to `MainProcessConnectionTracker`
+  queries (already populated by PR-6/7; tracker IS the cross-process-safe read path)
+
+**Validate before merge:**
+- [ ] Outgoing call: initiate, answer remote, end — **identical behavior to before**
+- [ ] Incoming call: receive push, answer, end — **identical behavior**
+- [ ] Incoming call: decline — **identical behavior**
+- [ ] Cold-start recovery — **identical behavior**
+- [ ] Audio routing: speaker ↔ earpiece — **identical behavior**
+- [ ] `adb logcat` shows no direct cross-object calls remaining in call paths
+- [ ] All existing unit tests still pass
+
+**Status:** `[ ] not started`
+
+---
+
+### PR-9b — Process declaration: move PhoneConnectionService to `:callkeep_core`
+
+**Branch:** `feat/android-callkeep-core-process-declaration`
+**Target:** `develop`
+**Risk:** Medium-High — the actual split, but transport is already ready
+
+**Prerequisites:** PR-9a merged
+
+**This is the payoff of PR-9a.** The transport being broadcast-based means
+this PR is nearly mechanical. The system was already "cross-process-ready" —
+now we just tell the OS to use a second process.
 
 #### `AndroidManifest.xml`
 ```xml
 <service
     android:name=".services.services.connection.PhoneConnectionService"
-    android:process=":callkeep_core"   <!-- NEW -->
+    android:process=":callkeep_core"   <!-- THIS IS THE KEY LINE -->
+    android:permission="android.permission.BIND_TELECOM_CONNECTION_SERVICE"
     ... />
 ```
 
 #### `PhoneConnectionService.kt`
-- `onCreate()` now calls `AssetHolder.initForIsolatedProcess(context)` (no
-  FlutterEngine available in `:callkeep_core`)
-- All direct calls to main-process objects go through broadcasts
-- Remove direct `MainProcessConnectionTracker` access (it lives in main process)
-
-#### `ConnectionServicePerformBroadcaster.kt`
-- Ensure broadcasts use `applicationContext` (not activity context) for
-  cross-process delivery
-- Add process-boundary event routing
-
-#### `PhoneConnection.kt`
-- State machine updates compatible with cross-process dispatch
-- Endpoint change race condition guard (API 34+)
-
-#### `PhoneConnectionServiceDispatcher.kt`
-- Update dispatch logic for cross-process case
+- `onCreate()`: add `AssetHolder.initForIsolatedProcess(context)` — no
+  `FlutterEngine` available in `:callkeep_core`, must resolve assets manually
+- Remove any remaining singleton accesses that live in the main process
+  (should be zero after PR-9a, verify)
 
 #### `WebtritCallkeepPlugin.kt`
-- Teardown logic: unregister from `:callkeep_core` on `detachFromEngine`
-
-#### `ConnectionsApi.kt`
-- Update to query `MainProcessConnectionTracker` instead of `ConnectionManager`
-  directly (since `ConnectionManager` is now in `:callkeep_core`)
+- Teardown: unregister broadcast receivers on `detachFromEngine` — main process
+  must not try to call into `:callkeep_core` synchronously during shutdown
 
 #### `build.gradle`
 - Ensure `flutter.jar` + `core-ktx` available for test compilation in both
   processes
 
-**QA checklist:**
+**QA checklist (now testing the REAL dual-process scenario):**
 - [ ] Outgoing call: initiate, answer remote, end
 - [ ] Incoming call: receive push, answer, end
 - [ ] Incoming call: receive push, decline
-- [ ] Kill main process during active call → relaunch → call state recovered
-- [ ] Kill `:callkeep_core` process during active call → main process handles
-- [ ] Cold-start answered call detected correctly (`CALL_ID_ALREADY_EXISTS_AND_ANSWERED`)
+- [ ] Kill **main process** during active call → relaunch → call state recovered
+- [ ] Kill **`:callkeep_core` process** during active call → main process handles gracefully
+- [ ] Cold-start: app killed while call was answered → relaunch → `CALL_ID_ALREADY_EXISTS_AND_ANSWERED` fires
 - [ ] Audio routing: speaker ↔ earpiece toggle
 - [ ] DTMF tones
 - [ ] Hold / resume
 - [ ] Concurrent calls (if supported)
 - [ ] Background restrictions: Doze mode, battery saver
 - [ ] Android 10, 12, 13, 14 — verify full-screen intent still works
+- [ ] Verify `:callkeep_core` process visible in Android Studio profiler / `adb shell ps`
 
 **Status:** `[ ] not started`
 
@@ -489,7 +582,8 @@ dart run pigeon --input pigeons/callkeep.messages.dart
 | PR-6 | MainProcessConnectionTracker | `feat/android-connection-tracker` | `not started` | — |
 | PR-7 | IncomingCallService integration | `feat/android-incoming-call-tracker-integration` | `not started` | — |
 | PR-8 | Pigeon API additions | `feat/android-pigeon-api-additions` | `not started` | — |
-| PR-9 | Process isolation (radical) | `feat/android-phone-connection-service-isolation` | `not started` | — |
+| PR-9a | Transport migration: direct calls → broadcasts | `feat/android-broadcast-transport-migration` | `not started` | — |
+| PR-9b | Process declaration: callkeep_core manifest | `feat/android-callkeep-core-process-declaration` | `not started` | — |
 | PR-10 | Example app rewrite | `feat/example-app-multi-line-calls` | `not started` | — |
 
 ---
@@ -497,35 +591,40 @@ dart run pigeon --input pigeons/callkeep.messages.dart
 ## Dependency Graph
 
 ```
-PR-1 ─────────────────────────────────────────────────────► can start immediately
-PR-2 ─────────────────────────────────────────────────────► can start immediately
-PR-3 ─────────────────────────────────────────────────────► can start immediately
-PR-4 ─────────────────────────────────────────────────────► can start immediately
-PR-5 ── after PR-4 ────────────────────────────────────────►
-PR-6 ── after PR-4 ────────────────────────────────────────►
-PR-7 ── after PR-6 ────────────────────────────────────────►
-PR-8 ── after PR-7 ────────────────────────────────────────►
-PR-9 ── after PR-1,2,3,4,5,6,7,8 (all merged) ────────────►
-PR-10 ─ after PR-9 ────────────────────────────────────────►
+PR-1  ──────────────────────────────────────────────────────► can start immediately
+PR-2  ──────────────────────────────────────────────────────► can start immediately
+PR-3  ──────────────────────────────────────────────────────► can start immediately
+PR-4  ──────────────────────────────────────────────────────► can start immediately
+PR-5  ─── after PR-4 ──────────────────────────────────────►
+PR-6  ─── after PR-4 ──────────────────────────────────────►
+PR-7  ─── after PR-6 ──────────────────────────────────────►
+PR-8  ─── after PR-7 ──────────────────────────────────────►
+PR-9a ─── after PR-1,2,3,4,5,6,7,8 (all merged) ──────────►  transport only, still 1 process
+PR-9b ─── after PR-9a ─────────────────────────────────────►  manifest line, payoff
+PR-10 ─── after PR-9b ─────────────────────────────────────►
 ```
 
 **Parallel tracks possible:**
 - PR-1, PR-2, PR-3, PR-4 can all be opened simultaneously
 - PR-5 and PR-6 can be developed in parallel (both depend on PR-4)
+- PR-9a and PR-9b must be strictly sequential — this is intentional
 
 ---
 
 ## Key Risks & Mitigations
 
-| Risk | Severity | Mitigation |
-|------|----------|------------|
-| `MainProcessConnectionTracker` state drift | High | Unit tests in PR-6; thorough review of thread-safety |
-| Broadcast delivery blocked by OS (background restrictions) | High | Test on real devices with battery saver on; see PR-9 QA checklist |
-| `CALL_ID_ALREADY_EXISTS_AND_ANSWERED` path fires incorrectly | Medium | `isAnswered()` only returns true after explicit `markAnswered()` call; covered by `ValidateConnectionAdditionTest` |
-| Race condition: concurrent connection creation | Medium | Atomic check-and-add in `ConnectionManager` (PR-6) |
-| NPE: endpoint change race on API 34+ | Medium | Guard added in PR-9 `PhoneConnection.kt` |
-| Pigeon out-of-sync between Dart and Kotlin | Medium | Always regenerate together; validate with `flutter analyze` |
-| Example app diverges from library API | Low | PR-10 is last; keep example app on feature branch until then |
+| Risk | Severity | PR | Mitigation |
+|------|----------|----|------------|
+| `MainProcessConnectionTracker` state drift | High | PR-6 | Unit tests; thread-safety review |
+| Broadcast not delivered cross-process (missing `applicationContext`) | High | PR-9a | Catch this in PR-9a while still single-process — same code path, easier to debug |
+| Broadcast delivery blocked by OS (Doze, battery saver) | High | PR-9b | Real-device QA checklist; test with battery saver forced on |
+| `CALL_ID_ALREADY_EXISTS_AND_ANSWERED` fires incorrectly | Medium | PR-6 | `isAnswered()` only true after explicit `markAnswered()`; `ValidateConnectionAdditionTest` covers it |
+| Race condition: concurrent connection creation | Medium | PR-6 | Atomic check-and-add in `ConnectionManager` |
+| Synchronous return values from `PhoneConnectionService` calls removed | Medium | PR-9a | All callbacks converted to broadcast events; validate every call result flows back |
+| NPE: endpoint change race on API 34+ | Medium | PR-9a | Guard added in `PhoneConnection.kt` |
+| Pigeon out-of-sync between Dart and Kotlin | Medium | PR-8 | Always regenerate together; `flutter analyze` enforces |
+| Asset resolution fails in `:callkeep_core` process | Medium | PR-9b | `AssetHolder.initForIsolatedProcess()` added in PR-4; wired in PR-9b |
+| Example app diverges from library API | Low | PR-10 | PR-10 is last; example stays on feature branch until then |
 
 ---
 
