@@ -25,4 +25,6 @@ jobs:
       flutter_version: 3.32.0
       working_directory: webtrit_callkeep_platform_interface
       format_line_length: "120"
+      format_directories: "lib"
+      analyze_directories: "lib"
 
