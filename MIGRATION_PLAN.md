@@ -191,11 +191,11 @@ the same linter config — no delta to apply.
 
 **Branch:** `fix/lifecycle-null-safety`
 **Target:** `develop`
-**Source commit:** `de55f32`
+**Source commit:** `c33f8df`
 **Risk:** Low
 
 **File:** `ForegroundService.kt` (or wherever `latestLifecycleActivityEvent` is accessed).
-**Change:** Replace `!!` with safe call / null check.
+**Change:** Replace `!!` with safe call / null check to prevent NPE crash.
 
 **Validate:**
 - [ ] No NPE in lifecycle event handling path
@@ -208,18 +208,32 @@ the same linter config — no delta to apply.
 
 **Branch:** `fix/endcall-callback-timing`
 **Target:** `develop`
-**Source commit:** `2620715` WARNING: labeled "tmp" — verify content with `git show 2620715` before porting
+**Source commit:** `de55f32`
 **Risk:** Medium — touches call end flow
 
 **Files:** `ConnectionManager.kt`, `PhoneConnectionServiceDispatcher.kt`.
-**Change:** Callbacks for `endCall`/`endAllCalls` resolved only after receiving
-broadcast confirmation, not immediately on API call.
+**Change:** Callbacks for `endCall`/`endAllCalls` were resolved immediately on
+API call — race condition where callback fires before Telecom confirms
+disconnection. Fixed with a one-shot `BroadcastReceiver` waiting for
+`HungUp`/`DeclineCall` events. `endCall()` filters by `callId`;
+`endAllCalls()` uses `AtomicInteger` countdown. 5-second timeout prevents
+indefinite hang.
 
 **Validate:**
-- [ ] End call from Flutter side -> callback fires correctly
-- [ ] End all calls -> all callbacks resolve
+- [ ] End call from Flutter side -> callback fires after Telecom confirms
+- [ ] End all calls -> all callbacks resolve, no timeout fires on normal flow
 
 **Status:** `[ ] not started`
+
+---
+
+### ~~PR-2e-orig~~ — commit `2620715` — SKIP
+
+**Reason:** Contains only `.claude/settings.local.json` (3 files) and
+`TODO.md` (44-item bug audit). Neither should be ported:
+- `.claude/settings.local.json` — local only
+- `TODO.md` — useful reading but not a deliverable PR; keep on feature branch
+  as internal reference
 
 ---
 
@@ -760,5 +774,6 @@ PR-6 -> PR-7a -> PR-7b -> PR-8 -> PR-9a -> PR-9b -> PR-10
 | `169604d` | fix: cache WakeLock in SignalingIsolateService | PR-2a |
 | `56bf18e` | fix: replace println with Log.d | PR-2b |
 | `62a1084` | fix: consistent context for broadcast receivers | PR-2c |
-| `de55f32` | fix: remove force-unwrap on latestLifecycleActivityEvent | PR-2d |
-| `2620715` | tmp (verify content) | PR-2e |
+| `c33f8df` | fix: remove force-unwrap on latestLifecycleActivityEvent | PR-2d |
+| `de55f32` | fix: resolve endCall/endAllCalls callbacks | PR-2e |
+| `2620715` | tmp — .claude/settings.local.json + TODO.md only | SKIP |

@@ -76,6 +76,8 @@ Decisions already made — do not re-litigate without strong reason.
 | 2026-03-13 | `ConnectionsApi` switches to `MainProcessConnectionTracker` in PR-6, not PR-9 | Tracker is already the cross-process-safe read path; doing it early keeps PR-9b minimal |
 | 2026-03-13 | docs/ in PR-3 should carry a "planned architecture" warning header | docs describe dual-process which isn't on develop yet when PR-3 lands |
 | 2026-03-13 | PR-1 skipped — develop reverted to flutter_lints | Both branches now use same linter; no delta to apply |
+| 2026-03-13 | Commit `2620715` ("tmp") skipped — contains only `.claude/settings.local.json` + `TODO.md` | Nothing to port; `TODO.md` stays on feature branch as internal bug audit reference |
+| 2026-03-13 | PR-2d source = `c33f8df` (force-unwrap), PR-2e source = `de55f32` (endCall callbacks) | Plan had them swapped; corrected after reading actual commit diffs |
 | 2026-03-13 | Split PR-2 into 2a-2e (one fix = one PR) | Smaller scope = faster review, easier revert, cleaner history |
 | 2026-03-13 | Split PR-4 into 4a-4d (one utility concern = one PR) | Same principle — additive changes are independent, split reduces risk |
 | 2026-03-13 | Split PR-5 into 5a-5e (one test file = one PR) | Tests are fully independent; splitting enables parallel merges |
@@ -89,7 +91,7 @@ Decisions already made — do not re-litigate without strong reason.
 
 | Question | Relevant PR | Status |
 |----------|-------------|--------|
-| Commit `2620715` labeled "tmp" — verify actual content before porting | PR-2e | **open** — run `git show 2620715` |
+| ~~Commit `2620715` content~~ | PR-2e | **resolved** — only settings + TODO.md, skip |
 | CI/CD workflow changes on feature branch — include or skip? | skip | **open** |
 | Exact fields added to `CallMetaData.kt`? | PR-4c | **open** — run `git show 6af63bd -- '*CallMetaData.kt'` |
 | `StorageDelegate` existing keys on develop — conflict risk? | PR-4a | **open** — read current `StorageDelegate.kt` on develop |
