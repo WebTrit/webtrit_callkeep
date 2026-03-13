@@ -35,7 +35,7 @@ When adding a converter for a new Pigeon type, add an extension in `lib/src/comm
 
 ---
 
-## iOS call UI behaviour
+## iOS call UI behavior
 
 | App state | UI used |
 |---|---|
