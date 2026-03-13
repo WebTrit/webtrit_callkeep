@@ -121,7 +121,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
             SignalingServiceBootWorker.enqueue(this)
         }
 
-        getLock(applicationContext).let { lock ->
+        wakeLock?.let { lock ->
             if (lock.isHeld) {
                 lock.release()
             }
