@@ -20,6 +20,6 @@ pre-push:
         for dir in webtrit_callkeep webtrit_callkeep_platform_interface webtrit_callkeep_android webtrit_callkeep_ios; do
           if [ -d "$dir" ]; then
             echo "Analyzing $dir..."
-            (cd "$dir" && flutter analyze lib test) || exit 1
+            (cd "$dir" && flutter analyze) || exit 1
           fi
         done
