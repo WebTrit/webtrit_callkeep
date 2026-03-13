@@ -300,7 +300,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         fun finish() {
             if (!resolved.compareAndSet(false, true)) return
             handler.removeCallbacksAndMessages(null)
-            try { ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, receiver) } catch (_: Exception) {}
+            try { ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, receiver) } catch (_: IllegalArgumentException) {}
             callback(Result.success(Unit))
         }
 
@@ -361,7 +361,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         fun finish() {
             if (!resolved.compareAndSet(false, true)) return
             handler.removeCallbacksAndMessages(null)
-            try { ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, receiver) } catch (_: Exception) {}
+            try { ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, receiver) } catch (_: IllegalArgumentException) {}
             callback(Result.success(Unit))
         }
 
