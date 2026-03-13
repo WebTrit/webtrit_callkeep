@@ -13,9 +13,8 @@ See **[AGENTS.md](AGENTS.md)** for API contract details, model conventions, and 
 ```bash
 # From this directory
 flutter pub get
-flutter analyze lib test
-dart format --line-length 80 --set-exit-if-changed lib test
-flutter test
+flutter analyze
+dart format --line-length 120 --set-exit-if-changed lib
 ```
 
 ## Critical rules
