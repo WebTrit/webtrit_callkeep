@@ -117,7 +117,7 @@ PR-10   feat: example app multi-line calls rewrite
 
 **Parallel tracks (can open simultaneously):**
 - PR-2a through PR-2e — all independent of each other
-- PR-3 — independent of everything
+- PR-3 — after PR-9b (documents final dual-process architecture)
 - PR-4a through PR-4d — independent of each other
 - PR-5a through PR-5e — open after their target PR-4x lands
 
@@ -242,6 +242,7 @@ indefinite hang.
 **Branch:** `docs/android-architecture-guide`
 **Target:** `develop`
 **Risk:** Zero
+**Prerequisite:** PR-9b merged (documents the final dual-process state — writing before migration completes would mean constant doc churn)
 
 **Files to add (`webtrit_callkeep_android/docs/`):**
 
@@ -263,9 +264,7 @@ pigeon-api.md                full API reference
 
 **Also:** `webtrit_callkeep_android/README.md` and `CLAUDE.md` updates.
 
-**Note:** Add header to architecture-specific docs:
-> This document describes architecture being migrated via phased PRs.
-> Some sections describe upcoming state not yet on develop.
+**Note:** No warning header needed — by the time this PR lands, the dual-process architecture is fully in place on develop.
 
 **Status:** `[ ] not started`
 
@@ -716,7 +715,7 @@ PR-2b ────────────────────────�
 PR-2c ──────────────────────────────── independent
 PR-2d ──────────────────────────────── independent
 PR-2e ──────────────────────────────── independent (verify commit first)
-PR-3  ──────────────────────────────── independent
+PR-3  ── after PR-9b ──────────────────────────────
 PR-4a ──────────────────────────────── independent
 PR-4b ──────────────────────────────── independent
 PR-4c ── after PR-4a ────────────────────────────
@@ -741,13 +740,16 @@ PR-6 -> PR-7a -> PR-7b -> PR-8 -> PR-9a -> PR-9b
 ```
 
 **Wave 1 — open all simultaneously:**
-PR-1, PR-2a, PR-2b, PR-2c, PR-2d, PR-2e, PR-3, PR-4a, PR-4b, PR-4d
+PR-1, PR-2a, PR-2b, PR-2c, PR-2d, PR-2e, PR-4a, PR-4b, PR-4d
 
 **Wave 2 — after Wave 1 relevant PRs land:**
 PR-4c, PR-5a, PR-5b, PR-5c, PR-5d, PR-5e
 
 **Wave 3 — critical path:**
 PR-6 -> PR-7a -> PR-7b -> PR-8 -> PR-9a -> PR-9b -> PR-10
+
+**Wave 4 — documentation (after full migration):**
+PR-3
 
 ---
 

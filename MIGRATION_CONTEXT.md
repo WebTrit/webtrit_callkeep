@@ -20,7 +20,8 @@ into a separate `:callkeep_core` OS process.
 **Current overall phase:** Wave 1 in progress — PR-2a/2b/2c/2d/2b merged. PR-4b/PR-10 merged.
 
 **Next action to take:** Continue Wave 1 remaining:
-PR-2e, PR-3, PR-4a, PR-4d (all independent, open simultaneously).
+PR-2e, PR-4a, PR-4d (all independent, open simultaneously).
+PR-3 moved to Wave 4 -- after PR-9b (full migration complete).
 
 ---
 
