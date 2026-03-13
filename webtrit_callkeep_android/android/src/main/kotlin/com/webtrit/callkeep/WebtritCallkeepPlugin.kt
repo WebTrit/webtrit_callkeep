@@ -22,7 +22,6 @@ import com.webtrit.callkeep.services.services.foreground.ForegroundService
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
 import com.webtrit.callkeep.services.services.signaling.SignalingIsolateService
 import io.flutter.embedding.engine.plugins.FlutterPlugin
-import io.flutter.embedding.engine.plugins.FlutterPlugin.FlutterAssets
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.embedding.engine.plugins.lifecycle.HiddenLifecycleReference
@@ -36,7 +35,6 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     private var lifeCycle: Lifecycle? = null
 
     private lateinit var messenger: BinaryMessenger
-    private lateinit var assets: FlutterAssets
     private lateinit var context: Context
 
     private var signalingIsolateService: SignalingIsolateService? = null
@@ -51,11 +49,10 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         // Store binnyMessenger for later use if instance of the flutter engine belongs to main isolate OR call service isolate
         messenger = flutterPluginBinding.binaryMessenger
-        assets = flutterPluginBinding.flutterAssets
         context = flutterPluginBinding.applicationContext
 
         ContextHolder.init(context)
-        AssetHolder.init(context, assets)
+        AssetHolder.init(context)
 
         // Bootstrap isolate APIs
         BackgroundSignalingIsolateBootstrapApi(context).let {

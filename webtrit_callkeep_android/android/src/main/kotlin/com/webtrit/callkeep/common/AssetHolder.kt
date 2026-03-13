@@ -3,10 +3,14 @@ package com.webtrit.callkeep.common
 import android.annotation.SuppressLint
 import android.content.Context
 import io.flutter.Log
-import io.flutter.embedding.engine.plugins.FlutterPlugin.FlutterAssets
 
 /**
- * Singleton object for managing application-specific data.
+ * Singleton that provides a process-wide [FlutterAssetManager].
+ *
+ * Call [init] once with any [Context] — from the Flutter plugin binding,
+ * from a background service, or from an isolated OS process. There is no
+ * dependency on the Flutter plugin API, so initialization is identical
+ * regardless of whether a FlutterEngine is present.
  */
 @SuppressLint("StaticFieldLeak")
 object AssetHolder {
@@ -17,9 +21,9 @@ object AssetHolder {
             ?: throw IllegalStateException("AssetHolder is not initialized. Call init() first.")
 
     @Synchronized
-    fun init(context: Context, assets: FlutterAssets) {
+    fun init(context: Context) {
         if (_flutterAssetManager == null) {
-            _flutterAssetManager = FlutterAssetManager(context, assets)
+            _flutterAssetManager = FlutterAssetManager(context)
         } else {
             Log.i("AssetHolder", "AssetManagerHolder is already initialized.")
         }
