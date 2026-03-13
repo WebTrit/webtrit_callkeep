@@ -3,6 +3,7 @@ package com.webtrit.callkeep.services.services.incoming_call.handlers
 import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.Service
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationManagerCompat
@@ -70,9 +71,14 @@ class IncomingCallHandler(
 
     private fun showNotification(metadata: CallMetadata) {
         // Build a high-priority incoming call notification and elevate the Service to foreground.
+        // foregroundServiceType must be passed explicitly: on API 34+ startForeground() without
+        // a type throws InvalidForegroundServiceTypeException when the manifest declares one.
         val notification = notificationBuilder.apply { setCallMetaData(metadata) }.build()
         service.startForegroundServiceCompat(
-            service, IncomingCallNotificationBuilder.NOTIFICATION_ID, notification
+            service,
+            IncomingCallNotificationBuilder.NOTIFICATION_ID,
+            notification,
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL,
         )
     }
 
