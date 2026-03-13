@@ -49,7 +49,7 @@ import com.webtrit.callkeep.services.services.signaling.workers.SignalingService
 @Keep
 class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
     private var latestSignalingStatus: SignalingStatus? = null
-    private var latestLifecycleActivityEvent: Lifecycle.Event? = Lifecycle.Event.ON_DESTROY
+    private var latestLifecycleActivityEvent: Lifecycle.Event = Lifecycle.Event.ON_DESTROY
 
     private lateinit var notificationBuilder: ForegroundCallNotificationBuilder
     private lateinit var flutterEngineHelper: FlutterEngineHelper
@@ -71,17 +71,15 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
     private val signalingStatusReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             latestSignalingStatus = SignalingStatus.fromBundle(intent?.extras)
-            synchronizeSignalingIsolate(latestLifecycleActivityEvent!!, latestSignalingStatus)
+            synchronizeSignalingIsolate(latestLifecycleActivityEvent, latestSignalingStatus)
 
         }
     }
 
     private val lifecycleEventReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            latestLifecycleActivityEvent = Lifecycle.Event.fromBundle(intent?.extras)
-            synchronizeSignalingIsolate(
-                latestLifecycleActivityEvent!!, latestSignalingStatus
-            )
+            latestLifecycleActivityEvent = Lifecycle.Event.fromBundle(intent?.extras) ?: return
+            synchronizeSignalingIsolate(latestLifecycleActivityEvent, latestSignalingStatus)
         }
     }
 
@@ -95,7 +93,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         SignalingStatusBroadcaster.register(this, signalingStatusReceiver)
 
         // Register the service to receive lifecycle events
-        latestLifecycleActivityEvent = ActivityLifecycleBroadcaster.currentValue
+        latestLifecycleActivityEvent = ActivityLifecycleBroadcaster.currentValue ?: Lifecycle.Event.ON_DESTROY
         ActivityLifecycleBroadcaster.register(this, lifecycleEventReceiver)
 
         notificationBuilder = ForegroundCallNotificationBuilder()
@@ -118,13 +116,12 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
         // Unregister the service from receiving lifecycle events
         ActivityLifecycleBroadcaster.unregister(this, lifecycleEventReceiver)
-        latestLifecycleActivityEvent = null
 
         if (StorageDelegate.SignalingService.isSignalingServiceEnabled(context = applicationContext)) {
             SignalingServiceBootWorker.enqueue(this)
         }
 
-        getLock(applicationContext)?.let { lock ->
+        wakeLock?.let { lock ->
             if (lock.isHeld) {
                 lock.release()
             }
@@ -217,7 +214,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
             }
         }
 
-        getLock(applicationContext)?.acquire(10 * 60 * 1000L)
+        getLock(applicationContext).acquire(10 * 60 * 1000L)
 
         flutterEngineHelper.startOrAttachEngine()
 
@@ -286,8 +283,32 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
     companion object {
         private const val TAG = "SignalingIsolateService"
+        private const val WAKE_LOCK_TAG = "com.webtrit.callkeep:SignalingIsolateService.Lock"
 
         var isRunning = false
+
+        @Volatile
+        private var wakeLock: PowerManager.WakeLock? = null
+
+        /**
+         * Returns the cached partial wake lock, creating it on first call.
+         * Using a single instance ensures acquire/release operate on the same object.
+         */
+        @Synchronized
+        fun getLock(context: Context): PowerManager.WakeLock {
+            return wakeLock ?: run {
+                val mgr = context.applicationContext.getSystemService(POWER_SERVICE) as PowerManager
+                mgr.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKE_LOCK_TAG).apply {
+                    setReferenceCounted(false)
+                }.also { wakeLock = it }
+            }
+        }
+
+        /** Resets the cached wake lock. Intended for use in tests only. */
+        @androidx.annotation.VisibleForTesting(otherwise = androidx.annotation.VisibleForTesting.PRIVATE)
+        internal fun resetWakeLock() {
+            wakeLock = null
+        }
 
         /**
          * Communicates with the service by starting it with the specified action and metadata.
@@ -312,17 +333,6 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
             context.stopService(Intent(context, SignalingIsolateService::class.java))
         }
 
-        /**
-         * Acquires a partial wake lock to keep the CPU running.
-         */
-        @Synchronized
-        fun getLock(context: Context): PowerManager.WakeLock? {
-            val mgr = context.getSystemService(POWER_SERVICE) as PowerManager
-            val lockName = "com.webtrit.callkeep:ForegroundCallService.Lock"
-            return mgr.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, lockName).apply {
-                setReferenceCounted(false)
-            }
-        }
     }
 }
 
