@@ -317,7 +317,7 @@ simply calls `AssetHolder.init(applicationContext)`.
 - [ ] Existing ringtone/asset playback works in main process
 - [ ] No references to `FlutterAssets` outside `WebtritCallkeepPlugin.kt`
 
-**Status:** `[~] open — PR #156`
+**Status:** `[x] merged — PR #156 (ea9033b)`
 
 ---
 
@@ -689,7 +689,7 @@ This PR just tells the OS to run `PhoneConnectionService` in a new process.
 | PR-2e | fix: endCall callback timing | `fix/endcall-callback-timing` | `not started` | — |
 | PR-3 | docs: architecture guide | `docs/android-architecture-guide` | `not started` | — |
 | PR-4a | feat: StorageDelegate options | `feat/android-storage-delegate-options` | `not started` | — |
-| PR-4b | refactor: remove FlutterAssets from AssetHolder | `refactor/asset-holder-remove-flutter-assets-dependency` | `open — PR #156` | — |
+| PR-4b | refactor: remove FlutterAssets from AssetHolder | `refactor/asset-holder-remove-flutter-assets-dependency` | `merged — PR #156` | `ea9033b` |
 | PR-4c | feat: CallMetaData + CallDiagnostics | `feat/android-metadata-diagnostics` | `not started` | — |
 | PR-4d | fix: notification null guards | `fix/incoming-call-notification-null-safety` | `not started` | — |
 | PR-5a | test: RetryManagerTest | `test/retry-manager-test` | `not started` | — |

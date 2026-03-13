@@ -4,7 +4,7 @@
 > new session, read this file first, then read `MIGRATION_PLAN.md` for full
 > detail. Update this file after every meaningful decision or state change.
 >
-> Last updated: 2026-03-13 (session 3)
+> Last updated: 2026-03-13 (session 4)
 
 ---
 
@@ -17,11 +17,10 @@ into a separate `:callkeep_core` OS process.
 
 **Where is the full plan:** `MIGRATION_PLAN.md` (this repo root, this branch)
 
-**Current overall phase:** Wave 1 in progress — PR-2a/2b/2c/2d merged. PR-10 merged ahead of schedule.
+**Current overall phase:** Wave 1 in progress — PR-2a/2b/2c/2d/2b merged. PR-4b/PR-10 merged.
 
 **Next action to take:** Continue Wave 1 remaining:
-PR-2e, PR-3, PR-4a, PR-4b, PR-4d (all independent, open simultaneously).
-PR-5d can now also open (WakeLock test — fix already in develop via PR-2a/#154).
+PR-2e, PR-3, PR-4a, PR-4d (all independent, open simultaneously).
 
 ---
 
@@ -29,8 +28,8 @@ PR-5d can now also open (WakeLock test — fix already in develop via PR-2a/#154
 
 | Branch | Last known commit | Notes |
 |--------|------------------|-------|
-| `develop` | `e58e456` | fix: release WakeLock in resetWakeLock (#154) |
-| `feat/android-callkeep-core-process-migration` | `7c749a3` | docs: mark PR-2a/2b/2c/2d as open |
+| `develop` | `ea9033b` | refactor(android): remove FlutterAssets dependency (#156) |
+| `feat/android-callkeep-core-process-migration` | `613f372` | docs: update migration context for PR-4b refactor |
 
 ---
 
@@ -46,7 +45,7 @@ PR-5d can now also open (WakeLock test — fix already in develop via PR-2a/#154
 | PR-2e | `fix/endcall-callback-timing` | `not started` | — | — |
 | PR-3 | `docs/android-architecture-guide` | `not started` | — | — |
 | PR-4a | `feat/android-storage-delegate-options` | `not started` | — | — |
-| PR-4b | `refactor/asset-holder-remove-flutter-assets-dependency` | `open` — PR #156 | — | — |
+| PR-4b | `refactor/asset-holder-remove-flutter-assets-dependency` | `merged` — PR #156 | `ea9033b` | 2026-03-13 |
 | PR-4c | `feat/android-metadata-diagnostics` | `not started` | — | — |
 | PR-4d | `fix/incoming-call-notification-null-safety` | `not started` | — | — |
 | PR-5a | `test/retry-manager-test` | `not started` | — | — |
