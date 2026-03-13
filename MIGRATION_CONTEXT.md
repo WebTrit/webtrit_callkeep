@@ -46,13 +46,13 @@ PR-5d can now also open (WakeLock test — fix already in develop via PR-2a/#154
 | PR-2e | `fix/endcall-callback-timing` | `not started` | — | — |
 | PR-3 | `docs/android-architecture-guide` | `not started` | — | — |
 | PR-4a | `feat/android-storage-delegate-options` | `not started` | — | — |
-| PR-4b | `feat/android-asset-holder-isolated` | `not started` | — | — |
+| PR-4b | `feat/android-asset-holder-isolated` | `open` — PR #155 | — | — |
 | PR-4c | `feat/android-metadata-diagnostics` | `not started` | — | — |
 | PR-4d | `fix/incoming-call-notification-null-safety` | `not started` | — | — |
 | PR-5a | `test/retry-manager-test` | `not started` | — | — |
 | PR-5b | `test/storage-delegate-sound-test` | `not started` | — | — |
 | PR-5c | `test/is-call-phone-security-exception-test` | `not started` | — | — |
-| PR-5d | `test/signaling-wakelock-test` | `not started` | — | — |
+| PR-5d | `test/signaling-wakelock-test` | `merged` — already in `b2b391f` (#153) | `b2b391f` | 2026-03-13 |
 | PR-5e | `test/callkeep-android-options-dart` | `not started` | — | — |
 | PR-6 | `feat/android-connection-tracker` | `not started` | — | — |
 | PR-7a | `feat/android-foreground-service-tracker` | `not started` | — | — |
@@ -86,6 +86,7 @@ Decisions already made — do not re-litigate without strong reason.
 | 2026-03-13 | PR-8 kept as one unit (all Pigeon files) | Dart/Kotlin Pigeon files must always be regenerated and merged together |
 | 2026-03-13 | PR-2a (#152) closed, superseded by #154 | Reviewer added improvements to resetWakeLock + Context.POWER_SERVICE; both landed as single commit `e58e456` |
 | 2026-03-13 | PR-10 (example app) merged ahead of schedule as #149 | Out-of-order merge; does not block any other PR — example app is independent of library |
+| 2026-03-13 | PR-5d already satisfied — test shipped inside #153 commit | `SignalingIsolateServiceWakeLockTest.kt` was included in the force-unwrap PR; no separate PR needed |
 
 ---
 
