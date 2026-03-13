@@ -42,8 +42,8 @@ import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
 import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
+import java.util.Collections
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
 import com.webtrit.callkeep.services.services.signaling.workers.SignalingServiceBootWorker
 
 /**
@@ -353,7 +353,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
             return
         }
 
-        val remaining = AtomicInteger(active.size)
+        val pendingIds = Collections.synchronizedSet(active.map { it.callId }.toMutableSet())
         val handler = Handler(Looper.getMainLooper())
         val resolved = AtomicBoolean(false)
         lateinit var receiver: BroadcastReceiver
@@ -367,7 +367,8 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
         receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
-                if (remaining.decrementAndGet() <= 0) finish()
+                val id = intent?.extras?.getString(CallDataConst.CALL_ID) ?: return
+                if (pendingIds.remove(id) && pendingIds.isEmpty()) finish()
             }
         }
 
@@ -377,7 +378,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         )
 
         handler.postDelayed({
-            Log.w(TAG, "endAllCalls timeout waiting for ${remaining.get()} remaining confirmation(s)")
+            Log.w(TAG, "endAllCalls timeout waiting for ${pendingIds.size} remaining confirmation(s)")
             finish()
         }, END_CALL_TIMEOUT_MS)
 
