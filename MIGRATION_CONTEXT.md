@@ -4,7 +4,7 @@
 > new session, read this file first, then read `MIGRATION_PLAN.md` for full
 > detail. Update this file after every meaningful decision or state change.
 >
-> Last updated: 2026-03-13
+> Last updated: 2026-03-13 (session 2)
 
 ---
 
@@ -17,11 +17,11 @@ into a separate `:callkeep_core` OS process.
 
 **Where is the full plan:** `MIGRATION_PLAN.md` (this repo root, this branch)
 
-**Current overall phase:** Planning complete. No PRs opened yet.
+**Current overall phase:** Wave 1 in progress — PR-2a/2b/2c/2d merged. PR-10 merged ahead of schedule.
 
-**Next action to take:** Wave 1 — open all of these simultaneously:
-PR-2a, PR-2b, PR-2c, PR-2d, PR-2e, PR-3, PR-4a, PR-4b, PR-4d
-(PR-1 skipped — develop reverted to flutter_lints, no delta).
+**Next action to take:** Continue Wave 1 remaining:
+PR-2e, PR-3, PR-4a, PR-4b, PR-4d (all independent, open simultaneously).
+PR-5d can now also open (WakeLock test — fix already in develop via PR-2a/#154).
 
 ---
 
@@ -29,8 +29,8 @@ PR-2a, PR-2b, PR-2c, PR-2d, PR-2e, PR-3, PR-4a, PR-4b, PR-4d
 
 | Branch | Last known commit | Notes |
 |--------|------------------|-------|
-| `develop` | `344b9d5` | chore: standardize analysis_options.yaml (#148) |
-| `feat/android-callkeep-core-process-migration` | `fb657b3` | docs: fix commit map |
+| `develop` | `e58e456` | fix: release WakeLock in resetWakeLock (#154) |
+| `feat/android-callkeep-core-process-migration` | `7c749a3` | docs: mark PR-2a/2b/2c/2d as open |
 
 ---
 
@@ -39,10 +39,10 @@ PR-2a, PR-2b, PR-2c, PR-2d, PR-2e, PR-3, PR-4a, PR-4b, PR-4d
 | PR | Branch | Status | Merged commit | Date |
 |----|--------|--------|--------------|------|
 | PR-1 | ~~`fix/standardize-analysis-options`~~ | `skipped` | — | 2026-03-13 |
-| PR-2a | `fix/signaling-wakelock-cache` | `open` — PR #152 | — | — |
-| PR-2b | `fix/signaling-logging` | `open` — PR #151 | — | — |
-| PR-2c | `fix/broadcast-receiver-context` | `open` — PR #150 | — | — |
-| PR-2d | `fix/lifecycle-null-safety` | `open` — PR #153 | — | — |
+| PR-2a | `fix/signaling-wakelock-cache` | `merged` — PR #152 closed, superseded by #154 | `e58e456` | 2026-03-13 |
+| PR-2b | `fix/signaling-logging` | `merged` — PR #151 | `efb911a` | 2026-03-13 |
+| PR-2c | `fix/broadcast-receiver-context` | `merged` — PR #150 | `9306d95` | 2026-03-13 |
+| PR-2d | `fix/lifecycle-null-safety` | `merged` — PR #153 | `b2b391f` | 2026-03-13 |
 | PR-2e | `fix/endcall-callback-timing` | `not started` | — | — |
 | PR-3 | `docs/android-architecture-guide` | `not started` | — | — |
 | PR-4a | `feat/android-storage-delegate-options` | `not started` | — | — |
@@ -60,7 +60,7 @@ PR-2a, PR-2b, PR-2c, PR-2d, PR-2e, PR-3, PR-4a, PR-4b, PR-4d
 | PR-8 | `feat/android-pigeon-api-additions` | `not started` | — | — |
 | PR-9a | `feat/android-broadcast-transport-migration` | `not started` | — | — |
 | PR-9b | `feat/android-callkeep-core-process-declaration` | `not started` | — | — |
-| PR-10 | `feat/example-app-multi-line-calls` | `not started` | — | — |
+| PR-10 | `feat/example-app-multi-line-calls` | `merged` — PR #149 (merged ahead of schedule) | `830a447` | 2026-03-13 |
 
 ---
 
@@ -84,6 +84,8 @@ Decisions already made — do not re-litigate without strong reason.
 | 2026-03-13 | Split PR-7 into 7a (ForegroundService) + 7b (IncomingCallService) | Different components, different risk profiles, different reviewers |
 | 2026-03-13 | PR-6 kept as one unit (Tracker + ConnectionManager) | Tightly coupled — tracker IS what manager reads; splitting would leave dangling dependencies |
 | 2026-03-13 | PR-8 kept as one unit (all Pigeon files) | Dart/Kotlin Pigeon files must always be regenerated and merged together |
+| 2026-03-13 | PR-2a (#152) closed, superseded by #154 | Reviewer added improvements to resetWakeLock + Context.POWER_SERVICE; both landed as single commit `e58e456` |
+| 2026-03-13 | PR-10 (example app) merged ahead of schedule as #149 | Out-of-order merge; does not block any other PR — example app is independent of library |
 
 ---
 
