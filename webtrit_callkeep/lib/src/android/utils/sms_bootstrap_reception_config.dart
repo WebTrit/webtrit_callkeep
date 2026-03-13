@@ -20,15 +20,9 @@ class SmsBootstrapReceptionConfig {
   /// Configures the SMS receiver (Android only) with the given prefix and regex pattern.
   ///
   /// [prefix] is used to filter incoming messages, and [regexPattern] is used to extract metadata.
-  Future<void> configureReceivedSms({
-    required String prefix,
-    required String regexPattern,
-  }) async {
+  Future<void> configureReceivedSms({required String prefix, required String regexPattern}) async {
     if (kIsWeb || !Platform.isAndroid) return Future.value();
-    return platform.initializeSmsReception(
-      messagePrefix: prefix,
-      regexPattern: regexPattern,
-    );
+    return platform.initializeSmsReception(messagePrefix: prefix, regexPattern: regexPattern);
   }
 
   /// Reports a new incoming call triggered by a push notification.

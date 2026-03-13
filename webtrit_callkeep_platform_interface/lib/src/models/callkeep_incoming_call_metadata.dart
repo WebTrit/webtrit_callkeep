@@ -2,12 +2,7 @@ import 'callkeep_handle.dart';
 
 /// Metadata describing an incoming call that was received via push notification.
 class CallkeepIncomingCallMetadata {
-  const CallkeepIncomingCallMetadata({
-    required this.callId,
-    this.handle,
-    this.displayName,
-    this.hasVideo = false,
-  });
+  const CallkeepIncomingCallMetadata({required this.callId, this.handle, this.displayName, this.hasVideo = false});
 
   /// Unique identifier of the incoming call.
   final String callId;

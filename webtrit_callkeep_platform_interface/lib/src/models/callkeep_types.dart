@@ -7,10 +7,8 @@ import 'callkeep_push_notification_status_sync.dart';
 /// [callkeepServiceStatus] - Provides the current status of the Callkeep service.
 /// [metadata] - Provides the metadata of the incoming call that started the isolate, if available.
 /// Returns a [Future] that completes when the service has started successfully.
-typedef ForegroundStartServiceHandle = Future<void> Function(
-  CallkeepServiceStatus callkeepServiceStatus,
-  CallkeepIncomingCallMetadata? metadata,
-);
+typedef ForegroundStartServiceHandle =
+    Future<void> Function(CallkeepServiceStatus callkeepServiceStatus, CallkeepIncomingCallMetadata? metadata);
 
 /// A callback function that gets triggered when there is a change in the push notification sync status.
 ///
@@ -18,17 +16,12 @@ typedef ForegroundStartServiceHandle = Future<void> Function(
 /// [metadata] - Provides the metadata of the incoming call that started the isolate, if available.
 ///
 /// Returns a [Future] that completes after handling the status change.
-typedef CallKeepPushNotificationSyncStatusHandle = Future<void> Function(
-  CallkeepPushNotificationSyncStatus status,
-  CallkeepIncomingCallMetadata? metadata,
-);
+typedef CallKeepPushNotificationSyncStatusHandle =
+    Future<void> Function(CallkeepPushNotificationSyncStatus status, CallkeepIncomingCallMetadata? metadata);
 
 /// A callback function that gets triggered when there is a change in the lifecycle of the foreground service.
 ///
 /// [callkeepServiceStatus] - Provides the current status of the Callkeep service when the lifecycle changes.
 ///
 /// Returns a [Future] that completes after handling the lifecycle change.
-typedef ForegroundChangeLifecycleHandle =
-    Future<void> Function(
-      CallkeepServiceStatus callkeepServiceStatus,
-    );
+typedef ForegroundChangeLifecycleHandle = Future<void> Function(CallkeepServiceStatus callkeepServiceStatus);

@@ -122,7 +122,8 @@ jobs:
         run: xvfb-run fluttium test flows/test_platform_name.yaml -d linux
 
   macos:
-    runs-on: macos-13
+    runs-on: macos-latest
+    if: false # macOS E2E tests disabled until platform is actively supported
 
     defaults:
       run:
@@ -137,7 +138,6 @@ jobs:
         run: flutter pub global activate fluttium_cli
 
       # TODO: Restore macOS E2E tests when they are enabled again.
-      # The following steps were temporarily removed because tests are currently disabled.
       # - name: E2E Tests
       #   run: fluttium test flows/test_platform_name.yaml -d macos
 
@@ -163,6 +163,7 @@ jobs:
 
   windows:
     runs-on: windows-2019
+    if: false # Windows E2E tests disabled until platform is actively supported
 
     defaults:
       run:
@@ -176,5 +177,6 @@ jobs:
       - name: Install Fluttium
         run: flutter pub global activate fluttium_cli
 
-      - name: E2E Tests
-        run: fluttium test flows/test_platform_name.yaml -d windows
+      # TODO: Restore Windows E2E tests when they are enabled again.
+      # - name: E2E Tests
+      #   run: fluttium test flows/test_platform_name.yaml -d windows

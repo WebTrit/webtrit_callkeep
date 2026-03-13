@@ -176,9 +176,7 @@ class Callkeep {
 
   /// Set the speaker with the given [callId] and [enabled] flag.
   /// Returns [CallkeepCallRequestError] if there is an error.
-  @Deprecated(
-    'Use setSpeaker instead. This method will be removed in the next major version.',
-  )
+  @Deprecated('Use setSpeaker instead. This method will be removed in the next major version.')
   Future<CallkeepCallRequestError?> setSpeaker(String callId, {required bool enabled}) {
     return platform.setSpeaker(callId, enabled);
   }

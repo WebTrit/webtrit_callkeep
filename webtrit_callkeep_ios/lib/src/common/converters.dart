@@ -19,10 +19,7 @@ extension PHandleTypeEnumConverter on PHandleTypeEnum {
 
 extension PHandleConverter on PHandle {
   CallkeepHandle toCallkeep() {
-    return CallkeepHandle(
-      type: type.toCallkeep(),
-      value: value,
-    );
+    return CallkeepHandle(type: type.toCallkeep(), value: value);
   }
 }
 
@@ -79,10 +76,7 @@ extension CallkeepHandleTypeConverter on CallkeepHandleType {
 
 extension CallkeepHandleConverter on CallkeepHandle {
   PHandle toPigeon() {
-    return PHandle(
-      type: type.toPigeon(),
-      value: value,
-    );
+    return PHandle(type: type.toPigeon(), value: value);
   }
 }
 
@@ -107,10 +101,7 @@ extension CallkeepEndCallReasonConverter on CallkeepEndCallReason {
 
 extension CallkeepOptionsConverter on CallkeepOptions {
   POptions toPigeon() {
-    return POptions(
-      ios: ios.toPigeon(),
-      android: android.toPigeon(),
-    );
+    return POptions(ios: ios.toPigeon(), android: android.toPigeon());
   }
 }
 

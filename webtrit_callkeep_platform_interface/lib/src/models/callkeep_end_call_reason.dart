@@ -1,8 +1,1 @@
-enum CallkeepEndCallReason {
-  failed,
-  remoteEnded,
-  unanswered,
-  answeredElsewhere,
-  declinedElsewhere,
-  missed,
-}
+enum CallkeepEndCallReason { failed, remoteEnded, unanswered, answeredElsewhere, declinedElsewhere, missed }

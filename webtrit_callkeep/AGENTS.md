@@ -15,7 +15,7 @@ lib/src/
 ├── webtrit_callkeep_logs.dart     # Logs delegate helpers
 └── android/
     ├── services/
-    │   ├── android_calkeep_services.dart          # AndroidCallkeepServices — static service registry
+    │   ├── android_callkeep_services.dart          # AndroidCallkeepServices — static service registry
     │   ├── background_signaling_bootstrap_service.dart
     │   ├── background_signaling_service.dart
     │   ├── background_push_notification_bootstrap_service.dart

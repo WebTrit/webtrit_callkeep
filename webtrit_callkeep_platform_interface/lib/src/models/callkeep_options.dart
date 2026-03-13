@@ -52,17 +52,11 @@ class CallkeepIOSOptions extends Equatable {
 }
 
 class CallkeepAndroidOptions extends Equatable {
-  const CallkeepAndroidOptions({
-    this.ringtoneSound,
-    this.ringbackSound,
-  });
+  const CallkeepAndroidOptions({this.ringtoneSound, this.ringbackSound});
 
   final String? ringtoneSound;
   final String? ringbackSound;
 
   @override
-  List<Object?> get props => [
-    ringtoneSound,
-    ringbackSound,
-  ];
+  List<Object?> get props => [ringtoneSound, ringbackSound];
 }

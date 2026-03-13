@@ -10,7 +10,7 @@ Branches must follow the pattern `<type>/<description>`, where `<description>` u
 |-----------------------|-------------------------------------------|
 | `feature/` or `feat/` | New feature or enhancement                |
 | `fix/`                | Bug fix                                   |
-| `refactor/`           | Code refactoring without behaviour change |
+| `refactor/`           | Code refactoring without behavior change  |
 | `chore/`              | Maintenance, dependency updates, tooling  |
 | `docs/`               | Documentation only                        |
 | `style/`              | Code style / formatting changes           |
