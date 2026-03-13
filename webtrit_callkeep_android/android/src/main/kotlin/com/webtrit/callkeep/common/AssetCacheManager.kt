@@ -7,7 +7,6 @@ import android.util.Log
 import androidx.annotation.VisibleForTesting
 import java.io.File
 import java.io.FileOutputStream
-import java.io.IOException
 
 /**
  * The root directory used by the Flutter tool to bundle assets inside the APK.
@@ -45,7 +44,7 @@ object AssetCacheManager {
         context = null
     }
 
-    fun getAsset(asset: String): Uri? {
+    fun getAsset(asset: String): Uri {
         val ctx = context
             ?: throw IllegalStateException("AssetCacheManager is not initialized. Call init() first.")
 
@@ -64,16 +63,12 @@ object AssetCacheManager {
 
     private fun cacheAsset(context: Context, assetPath: String, fileName: String): String {
         val cachedFile = File(context.cacheDir, fileName)
-        try {
-            val inputStream = context.assets.open(assetPath)
-            inputStream.use { stream ->
-                FileOutputStream(cachedFile).use { outputStream ->
-                    stream.copyTo(outputStream, bufferSize = 1024)
-                }
+        val inputStream = context.assets.open(assetPath)
+        inputStream.use { stream ->
+            FileOutputStream(cachedFile).use { outputStream ->
+                stream.copyTo(outputStream, bufferSize = 1024)
             }
-            return cachedFile.absolutePath
-        } catch (e: IOException) {
-            throw e
         }
+        return cachedFile.absolutePath
     }
 }

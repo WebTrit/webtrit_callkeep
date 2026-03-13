@@ -5,7 +5,6 @@ import android.net.Uri
 import android.os.Build
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -47,7 +46,10 @@ class AssetCacheManagerTest {
     fun `init is idempotent -- second call does not throw`() {
         AssetCacheManager.init(ctx)
         AssetCacheManager.init(ctx) // must not throw or reset state
-        assertNotNull(AssetCacheManager.getAsset("ringtone.mp3").let { it }) // may return null, but no crash
+        // Seed cache so getAsset does not attempt APK read
+        File(ctx.cacheDir, "ringtone.mp3").writeBytes(ByteArray(4))
+        val uri = AssetCacheManager.getAsset("ringtone.mp3")
+        assertTrue(uri.toString().isNotEmpty())
     }
 
     @Test
@@ -60,7 +62,6 @@ class AssetCacheManagerTest {
 
         val uri = AssetCacheManager.getAsset("ringtone.mp3")
 
-        assertNotNull(uri)
         assertEquals(Uri.fromFile(cachedFile), uri)
     }
 

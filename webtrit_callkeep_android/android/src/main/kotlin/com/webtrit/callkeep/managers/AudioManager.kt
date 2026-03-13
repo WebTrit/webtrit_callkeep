@@ -78,14 +78,8 @@ class AudioManager(val context: Context) {
     private fun getRingtone(asset: String): Ringtone {
         return try {
             val path = AssetCacheManager.getAsset(asset)
-
-            if (path != null) {
-                Log.i("AudioService", "Used asset: $path")
-                return RingtoneManager.getRingtone(context, path)
-            } else {
-                Log.i("AudioService", "Used system ringtone")
-                getDefaultRingtone()
-            }
+            Log.i("AudioService", "Used asset: $path")
+            RingtoneManager.getRingtone(context, path)
         } catch (e: Exception) {
             Log.e("AudioService", "$e")
             getDefaultRingtone()
