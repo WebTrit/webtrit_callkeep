@@ -1,0 +1,25 @@
+pre-commit:
+  commands:
+    dart-format:
+      glob: '**/*.dart'
+      exclude: '(\.g\.dart|\.pigeon\.dart|\.freezed\.dart|\.gr\.dart)$'
+      run: dart format --line-length 120 {staged_files}
+      stage_fixed: true
+
+commit-msg:
+  commands:
+    check-message:
+      run: bash tool/scripts/commit-msg-check.sh {1}
+
+pre-push:
+  commands:
+    branch-name:
+      run: bash tool/scripts/branch-name-check.sh
+    analyze:
+      run: |
+        for dir in webtrit_callkeep webtrit_callkeep_platform_interface webtrit_callkeep_android webtrit_callkeep_ios; do
+          if [ -d "$dir" ]; then
+            echo "Analyzing $dir..."
+            (cd "$dir" && flutter analyze) || exit 1
+          fi
+        done

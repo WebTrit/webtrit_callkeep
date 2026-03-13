@@ -1,0 +1,66 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter *)",
+      "Bash(dart *)",
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git add *)",
+      "Bash(git commit*)",
+      "Bash(git checkout *)",
+      "Bash(git pull*)",
+      "Bash(git push*)",
+      "Bash(git branch*)",
+      "Bash(very_good *)",
+      "Bash(lefthook *)",
+      "Bash(bash tool/scripts/*)"
+    ],
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/*.jks)",
+      "Read(**/*.keystore)",
+      "Read(**/*.p12)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/*.p8)",
+      "Edit(**/.env)",
+      "Edit(**/.env.*)",
+      "Write(**/.env)",
+      "Write(**/.env.*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/dart_formatter.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/md_formatter.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/newline_enforcer.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Read|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/secrets_guard.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
