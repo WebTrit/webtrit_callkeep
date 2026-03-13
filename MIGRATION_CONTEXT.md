@@ -12,14 +12,16 @@
 
 **What is happening:**
 We are migrating `feat/android-callkeep-core-process-migration` into `develop`
-via 11 incremental PRs. The feature isolates Android `PhoneConnectionService`
+via 23 atomic PRs. The feature isolates Android `PhoneConnectionService`
 into a separate `:callkeep_core` OS process.
 
 **Where is the full plan:** `MIGRATION_PLAN.md` (this repo root, this branch)
 
 **Current overall phase:** Planning complete. No PRs opened yet.
 
-**Next action to take:** Open PR-1 and PR-2 in parallel (both are independent).
+**Next action to take:** Wave 1 — open all of these simultaneously:
+PR-1, PR-2a, PR-2b, PR-2c, PR-2d, PR-2e, PR-3, PR-4a, PR-4b, PR-4d
+(all independent, no prerequisites).
 
 ---
 
@@ -28,7 +30,7 @@ into a separate `:callkeep_core` OS process.
 | Branch | Last known commit | Notes |
 |--------|------------------|-------|
 | `develop` | `344b9d5` | chore: standardize analysis_options.yaml (#148) |
-| `feat/android-callkeep-core-process-migration` | `f360c46` | docs: add core decomposition principle (this file's branch) |
+| `feat/android-callkeep-core-process-migration` | `446698d` | docs: add agent working memory document |
 
 ---
 
@@ -37,12 +39,24 @@ into a separate `:callkeep_core` OS process.
 | PR | Branch | Status | Merged commit | Date |
 |----|--------|--------|--------------|------|
 | PR-1 | `fix/standardize-analysis-options` | `not started` | — | — |
-| PR-2 | `fix/android-signaling-and-callback-fixes` | `not started` | — | — |
+| PR-2a | `fix/signaling-wakelock-cache` | `not started` | — | — |
+| PR-2b | `fix/signaling-logging` | `not started` | — | — |
+| PR-2c | `fix/broadcast-receiver-context` | `not started` | — | — |
+| PR-2d | `fix/lifecycle-null-safety` | `not started` | — | — |
+| PR-2e | `fix/endcall-callback-timing` | `not started` | — | — |
 | PR-3 | `docs/android-architecture-guide` | `not started` | — | — |
-| PR-4 | `feat/android-utility-improvements` | `not started` | — | — |
-| PR-5 | `test/android-unit-test-coverage` | `not started` | — | — |
+| PR-4a | `feat/android-storage-delegate-options` | `not started` | — | — |
+| PR-4b | `feat/android-asset-holder-isolated` | `not started` | — | — |
+| PR-4c | `feat/android-metadata-diagnostics` | `not started` | — | — |
+| PR-4d | `fix/incoming-call-notification-null-safety` | `not started` | — | — |
+| PR-5a | `test/retry-manager-test` | `not started` | — | — |
+| PR-5b | `test/storage-delegate-sound-test` | `not started` | — | — |
+| PR-5c | `test/is-call-phone-security-exception-test` | `not started` | — | — |
+| PR-5d | `test/signaling-wakelock-test` | `not started` | — | — |
+| PR-5e | `test/callkeep-android-options-dart` | `not started` | — | — |
 | PR-6 | `feat/android-connection-tracker` | `not started` | — | — |
-| PR-7 | `feat/android-incoming-call-tracker-integration` | `not started` | — | — |
+| PR-7a | `feat/android-foreground-service-tracker` | `not started` | — | — |
+| PR-7b | `feat/android-incoming-call-cold-start` | `not started` | — | — |
 | PR-8 | `feat/android-pigeon-api-additions` | `not started` | — | — |
 | PR-9a | `feat/android-broadcast-transport-migration` | `not started` | — | — |
 | PR-9b | `feat/android-callkeep-core-process-declaration` | `not started` | — | — |
@@ -61,6 +75,12 @@ Decisions already made — do not re-litigate without strong reason.
 | 2026-03-13 | Split PR-9 into PR-9a (transport) + PR-9b (manifest) | Core decomposition principle: cross-process mechanisms work in-process; migrate transport first while still single-process, then the manifest change becomes trivial |
 | 2026-03-13 | `ConnectionsApi` switches to `MainProcessConnectionTracker` in PR-6, not PR-9 | Tracker is already the cross-process-safe read path; doing it early keeps PR-9b minimal |
 | 2026-03-13 | docs/ in PR-3 should carry a "planned architecture" warning header | docs describe dual-process which isn't on develop yet when PR-3 lands |
+| 2026-03-13 | Split PR-2 into 2a-2e (one fix = one PR) | Smaller scope = faster review, easier revert, cleaner history |
+| 2026-03-13 | Split PR-4 into 4a-4d (one utility concern = one PR) | Same principle — additive changes are independent, split reduces risk |
+| 2026-03-13 | Split PR-5 into 5a-5e (one test file = one PR) | Tests are fully independent; splitting enables parallel merges |
+| 2026-03-13 | Split PR-7 into 7a (ForegroundService) + 7b (IncomingCallService) | Different components, different risk profiles, different reviewers |
+| 2026-03-13 | PR-6 kept as one unit (Tracker + ConnectionManager) | Tightly coupled — tracker IS what manager reads; splitting would leave dangling dependencies |
+| 2026-03-13 | PR-8 kept as one unit (all Pigeon files) | Dart/Kotlin Pigeon files must always be regenerated and merged together |
 
 ---
 
@@ -68,11 +88,12 @@ Decisions already made — do not re-litigate without strong reason.
 
 | Question | Relevant PR | Status |
 |----------|-------------|--------|
-| Commit `2620715` is labeled "tmp" — what exactly is in it? Confirm it is the endCall/endAllCalls fix before porting to PR-2 | PR-2 | **open** |
-| `analysis_options.yaml` was already standardized in `344b9d5` on develop — does PR-1 still have delta to apply, or is it already done? | PR-1 | **open** — verify with `git diff develop -- '*/analysis_options.yaml'` |
-| Do CI/CD workflow changes on the feature branch need to be included in any PR? | PR-1 or skip | **open** |
-| Which exact fields were added to `CallMetaData.kt`? Verify before PR-4. | PR-4 | **open** |
-| Does `StorageDelegate` on `develop` have any existing keys that could conflict with new ones from feature branch? | PR-4 | **open** |
+| Commit `2620715` labeled "tmp" — verify actual content before porting | PR-2e | **open** — run `git show 2620715` |
+| PR-1 may be already done by `344b9d5` — check delta first | PR-1 | **open** — run `git diff develop -- '*/analysis_options.yaml'` |
+| CI/CD workflow changes on feature branch — include or skip? | PR-1 or skip | **open** |
+| Exact fields added to `CallMetaData.kt`? | PR-4c | **open** — run `git show 6af63bd -- '*CallMetaData.kt'` |
+| `StorageDelegate` existing keys on develop — conflict risk? | PR-4a | **open** — read current `StorageDelegate.kt` on develop |
+| `RetryManager` — does it reference `StorageDelegate`? (affects PR-5a prerequisite) | PR-5a | **open** |
 
 ---
 
