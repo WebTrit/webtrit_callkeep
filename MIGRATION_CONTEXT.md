@@ -4,7 +4,7 @@
 > new session, read this file first, then read `MIGRATION_PLAN.md` for full
 > detail. Update this file after every meaningful decision or state change.
 >
-> Last updated: 2026-03-13 (session 2)
+> Last updated: 2026-03-13 (session 3)
 
 ---
 
@@ -46,7 +46,7 @@ PR-5d can now also open (WakeLock test — fix already in develop via PR-2a/#154
 | PR-2e | `fix/endcall-callback-timing` | `not started` | — | — |
 | PR-3 | `docs/android-architecture-guide` | `not started` | — | — |
 | PR-4a | `feat/android-storage-delegate-options` | `not started` | — | — |
-| PR-4b | `feat/android-asset-holder-isolated` | `open` — PR #155 | — | — |
+| PR-4b | `refactor/asset-holder-remove-flutter-assets-dependency` | `open` — PR #156 | — | — |
 | PR-4c | `feat/android-metadata-diagnostics` | `not started` | — | — |
 | PR-4d | `fix/incoming-call-notification-null-safety` | `not started` | — | — |
 | PR-5a | `test/retry-manager-test` | `not started` | — | — |
@@ -87,6 +87,7 @@ Decisions already made — do not re-litigate without strong reason.
 | 2026-03-13 | PR-2a (#152) closed, superseded by #154 | Reviewer added improvements to resetWakeLock + Context.POWER_SERVICE; both landed as single commit `e58e456` |
 | 2026-03-13 | PR-10 (example app) merged ahead of schedule as #149 | Out-of-order merge; does not block any other PR — example app is independent of library |
 | 2026-03-13 | PR-5d already satisfied — test shipped inside #153 commit | `SignalingIsolateServiceWakeLockTest.kt` was included in the force-unwrap PR; no separate PR needed |
+| 2026-03-13 | PR-4b refactored: remove `FlutterAssets` dependency entirely instead of adding `initForIsolatedProcess` stub | `FlutterPlugin.FlutterAssets` should not travel beyond `WebtritCallkeepPlugin`. The path `"flutter_assets/$asset"` is a fixed Flutter convention — inline it directly in `FlutterAssetManager`. PR #155 (initForIsolatedProcess approach) closed; PR #156 (clean refactor) opened on branch `refactor/asset-holder-remove-flutter-assets-dependency` |
 
 ---
 

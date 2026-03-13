@@ -85,7 +85,7 @@ PR-2e   fix: endCall/endAllCalls callbacks after broadcast confirmation
 PR-3    docs: android architecture (docs/ directory, 13 files)
 
 PR-4a   feat: StorageDelegate persistent options (ringback, full-screen flag)
-PR-4b   feat: AssetHolder.initForIsolatedProcess()
+PR-4b   refactor: remove FlutterAssets dependency from AssetHolder
 PR-4c   feat: CallMetaData new fields + CallDiagnostics cross-process support
 PR-4d   fix:  IncomingCallNotificationBuilder null guards + option checks
 
@@ -288,25 +288,36 @@ pigeon-api.md                full API reference
 
 ---
 
-### PR-4b — feat: AssetHolder.initForIsolatedProcess()
+### PR-4b — refactor: remove FlutterAssets dependency from AssetHolder
 
-**Branch:** `feat/android-asset-holder-isolated`
+**Branch:** `refactor/asset-holder-remove-flutter-assets-dependency`
 **Target:** `develop`
-**Risk:** Low — new static method, no existing code changed
+**Risk:** Low — simplification; FlutterAssets was only used to produce a fixed path
 
-**File:** `AssetHolder.kt`
-**Change:** Add `initForIsolatedProcess(context)` — provides minimal
-`FlutterAssets` using `flutter_assets/<name>` path convention for processes
-without a `FlutterEngine`.
+**Files changed:**
+- `FlutterAssetManager.kt` — remove `FlutterPlugin.FlutterAssets` constructor param;
+  inline `"flutter_assets/$asset"` directly (it is a fixed Flutter convention).
+- `AssetHolder.kt` — `init()` now takes only `context`; remove Flutter import.
+- `WebtritCallkeepPlugin.kt` — remove `assets` field and `FlutterAssets` import;
+  call `AssetHolder.init(context)` directly.
 
-**Note:** The call site (`PhoneConnectionService.onCreate()`) arrives in PR-9b.
-Adding the method now is safe — unused until then.
+**Design rationale:** `FlutterPlugin.FlutterAssets` should never travel beyond
+`WebtritCallkeepPlugin`. The path convention (`flutter_assets/<name>`) is stable
+and documented in the Flutter SDK — there is no reason to carry the interface
+into lower layers. This also eliminates the need for any special
+`initForIsolatedProcess` method: `AssetHolder.init(context)` now works
+identically in both the main process and `:callkeep_core`.
+
+**Note:** PR #155 (`initForIsolatedProcess` workaround) was closed. This PR (#156)
+is the proper fix. Call site in `PhoneConnectionService.onCreate()` (PR-9b)
+simply calls `AssetHolder.init(applicationContext)`.
 
 **Validate:**
-- [ ] Existing `AssetHolder` usage unaffected
 - [ ] Kotlin compiles without warnings
+- [ ] Existing ringtone/asset playback works in main process
+- [ ] No references to `FlutterAssets` outside `WebtritCallkeepPlugin.kt`
 
-**Status:** `[ ] not started`
+**Status:** `[~] open — PR #156`
 
 ---
 
@@ -678,7 +689,7 @@ This PR just tells the OS to run `PhoneConnectionService` in a new process.
 | PR-2e | fix: endCall callback timing | `fix/endcall-callback-timing` | `not started` | — |
 | PR-3 | docs: architecture guide | `docs/android-architecture-guide` | `not started` | — |
 | PR-4a | feat: StorageDelegate options | `feat/android-storage-delegate-options` | `not started` | — |
-| PR-4b | feat: AssetHolder isolated init | `feat/android-asset-holder-isolated` | `not started` | — |
+| PR-4b | refactor: remove FlutterAssets from AssetHolder | `refactor/asset-holder-remove-flutter-assets-dependency` | `open — PR #156` | — |
 | PR-4c | feat: CallMetaData + CallDiagnostics | `feat/android-metadata-diagnostics` | `not started` | — |
 | PR-4d | fix: notification null guards | `fix/incoming-call-notification-null-safety` | `not started` | — |
 | PR-5a | test: RetryManagerTest | `test/retry-manager-test` | `not started` | — |
@@ -750,7 +761,7 @@ PR-6 -> PR-7a -> PR-7b -> PR-8 -> PR-9a -> PR-9b -> PR-10
 | Synchronous return values removed in transport migration | Medium | PR-9a | All callbacks via broadcasts; validate every result path |
 | `CALL_ID_ALREADY_EXISTS_AND_ANSWERED` fires incorrectly | Medium | PR-6 | Only fires after explicit `markAnswered()`; `ValidateConnectionAdditionTest` covers it |
 | Pigeon files out of sync | Medium | PR-8 | Always regenerate together; `flutter analyze` enforces |
-| Asset resolution fails in `:callkeep_core` | Medium | PR-9b | `AssetHolder.initForIsolatedProcess()` added in PR-4b, wired in PR-9b |
+| Asset resolution fails in `:callkeep_core` | Medium | PR-9b | PR-4b removes `FlutterAssets` dependency — `AssetHolder.init(context)` now works in both processes; PR-9b just calls it |
 | Commit `2620715` content unknown ("tmp" label) | Medium | PR-2e | Run `git show 2620715` before porting |
 | PR-1 already done by `344b9d5` | Low | PR-1 | Diff first, skip if no delta |
 
