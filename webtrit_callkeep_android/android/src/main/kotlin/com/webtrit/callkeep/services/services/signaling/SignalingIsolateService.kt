@@ -312,7 +312,8 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         }
 
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(ConnectionPerform.HungUp, ConnectionPerform.DeclineCall), baseContext, receiver
+            listOf(ConnectionPerform.HungUp, ConnectionPerform.DeclineCall), baseContext, receiver,
+            exported = false,
         )
 
         handler.postDelayed({
@@ -371,7 +372,8 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         }
 
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(ConnectionPerform.HungUp, ConnectionPerform.DeclineCall), baseContext, receiver
+            listOf(ConnectionPerform.HungUp, ConnectionPerform.DeclineCall), baseContext, receiver,
+            exported = false,
         )
 
         handler.postDelayed({
