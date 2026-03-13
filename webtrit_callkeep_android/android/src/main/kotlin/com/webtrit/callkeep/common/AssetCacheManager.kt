@@ -3,8 +3,8 @@ package com.webtrit.callkeep.common
 import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
-import androidx.core.net.toUri
-import io.flutter.Log
+import android.util.Log
+import androidx.annotation.VisibleForTesting
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -40,12 +40,17 @@ object AssetCacheManager {
         }
     }
 
+    @VisibleForTesting
+    internal fun reset() {
+        context = null
+    }
+
     fun getAsset(asset: String): Uri? {
         val ctx = context
             ?: throw IllegalStateException("AssetCacheManager is not initialized. Call init() first.")
 
         val assetPath = "$FLUTTER_ASSETS_DIR/$asset"
-        val fileName = assetPath.toUri().lastPathSegment ?: "cache"
+        val fileName = Uri.parse(assetPath).lastPathSegment ?: "cache"
 
         // Note: cached files are keyed by file name only — two different assets
         // with the same file name would collide.
