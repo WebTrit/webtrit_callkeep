@@ -41,7 +41,7 @@ fi
 # Check description starts with lowercase
 DESCRIPTION=$(echo "$FIRST_LINE" | sed 's/^[^:]*: //')
 FIRST_CHAR="${DESCRIPTION:0:1}"
-if [[ "$FIRST_CHAR" =~ [A-Z] ]]; then
+if ! [[ "$FIRST_CHAR" =~ [a-z] ]]; then
   echo "ERROR: Commit description must start with a lowercase letter." >&2
   echo "  Got: $DESCRIPTION" >&2
   exit 1
