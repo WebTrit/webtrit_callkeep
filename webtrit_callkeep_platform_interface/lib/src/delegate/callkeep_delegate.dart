@@ -4,11 +4,7 @@ import 'package:webtrit_callkeep_platform_interface/src/models/models.dart';
 /// Used to handle callkeep from the platform side
 abstract class CallkeepDelegate {
   /// Confirmation for outgoing call
-  void continueStartCallIntent(
-    CallkeepHandle handle,
-    String? displayName,
-    bool video,
-  );
+  void continueStartCallIntent(CallkeepHandle handle, String? displayName, bool video);
 
   /// Confirmation for incoming call processing
   void didPushIncomingCall(

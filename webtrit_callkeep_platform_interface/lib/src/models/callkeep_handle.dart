@@ -1,16 +1,9 @@
 import 'package:equatable/equatable.dart';
 
-enum CallkeepHandleType {
-  generic,
-  number,
-  email,
-}
+enum CallkeepHandleType { generic, number, email }
 
 class CallkeepHandle extends Equatable {
-  const CallkeepHandle({
-    required this.type,
-    required this.value,
-  });
+  const CallkeepHandle({required this.type, required this.value});
 
   const CallkeepHandle.generic(this.value) : type = CallkeepHandleType.generic;
 
@@ -28,10 +21,7 @@ class CallkeepHandle extends Equatable {
   bool get isEmail => type == CallkeepHandleType.email;
 
   @override
-  List<Object?> get props => [
-    type,
-    value,
-  ];
+  List<Object?> get props => [type, value];
 
   @override
   bool operator ==(Object other) =>

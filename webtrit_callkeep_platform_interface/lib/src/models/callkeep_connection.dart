@@ -28,11 +28,7 @@ enum CallkeepDisconnectCauseType {
 }
 
 class CallkeepConnection extends Equatable {
-  const CallkeepConnection({
-    required this.callId,
-    required this.state,
-    required this.disconnectCause,
-  });
+  const CallkeepConnection({required this.callId, required this.state, required this.disconnectCause});
 
   final String callId;
   final CallkeepConnectionState state;
@@ -48,10 +44,7 @@ class CallkeepConnection extends Equatable {
 }
 
 class CallkeepDisconnectCause extends Equatable {
-  const CallkeepDisconnectCause({
-    required this.type,
-    required this.reason,
-  });
+  const CallkeepDisconnectCause({required this.type, required this.reason});
 
   final CallkeepDisconnectCauseType type;
   final String? reason;

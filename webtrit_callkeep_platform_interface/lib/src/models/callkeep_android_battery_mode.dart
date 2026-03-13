@@ -1,6 +1,1 @@
-enum CallkeepAndroidBatteryMode {
-  unrestricted,
-  optimized,
-  restricted,
-  unknown,
-}
+enum CallkeepAndroidBatteryMode { unrestricted, optimized, restricted, unknown }
