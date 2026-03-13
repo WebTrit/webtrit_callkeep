@@ -12,7 +12,7 @@ if [[ "$BRANCH" == "main" || "$BRANCH" == "develop" || "$BRANCH" == "HEAD" ]]; t
   exit 0
 fi
 
-PATTERN='^(feat|feature|fix|refactor|chore|build|style|docs|release|test|ci)/.+'
+PATTERN='^(feat|feature|fix|refactor|chore|build|style|docs|release|test|ci)/[a-z0-9]+(-[a-z0-9]+)*$'
 if ! echo "$BRANCH" | grep -qE "$PATTERN"; then
   echo "ERROR: Branch name '$BRANCH' does not follow the naming convention." >&2
   echo "  Expected: type/description  (e.g. feat/android-background-service)" >&2
