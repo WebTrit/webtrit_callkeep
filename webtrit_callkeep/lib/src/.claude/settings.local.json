@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chmod +x /Users/serdun/Documents/work/webtrit/webtrit_callkeep/tool/scripts/commit-msg-check.sh /Users/serdun/Documents/work/webtrit/webtrit_callkeep/tool/scripts/branch-name-check.sh /Users/serdun/Documents/work/webtrit/webtrit_callkeep/.claude/hooks/dart_formatter.sh /Users/serdun/Documents/work/webtrit/webtrit_callkeep/.claude/hooks/newline_enforcer.sh /Users/serdun/Documents/work/webtrit/webtrit_callkeep/.claude/hooks/secrets_guard.sh)",
+      "Bash(git checkout:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr:*)",
+      "Bash(chmod +x /Users/serdun/Documents/work/webtrit/webtrit_callkeep/.claude/hooks/md_formatter.sh)",
+      "Bash(command -v markdownlint-cli2 && markdownlint-cli2 --version || echo \"NOT INSTALLED\")",
+      "Bash(npm install:*)",
+      "Bash(markdownlint-cli2 --version)",
+      "Bash(for f:*)",
+      "Bash(do)",
+      "Bash(echo \"=== $f ===\")",
+      "Read(//Users/serdun/Documents/work/webtrit/webtrit_callkeep/**)",
+      "Bash(done)",
+      "Bash(while read:*)",
+      "Bash(do echo:*)",
+      "Bash(gh api:*)",
+      "Bash(for pkg:*)",
+      "Bash(echo \"=== $pkg/pubspec.yaml ===\")",
+      "Read(//Users/serdun/Documents/work/webtrit/webtrit_callkeep/$pkg/**)",
+      "Bash(echo \"=== $pkg ===\")",
+      "Bash(cat > /Users/serdun/Documents/work/webtrit/webtrit_callkeep/webtrit_callkeep/analysis_options.yaml << 'EOF'\ninclude: package:flutter_lints/flutter.yaml\n\nlinter:\n  rules:\n    prefer_single_quotes: true\n\nanalyzer:\n  exclude:\n    - \"**/*.g.dart\"\n    - \"**/*.pigeon.dart\"\n\nformatter:\n  page_width: 120\nEOF)",
+      "Bash(cat > /Users/serdun/Documents/work/webtrit/webtrit_callkeep/webtrit_callkeep_platform_interface/analysis_options.yaml << 'EOF'\ninclude: package:lints/recommended.yaml\n\nlinter:\n  rules:\n    prefer_single_quotes: true\n\nformatter:\n  page_width: 120\nEOF\n\ncat > /Users/serdun/Documents/work/webtrit/webtrit_callkeep/webtrit_callkeep_android/analysis_options.yaml << 'EOF'\ninclude: package:flutter_lints/flutter.yaml\n\nlinter:\n  rules:\n    prefer_single_quotes: true\n\nanalyzer:\n  exclude:\n    - \"**/*.g.dart\"\n    - \"**/*.pigeon.dart\"\n\nformatter:\n  page_width: 120\nEOF\n\ncat > /Users/serdun/Documents/work/webtrit/webtrit_callkeep/webtrit_callkeep_ios/analysis_options.yaml << 'EOF'\ninclude: package:flutter_lints/flutter.yaml\n\nlinter:\n  rules:\n    prefer_single_quotes: true\n\nanalyzer:\n  exclude:\n    - \"**/*.g.dart\"\n    - \"**/*.pigeon.dart\"\n\nformatter:\n  page_width: 120\nEOF\n\ncat > /Users/serdun/Documents/work/webtrit/webtrit_callkeep/webtrit_callkeep_web/analysis_options.yaml << 'EOF'\ninclude: package:flutter_lints/flutter.yaml\n\nlinter:\n  rules:\n    prefer_single_quotes: true\n\nformatter:\n  page_width: 120\nEOF\n\ncat > /Users/serdun/Documents/work/webtrit/webtrit_callkeep/webtrit_callkeep_linux/analysis_options.yaml << 'EOF'\ninclude: package:flutter_lints/flutter.yaml\n\nlinter:\n  rules:\n    prefer_single_quotes: true\n\nformatter:\n  page_width: 120\nEOF\n\ncat > /Users/serdun/Documents/work/webtrit/webtrit_callkeep/webtrit_callkeep_macos/analysis_options.yaml << 'EOF'\ninclude: package:flutter_lints/flutter.yaml\n\nlinter:\n  rules:\n    prefer_single_quotes: true\n\nformatter:\n  page_width: 120\nEOF\n\ncat > /Users/serdun/Documents/work/webtrit/webtrit_callkeep/webtrit_callkeep_windows/analysis_options.yaml << 'EOF'\ninclude: package:flutter_lints/flutter.yaml\n\nlinter:\n  rules:\n    prefer_single_quotes: true\n\nformatter:\n  page_width: 120\nEOF)",
+      "Bash(git add:*)",
+      "Bash(gh run:*)"
+    ]
+  }
+}

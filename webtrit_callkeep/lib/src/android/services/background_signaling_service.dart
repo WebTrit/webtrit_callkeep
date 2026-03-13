@@ -24,12 +24,7 @@ class BackgroundSignalingService {
   }
 
   /// Reports an incoming call in the background (Android only).
-  Future<dynamic> incomingCall(
-    String callId,
-    CallkeepHandle handle, {
-    String? displayName,
-    bool hasVideo = false,
-  }) {
+  Future<dynamic> incomingCall(String callId, CallkeepHandle handle, {String? displayName, bool hasVideo = false}) {
     if (kIsWeb || !Platform.isAndroid) return Future.value();
     return platform.incomingCallBackgroundSignalingService(callId, handle, displayName, hasVideo);
   }
