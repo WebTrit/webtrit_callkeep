@@ -30,6 +30,7 @@ private const val FLUTTER_ASSETS_DIR = "flutter_assets"
 object AssetCacheManager {
     private var context: Context? = null
 
+    /** Initializes the singleton with [context]. Safe to call from any OS process. No-op if already initialized. */
     @Synchronized
     fun init(context: Context) {
         if (this.context == null) {
@@ -39,11 +40,19 @@ object AssetCacheManager {
         }
     }
 
+    /** Resets singleton state. For use in tests only. */
     @VisibleForTesting
     internal fun reset() {
         context = null
     }
 
+    /**
+     * Returns a `file://` [Uri] for [asset], caching it to disk on first access.
+     *
+     * @param asset Logical asset name relative to the Flutter assets directory (e.g. `"ringtone.mp3"`).
+     * @throws IllegalStateException if [init] has not been called.
+     * @throws java.io.IOException if the asset does not exist in the APK.
+     */
     fun getAsset(asset: String): Uri {
         val ctx = context
             ?: throw IllegalStateException("AssetCacheManager is not initialized. Call init() first.")
