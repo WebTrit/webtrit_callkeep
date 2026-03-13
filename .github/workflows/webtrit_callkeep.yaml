@@ -122,7 +122,7 @@ jobs:
         run: xvfb-run fluttium test flows/test_platform_name.yaml -d linux
 
   macos:
-    runs-on: macos-13
+    runs-on: macos-latest
 
     defaults:
       run:
