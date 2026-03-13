@@ -30,7 +30,7 @@ PR-2a, PR-2b, PR-2c, PR-2d, PR-2e, PR-3, PR-4a, PR-4b, PR-4d
 | Branch | Last known commit | Notes |
 |--------|------------------|-------|
 | `develop` | `344b9d5` | chore: standardize analysis_options.yaml (#148) |
-| `feat/android-callkeep-core-process-migration` | `446698d` | docs: add agent working memory document |
+| `feat/android-callkeep-core-process-migration` | `fb657b3` | docs: fix commit map |
 
 ---
 
@@ -39,10 +39,10 @@ PR-2a, PR-2b, PR-2c, PR-2d, PR-2e, PR-3, PR-4a, PR-4b, PR-4d
 | PR | Branch | Status | Merged commit | Date |
 |----|--------|--------|--------------|------|
 | PR-1 | ~~`fix/standardize-analysis-options`~~ | `skipped` | — | 2026-03-13 |
-| PR-2a | `fix/signaling-wakelock-cache` | `not started` | — | — |
-| PR-2b | `fix/signaling-logging` | `not started` | — | — |
-| PR-2c | `fix/broadcast-receiver-context` | `not started` | — | — |
-| PR-2d | `fix/lifecycle-null-safety` | `not started` | — | — |
+| PR-2a | `fix/signaling-wakelock-cache` | `open` — PR #152 | — | — |
+| PR-2b | `fix/signaling-logging` | `open` — PR #151 | — | — |
+| PR-2c | `fix/broadcast-receiver-context` | `open` — PR #150 | — | — |
+| PR-2d | `fix/lifecycle-null-safety` | `open` — PR #153 | — | — |
 | PR-2e | `fix/endcall-callback-timing` | `not started` | — | — |
 | PR-3 | `docs/android-architecture-guide` | `not started` | — | — |
 | PR-4a | `feat/android-storage-delegate-options` | `not started` | — | — |
