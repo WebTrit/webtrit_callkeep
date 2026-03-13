@@ -4,7 +4,7 @@
 > new session, read this file first, then read `MIGRATION_PLAN.md` for full
 > detail. Update this file after every meaningful decision or state change.
 >
-> Last updated: 2026-03-13 (session 4)
+> Last updated: 2026-03-13 (session 5)
 
 ---
 
@@ -17,11 +17,12 @@ into a separate `:callkeep_core` OS process.
 
 **Where is the full plan:** `MIGRATION_PLAN.md` (this repo root, this branch)
 
-**Current overall phase:** Wave 1 in progress — PR-2a/2b/2c/2d/2b merged. PR-4b/PR-10 merged.
+**Current overall phase:** Wave 1 in progress — PR-2a/2b/2c/2d merged. PR-4b/PR-10 merged.
 
 **Next action to take:** Continue Wave 1 remaining:
-PR-2e, PR-4a, PR-4d (all independent, open simultaneously).
-PR-3 moved to Wave 4 -- after PR-9b (full migration complete).
+PR-4a (open PR #157), PR-2e (open PR #158) await review.
+PR-4d — not started, depends on PR-4a merge (uses `StorageDelegate.Sound.isIncomingCallFullScreen`).
+PR-3 moved to Wave 4 — after PR-9b (full migration complete).
 
 ---
 
@@ -43,7 +44,7 @@ PR-3 moved to Wave 4 -- after PR-9b (full migration complete).
 | PR-2b | `fix/signaling-logging` | `merged` — PR #151 | `efb911a` | 2026-03-13 |
 | PR-2c | `fix/broadcast-receiver-context` | `merged` — PR #150 | `9306d95` | 2026-03-13 |
 | PR-2d | `fix/lifecycle-null-safety` | `merged` — PR #153 | `b2b391f` | 2026-03-13 |
-| PR-2e | `fix/endcall-callback-timing` | `not started` | — | — |
+| PR-2e | `fix/endcall-callback-timing` | `open` — PR #158 | — | — |
 | PR-3 | `docs/android-architecture-guide` | `not started` | — | — |
 | PR-4a | `feat/android-storage-delegate-options` | `open` — PR #157 | — | — |
 | PR-4b | `refactor/asset-holder-remove-flutter-assets-dependency` | `merged` — PR #156 | `ea9033b` | 2026-03-13 |
