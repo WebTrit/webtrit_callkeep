@@ -35,4 +35,4 @@ if [[ ! -f "$FILE_PATH" ]]; then
   exit 0
 fi
 
-dart format --line-length 80 "$FILE_PATH" 2>/dev/null || true
+dart format --line-length 120 "$FILE_PATH" 2>/dev/null || true
