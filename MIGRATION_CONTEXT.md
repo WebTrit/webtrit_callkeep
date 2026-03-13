@@ -45,7 +45,7 @@ PR-3 moved to Wave 4 -- after PR-9b (full migration complete).
 | PR-2d | `fix/lifecycle-null-safety` | `merged` — PR #153 | `b2b391f` | 2026-03-13 |
 | PR-2e | `fix/endcall-callback-timing` | `not started` | — | — |
 | PR-3 | `docs/android-architecture-guide` | `not started` | — | — |
-| PR-4a | `feat/android-storage-delegate-options` | `not started` | — | — |
+| PR-4a | `feat/android-storage-delegate-options` | `open` — PR #157 | — | — |
 | PR-4b | `refactor/asset-holder-remove-flutter-assets-dependency` | `merged` — PR #156 | `ea9033b` | 2026-03-13 |
 | PR-4c | `feat/android-metadata-diagnostics` | `not started` | — | — |
 | PR-4d | `fix/incoming-call-notification-null-safety` | `not started` | — | — |
@@ -98,7 +98,7 @@ Decisions already made — do not re-litigate without strong reason.
 | ~~Commit `2620715` content~~ | PR-2e | **resolved** — only settings + TODO.md, skip |
 | CI/CD workflow changes on feature branch — include or skip? | skip | **open** |
 | Exact fields added to `CallMetaData.kt`? | PR-4c | **open** — run `git show 6af63bd -- '*CallMetaData.kt'` |
-| `StorageDelegate` existing keys on develop — conflict risk? | PR-4a | **open** — read current `StorageDelegate.kt` on develop |
+| `StorageDelegate` existing keys on develop — conflict risk? | PR-4a | **resolved** — no conflicts; new keys only |
 | `RetryManager` — does it reference `StorageDelegate`? (affects PR-5a prerequisite) | PR-5a | **open** |
 
 ---
