@@ -297,7 +297,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         @Synchronized
         fun getLock(context: Context): PowerManager.WakeLock {
             return wakeLock ?: run {
-                val mgr = context.applicationContext.getSystemService(POWER_SERVICE) as PowerManager
+                val mgr = context.applicationContext.getSystemService(Context.POWER_SERVICE) as PowerManager
                 mgr.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKE_LOCK_TAG).apply {
                     setReferenceCounted(false)
                 }.also { wakeLock = it }
@@ -307,6 +307,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         /** Resets the cached wake lock. Intended for use in tests only. */
         @androidx.annotation.VisibleForTesting(otherwise = androidx.annotation.VisibleForTesting.PRIVATE)
         internal fun resetWakeLock() {
+            wakeLock?.let { if (it.isHeld) it.release() }
             wakeLock = null
         }
 
