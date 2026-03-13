@@ -15,5 +15,5 @@ dependencies:
   dart_casing: ^3.0.1
 
 dev_dependencies:
-  very_good_analysis: ^10.0.0
+  lints: ^5.0.0
   mockito: ^5.5.1
