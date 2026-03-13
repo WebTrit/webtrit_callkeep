@@ -1,8 +1,10 @@
 package com.webtrit.callkeep.common
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
 import androidx.core.net.toUri
+import io.flutter.Log
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -19,31 +21,43 @@ import java.io.IOException
 private const val FLUTTER_ASSETS_DIR = "flutter_assets"
 
 /**
- * Caches APK assets to disk and returns file URIs for use by the Android media stack.
+ * Process-wide singleton that caches APK assets to disk and returns file URIs
+ * for use by the Android media stack.
  *
- * Asset names are resolved using [FLUTTER_ASSETS_DIR], which is the standard
- * Flutter asset directory bundled into every Flutter APK. This class has no
- * dependency on the Flutter plugin API and works identically in any OS process —
- * including isolated processes such as `:callkeep_core` that have no FlutterEngine.
+ * Call [init] once with any [Context] before the first [getAsset] call.
+ * Initialization is identical in all OS processes — no Flutter API is required.
  */
-class AssetCacheManager(private val context: Context) {
-    private val cacheDir: File by lazy { context.cacheDir }
+@SuppressLint("StaticFieldLeak")
+object AssetCacheManager {
+    private var context: Context? = null
+
+    @Synchronized
+    fun init(context: Context) {
+        if (this.context == null) {
+            this.context = context.applicationContext
+        } else {
+            Log.i("AssetCacheManager", "AssetCacheManager is already initialized.")
+        }
+    }
 
     fun getAsset(asset: String): Uri? {
+        val ctx = context
+            ?: throw IllegalStateException("AssetCacheManager is not initialized. Call init() first.")
+
         val assetPath = "$FLUTTER_ASSETS_DIR/$asset"
         val fileName = assetPath.toUri().lastPathSegment ?: "cache"
 
         // Note: cached files are keyed by file name only — two different assets
         // with the same file name would collide.
-        val cachedFile = File(cacheDir, fileName)
+        val cachedFile = File(ctx.cacheDir, fileName)
         if (cachedFile.exists()) {
             return Uri.fromFile(cachedFile)
         }
 
-        return cacheAsset(assetPath, fileName).let { Uri.fromFile(File(it)) }
+        return cacheAsset(ctx, assetPath, fileName).let { Uri.fromFile(File(it)) }
     }
 
-    private fun cacheAsset(assetPath: String, fileName: String): String {
+    private fun cacheAsset(context: Context, assetPath: String, fileName: String): String {
         val cachedFile = File(context.cacheDir, fileName)
         try {
             val inputStream = context.assets.open(assetPath)

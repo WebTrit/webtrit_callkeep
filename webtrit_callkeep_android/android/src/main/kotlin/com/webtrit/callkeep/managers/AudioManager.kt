@@ -7,7 +7,7 @@ import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.Ringtone
 import android.media.RingtoneManager
-import com.webtrit.callkeep.common.AssetHolder
+import com.webtrit.callkeep.common.AssetCacheManager
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.setLoopingCompat
 
@@ -77,7 +77,7 @@ class AudioManager(val context: Context) {
 
     private fun getRingtone(asset: String): Ringtone {
         return try {
-            val path = AssetHolder.assetCacheManager.getAsset(asset)
+            val path = AssetCacheManager.getAsset(asset)
 
             if (path != null) {
                 Log.i("AudioService", "Used asset: $path")
@@ -111,7 +111,7 @@ class AudioManager(val context: Context) {
      * @param asset The flutters ringback sound asset.
      */
     private fun createRingback(asset: String): MediaPlayer {
-        val path = AssetHolder.assetCacheManager.getAsset(asset)
+        val path = AssetCacheManager.getAsset(asset)
         val attributes =
             AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING)
                 .build()
