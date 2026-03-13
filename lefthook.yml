@@ -1,7 +1,7 @@
 pre-commit:
   commands:
     dart-format:
-      glob: '*.dart'
+      glob: '**/*.dart'
       exclude: '(\.g\.dart|\.pigeon\.dart|\.freezed\.dart|\.gr\.dart)$'
       run: dart format --line-length 80 {staged_files}
       stage_fixed: true
