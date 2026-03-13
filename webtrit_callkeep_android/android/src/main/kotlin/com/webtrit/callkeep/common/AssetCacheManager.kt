@@ -8,26 +8,33 @@ import java.io.FileOutputStream
 import java.io.IOException
 
 /**
- * Caches Android assets to disk and returns file URIs for use by the media stack.
+ * The root directory used by the Flutter tool to bundle assets inside the APK.
  *
- * Asset name → path resolution is fully delegated to [assetPathResolver], so this
- * class has no knowledge of any SDK conventions and works in any OS process.
+ * Defined by the Flutter build system and stable across Flutter versions.
+ * See: https://docs.flutter.dev/ui/assets/assets-and-images#loading-assets
  *
- * @param assetPathResolver maps a logical asset name (e.g. "ringtone.mp3") to the
- *   path understood by [android.content.res.AssetManager] (e.g. "flutter_assets/ringtone.mp3").
+ * All asset names passed to [android.content.res.AssetManager] must be
+ * prefixed with this path (e.g. "flutter_assets/ringtone.mp3").
  */
-class AssetCacheManager(
-    private val context: Context,
-    private val assetPathResolver: (String) -> String,
-) {
+private const val FLUTTER_ASSETS_DIR = "flutter_assets"
+
+/**
+ * Caches APK assets to disk and returns file URIs for use by the Android media stack.
+ *
+ * Asset names are resolved using [FLUTTER_ASSETS_DIR], which is the standard
+ * Flutter asset directory bundled into every Flutter APK. This class has no
+ * dependency on the Flutter plugin API and works identically in any OS process —
+ * including isolated processes such as `:callkeep_core` that have no FlutterEngine.
+ */
+class AssetCacheManager(private val context: Context) {
     private val cacheDir: File by lazy { context.cacheDir }
 
     fun getAsset(asset: String): Uri? {
-        val assetPath = assetPathResolver(asset)
+        val assetPath = "$FLUTTER_ASSETS_DIR/$asset"
         val fileName = assetPath.toUri().lastPathSegment ?: "cache"
 
-        // For note: there may be issues with cached data if, for example,
-        // another sound is saved under the same name.
+        // Note: cached files are keyed by file name only — two different assets
+        // with the same file name would collide.
         val cachedFile = File(cacheDir, fileName)
         if (cachedFile.exists()) {
             return Uri.fromFile(cachedFile)

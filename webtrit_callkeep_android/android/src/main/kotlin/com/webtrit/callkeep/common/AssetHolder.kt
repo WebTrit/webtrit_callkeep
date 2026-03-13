@@ -7,10 +7,9 @@ import io.flutter.Log
 /**
  * Singleton that provides a process-wide [AssetCacheManager].
  *
- * Call [init] once, supplying a [Context] and an [assetPathResolver] that maps
- * logical asset names to paths understood by [android.content.res.AssetManager].
- * The resolver is the only caller-specific detail — the rest of the class is
- * process-agnostic.
+ * Call [init] once with any [Context] — from the Flutter plugin binding,
+ * from a background service, or from an isolated OS process. Initialization
+ * is identical in all cases; no Flutter API is required.
  */
 @SuppressLint("StaticFieldLeak")
 object AssetHolder {
@@ -21,9 +20,9 @@ object AssetHolder {
             ?: throw IllegalStateException("AssetHolder is not initialized. Call init() first.")
 
     @Synchronized
-    fun init(context: Context, assetPathResolver: (String) -> String) {
+    fun init(context: Context) {
         if (_assetCacheManager == null) {
-            _assetCacheManager = AssetCacheManager(context, assetPathResolver)
+            _assetCacheManager = AssetCacheManager(context)
         } else {
             Log.i("AssetHolder", "AssetHolder is already initialized.")
         }
