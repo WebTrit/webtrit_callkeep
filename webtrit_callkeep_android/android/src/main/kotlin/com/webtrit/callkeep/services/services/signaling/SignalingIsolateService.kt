@@ -117,7 +117,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         latestSignalingStatus = null
 
         // Unregister the service from receiving lifecycle events
-        ActivityLifecycleBroadcaster.unregister(baseContext, lifecycleEventReceiver)
+        ActivityLifecycleBroadcaster.unregister(this, lifecycleEventReceiver)
         latestLifecycleActivityEvent = null
 
         if (StorageDelegate.SignalingService.isSignalingServiceEnabled(context = applicationContext)) {
