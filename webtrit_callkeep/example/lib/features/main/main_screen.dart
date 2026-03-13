@@ -83,7 +83,7 @@ class _MainScreenState extends State<MainScreen> {
                 child: const Text('Full Screen Intent Status'),
                 onPressed: () async {
                   var status = await WebtritCallkeepPermissions().getFullScreenIntentPermissionStatus();
-                  if (!mounted) return;
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Permission status: $status')),
                   );
@@ -97,7 +97,7 @@ class _MainScreenState extends State<MainScreen> {
                 child: const Text('Battery Optimization Status'),
                 onPressed: () async {
                   var status = await WebtritCallkeepPermissions().getBatteryMode();
-                  if (!mounted) return;
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Permission status: $status')),
                   );
@@ -117,6 +117,7 @@ class _MainScreenState extends State<MainScreen> {
                     if (value.isGranted) {
                       AndroidCallkeepServices.backgroundSignalingBootstrapService.startService();
                     } else {
+                      if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Notification permission is required'),

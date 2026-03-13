@@ -312,7 +312,6 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
     return Future.value(true);
   }
 
-  @override
   Future<bool> performSetSpeaker(String callId, bool enabled) {
     emit(
       state.copyWith(speakerEnabled: enabled).addAction('Delegate set speaker: $enabled'),
@@ -320,7 +319,6 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
     return Future.value(true);
   }
 
-  @override
   void performReceivedCall(
     String callId,
     String number,

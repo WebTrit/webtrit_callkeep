@@ -1,8 +1,7 @@
 import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show immutable, kIsWeb;
 
 import 'package:bloc/bloc.dart';
-import 'package:meta/meta.dart';
 
 import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 
@@ -214,14 +213,12 @@ class TestsCubit extends Cubit<TestsState> implements CallkeepDelegate, Callkeep
     return Future.value(true);
   }
 
-  @override
   Future<bool> performSetSpeaker(String callId, bool enabled) {
     emit(state.update.addAction(action: 'Delegate set speaker: $enabled'));
 
     return Future.value(true);
   }
 
-  @override
   void performReceivedCall(
     String callId,
     String number,
