@@ -17,4 +17,4 @@ Each platform package has its own AGENTS.md with package-specific guidance:
 - Commit messages: imperative mood, describe what and why. No AI/tool mentions.
 - Fix branches created from base branch; PRs target base branch (not `main`).
 - Always `git pull` on base branch before creating a fix branch.
-- After creating a PR, switch back to `feat/android-callkeep-core-process-migration`.
+- After creating a PR, switch back to your base branch.
