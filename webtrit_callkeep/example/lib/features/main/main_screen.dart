@@ -85,9 +85,10 @@ class _MainScreenState extends State<MainScreen> {
                 title: const Text('Full Screen Intent'),
                 trailing: ElevatedButton(
                   onPressed: () async {
+                    final messenger = ScaffoldMessenger.of(context);
                     final status = await WebtritCallkeepPermissions().getFullScreenIntentPermissionStatus();
                     if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Full-screen intent: $status')));
+                    messenger.showSnackBar(SnackBar(content: Text('Full-screen intent: $status')));
                   },
                   child: const Text('Check'),
                 ),
@@ -105,9 +106,10 @@ class _MainScreenState extends State<MainScreen> {
                 title: const Text('Battery Mode'),
                 trailing: ElevatedButton(
                   onPressed: () async {
+                    final messenger = ScaffoldMessenger.of(context);
                     final mode = await WebtritCallkeepPermissions().getBatteryMode();
                     if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Battery mode: $mode')));
+                    messenger.showSnackBar(SnackBar(content: Text('Battery mode: $mode')));
                   },
                   child: const Text('Check'),
                 ),
