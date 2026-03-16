@@ -3,6 +3,15 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 group 'com.webtrit.callkeep'
 version '1.0-SNAPSHOT'
 
+// Read flutter.sdk from local.properties when present (e.g. standalone test runs).
+def flutterSdkPath = null
+def localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    def localProperties = new Properties()
+    localPropertiesFile.withInputStream { localProperties.load(it) }
+    flutterSdkPath = localProperties.getProperty("flutter.sdk")
+}
+
 buildscript {
     ext.kotlin_version = '2.2.21'
     repositories {
@@ -57,7 +66,16 @@ kotlin {
 dependencies {
     implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0"
     implementation "androidx.work:work-runtime-ktx:2.11.0"
+    implementation "androidx.core:core-ktx:1.16.0"
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
+
+    // Flutter engine jar — required for io.flutter.* references in main sources.
+    // Provided by the Flutter tools Gradle plugin when building inside a Flutter app;
+    // added explicitly here so standalone `./gradlew testDebugUnitTest` works too.
+    if (flutterSdkPath) {
+        compileOnly files("$flutterSdkPath/bin/cache/artifacts/engine/android-x86/flutter.jar")
+        testRuntimeOnly files("$flutterSdkPath/bin/cache/artifacts/engine/android-x86/flutter.jar")
+    }
 
     testImplementation "junit:junit:4.13.2"
     testImplementation "org.jetbrains.kotlin:kotlin-test"
