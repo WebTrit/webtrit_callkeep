@@ -49,11 +49,16 @@ class CallLifecycleHandler(
     }
 
     fun performEndCall(metadata: CallMetadata) {
-        Log.d(TAG, "Resources released")
-        flutterApi?.performEndCall(
-            metadata.callId,
-            onSuccess = { release() },
-            onFailure = { release() })
+        val api = flutterApi
+        if (api != null) {
+            api.performEndCall(
+                metadata.callId,
+                onSuccess = { release() },
+                onFailure = { release() })
+        } else {
+            Log.w(TAG, "performEndCall: flutterApi is null, releasing resources directly")
+            release()
+        }
     }
 
 
