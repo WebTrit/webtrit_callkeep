@@ -362,9 +362,8 @@ void main() {
 
       await callkeep.tearDown();
 
-      // Give callbacks time to arrive after tearDown
-      await Future.delayed(const Duration(milliseconds: 500));
-
+      // ForegroundService.tearDown fires performEndCall synchronously, so the
+      // callbacks are already present the moment tearDown() returns.
       expect(delegate.endCallIds, containsAll([id1, id2]));
     });
   });
@@ -555,6 +554,85 @@ void main() {
         reason: 'second report after answer must return '
             'callIdAlreadyExistsAndAnswered so Flutter shows the in-call UI',
       );
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Regression - endCall / tearDown callback timing
+  //
+  // Covers the fix in SignalingIsolateService.endCall and endAllCalls:
+  // both methods now wait for a HungUp/DeclineCall broadcast confirmation
+  // from PhoneConnectionService before resolving the Dart Future, ensuring
+  // Flutter is not notified before Telecom has actually torn down the call.
+  //
+  // ForegroundService.tearDown fires performEndCall synchronously before
+  // resolving — the tests below verify this contract holds without any
+  // artificial delays.
+  // -------------------------------------------------------------------------
+
+  group('regression - endCall/tearDown callback timing', () {
+    /// ForegroundService.tearDown calls performEndCall synchronously in a loop
+    /// before the Future resolves. Asserting without a Future.delayed is the
+    /// definitive regression test: if tearDown ever becomes fire-and-forget
+    /// this assertion will fail immediately.
+    test('tearDown resolves only after all performEndCall callbacks fired', () async {
+      final id1 = _nextId();
+      final id2 = _nextId();
+
+      await callkeep.reportNewIncomingCall(id1, _handle1, displayName: 'Call 1');
+      await callkeep.reportNewIncomingCall(id2, _handle2, displayName: 'Call 2');
+
+      await callkeep.tearDown();
+
+      expect(delegate.endCallIds, containsAll([id1, id2]));
+      expect(delegate.endCallIds.length, 2);
+    });
+
+    test('tearDown with no active calls does not fire performEndCall', () async {
+      await callkeep.tearDown();
+
+      expect(delegate.endCallIds, isEmpty);
+    });
+
+    test('tearDown fires performEndCall exactly once per call', () async {
+      final id = _nextId();
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+
+      await callkeep.tearDown();
+
+      expect(
+        delegate.endCallIds.where((e) => e == id).length,
+        1,
+        reason: 'performEndCall must fire exactly once per call — not zero, not twice',
+      );
+    });
+
+    /// The 5-second timeout in SignalingIsolateService.endCall guarantees that
+    /// the Future always resolves even if the broadcast confirmation never
+    /// arrives (e.g. callkeep_core process killed). Verify no indefinite hang.
+    test('endCall future always resolves within timeout', () async {
+      final id = _nextId();
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+
+      await callkeep.endCall(id).timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => throw TimeoutException('endCall hung indefinitely'),
+          );
+    });
+
+    /// Verifies that after tearDown resolves the delegate has received every
+    /// performEndCall and the count matches the number of active calls exactly.
+    test('tearDown callback count equals number of active calls', () async {
+      final ids = List.generate(3, (_) => _nextId());
+
+      for (final id in ids) {
+        await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+      }
+
+      await callkeep.tearDown();
+
+      expect(delegate.endCallIds.length, ids.length);
+      expect(delegate.endCallIds, containsAll(ids));
     });
   });
 
