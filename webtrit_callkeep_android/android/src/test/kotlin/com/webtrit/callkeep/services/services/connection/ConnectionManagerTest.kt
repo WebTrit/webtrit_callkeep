@@ -48,8 +48,7 @@ class ConnectionManagerTest {
     @Before
     fun setUp() {
         ContextHolder.init(context)
-        // Reset the global manager used by validateConnectionAddition.
-        // A fresh ConnectionManager also clears the pending set.
+        // Reset the global manager used by validateConnectionAddition
         PhoneConnectionService.connectionManager = createManager()
     }
 
