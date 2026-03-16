@@ -276,4 +276,127 @@ class ConnectionManagerTest {
 
         assertNotNull(errorResult)
     }
+
+    // -------------------------------------------------------------------------
+    // pendingCallIds / removePending — regression for push-then-main-process bug
+    // -------------------------------------------------------------------------
+
+    /**
+     * Regression: onCreateIncomingConnection must call removePending() after addConnection().
+     *
+     * Scenario:
+     *  1. Push isolate calls reportNewIncomingCall → checkAndReservePending adds callId to
+     *     pendingCallIds and returns null (success).
+     *  2. onCreateIncomingConnection fires → addConnection + removePending (the fix).
+     *  3. Push isolate auto-answers → hasAnswered = true.
+     *  4. Main process CallBloc calls reportNewIncomingCall again (e.g. ~6 s later).
+     *
+     * Expected: checkAndReservePending sees callId in connections with hasAnswered=true and
+     * returns CALL_ID_ALREADY_EXISTS_AND_ANSWERED, NOT CALL_ID_ALREADY_EXISTS.
+     *
+     * Without the fix (removePending never called), the callId is still in pendingCallIds so
+     * the first branch of the when-expression fires and returns CALL_ID_ALREADY_EXISTS —
+     * causing Flutter to treat the second report as a generic duplicate instead of recognising
+     * that the call is already active and answered.
+     */
+    @Test
+    fun `checkAndReservePending returns ALREADY_EXISTS_AND_ANSWERED after pending is removed and connection answered`() {
+        val manager = createManager()
+        val callId = "call-push-1"
+
+        // Step 1: push isolate reserves the callId as pending.
+        val reserveResult = manager.checkAndReservePending(callId)
+        assertNull("initial reservation must succeed", reserveResult)
+
+        // Step 2: onCreateIncomingConnection fires — add connection then remove pending (the fix).
+        val conn = createRingingConnection(callId)
+        manager.addConnection(callId, conn)
+        manager.removePending(callId)  // ← this is the fix under test
+
+        // Step 3: push isolate answers the call.
+        conn.onAnswer()
+        assertTrue("connection must be marked as answered", manager.isConnectionAnswered(callId))
+
+        // Step 4: main process CallBloc calls reportNewIncomingCall again.
+        var errorEnum: PIncomingCallErrorEnum? = null
+        PhoneConnectionService.connectionManager = manager
+        ConnectionManager.validateConnectionAddition(
+            metadata = CallMetadata(callId = callId),
+            onSuccess = { },
+            onError = { errorEnum = it.value },
+        )
+
+        assertEquals(
+            "must return CALL_ID_ALREADY_EXISTS_AND_ANSWERED so Flutter knows the call is active",
+            PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED,
+            errorEnum,
+        )
+    }
+
+    /**
+     * Verifies the bug that existed before the fix: without removePending(), the second
+     * reportNewIncomingCall returns CALL_ID_ALREADY_EXISTS instead of
+     * CALL_ID_ALREADY_EXISTS_AND_ANSWERED, even when the connection is answered.
+     *
+     * This test documents the broken behaviour so the regression is explicit.
+     */
+    @Test
+    fun `checkAndReservePending returns ALREADY_EXISTS (not answered) when pending was NOT removed`() {
+        val manager = createManager()
+        val callId = "call-push-2"
+
+        // Step 1: reserve as pending.
+        val reserveResult = manager.checkAndReservePending(callId)
+        assertNull(reserveResult)
+
+        // Step 2 (buggy path): add connection but DO NOT call removePending.
+        val conn = createRingingConnection(callId)
+        manager.addConnection(callId, conn)
+        // removePending intentionally omitted to reproduce the bug.
+
+        // Step 3: answer the call.
+        conn.onAnswer()
+
+        // Step 4: second report hits pendingCallIds branch first → wrong error code.
+        var errorEnum: PIncomingCallErrorEnum? = null
+        PhoneConnectionService.connectionManager = manager
+        ConnectionManager.validateConnectionAddition(
+            metadata = CallMetadata(callId = callId),
+            onSuccess = { },
+            onError = { errorEnum = it.value },
+        )
+
+        assertEquals(
+            "without the fix the pending branch fires first, masking hasAnswered",
+            PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS,
+            errorEnum,
+        )
+    }
+
+    // -------------------------------------------------------------------------
+    // pendingCallIds — basic behaviour
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `checkAndReservePending returns null and isPending returns true after reserve`() {
+        val manager = createManager()
+        assertNull(manager.checkAndReservePending("call-p"))
+        assertTrue(manager.isPending("call-p"))
+    }
+
+    @Test
+    fun `checkAndReservePending returns ALREADY_EXISTS for a callId reserved twice`() {
+        val manager = createManager()
+        manager.checkAndReservePending("call-p")
+        val second = manager.checkAndReservePending("call-p")
+        assertEquals(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS, second)
+    }
+
+    @Test
+    fun `isPending returns false after removePending`() {
+        val manager = createManager()
+        manager.checkAndReservePending("call-p")
+        manager.removePending("call-p")
+        assertFalse(manager.isPending("call-p"))
+    }
 }

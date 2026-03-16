@@ -198,6 +198,13 @@ class PhoneConnectionService : ConnectionService() {
             applicationContext, ::performEventHandle, metadata, ::disconnectConnection
         )
         connectionManager.addConnection(metadata.callId, connection)
+        // The call is no longer "pending" — it now has a live PhoneConnection object.
+        // Removing it from pendingCallIds ensures that a subsequent reportNewIncomingCall
+        // for the same callId (e.g. main process CallBloc arriving ~6 s after the push
+        // isolate already answered the call) skips the pendingCallIds branch in
+        // checkAndReservePending and correctly reaches the hasAnswered check, returning
+        // CALL_ID_ALREADY_EXISTS_AND_ANSWERED instead of CALL_ID_ALREADY_EXISTS.
+        connectionManager.removePending(metadata.callId)
 
         // Apply a deferred answer if answerCall() was called before this connection was created.
         // This closes the async gap between reportNewIncomingCall() (which returns as soon as
