@@ -273,6 +273,12 @@ class PhoneConnectionServiceDispatcher(
             // Mark as terminated so a subsequent endCall for the same ID returns an error
             // rather than firing a second HungUp / performEndCall.
             connectionManager.markTerminated(metadata.callId)
+            // Also clear any pending reservation and deferred answer. If the action (e.g.
+            // HungUpCall) arrived before onCreateIncomingConnection fired, the callId is still
+            // in pendingCallIds. Without this, Telecom will later call onCreateIncomingConnection,
+            // pass the isPending() gate, and create a zombie connection for a call already ended.
+            connectionManager.removePending(metadata.callId)
+            connectionManager.consumeAnswer(metadata.callId)
             dispatcher(ConnectionPerform.ConnectionNotFound, metadata)
         }
     }

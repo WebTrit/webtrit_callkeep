@@ -177,14 +177,20 @@ class PhoneConnectionService : ConnectionService() {
         // This can occur if receivers from both the activity and the service
         // trigger the incoming call flow simultaneously.
         if (connectionManager.isConnectionAlreadyExists(metadata.callId)) {
-            // Return a failed connection indicating an error.
+            // Clean up pending state to avoid leaks — returning a failed Connection
+            // does NOT trigger onCreateIncomingConnectionFailed.
+            connectionManager.removePending(metadata.callId)
+            connectionManager.consumeAnswer(metadata.callId)
             return Connection.createFailedConnection(DisconnectCause(DisconnectCause.ERROR))
         }
 
         // Check if there is already an existing incoming connection.
         // If so, decline the new incoming connection to prevent conflicts in initializing the incoming call flow.
         if (connectionManager.isExistsIncomingConnection()) {
-            // Return a failed connection indicating the line is busy.
+            // Clean up pending state to avoid leaks — returning a failed Connection
+            // does NOT trigger onCreateIncomingConnectionFailed.
+            connectionManager.removePending(metadata.callId)
+            connectionManager.consumeAnswer(metadata.callId)
             return Connection.createFailedConnection(DisconnectCause(DisconnectCause.BUSY))
         }
 
@@ -404,9 +410,17 @@ class PhoneConnectionService : ConnectionService() {
             Log.i(TAG, "startIncomingCall: callId=${metadata.callId}")
 
             ConnectionManager.validateConnectionAddition(metadata = metadata, onSuccess = {
-                TelephonyUtils(context).addNewIncomingCall(metadata)
-                onSuccess()
-
+                try {
+                    TelephonyUtils(context).addNewIncomingCall(metadata)
+                    onSuccess()
+                } catch (e: Exception) {
+                    // addNewIncomingCall failed (e.g. SecurityException, IllegalArgumentException).
+                    // Roll back the pending reservation so future reports for this callId are not
+                    // permanently rejected with CALL_ID_ALREADY_EXISTS.
+                    Log.e(TAG, "startIncomingCall: addNewIncomingCall failed for callId=${metadata.callId}, rolling back pending", e)
+                    connectionManager.removePending(metadata.callId)
+                    onError(null)
+                }
             }, onError = { incomingCallError ->
                 Log.w(TAG, "Incoming call rejected: ${incomingCallError.value}")
                 onError(incomingCallError)

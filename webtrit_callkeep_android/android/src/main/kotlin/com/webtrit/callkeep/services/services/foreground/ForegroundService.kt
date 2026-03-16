@@ -331,6 +331,11 @@ class ForegroundService : Service(), PHostApi {
         // Solution: fire performEndCall directly here, register each callId in
         // directNotifiedCallIds so the stale async HungUp broadcast is suppressed
         // in handleCSReportDeclineCall.
+        // Clear stale entries from previous sessions. If a broadcast for a prior session's
+        // callId never arrived, those entries would linger indefinitely and could suppress
+        // legitimate broadcasts if callIds are ever reused.
+        directNotifiedCallIds.clear()
+
         val connections = PhoneConnectionService.connectionManager.getConnections()
         connections.forEach { connection ->
             val callId = connection.callId
