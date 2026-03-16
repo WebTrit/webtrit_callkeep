@@ -370,6 +370,181 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
+  // Regression - decline unanswered call (Android only)
+  //
+  // Covers the fix in IncomingCallService.handleRelease(answered=false):
+  // performEndCall (SIP BYE) must fire before releaseResources closes the
+  // WebSocket. Previously, release() was called directly from handleRelease,
+  // closing the WebSocket before the BYE could be sent.
+  // -------------------------------------------------------------------------
+
+  group('regression - decline unanswered call (Android only)', () {
+    /// Verifies that declining an unanswered call triggers performEndCall
+    /// and does NOT trigger performAnswerCall.
+    ///
+    /// The fix ensures the handleRelease(answered=false) path calls
+    /// performEndCall first (BYE → server) and only then calls release()
+    /// (WebSocket teardown). The observable effect from Flutter is that
+    /// performEndCall fires; the absence of performAnswerCall confirms the
+    /// correct (decline, not answer) callback sequence ran.
+    test('decline unanswered call fires performEndCall, not performAnswerCall', () async {
+      if (!Platform.isAndroid) {
+        markTestSkipped('Android only');
+        return;
+      }
+
+      final id = _nextId();
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+
+      final endCompleter = Completer<String>();
+      delegate.onPerformEndCall = endCompleter.complete;
+
+      await callkeep.endCall(id);
+
+      final endedId = await endCompleter.future.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => throw TimeoutException('performEndCall not fired after decline'),
+      );
+
+      expect(endedId, id);
+      expect(
+        delegate.answerCallIds,
+        isEmpty,
+        reason: 'performAnswerCall must not fire when declining before answer',
+      );
+      expect(
+        delegate.endCallIds.where((e) => e == id).length,
+        1,
+        reason: 'performEndCall must fire exactly once',
+      );
+    });
+
+    /// Exercises the race-condition window: endCall is called immediately
+    /// after reportNewIncomingCall with no artificial delay. This is the
+    /// closest integration-test approximation of the lock-screen decline
+    /// button scenario — the call is still in RINGING state when the user
+    /// taps decline.
+    ///
+    /// With the old code, the immediate decline could close the WebSocket
+    /// before the BYE was sent. The fix serialises the teardown so BYE
+    /// always precedes WebSocket close.
+    test('immediate decline (no delay) still fires performEndCall', () async {
+      if (!Platform.isAndroid) {
+        markTestSkipped('Android only');
+        return;
+      }
+
+      final id = _nextId();
+
+      // Do NOT await — start the incoming call and immediately decline.
+      // ignore: unawaited_futures
+      callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+
+      final endCompleter = Completer<String>();
+      delegate.onPerformEndCall = endCompleter.complete;
+
+      await callkeep.endCall(id);
+
+      final endedId = await endCompleter.future.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => throw TimeoutException('performEndCall not fired on immediate decline'),
+      );
+      expect(endedId, id);
+    });
+
+    /// After a decline the call is terminated. A subsequent reportNewIncomingCall
+    /// with the same ID must return callIdAlreadyTerminated, confirming that
+    /// the full cleanup path (performEndCall → release → releaseResources)
+    /// completed and the ConnectionManager's terminated set was updated.
+    test('after decline, re-reporting same ID returns callIdAlreadyTerminated', () async {
+      if (!Platform.isAndroid) {
+        markTestSkipped('Android only');
+        return;
+      }
+
+      final id = _nextId();
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+
+      final endCompleter = Completer<String>();
+      delegate.onPerformEndCall = endCompleter.complete;
+      await callkeep.endCall(id);
+      await endCompleter.future.timeout(const Duration(seconds: 5));
+
+      // Give the Android side time to flush the terminated state
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      final err = await callkeep.reportNewIncomingCall(
+        id,
+        _handle1,
+        displayName: 'Call',
+      );
+
+      expect(
+        err,
+        CallkeepIncomingCallError.callIdAlreadyTerminated,
+        reason: 'terminated call must be recognised as such, not as a fresh slot',
+      );
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Regression - push auto-answer then main process reportNewIncomingCall
+  // -------------------------------------------------------------------------
+
+  group('regression - push auto-answer then main-process report (Android only)', () {
+    /// Regression for the bug where `onCreateIncomingConnection` never called
+    /// `removePending(callId)`.
+    ///
+    /// Flow:
+    ///   1. Push isolate calls `reportNewIncomingCall` — the callId is reserved
+    ///      as *pending* inside `checkAndReservePending`.
+    ///   2. Telecom calls `onCreateIncomingConnection` on the binder thread.
+    ///      The fix: `removePending(callId)` is called after `addConnection`.
+    ///   3. Push isolate answers the call → `hasAnswered = true`.
+    ///   4. Main process CallBloc calls `reportNewIncomingCall` again (~6 s later).
+    ///
+    /// Expected: the second report returns `callIdAlreadyExistsAndAnswered`, not
+    /// `callIdAlreadyExists`.  The answered variant tells Flutter that the call
+    /// is already active so it can show the in-call UI instead of treating it
+    /// as a generic duplicate error.
+    test('answered call - second reportNewIncomingCall returns callIdAlreadyExistsAndAnswered', () async {
+      if (!Platform.isAndroid) {
+        markTestSkipped('Android only');
+        return;
+      }
+
+      final id = _nextId();
+
+      // Step 1+2: push isolate reports the call; Telecom creates the connection
+      // and (with the fix) removes it from pendingCallIds.
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+
+      // Step 3: answer the call — sets hasAnswered = true on the PhoneConnection.
+      final answerCompleter = Completer<String>();
+      delegate.onPerformAnswerCall = answerCompleter.complete;
+      await callkeep.answerCall(id);
+      await answerCompleter.future.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => throw TimeoutException('performAnswerCall not fired'),
+      );
+
+      // Step 4: main process CallBloc calls reportNewIncomingCall again.
+      final err = await callkeep.reportNewIncomingCall(
+        id,
+        _handle1,
+        displayName: 'Call',
+      );
+
+      expect(
+        err,
+        CallkeepIncomingCallError.callIdAlreadyExistsAndAnswered,
+        reason: 'second report after answer must return '
+            'callIdAlreadyExistsAndAnswered so Flutter shows the in-call UI',
+      );
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // Stress - push + direct (Android only)
   // -------------------------------------------------------------------------
 
