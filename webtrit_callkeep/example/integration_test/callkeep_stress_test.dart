@@ -447,7 +447,7 @@ void main() {
       callkeep
           .reportNewIncomingCall(id, _handle1, displayName: 'Call')
           // ignore: unawaited_futures
-          .catchError((_) {});
+          .catchError((_) => null as CallkeepIncomingCallError?);
 
       final endCompleter = Completer<String>();
       delegate.onPerformEndCall = endCompleter.complete;
