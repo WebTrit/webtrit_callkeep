@@ -259,7 +259,8 @@ class PhoneConnection internal constructor(
      */
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     private fun updateModernAudioState() {
-        onCallEndpointChanged(currentCallEndpoint)
+        val endpoint = currentCallEndpoint ?: return
+        onCallEndpointChanged(endpoint)
         if (availableCallEndpoints.isNotEmpty()) {
             onAvailableCallEndpointsChanged(availableCallEndpoints)
         }
@@ -678,10 +679,7 @@ class PhoneConnection internal constructor(
             setDisconnected(disconnectCause)
             onDisconnect()
         } else {
-            logger.v("terminateWithCause: already disconnected for callId: $callId")
-            // Re-dispatch using the original stored cause so consumers receive the same
-            // event that was fired during the first disconnect.
-            dispatcher(eventForDisconnectCause(this.disconnectCause), metadata)
+            logger.v("terminateWithCause: already disconnected for callId: $callId, ignoring")
         }
     }
 

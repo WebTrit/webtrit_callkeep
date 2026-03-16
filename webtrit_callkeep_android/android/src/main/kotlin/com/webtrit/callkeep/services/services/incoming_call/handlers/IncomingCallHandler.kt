@@ -54,6 +54,10 @@ class IncomingCallHandler(
      */
     @SuppressLint("MissingPermission")
     fun releaseIncomingCallNotification(answered: Boolean) {
+        if (lastMetadata == null) {
+            Log.w(TAG, "releaseIncomingCallNotification: no metadata (service not initialized), skipping")
+            return
+        }
         if (answered) muteIncomingCallNotification()
         else notificationBuilder.updateToReleaseIncomingCallNotification()
     }
