@@ -37,7 +37,6 @@ class PhoneConnection internal constructor(
 ) : Connection() {
     private var isMute = false
     private var isHasSpeaker = false
-    private var disconnected = false
 
     /**
      * Tracks whether the speaker was manually disabled by the user.
@@ -667,15 +666,40 @@ class PhoneConnection internal constructor(
     }
 
     /**
-     * Safely terminates the connection with a reason and prevents double-termination.
+     * Terminates the connection with the given [disconnectCause].
+     *
+     * Uses the Telecom framework's own [state] as the single source of truth to guard
+     * against double execution of cleanup operations ([setDisconnected], [onDisconnect]).
+     * This removes the need for a separate [disconnected] flag that would duplicate
+     * state already tracked by the framework.
+     *
+     * The confirmation broadcast ([ConnectionPerform.HungUp] /
+     * [ConnectionPerform.DeclineCall]) is **always dispatched**, even when the connection
+     * was already in [STATE_DISCONNECTED] by the time this method is called. This covers
+     * the race where the remote party hangs up just before the local side initiates
+     * teardown: the original broadcast fires before any listener registers, so re-sending
+     * it ensures late-arriving consumers (e.g. a one-shot endCall confirmation receiver)
+     * still receive teardown confirmation.
+     *
+     * All broadcast consumers are expected to be idempotent — they receive the event and
+     * decide themselves whether it is still relevant.
+     *
+     * @param disconnectCause The reason for disconnection.
      */
     fun terminateWithCause(disconnectCause: DisconnectCause) {
-        if (!disconnected) {
-            disconnected = true
+        if (state != STATE_DISCONNECTED) {
             setDisconnected(disconnectCause)
             onDisconnect()
         } else {
             logger.v("terminateWithCause: already disconnected for callId: $callId")
+            // Re-dispatch using the original stored cause so consumers receive the same
+            // event that was fired during the first disconnect.
+            val event = if (this.disconnectCause?.code == DisconnectCause.REMOTE) {
+                ConnectionPerform.DeclineCall
+            } else {
+                ConnectionPerform.HungUp
+            }
+            dispatcher(event, metadata)
         }
     }
 
