@@ -40,8 +40,6 @@ class IncomingCallService : Service() {
 
     private val connectionService = listOf(
         ConnectionPerform.AnswerCall,
-        ConnectionPerform.DeclineCall,
-        ConnectionPerform.HungUp,
     )
 
     private val connectionServicePerformReceiver = object : BroadcastReceiver() {
@@ -51,8 +49,12 @@ class IncomingCallService : Service() {
             when (intent?.action) {
                 // Listen connection service actions (and try to notify isolate if it background)
                 ConnectionPerform.AnswerCall.name -> performAnswerCall(metadata!!)
-                ConnectionPerform.DeclineCall.name -> performDeclineCall(metadata!!)
-                ConnectionPerform.HungUp.name -> performDeclineCall(metadata!!)
+                // DeclineCall and HungUp are handled via IC_RELEASE_WITH_DECLINE intent
+                // (triggered from PhoneConnection.onDisconnect → cancelIncomingNotification).
+                // Handling them here as well would cause a double performEndCall: once from
+                // handleRelease and once from this receiver, racing to tear down the WebSocket
+                // before the SIP BYE is sent. The IC_RELEASE_WITH_DECLINE path is the single
+                // authoritative source for decline teardown.
             }
         }
     }
@@ -154,13 +156,6 @@ class IncomingCallService : Service() {
         return START_STICKY
     }
 
-    // Starts the service with the RELEASE action and schedules a timeout,
-    // in case the Flutter isolate doesn't stop the service correctly
-    private fun performDeclineCall(metadata: CallMetadata): Int {
-        callLifecycleHandler.performEndCall(metadata)
-        return START_NOT_STICKY
-    }
-
     // Launches the service with the LAUNCH action and cancels the timeout
     private fun handleLaunch(metadata: CallMetadata): Int {
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
@@ -174,7 +169,31 @@ class IncomingCallService : Service() {
         incomingCallHandler.releaseIncomingCallNotification(answered)
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
         timeoutHandler.postDelayed(stopTimeoutRunnable, SERVICE_TIMEOUT_MS)
-        callLifecycleHandler.release()
+        if (answered) {
+            // The call was answered and then ended by the remote/local side.
+            // The background isolate is no longer needed for signaling — the main process
+            // takes over the active-call session. Release resources immediately.
+            callLifecycleHandler.release()
+        } else {
+            // The call was declined or hung up before being answered.
+            // The signaling layer (WebSocket) must send a SIP BYE/decline to the server
+            // BEFORE the WebSocket is torn down.
+            //
+            // Calling release() here directly (the old behaviour) would close the WebSocket
+            // immediately, racing with the SIP BYE that performEndCall needs to send.
+            //
+            // Fix: call performEndCall first; its onSuccess/onFailure callbacks call release(),
+            // which fires releaseResources and closes the WebSocket only after BYE completes
+            // (or fails). The stopTimeoutRunnable above ensures the service stops even if the
+            // Flutter isolate never responds.
+            val callId = callLifecycleHandler.currentCallData?.callId
+            if (callId != null) {
+                callLifecycleHandler.performEndCall(CallMetadata(callId = callId))
+            } else {
+                Log.w(TAG, "handleRelease: no currentCallData, falling back to release()")
+                callLifecycleHandler.release()
+            }
+        }
         return START_NOT_STICKY
     }
 
