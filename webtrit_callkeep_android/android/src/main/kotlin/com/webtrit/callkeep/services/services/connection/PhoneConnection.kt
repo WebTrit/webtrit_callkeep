@@ -88,12 +88,6 @@ class PhoneConnection internal constructor(
     var hasAnswered: Boolean = false
         private set
 
-    @Volatile
-    private var terminated = false
-
-    val isTerminated: Boolean
-        get() = terminated
-
     init {
         audioModeIsVoip = true
         connectionProperties = PROPERTY_SELF_MANAGED
@@ -163,9 +157,6 @@ class PhoneConnection internal constructor(
         notificationManager.cancelActiveCallNotification(callId)
         audioManager.stopRingtone()
 
-        // Mark terminated BEFORE dispatching so that a re-entrant endCall (Dart calling
-        // endCall again after receiving performEndCall) sees isTerminated=true.
-        terminated = true
         dispatcher(eventForDisconnectCause(disconnectCause), metadata)
         onDisconnectCallback.invoke(this)
         destroy()

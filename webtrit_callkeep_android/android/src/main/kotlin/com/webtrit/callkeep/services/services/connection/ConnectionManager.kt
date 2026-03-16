@@ -165,12 +165,14 @@ class ConnectionManager {
      * Check if a connection is terminated.
      *
      * Checks the [terminatedCallIds] set (for calls terminated via ConnectionNotFound or
-     * explicit marking) and the volatile [PhoneConnection.isTerminated] flag (for calls
-     * that went through a full connection lifecycle).
+     * explicit marking) and the Telecom framework's own [Connection.STATE_DISCONNECTED]
+     * as the single source of truth for calls that went through a full connection lifecycle.
      */
     fun isConnectionDisconnected(callId: String): Boolean {
         if (terminatedCallIds.contains(callId)) return true
-        return connections[callId]?.isTerminated == true
+        synchronized(connectionResourceLock) {
+            return connections[callId]?.state == Connection.STATE_DISCONNECTED
+        }
     }
 
     /**
