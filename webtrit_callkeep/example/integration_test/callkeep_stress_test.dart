@@ -398,6 +398,11 @@ void main() {
 
       final endCompleter = Completer<String>();
       delegate.onPerformEndCall = endCompleter.complete;
+      // Wire a hard failure so any late performAnswerCall is caught immediately
+      // rather than being silently missed by the isEmpty check below.
+      delegate.onPerformAnswerCall = (_) => fail(
+            'performAnswerCall must not fire when declining before answer',
+          );
 
       await callkeep.endCall(id);
 
@@ -437,8 +442,12 @@ void main() {
       final id = _nextId();
 
       // Do NOT await — start the incoming call and immediately decline.
-      // ignore: unawaited_futures
-      callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+      // Attach an error handler so a transient channel error does not
+      // become an unhandled async exception that destabilises the test.
+      callkeep
+          .reportNewIncomingCall(id, _handle1, displayName: 'Call')
+          // ignore: unawaited_futures
+          .catchError((_) {});
 
       final endCompleter = Completer<String>();
       delegate.onPerformEndCall = endCompleter.complete;
@@ -470,14 +479,19 @@ void main() {
       await callkeep.endCall(id);
       await endCompleter.future.timeout(const Duration(seconds: 5));
 
-      // Give the Android side time to flush the terminated state
-      await Future.delayed(const Duration(milliseconds: 300));
-
-      final err = await callkeep.reportNewIncomingCall(
-        id,
-        _handle1,
-        displayName: 'Call',
-      );
+      // Poll until the Android side registers the terminated state, rather than
+      // relying on a fixed delay that can be too short on slow devices.
+      CallkeepIncomingCallError? err;
+      final deadline = DateTime.now().add(const Duration(seconds: 5));
+      while (DateTime.now().isBefore(deadline)) {
+        err = await callkeep.reportNewIncomingCall(
+          id,
+          _handle1,
+          displayName: 'Call',
+        );
+        if (err == CallkeepIncomingCallError.callIdAlreadyTerminated) break;
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
 
       expect(
         err,
