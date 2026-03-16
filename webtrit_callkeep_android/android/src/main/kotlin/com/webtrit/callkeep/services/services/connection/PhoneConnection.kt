@@ -653,8 +653,8 @@ class PhoneConnection internal constructor(
     /**
      * Maps a [DisconnectCause] to the corresponding [ConnectionPerform] broadcast event.
      *
-     * [DisconnectCause.REMOTE] indicates the remote party ended the call → [ConnectionPerform.DeclineCall].
-     * All other causes (local hang-up, rejection, timeout, etc.) → [ConnectionPerform.HungUp].
+     * [DisconnectCause.REMOTE] maps to [ConnectionPerform.DeclineCall].
+     * All other causes (local hang-up, rejection, timeout, etc.) map to [ConnectionPerform.HungUp].
      */
     private fun eventForDisconnectCause(cause: DisconnectCause?): ConnectionPerform =
         if (cause?.code == DisconnectCause.REMOTE) ConnectionPerform.DeclineCall
@@ -663,21 +663,13 @@ class PhoneConnection internal constructor(
     /**
      * Terminates the connection with the given [disconnectCause].
      *
-     * Uses the Telecom framework's own [state] as the single source of truth to guard
-     * against double execution of cleanup operations ([setDisconnected], [onDisconnect]).
-     * This removes the need for a separate `disconnected` flag that would duplicate
-     * state already tracked by the framework.
+     * Uses [state] as the guard: if the connection is not yet [STATE_DISCONNECTED], runs
+     * the full cleanup via [setDisconnected] and [onDisconnect]. If already disconnected,
+     * skips cleanup and re-dispatches the broadcast using the stored [disconnectCause] so
+     * late-arriving consumers (e.g. a one-shot endCall confirmation receiver) still receive
+     * teardown confirmation without waiting for a timeout.
      *
-     * The confirmation broadcast ([ConnectionPerform.HungUp] /
-     * [ConnectionPerform.DeclineCall]) is **always dispatched**, even when the connection
-     * was already in [STATE_DISCONNECTED] by the time this method is called. This covers
-     * the race where the remote party hangs up just before the local side initiates
-     * teardown: the original broadcast fires before any listener registers, so re-sending
-     * it ensures late-arriving consumers (e.g. a one-shot endCall confirmation receiver)
-     * still receive teardown confirmation.
-     *
-     * All broadcast consumers are expected to be idempotent — they receive the event and
-     * decide themselves whether it is still relevant.
+     * All broadcast consumers are expected to be idempotent.
      *
      * @param disconnectCause The reason for disconnection.
      */
