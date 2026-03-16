@@ -27,7 +27,10 @@ import org.robolectric.annotation.Config
  *
  * Verifies that each [ServiceAction] is routed to the correct [PhoneConnection] method,
  * that missing connections produce a [ConnectionPerform.ConnectionNotFound] fallback,
- * and that lifecycle events (TearDown, ServiceDestroyed) clean up all active connections.
+ * and that lifecycle events (ServiceDestroyed) clean up all active connections.
+ *
+ * TearDown only synchronises sensor state — connection cleanup is performed synchronously
+ * by ForegroundService.tearDown() before the TearDown intent is sent.
  *
  * [ActivityWakelockManager] and [ProximitySensorManager] are mocked so tests run without
  * a real Activity or proximity sensor hardware.
@@ -159,11 +162,13 @@ class PhoneConnectionServiceDispatcherTest {
     }
 
     // -------------------------------------------------------------------------
-    // TearDown
+    // TearDown — sensor sync only; connection cleanup is ForegroundService's job
     // -------------------------------------------------------------------------
 
     @Test
-    fun `dispatch TearDown calls hungUp on every active connection`() {
+    fun `dispatch TearDown does not call hungUp on active connections`() {
+        // ForegroundService.tearDown() calls hungUp synchronously before sending the
+        // TearDown intent. handleTearDown() must NOT repeat that work.
         val conn1 = spy(createRingingConnection("call-1"))
         val conn2 = spy(createRingingConnection("call-2"))
         connectionManager.addConnection("call-1", conn1)
@@ -171,8 +176,8 @@ class PhoneConnectionServiceDispatcherTest {
 
         dispatcher.dispatch(ServiceAction.TearDown, null)
 
-        verify(conn1).hungUp()
-        verify(conn2).hungUp()
+        verify(conn1, org.mockito.Mockito.never()).hungUp()
+        verify(conn2, org.mockito.Mockito.never()).hungUp()
     }
 
     @Test
@@ -181,20 +186,11 @@ class PhoneConnectionServiceDispatcherTest {
         // no assertion needed -- must not throw
     }
 
-    // -------------------------------------------------------------------------
-    // TearDown skips already-disconnected connections
-    // -------------------------------------------------------------------------
-
     @Test
-    fun `dispatch TearDown skips connections that are already disconnected`() {
-        val conn = spy(createRingingConnection())
-        conn.setDisconnected(DisconnectCause(DisconnectCause.LOCAL))
-        connectionManager.addConnection("call-1", conn)
-
-        // getConnections() filters out STATE_DISCONNECTED -- hungUp must not be called again
+    fun `dispatch TearDown with active connections does not throw`() {
+        connectionManager.addConnection("call-1", createRingingConnection("call-1"))
         dispatcher.dispatch(ServiceAction.TearDown, null)
-
-        verify(conn, org.mockito.Mockito.never()).hungUp()
+        // no assertion needed -- must not throw
     }
 
     // -------------------------------------------------------------------------
