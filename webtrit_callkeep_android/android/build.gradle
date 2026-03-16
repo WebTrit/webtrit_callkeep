@@ -3,6 +3,15 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 group 'com.webtrit.callkeep'
 version '1.0-SNAPSHOT'
 
+// Read flutter.sdk from local.properties when present (e.g. standalone test runs).
+def flutterSdkPath = null
+def localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    def localProperties = new Properties()
+    localPropertiesFile.withInputStream { localProperties.load(it) }
+    flutterSdkPath = localProperties.getProperty("flutter.sdk")
+}
+
 buildscript {
     ext.kotlin_version = '2.2.21'
     repositories {
