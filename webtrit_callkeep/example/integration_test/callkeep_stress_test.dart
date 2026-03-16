@@ -127,10 +127,10 @@ void main() {
   // tearDown fixture skips it. A second tearDown on an already-torn-down
   // Android ForegroundService can re-fire performEndCall for already-ended
   // calls, producing stale Pigeon messages that contaminate the next test.
-  var _globalTearDownNeeded = true;
+  var globalTearDownNeeded = true;
 
   setUp(() async {
-    _globalTearDownNeeded = true;
+    globalTearDownNeeded = true;
     callkeep = Callkeep();
     delegate = _RecordingDelegate();
     // ForegroundService binding is async: the PHostApi Pigeon channel is only
@@ -153,7 +153,7 @@ void main() {
 
   tearDown(() async {
     callkeep.setDelegate(null);
-    if (_globalTearDownNeeded) {
+    if (globalTearDownNeeded) {
       try {
         await callkeep.tearDown().timeout(const Duration(seconds: 15));
       } catch (_) {
@@ -177,7 +177,7 @@ void main() {
     });
 
     test('tearDown then re-setUp works', () async {
-      _globalTearDownNeeded = false;
+      globalTearDownNeeded = false;
       await callkeep.tearDown();
       await callkeep.setUp(_options);
       expect(await callkeep.isSetUp(), isTrue);
@@ -368,7 +368,7 @@ void main() {
     });
 
     test('tearDown while calls are active triggers performEndCall for each', () async {
-      _globalTearDownNeeded = false; // we call tearDown() ourselves below
+      globalTearDownNeeded = false; // we call tearDown() ourselves below
       final id1 = _nextId();
       final id2 = _nextId();
 
@@ -612,7 +612,7 @@ void main() {
     /// cause a second concurrent call to not be fully registered by tearDown time.
     /// The multi-call tearDown property is covered by the stress group test.
     test('tearDown fires performEndCall for an active call', () async {
-      _globalTearDownNeeded = false; // we call tearDown() ourselves below
+      globalTearDownNeeded = false; // we call tearDown() ourselves below
       final id = _nextId();
 
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
@@ -633,14 +633,14 @@ void main() {
     });
 
     test('tearDown with no active calls does not fire performEndCall', () async {
-      _globalTearDownNeeded = false; // we call tearDown() ourselves below
+      globalTearDownNeeded = false; // we call tearDown() ourselves below
       await callkeep.tearDown();
 
       expect(delegate.endCallIds, isEmpty);
     });
 
     test('tearDown fires performEndCall exactly once per call', () async {
-      _globalTearDownNeeded = false; // we call tearDown() ourselves below
+      globalTearDownNeeded = false; // we call tearDown() ourselves below
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
 
@@ -682,7 +682,7 @@ void main() {
     /// fully before tearDown. The count == 1 property still validates the
     /// "count equals active calls" invariant.
     test('tearDown callback count equals number of active calls', () async {
-      _globalTearDownNeeded = false; // we call tearDown() ourselves below
+      globalTearDownNeeded = false; // we call tearDown() ourselves below
       final id = _nextId();
 
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
@@ -757,7 +757,7 @@ void main() {
       }
 
       // tearDown must not throw even after spam
-      _globalTearDownNeeded = false;
+      globalTearDownNeeded = false;
       await callkeep.tearDown();
       // On Android the ForegroundService stays running after tearDown, so
       // isSetUp() remains true. The important invariant is that tearDown()
