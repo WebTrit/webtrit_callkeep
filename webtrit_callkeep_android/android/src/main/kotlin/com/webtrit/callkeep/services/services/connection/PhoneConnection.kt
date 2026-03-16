@@ -39,7 +39,6 @@ class PhoneConnection internal constructor(
 ) : Connection() {
     private var isMute = false
     private var isHasSpeaker = false
-    private var disconnected = false
 
     /**
      * Tracks whether the speaker was manually disabled by the user.
@@ -158,12 +157,7 @@ class PhoneConnection internal constructor(
         notificationManager.cancelActiveCallNotification(callId)
         audioManager.stopRingtone()
 
-        val event = if (disconnectCause?.code == DisconnectCause.REMOTE) {
-            ConnectionPerform.DeclineCall
-        } else {
-            ConnectionPerform.HungUp
-        }
-        dispatcher(event, metadata)
+        dispatcher(eventForDisconnectCause(disconnectCause), metadata)
         onDisconnectCallback.invoke(this)
         destroy()
     }
@@ -657,15 +651,37 @@ class PhoneConnection internal constructor(
     }
 
     /**
-     * Safely terminates the connection with a reason and prevents double-termination.
+     * Maps a [DisconnectCause] to the corresponding [ConnectionPerform] broadcast event.
+     *
+     * [DisconnectCause.REMOTE] maps to [ConnectionPerform.DeclineCall].
+     * All other causes (local hang-up, rejection, timeout, etc.) map to [ConnectionPerform.HungUp].
+     */
+    private fun eventForDisconnectCause(cause: DisconnectCause?): ConnectionPerform =
+        if (cause?.code == DisconnectCause.REMOTE) ConnectionPerform.DeclineCall
+        else ConnectionPerform.HungUp
+
+    /**
+     * Terminates the connection with the given [disconnectCause].
+     *
+     * Uses [state] as the guard: if the connection is not yet [STATE_DISCONNECTED], runs
+     * the full cleanup via [setDisconnected] and [onDisconnect]. If already disconnected,
+     * skips cleanup and re-dispatches the broadcast using the stored [disconnectCause] so
+     * late-arriving consumers (e.g. a one-shot endCall confirmation receiver) still receive
+     * teardown confirmation without waiting for a timeout.
+     *
+     * All broadcast consumers are expected to be idempotent.
+     *
+     * @param disconnectCause The reason for disconnection.
      */
     fun terminateWithCause(disconnectCause: DisconnectCause) {
-        if (!disconnected) {
-            disconnected = true
+        if (state != STATE_DISCONNECTED) {
             setDisconnected(disconnectCause)
             onDisconnect()
         } else {
             logger.v("terminateWithCause: already disconnected for callId: $callId")
+            // Re-dispatch using the original stored cause so consumers receive the same
+            // event that was fired during the first disconnect.
+            dispatcher(eventForDisconnectCause(this.disconnectCause), metadata)
         }
     }
 
