@@ -10,6 +10,20 @@ class ConnectionManager {
     private val connections: ConcurrentHashMap<String, PhoneConnection> = ConcurrentHashMap()
     private val connectionResourceLock = Any()
 
+    // Call IDs sent to Telecom but not yet registered via onCreateIncomingConnection.
+    // Guards the async gap between addNewIncomingCall() and connection creation.
+    private val pendingCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
+    fun addPending(callId: String) {
+        pendingCallIds.add(callId)
+    }
+
+    fun removePending(callId: String) {
+        pendingCallIds.remove(callId)
+    }
+
+    fun isPending(callId: String): Boolean = pendingCallIds.contains(callId)
+
     // TODO(Serdun): The current modifier is incorrect; this method is public but should be restricted.
     // Consider limiting its accessibility to the connection service only.
     @Synchronized
@@ -130,7 +144,7 @@ class ConnectionManager {
             when {
                 // A call with this ID was already sent to Telecom but onCreateIncomingConnection
                 // has not fired yet. Block the duplicate before it reaches Telecom.
-                PhoneConnectionService.pendingCallIds.contains(metadata.callId) -> {
+                manager.isPending(metadata.callId) -> {
                     onError(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS))
                 }
 
