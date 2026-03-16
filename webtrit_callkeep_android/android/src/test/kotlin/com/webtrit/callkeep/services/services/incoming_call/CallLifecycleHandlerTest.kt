@@ -211,10 +211,13 @@ class CallLifecycleHandlerTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `performEndCall with null flutterApi does not crash`() {
+    fun `performEndCall with null flutterApi calls release and stopService`() {
         handler.flutterApi = null
-        // Must not throw; IncomingCallService.stopTimeoutRunnable is the fallback
+
         handler.performEndCall(CallMetadata(callId = "call-1"))
+
+        // release() falls through to stopService() when flutterApi is null
+        assertEquals(1, stopServiceCalls.size)
     }
 
     @Test

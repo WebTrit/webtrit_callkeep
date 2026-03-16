@@ -184,8 +184,9 @@ class IncomingCallService : Service() {
             //
             // Fix: call performEndCall first; its onSuccess/onFailure callbacks call release(),
             // which fires releaseResources and closes the WebSocket only after BYE completes
-            // (or fails). The stopTimeoutRunnable above ensures the service stops even if the
-            // Flutter isolate never responds.
+            // (or fails). If flutterApi is null, performEndCall falls back to release() directly
+            // so cleanup always runs. The stopTimeoutRunnable above is an additional safety net
+            // in case the Flutter isolate never responds.
             val callId = callLifecycleHandler.currentCallData?.callId
             if (callId != null) {
                 callLifecycleHandler.performEndCall(CallMetadata(callId = callId))
