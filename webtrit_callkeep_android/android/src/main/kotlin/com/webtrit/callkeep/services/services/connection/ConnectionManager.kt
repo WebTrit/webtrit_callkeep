@@ -128,6 +128,12 @@ class ConnectionManager {
             val manager = PhoneConnectionService.connectionManager
 
             when {
+                // A call with this ID was already sent to Telecom but onCreateIncomingConnection
+                // has not fired yet. Block the duplicate before it reaches Telecom.
+                PhoneConnectionService.pendingCallIds.contains(metadata.callId) -> {
+                    onError(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS))
+                }
+
                 manager.isConnectionDisconnected(metadata.callId) -> {
                     onError(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED))
                 }
