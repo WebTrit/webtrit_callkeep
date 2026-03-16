@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import java.util.concurrent.ConcurrentHashMap
 import android.telecom.Connection
 import android.telecom.ConnectionRequest
 import android.telecom.ConnectionService
@@ -163,6 +164,9 @@ class PhoneConnectionService : ConnectionService() {
     ): Connection {
         val metadata = CallMetadata.fromBundle(request.extras)
 
+        // Remove from pending set: connection is now being handled by Telecom.
+        pendingCallIds.remove(metadata.callId)
+
         // Check if a connection with the same ID already exists.
         // This can occur if receivers from both the activity and the service
         // trigger the incoming call flow simultaneously.
@@ -205,6 +209,7 @@ class PhoneConnectionService : ConnectionService() {
         connectionManagerPhoneAccount: PhoneAccountHandle?, request: ConnectionRequest?
     ) {
         val callMetadata = CallMetadata.fromBundleOrNull(request?.extras ?: Bundle.EMPTY)
+        callMetadata?.callId?.let { pendingCallIds.remove(it) }
 
         val failureContext = "onCreateIncomingConnectionFailed"
         val failureMessage = "$failureContext: $connectionManagerPhoneAccount $request"
@@ -272,6 +277,11 @@ class PhoneConnectionService : ConnectionService() {
             }
 
         var connectionManager: ConnectionManager = ConnectionManager()
+
+        // Call IDs that have been sent to Telecom but not yet registered in connectionManager.
+        // Prevents rapid duplicate reportNewIncomingCall calls from bypassing validation
+        // during the async gap between addNewIncomingCall() and onCreateIncomingConnection().
+        val pendingCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
         fun startAnswerCall(context: Context, metadata: CallMetadata) {
             communicate(context, ServiceAction.AnswerCall, metadata)
@@ -370,6 +380,7 @@ class PhoneConnectionService : ConnectionService() {
             Log.i(TAG, "startIncomingCall: callId=${metadata.callId}")
 
             ConnectionManager.validateConnectionAddition(metadata = metadata, onSuccess = {
+                pendingCallIds.add(metadata.callId)
                 TelephonyUtils(context).addNewIncomingCall(metadata)
                 onSuccess()
 
