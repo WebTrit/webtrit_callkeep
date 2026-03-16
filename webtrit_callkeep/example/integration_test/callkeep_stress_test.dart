@@ -127,8 +127,22 @@ void main() {
   setUp(() async {
     callkeep = Callkeep();
     delegate = _RecordingDelegate();
+    // ForegroundService binding is async: the PHostApi Pigeon channel is only
+    // registered after onServiceConnected fires. On the very first test the
+    // setUp() call may arrive before that happens, producing a channel-error.
+    // Retry with backoff until the service is ready.
+    for (var attempt = 0; attempt < 10; attempt++) {
+      try {
+        await callkeep.setUp(_options);
+        break;
+      } catch (_) {
+        if (attempt == 9) rethrow;
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
+    }
+    // Set the delegate only after setUp succeeds so that the unawaited
+    // onDelegateSet() Pigeon call does not produce an unhandled channel-error.
     callkeep.setDelegate(delegate);
-    await callkeep.setUp(_options);
   });
 
   tearDown(() async {
