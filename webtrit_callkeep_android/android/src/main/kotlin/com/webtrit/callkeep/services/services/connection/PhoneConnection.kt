@@ -157,12 +157,7 @@ class PhoneConnection internal constructor(
         notificationManager.cancelActiveCallNotification(callId)
         audioManager.stopRingtone()
 
-        val event = if (disconnectCause?.code == DisconnectCause.REMOTE) {
-            ConnectionPerform.DeclineCall
-        } else {
-            ConnectionPerform.HungUp
-        }
-        dispatcher(event, metadata)
+        dispatcher(eventForDisconnectCause(disconnectCause), metadata)
         onDisconnectCallback.invoke(this)
         destroy()
     }
@@ -656,11 +651,21 @@ class PhoneConnection internal constructor(
     }
 
     /**
+     * Maps a [DisconnectCause] to the corresponding [ConnectionPerform] broadcast event.
+     *
+     * [DisconnectCause.REMOTE] indicates the remote party ended the call → [ConnectionPerform.DeclineCall].
+     * All other causes (local hang-up, rejection, timeout, etc.) → [ConnectionPerform.HungUp].
+     */
+    private fun eventForDisconnectCause(cause: DisconnectCause?): ConnectionPerform =
+        if (cause?.code == DisconnectCause.REMOTE) ConnectionPerform.DeclineCall
+        else ConnectionPerform.HungUp
+
+    /**
      * Terminates the connection with the given [disconnectCause].
      *
      * Uses the Telecom framework's own [state] as the single source of truth to guard
      * against double execution of cleanup operations ([setDisconnected], [onDisconnect]).
-     * This removes the need for a separate [disconnected] flag that would duplicate
+     * This removes the need for a separate `disconnected` flag that would duplicate
      * state already tracked by the framework.
      *
      * The confirmation broadcast ([ConnectionPerform.HungUp] /
@@ -684,12 +689,7 @@ class PhoneConnection internal constructor(
             logger.v("terminateWithCause: already disconnected for callId: $callId")
             // Re-dispatch using the original stored cause so consumers receive the same
             // event that was fired during the first disconnect.
-            val event = if (this.disconnectCause?.code == DisconnectCause.REMOTE) {
-                ConnectionPerform.DeclineCall
-            } else {
-                ConnectionPerform.HungUp
-            }
-            dispatcher(event, metadata)
+            dispatcher(eventForDisconnectCause(this.disconnectCause), metadata)
         }
     }
 
