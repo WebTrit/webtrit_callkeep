@@ -374,7 +374,6 @@ class PhoneConnectionService : ConnectionService() {
             Log.i(TAG, "startIncomingCall: callId=${metadata.callId}")
 
             ConnectionManager.validateConnectionAddition(metadata = metadata, onSuccess = {
-                connectionManager.addPending(metadata.callId)
                 TelephonyUtils(context).addNewIncomingCall(metadata)
                 onSuccess()
 
