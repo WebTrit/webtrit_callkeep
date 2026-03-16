@@ -14,15 +14,42 @@ class ConnectionManager {
     // Guards the async gap between addNewIncomingCall() and connection creation.
     private val pendingCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
-    fun addPending(callId: String) {
-        pendingCallIds.add(callId)
+    /**
+     * Atomically validates that a call ID can be added and reserves it as pending.
+     *
+     * Returns null on success (call ID was free and is now reserved).
+     * Returns an error enum if the call ID is already pending, disconnected, or active.
+     *
+     * Using a single lock for check+reserve prevents a race where two concurrent
+     * reportNewIncomingCall calls both see isPending=false and both proceed.
+     */
+    fun checkAndReservePending(callId: String): PIncomingCallErrorEnum? {
+        synchronized(connectionResourceLock) {
+            return when {
+                pendingCallIds.contains(callId) ->
+                    PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS
+
+                connections[callId]?.state == Connection.STATE_DISCONNECTED ->
+                    PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED
+
+                connections.containsKey(callId) ->
+                    if (connections[callId]?.hasAnswered == true) {
+                        PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED
+                    } else {
+                        PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS
+                    }
+
+                else -> {
+                    pendingCallIds.add(callId)
+                    null
+                }
+            }
+        }
     }
 
     fun removePending(callId: String) {
         pendingCallIds.remove(callId)
     }
-
-    fun isPending(callId: String): Boolean = pendingCallIds.contains(callId)
 
     // TODO(Serdun): The current modifier is incorrect; this method is public but should be restricted.
     // Consider limiting its accessibility to the connection service only.
@@ -101,7 +128,6 @@ class ConnectionManager {
         }
     }
 
-
     fun cleanConnections() {
         synchronized(connectionResourceLock) {
             connections.values.forEach { it.destroy() }
@@ -139,32 +165,11 @@ class ConnectionManager {
         fun validateConnectionAddition(
             metadata: CallMetadata, onSuccess: () -> Unit, onError: (PIncomingCallError) -> Unit
         ) {
-            val manager = PhoneConnectionService.connectionManager
+            val errorEnum = PhoneConnectionService.connectionManager
+                .checkAndReservePending(metadata.callId)
 
-            when {
-                // A call with this ID was already sent to Telecom but onCreateIncomingConnection
-                // has not fired yet. Block the duplicate before it reaches Telecom.
-                manager.isPending(metadata.callId) -> {
-                    onError(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS))
-                }
-
-                manager.isConnectionDisconnected(metadata.callId) -> {
-                    onError(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED))
-                }
-
-                manager.isConnectionAlreadyExists(metadata.callId) -> {
-                    val errorEnum = if (manager.isConnectionAnswered(metadata.callId)) {
-                        PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED
-                    } else {
-                        PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS
-                    }
-                    onError(PIncomingCallError(errorEnum))
-                }
-
-                else -> {
-                    onSuccess()
-                }
-            }
+            if (errorEnum == null) onSuccess()
+            else onError(PIncomingCallError(errorEnum))
         }
     }
 }
