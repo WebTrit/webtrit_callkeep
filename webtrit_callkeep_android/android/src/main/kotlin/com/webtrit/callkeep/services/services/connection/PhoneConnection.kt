@@ -88,6 +88,12 @@ class PhoneConnection internal constructor(
     var hasAnswered: Boolean = false
         private set
 
+    @Volatile
+    private var terminated = false
+
+    val isTerminated: Boolean
+        get() = terminated
+
     init {
         audioModeIsVoip = true
         connectionProperties = PROPERTY_SELF_MANAGED
@@ -157,6 +163,9 @@ class PhoneConnection internal constructor(
         notificationManager.cancelActiveCallNotification(callId)
         audioManager.stopRingtone()
 
+        // Mark terminated BEFORE dispatching so that a re-entrant endCall (Dart calling
+        // endCall again after receiving performEndCall) sees isTerminated=true.
+        terminated = true
         dispatcher(eventForDisconnectCause(disconnectCause), metadata)
         onDisconnectCallback.invoke(this)
         destroy()
@@ -259,7 +268,8 @@ class PhoneConnection internal constructor(
      */
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     private fun updateModernAudioState() {
-        onCallEndpointChanged(currentCallEndpoint)
+        val endpoint = currentCallEndpoint ?: return
+        onCallEndpointChanged(endpoint)
         if (availableCallEndpoints.isNotEmpty()) {
             onAvailableCallEndpointsChanged(availableCallEndpoints)
         }
@@ -678,10 +688,7 @@ class PhoneConnection internal constructor(
             setDisconnected(disconnectCause)
             onDisconnect()
         } else {
-            logger.v("terminateWithCause: already disconnected for callId: $callId")
-            // Re-dispatch using the original stored cause so consumers receive the same
-            // event that was fired during the first disconnect.
-            dispatcher(eventForDisconnectCause(this.disconnectCause), metadata)
+            logger.v("terminateWithCause: already disconnected for callId: $callId, ignoring")
         }
     }
 

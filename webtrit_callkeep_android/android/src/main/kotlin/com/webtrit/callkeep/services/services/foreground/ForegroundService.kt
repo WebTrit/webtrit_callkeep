@@ -108,6 +108,11 @@ class ForegroundService : Service(), PHostApi {
 
     private val binder = LocalBinder()
 
+    // Call IDs for which performEndCall was fired directly in tearDown().
+    // Used to suppress the subsequent stale async HungUp broadcast that arrives
+    // via connectionServicePerformReceiver after the new session has already started.
+    private val directNotifiedCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
     private var _flutterDelegateApi: PDelegateFlutterApi? = null
     var flutterDelegateApi: PDelegateFlutterApi?
         get() = _flutterDelegateApi
@@ -311,6 +316,52 @@ class ForegroundService : Service(), PHostApi {
 
     override fun tearDown(callback: (Result<Unit>) -> Unit) {
         logger.i("tearDown")
+
+        // Synchronously notify Flutter and clean up connections before returning.
+        //
+        // Why not rely on async HungUp broadcasts:
+        //   connection.hungUp() sends an async HungUp broadcast that can arrive AFTER the
+        //   next session's delegate is registered, causing stale performEndCall for the wrong callId.
+        //
+        // Why not send PhoneConnectionService.tearDown(baseContext):
+        //   That enqueues a TearDown intent processed asynchronously. Its handleTearDown()
+        //   calls cleanConnections() which can clear the next session's pendingCallIds,
+        //   causing a concurrent reportNewIncomingCall to slip through a second time.
+        //
+        // Solution: fire performEndCall directly here, register each callId in
+        // directNotifiedCallIds so the stale async HungUp broadcast is suppressed
+        // in handleCSReportDeclineCall.
+        val connections = PhoneConnectionService.connectionManager.getConnections()
+        connections.forEach { connection ->
+            val callId = connection.callId
+            // Register BEFORE hungUp() so the async HungUp broadcast is already suppressed
+            // by the time it arrives in handleCSReportDeclineCall.
+            directNotifiedCallIds.add(callId)
+            // Notify Flutter synchronously while this session's delegate is still set.
+            flutterDelegateApi?.performEndCall(callId) {}
+            // Trigger native cleanup (cancel notifications, ringtone, etc.).
+            connection.hungUp()
+        }
+
+        // Drain pending calls that never got a PhoneConnection object.
+        val unconnected = PhoneConnectionService.connectionManager.drainUnconnectedPendingCallIds()
+        unconnected.forEach { callId ->
+            flutterDelegateApi?.performEndCall(callId) {}
+        }
+
+        if (connections.isNotEmpty() || unconnected.isNotEmpty()) {
+            flutterDelegateApi?.didDeactivateAudioSession {}
+        }
+
+        PhoneConnectionService.connectionManager.cleanConnections()
+
+        // Send TearDown intent to keep PhoneConnectionService alive for the next session.
+        // Telecom unbinds ConnectionService when all connections are destroyed, and without
+        // a startService call to keep it warm, the next session's intents (e.g. AnswerCall)
+        // arrive at a dead/restarted service with empty connection state.
+        //
+        // handleTearDown() is safe because it no longer calls cleanConnections() or
+        // drainUnconnectedPendingCallIds() — those are already done synchronously above.
         PhoneConnectionService.tearDown(baseContext)
         callback.invoke(Result.success(Unit))
     }
@@ -364,18 +415,33 @@ class ForegroundService : Service(), PHostApi {
 
     override fun answerCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit) {
         val metadata = CallMetadata(callId = callId)
-        if (PhoneConnectionService.connectionManager.isConnectionAlreadyExists(metadata.callId)) {
-            logger.i("answerCall ${metadata.callId}.")
-            PhoneConnectionService.startAnswerCall(baseContext, metadata)
-            callback.invoke(Result.success(null))
-        } else {
-            logger.e("answerCall: Error response as there is no connection with such ${metadata.callId} in the list.")
-            callback.invoke(Result.success(PCallRequestError(PCallRequestErrorEnum.INTERNAL)))
+        when {
+            PhoneConnectionService.connectionManager.isConnectionAlreadyExists(callId) -> {
+                logger.i("answerCall $callId: connection exists, answering immediately.")
+                PhoneConnectionService.startAnswerCall(baseContext, metadata)
+                callback.invoke(Result.success(null))
+            }
+            PhoneConnectionService.connectionManager.isPending(callId) -> {
+                // onCreateIncomingConnection has not fired yet. Reserve the answer so that
+                // PhoneConnectionService applies it as soon as the connection is created.
+                logger.i("answerCall $callId: connection pending, deferring answer.")
+                PhoneConnectionService.connectionManager.reserveAnswer(callId)
+                callback.invoke(Result.success(null))
+            }
+            else -> {
+                logger.e("answerCall: no connection or pending entry for callId=$callId")
+                callback.invoke(Result.success(PCallRequestError(PCallRequestErrorEnum.INTERNAL)))
+            }
         }
     }
 
     override fun endCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit) {
         logger.i("endCall $callId.")
+        if (PhoneConnectionService.connectionManager.isConnectionDisconnected(callId)) {
+            logger.w("endCall: connection $callId is already terminated.")
+            callback.invoke(Result.success(PCallRequestError(PCallRequestErrorEnum.UNKNOWN_CALL_UUID)))
+            return
+        }
         val metadata = CallMetadata(callId = callId)
         PhoneConnectionService.startHungUpCall(baseContext, metadata)
         callback.invoke(Result.success(null))
@@ -451,7 +517,18 @@ class ForegroundService : Service(), PHostApi {
         logger.d("handleCSReportDeclineCall")
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
-            flutterDelegateApi?.performEndCall(callMetaData.callId) {}
+            val callId = callMetaData.callId
+
+            // Suppress stale async HungUp/Decline broadcasts for calls that were already
+            // directly notified via performEndCall in tearDown(). Without this guard, the
+            // broadcast from the previous session's connection.hungUp() arrives after the
+            // new session's delegate is set and fires performEndCall for the wrong callId.
+            if (directNotifiedCallIds.remove(callId)) {
+                logger.d("handleCSReportDeclineCall: suppressing stale broadcast for callId=$callId (already notified directly)")
+                return@let
+            }
+
+            flutterDelegateApi?.performEndCall(callId) {}
             flutterDelegateApi?.didDeactivateAudioSession {}
 
             if (Platform.isLockScreen(baseContext)) {

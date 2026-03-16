@@ -163,8 +163,15 @@ class PhoneConnectionService : ConnectionService() {
     ): Connection {
         val metadata = CallMetadata.fromBundle(request.extras)
 
-        // Remove from pending: connection is now being handled by Telecom.
-        connectionManager.removePending(metadata.callId)
+        // Reject connections for call IDs that are no longer pending.
+        // This guards against stale Telecom callbacks that arrive after a tearDown
+        // cleared the pending set (e.g., Telecom delivers onCreateIncomingConnection
+        // after cleanConnections() ran). Without this check, a zombie connection would
+        // be created that can never be torn down by the current session.
+        if (!connectionManager.isPending(metadata.callId)) {
+            Log.w(TAG, "onCreateIncomingConnection: callId=${metadata.callId} not pending, rejecting")
+            return Connection.createFailedConnection(DisconnectCause(DisconnectCause.LOCAL))
+        }
 
         // Check if a connection with the same ID already exists.
         // This can occur if receivers from both the activity and the service
@@ -185,6 +192,15 @@ class PhoneConnectionService : ConnectionService() {
             applicationContext, ::performEventHandle, metadata, ::disconnectConnection
         )
         connectionManager.addConnection(metadata.callId, connection)
+
+        // Apply a deferred answer if answerCall() was called before this connection was created.
+        // This closes the async gap between reportNewIncomingCall() (which returns as soon as
+        // addNewIncomingCall() is sent to Telecom) and onCreateIncomingConnection (which fires
+        // asynchronously on the binder thread).
+        if (connectionManager.consumeAnswer(metadata.callId)) {
+            Log.i(TAG, "onCreateIncomingConnection: applying deferred answer for callId=${metadata.callId}")
+            connection.onAnswer()
+        }
 
         phoneConnectionServiceDispatcher.dispatchLifecycle(
             ConnectionLifecycleAction.ConnectionCreated, metadata
@@ -208,15 +224,29 @@ class PhoneConnectionService : ConnectionService() {
         connectionManagerPhoneAccount: PhoneAccountHandle?, request: ConnectionRequest?
     ) {
         val callMetadata = CallMetadata.fromBundleOrNull(request?.extras ?: Bundle.EMPTY)
-        callMetadata?.callId?.let { connectionManager.removePending(it) }
+        val callId = callMetadata?.callId
+
+        // Check before removing: if this callId was pending, the failure was for a real call
+        // that should be reported to Flutter as ended (e.g., rejected with BUSY because another
+        // incoming call was already ringing). If it was not pending, this is a stale Telecom
+        // callback from a previous session (guarded by isPending in onCreateIncomingConnection)
+        // and should be silently dropped.
+        val wasPending = callId != null && connectionManager.isPending(callId)
+        callId?.let { connectionManager.removePending(it) }
 
         val failureContext = "onCreateIncomingConnectionFailed"
         val failureMessage = "$failureContext: $connectionManagerPhoneAccount $request"
-        val failureMetadata = FailureMetadata(callMetadata, failureMessage).toBundle()
 
         Log.e(TAG, failureMessage)
 
-        dispatcher.dispatch(baseContext, ConnectionPerform.IncomingFailure, failureMetadata)
+        if (wasPending && callId != null) {
+            // Notify Flutter that this call ended so it can clean up its call state.
+            Log.i(TAG, "onCreateIncomingConnectionFailed: firing HungUp for pending callId=$callId")
+            dispatcher.dispatch(baseContext, ConnectionPerform.HungUp, CallMetadata(callId = callId).toBundle())
+        } else {
+            val failureMetadata = FailureMetadata(callMetadata, failureMessage).toBundle()
+            dispatcher.dispatch(baseContext, ConnectionPerform.IncomingFailure, failureMetadata)
+        }
 
         phoneConnectionServiceDispatcher.dispatchLifecycle(ConnectionLifecycleAction.ConnectionChanged)
 

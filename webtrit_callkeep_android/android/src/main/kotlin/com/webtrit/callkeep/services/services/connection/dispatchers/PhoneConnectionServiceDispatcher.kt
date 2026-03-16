@@ -157,10 +157,15 @@ class PhoneConnectionServiceDispatcher(
     }
 
     private fun handleTearDown() {
-        val connections = connectionManager.getConnections()
-        logger.i("Tearing down all ${connections.size} active connections")
-
-        connections.forEach { it.hungUp() }
+        // ForegroundService.tearDown() already performs all state cleanup synchronously
+        // (hungUp for each connection, drainUnconnectedPendingCallIds, cleanConnections).
+        // This intent is sent solely to keep PhoneConnectionService alive so that the
+        // next session's intents (AnswerCall, HungUpCall, etc.) arrive at a live service.
+        //
+        // We must NOT call cleanConnections() or drainUnconnectedPendingCallIds() here:
+        // this intent is processed asynchronously and may arrive after the next session
+        // has already added new pending call IDs, which would corrupt that session's state.
+        logger.i("handleTearDown: synchronising sensor state after tearDown")
         updateSensorsState()
     }
 
@@ -265,6 +270,9 @@ class PhoneConnectionServiceDispatcher(
             block(connection)
         } else {
             logger.w("Unable to perform $actionName: Connection not found for callId: ${metadata.callId}")
+            // Mark as terminated so a subsequent endCall for the same ID returns an error
+            // rather than firing a second HungUp / performEndCall.
+            connectionManager.markTerminated(metadata.callId)
             dispatcher(ConnectionPerform.ConnectionNotFound, metadata)
         }
     }
