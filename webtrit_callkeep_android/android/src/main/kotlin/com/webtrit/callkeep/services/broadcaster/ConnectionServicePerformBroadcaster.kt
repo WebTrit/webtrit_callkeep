@@ -20,10 +20,13 @@ object ConnectionServicePerformBroadcaster {
     private val notificationManager = NotificationManager()
 
     fun registerConnectionPerformReceiver(
-        performActions: List<ConnectionPerform>, context: Context, receiver: BroadcastReceiver
+        performActions: List<ConnectionPerform>,
+        context: Context,
+        receiver: BroadcastReceiver,
+        exported: Boolean = true,
     ): IntentFilter {
         return createIntentFilter(performActions).also { filter ->
-            context.registerReceiverCompat(receiver, filter)
+            context.registerReceiverCompat(receiver, filter, exported)
         }
     }
 

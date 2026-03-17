@@ -61,9 +61,14 @@ fun Ringtone.setLoopingCompat(looping: Boolean) {
 }
 
 @SuppressLint("UnspecifiedRegisterReceiverFlag")
-fun Context.registerReceiverCompat(receiver: BroadcastReceiver, intentFilter: IntentFilter) {
+fun Context.registerReceiverCompat(
+    receiver: BroadcastReceiver,
+    intentFilter: IntentFilter,
+    exported: Boolean = true,
+) {
     if (SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED)
+        val flags = if (exported) Context.RECEIVER_EXPORTED else Context.RECEIVER_NOT_EXPORTED
+        registerReceiver(receiver, intentFilter, flags)
     } else {
         registerReceiver(receiver, intentFilter)
     }

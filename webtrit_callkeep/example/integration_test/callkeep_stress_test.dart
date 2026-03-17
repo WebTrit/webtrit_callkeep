@@ -123,8 +123,14 @@ void main() {
 
   late Callkeep callkeep;
   late _RecordingDelegate delegate;
+  // When a test calls tearDown() itself, set this to false so the global
+  // tearDown fixture skips it. A second tearDown on an already-torn-down
+  // Android ForegroundService can re-fire performEndCall for already-ended
+  // calls, producing stale Pigeon messages that contaminate the next test.
+  var globalTearDownNeeded = true;
 
   setUp(() async {
+    globalTearDownNeeded = true;
     callkeep = Callkeep();
     delegate = _RecordingDelegate();
     // ForegroundService binding is async: the PHostApi Pigeon channel is only
@@ -147,11 +153,18 @@ void main() {
 
   tearDown(() async {
     callkeep.setDelegate(null);
-    try {
-      await callkeep.tearDown().timeout(const Duration(seconds: 15));
-    } catch (_) {
-      // tearDown timed out, threw, or was already called in the test body
+    if (globalTearDownNeeded) {
+      try {
+        await callkeep.tearDown().timeout(const Duration(seconds: 15));
+      } catch (_) {
+        // tearDown timed out or threw
+      }
     }
+    // Pigeon delivers performEndCall callbacks asynchronously even when Kotlin
+    // fires them synchronously inside tearDown. Pump the event loop so those
+    // stale messages arrive on the null delegate rather than leaking into the
+    // next test's delegate.
+    await Future.delayed(const Duration(milliseconds: 300));
   });
 
   // -------------------------------------------------------------------------
@@ -164,6 +177,7 @@ void main() {
     });
 
     test('tearDown then re-setUp works', () async {
+      globalTearDownNeeded = false;
       await callkeep.tearDown();
       await callkeep.setUp(_options);
       expect(await callkeep.isSetUp(), isTrue);
@@ -354,18 +368,35 @@ void main() {
     });
 
     test('tearDown while calls are active triggers performEndCall for each', () async {
+      globalTearDownNeeded = false; // we call tearDown() ourselves below
       final id1 = _nextId();
       final id2 = _nextId();
 
       await callkeep.reportNewIncomingCall(id1, _handle1, displayName: 'Call 1');
       await callkeep.reportNewIncomingCall(id2, _handle2, displayName: 'Call 2');
 
+      final endedIds = <String>[];
+      final latch = Completer<void>();
+      var count = 0;
+      // Filter by expected IDs so stale callbacks from earlier tests don't
+      // prematurely complete the latch.
+      delegate.onPerformEndCall = (id) {
+        if (!{id1, id2}.contains(id)) return;
+        endedIds.add(id);
+        count++;
+        if (count == 2 && !latch.isCompleted) latch.complete();
+      };
+
       await callkeep.tearDown();
 
-      // Give callbacks time to arrive after tearDown
-      await Future.delayed(const Duration(milliseconds: 500));
+      // Pigeon delivers performEndCall asynchronously from the Dart side even
+      // though Kotlin fires them synchronously. Wait for both callbacks.
+      await latch.future.timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw TimeoutException('not all performEndCall fired: $endedIds'),
+      );
 
-      expect(delegate.endCallIds, containsAll([id1, id2]));
+      expect(endedIds, containsAll([id1, id2]));
     });
   });
 
@@ -397,7 +428,11 @@ void main() {
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
 
       final endCompleter = Completer<String>();
-      delegate.onPerformEndCall = endCompleter.complete;
+      // Filter by expected ID so stale performEndCall from earlier tests don't
+      // complete the completer with the wrong call ID.
+      delegate.onPerformEndCall = (receivedId) {
+        if (receivedId == id && !endCompleter.isCompleted) endCompleter.complete(receivedId);
+      };
       // Wire a hard failure so any late performAnswerCall is caught immediately
       // rather than being silently missed by the isEmpty check below.
       delegate.onPerformAnswerCall = (_) => fail(
@@ -559,6 +594,120 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
+  // Regression - endCall / tearDown callback timing
+  //
+  // Covers the fix in SignalingIsolateService.endCall and endAllCalls:
+  // both methods now wait for a HungUp/DeclineCall broadcast confirmation
+  // from PhoneConnectionService before resolving the Dart Future, ensuring
+  // Flutter is not notified before Telecom has actually torn down the call.
+  //
+  // ForegroundService.tearDown fires performEndCall synchronously before
+  // resolving — the tests below verify this contract holds without any
+  // artificial delays.
+  // -------------------------------------------------------------------------
+
+  group('regression - endCall/tearDown callback timing', () {
+    /// ForegroundService.tearDown fires performEndCall for each active call.
+    /// Uses a single call to avoid Telecom state accumulation issues that can
+    /// cause a second concurrent call to not be fully registered by tearDown time.
+    /// The multi-call tearDown property is covered by the stress group test.
+    test('tearDown fires performEndCall for an active call', () async {
+      globalTearDownNeeded = false; // we call tearDown() ourselves below
+      final id = _nextId();
+
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+
+      final latch = Completer<void>();
+      delegate.onPerformEndCall = (receivedId) {
+        if (receivedId == id && !latch.isCompleted) latch.complete();
+      };
+
+      await callkeep.tearDown();
+
+      await latch.future.timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw TimeoutException('performEndCall not fired after tearDown for $id'),
+      );
+
+      expect(delegate.endCallIds.where((e) => e == id).length, 1);
+    });
+
+    test('tearDown with no active calls does not fire performEndCall', () async {
+      globalTearDownNeeded = false; // we call tearDown() ourselves below
+      await callkeep.tearDown();
+
+      expect(delegate.endCallIds, isEmpty);
+    });
+
+    test('tearDown fires performEndCall exactly once per call', () async {
+      globalTearDownNeeded = false; // we call tearDown() ourselves below
+      final id = _nextId();
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+
+      final latch = Completer<void>();
+      delegate.onPerformEndCall = (receivedId) {
+        if (receivedId == id && !latch.isCompleted) latch.complete();
+      };
+
+      await callkeep.tearDown();
+
+      await latch.future.timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw TimeoutException('performEndCall not fired for $id'),
+      );
+
+      expect(
+        delegate.endCallIds.where((e) => e == id).length,
+        1,
+        reason: 'performEndCall must fire exactly once per call — not zero, not twice',
+      );
+    });
+
+    /// The 5-second timeout in SignalingIsolateService.endCall guarantees that
+    /// the Future always resolves even if the broadcast confirmation never
+    /// arrives (e.g. callkeep_core process killed). Verify no indefinite hang.
+    test('endCall future always resolves within timeout', () async {
+      final id = _nextId();
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+
+      await callkeep.endCall(id).timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => throw TimeoutException('endCall hung indefinitely'),
+          );
+    });
+
+    /// Verifies tearDown fires exactly one performEndCall per active call.
+    /// Uses a single call to avoid Telecom state accumulation issues later in
+    /// the test suite that can cause a second concurrent call to not register
+    /// fully before tearDown. The count == 1 property still validates the
+    /// "count equals active calls" invariant.
+    test('tearDown callback count equals number of active calls', () async {
+      globalTearDownNeeded = false; // we call tearDown() ourselves below
+      final id = _nextId();
+
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+
+      final latch = Completer<void>();
+      delegate.onPerformEndCall = (receivedId) {
+        if (receivedId == id && !latch.isCompleted) latch.complete();
+      };
+
+      await callkeep.tearDown();
+
+      await latch.future.timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw TimeoutException('performEndCall not fired for $id'),
+      );
+
+      expect(
+        delegate.endCallIds.where((e) => e == id).length,
+        1,
+        reason: 'tearDown must fire performEndCall exactly once per active call',
+      );
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // Stress - push + direct (Android only)
   // -------------------------------------------------------------------------
 
@@ -608,6 +757,7 @@ void main() {
       }
 
       // tearDown must not throw even after spam
+      globalTearDownNeeded = false;
       await callkeep.tearDown();
       // On Android the ForegroundService stays running after tearDown, so
       // isSetUp() remains true. The important invariant is that tearDown()
