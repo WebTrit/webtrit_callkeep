@@ -45,9 +45,9 @@ object CallDiagnostics {
     private fun getServiceStates(context: Context) =
         mapOf(
             "isForegroundServiceRunning" to ForegroundService.isRunning,
-            // PhoneConnectionService runs in the :callkeep_core process after process isolation;
-            // its companion isRunning is a JVM-static that is always false in the main process.
-            // Query the OS via ActivityManager to correctly detect it across process boundaries.
+            // PhoneConnectionService.isRunning is a JVM-static companion field — it is always
+            // false when read from a different OS process (e.g. the main process). Query the OS
+            // via ActivityManager to correctly detect it regardless of process boundaries.
             "isPhoneConnectionServiceRunning" to isServiceRunning(context, PhoneConnectionService::class.java),
             "isLockScreen" to Platform.isLockScreen(context),
             "connectionManagerState" to runCatching {
@@ -58,11 +58,17 @@ object CallDiagnostics {
      * Returns true if the given service class is currently running in any process of this app.
      * Uses [ActivityManager] because companion-object `isRunning` flags are JVM-process-local
      * and cannot be read across Android process boundaries.
+     *
+     * Both class name and package name are matched to avoid false positives from other apps
+     * that might expose a service with the same class name.
      */
     @Suppress("DEPRECATION")
     private fun isServiceRunning(context: Context, serviceClass: Class<*>): Boolean {
         val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        return am.getRunningServices(Int.MAX_VALUE).any { it.service.className == serviceClass.name }
+        return am.getRunningServices(Int.MAX_VALUE).any {
+            it.service.className == serviceClass.name &&
+                it.service.packageName == context.packageName
+        }
     }
 
     private fun getPermissionsState(context: Context): Map<String, Boolean> {
