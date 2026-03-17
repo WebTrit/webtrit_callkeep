@@ -20,10 +20,6 @@ class StorageDelegateSoundTest {
     @Before
     fun setUp() {
         context = RuntimeEnvironment.getApplication()
-        // Clear shared preferences before each test so tests are independent
-        // and do not inherit state written by a previously executed test.
-        context.getSharedPreferences("COMMON_PREFERENCES", Context.MODE_PRIVATE)
-            .edit().clear().commit()
     }
 
     // -------------------------------------------------------------------------
