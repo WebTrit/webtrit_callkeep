@@ -131,9 +131,18 @@ Decisions already made — do not re-litigate without strong reason.
 |----------|-------------|--------|
 | CI/CD workflow changes on feature branch — include or skip? | skip | **open** |
 | `isIncomingCall` field — only new field in `CallMetaData.kt`? | PR-4c | **resolved** — confirmed: `isIncomingCall: Boolean?` is the only new field. PR-4c merged. |
-| `RetryManager` — does it reference `StorageDelegate`? (affects PR-5a prerequisite) | PR-5a | **open** |
+| `RetryManager` — does it reference `StorageDelegate`? (affects PR-5a prerequisite) | PR-5a | **resolved** — RetryManager removed entirely in PR #172 (`refactor/remove-outgoing-call-retry`); PR-5a no longer needed |
 | After out-of-plan #163–#165 rewrites: which exact delta does PR-6 still need to add? | PR-6 | **open** — run `git diff origin/develop..feat/android-callkeep-core-process-migration -- '*.kt'` for ConnectionManager + ForegroundService before starting |
 | After out-of-plan #166 rewrite: which exact delta does PR-7b still need to add? | PR-7b | **open** — same approach: diff before extracting |
+
+---
+
+## Known Bugs to Fix (not yet in a PR)
+
+| Bug | Location | Description | Suggested fix |
+|-----|----------|-------------|---------------|
+| `performStartCall` fires after timeout | `ForegroundService.handleCSReportOngoingCall()` | `performStartCall` is called unconditionally after `invokeAndRemove()`. If the `startCall()` timeout already fired, `invokeAndRemove` is a no-op but `performStartCall` still reaches Flutter — Flutter is in inconsistent state (received TIMEOUT, then received "call active"). | Make `invokeAndRemove` return `Boolean` (whether a callback was found). Guard `performStartCall` behind that result: only fire if there was a live pending callback. Fix can land in PR-7a (ForegroundService changes). |
+| `StorageDelegate.sharedPreferences` singleton not reset between tests | `StorageDelegateIncomingCallTest` | `StorageDelegate` caches `sharedPreferences` as a JVM-static field. If Robolectric recreates the Application between tests, the cached instance diverges from the new context's prefs — causing `isFullScreen returns true by default` to fail. | Either stop caching (call `context.getSharedPreferences` directly each time) or expose a `resetForTesting()` method. Fix should land in a dedicated `fix/storage-delegate-test-isolation` PR. |
 
 ---
 
