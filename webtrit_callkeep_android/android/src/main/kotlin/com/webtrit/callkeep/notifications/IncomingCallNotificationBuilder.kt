@@ -72,7 +72,9 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
 
         val builder = baseNotificationBuilder(title, description).apply {
             setOngoing(true)
-            setFullScreenIntent(buildOpenAppIntent(context), true)
+            if (StorageDelegate.Sound.isIncomingCallFullScreen(context)) {
+                setFullScreenIntent(buildOpenAppIntent(context), true)
+            }
         }
 
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
