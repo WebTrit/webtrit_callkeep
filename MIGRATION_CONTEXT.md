@@ -4,7 +4,7 @@
 > new session, read this file first, then read `MIGRATION_PLAN.md` for full
 > detail. Update this file after every meaningful decision or state change.
 >
-> Last updated: 2026-03-17 (session 8)
+> Last updated: 2026-03-17 (session 9)
 
 ---
 
@@ -24,7 +24,6 @@ into a separate `:callkeep_core` OS process.
 - PR-5e — ready to start (Dart test, no blockers)
 - PR-6 — needs re-evaluation (ConnectionManager/ForegroundService significantly
   changed by out-of-plan commits #163–#166; read those diffs before extracting)
-- fix/storage-delegate-test-isolation — new small fix (see Known Bugs)
 
 ---
 
@@ -32,7 +31,7 @@ into a separate `:callkeep_core` OS process.
 
 | Branch | Last known commit | Notes |
 |--------|------------------|-------|
-| `develop` | `9be1d30` | refactor(android): remove outgoing call retry logic (#172) |
+| `develop` | `84aa6f1` | fix(android): remove SharedPreferences caching from StorageDelegate (#173) |
 | `feat/android-callkeep-core-process-migration` | `c2c1f42` | docs: mark PR-2e open as PR #158 |
 
 ---
@@ -65,6 +64,7 @@ into a separate `:callkeep_core` OS process.
 | PR-9b | `feat/android-callkeep-core-process-declaration` | `not started` | — | — |
 | PR-10 | `feat/example-app-multi-line-calls` | `merged` — PR #149 (merged ahead of schedule) | `830a447` | 2026-03-13 |
 | — | `refactor/remove-outgoing-call-retry` | `merged` — PR #172 (out-of-plan, supersedes PR-5a/5c) | `9be1d30` | 2026-03-17 |
+| — | `fix/storage-delegate-test-isolation` | `merged` — PR #173 (out-of-plan, fixes Known Bug #2) | `84aa6f1` | 2026-03-17 |
 
 ---
 
@@ -140,7 +140,7 @@ Decisions already made — do not re-litigate without strong reason.
 | Bug | Location | Description | Suggested fix |
 |-----|----------|-------------|---------------|
 | `performStartCall` fires after timeout | `ForegroundService.handleCSReportOngoingCall()` | `performStartCall` is called unconditionally after `invokeAndRemove()`. If the `startCall()` timeout already fired, `invokeAndRemove` is a no-op but `performStartCall` still reaches Flutter — Flutter is in inconsistent state (received TIMEOUT, then received "call active"). | Make `invokeAndRemove` return `Boolean` (whether a callback was found). Guard `performStartCall` behind that result: only fire if there was a live pending callback. Fix can land in PR-7a (ForegroundService changes). |
-| `StorageDelegate.sharedPreferences` singleton not reset between tests | `StorageDelegateIncomingCallTest` | `StorageDelegate` caches `sharedPreferences` as a JVM-static field. If Robolectric recreates the Application between tests, the cached instance diverges from the new context's prefs — causing `isFullScreen returns true by default` to fail. | Either stop caching (call `context.getSharedPreferences` directly each time) or expose a `resetForTesting()` method. Fix should land in a dedicated `fix/storage-delegate-test-isolation` PR. |
+| ~~`StorageDelegate.sharedPreferences` singleton not reset between tests~~ | ~~`StorageDelegateIncomingCallTest`~~ | **Fixed in PR #173** — caching removed; `sharedPreferences(context)` now resolves fresh via `context.applicationContext` on every call. Manual `clear()` workarounds removed from test setUp(). | — |
 
 ---
 
