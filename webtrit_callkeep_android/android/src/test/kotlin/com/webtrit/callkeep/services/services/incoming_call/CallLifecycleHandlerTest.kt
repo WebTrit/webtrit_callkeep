@@ -1,8 +1,11 @@
 package com.webtrit.callkeep.services.services.incoming_call
 
+import android.content.Context
 import android.os.Build
 import com.webtrit.callkeep.PCallkeepIncomingCallData
 import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.models.SignalingStatus
+import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
 import com.webtrit.callkeep.services.services.incoming_call.handlers.CallLifecycleHandler
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -12,6 +15,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.Mockito.mock
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 
 /**
@@ -89,18 +93,45 @@ class CallLifecycleHandlerTest {
     }
 
     // -------------------------------------------------------------------------
+    // Fakes (continued)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Records calls to [CallConnectionController] without Mockito argument matchers,
+     * avoiding Kotlin non-null / Mockito.any() NPE issues.
+     */
+    private class FakeConnectionController : CallConnectionController {
+        var answerCallCount = 0
+        var tearDownCallCount = 0
+
+        override fun answer(metadata: CallMetadata) { answerCallCount++ }
+        override fun decline(metadata: CallMetadata) {}
+        override fun hangUp(metadata: CallMetadata) {}
+        override fun tearDown() { tearDownCallCount++ }
+    }
+
+    // -------------------------------------------------------------------------
     // Fixtures
     // -------------------------------------------------------------------------
 
+    private val context: Context = RuntimeEnvironment.getApplication()
+
     private lateinit var handler: CallLifecycleHandler
     private lateinit var communicator: FakeCommunicator
+    private lateinit var fakeController: FakeConnectionController
     private val stopServiceCalls = mutableListOf<String>()
 
     @Before
     fun setUp() {
+        // Force BACKGROUND isolate so executeIfBackground always runs the action.
+        // Without this, tests can become order-dependent if another test class leaves
+        // SignalingStatusBroadcaster in a CONNECT/CONNECTING (MAIN) state.
+        SignalingStatusBroadcaster.setValue(context, SignalingStatus.DISCONNECT)
+
         communicator = FakeCommunicator()
+        fakeController = FakeConnectionController()
         handler = CallLifecycleHandler(
-            connectionController = mock(com.webtrit.callkeep.services.services.incoming_call.CallConnectionController::class.java),
+            connectionController = fakeController,
             stopService = { stopServiceCalls.add("stop") },
             isolateHandler = mock(com.webtrit.callkeep.services.services.incoming_call.handlers.FlutterIsolateHandler::class.java),
         )
@@ -227,5 +258,69 @@ class CallLifecycleHandlerTest {
         handler.release()
 
         assertEquals(1, stopServiceCalls.size)
+    }
+
+    // -------------------------------------------------------------------------
+    // performAnswerCall -- no duplicate answer signal to Telecom
+    // -------------------------------------------------------------------------
+
+    /**
+     * Regression: performAnswerCall must NOT call connectionController.answer() after
+     * Flutter acknowledges the answer. Telecom already confirmed the call is being answered
+     * by invoking performAnswerCall; a second answer() call would send a duplicate signal
+     * and could trigger a double notification or double-answer state in the connection service.
+     */
+    @Test
+    fun `performAnswerCall does not call connectionController answer on success`() {
+        handler.performAnswerCall(CallMetadata(callId = "call-1"))
+
+        // Confirm the background path actually ran (Flutter was notified) so the
+        // answerCallCount == 0 assertion is not trivially satisfied by a no-op.
+        assertTrue(
+            "performAnswer must be forwarded to Flutter to confirm the background path ran",
+            communicator.events.contains("performAnswer"),
+        )
+        assertEquals("answer() must not be called -- Telecom already confirmed the answer", 0, fakeController.answerCallCount)
+    }
+
+    @Test
+    fun `performAnswerCall notifies Flutter isolate via performAnswer`() {
+        handler.performAnswerCall(CallMetadata(callId = "call-1"))
+
+        assertTrue(
+            "performAnswerCall must forward the event to Flutter",
+            communicator.events.contains("performAnswer"),
+        )
+    }
+
+    @Test
+    fun `performAnswerCall tears down connection on Flutter answer failure`() {
+        val failingCommunicator = object : FlutterIsolateCommunicator {
+            override fun performAnswer(
+                callId: String,
+                onSuccess: () -> Unit,
+                onFailure: (Throwable) -> Unit,
+            ) { onFailure(RuntimeException("answer rejected")) }
+
+            override fun performEndCall(callId: String, onSuccess: () -> Unit, onFailure: (Throwable) -> Unit) {}
+            override fun syncPushIsolate(callData: PCallkeepIncomingCallData?, onSuccess: () -> Unit, onFailure: (Throwable) -> Unit) {}
+            override fun releaseResources(callData: PCallkeepIncomingCallData?, onComplete: () -> Unit) {}
+        }
+        handler.flutterApi = failingCommunicator
+
+        handler.performAnswerCall(CallMetadata(callId = "call-1"))
+
+        assertEquals("tearDown() must be called once on answer failure", 1, fakeController.tearDownCallCount)
+    }
+
+    @Test
+    fun `performAnswerCall with null flutterApi is a no-op and does not throw`() {
+        handler.flutterApi = null
+
+        handler.performAnswerCall(CallMetadata(callId = "call-1"))
+
+        // No Flutter notification, no teardown, no crash -- graceful degradation.
+        assertEquals(0, fakeController.answerCallCount)
+        assertEquals(0, fakeController.tearDownCallCount)
     }
 }

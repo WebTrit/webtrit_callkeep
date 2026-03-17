@@ -36,11 +36,18 @@ class CallLifecycleHandler(
         connectionController.decline(metadata)
     }
 
-    // Connection service event for answering the call, synchronized with Flutter if the app is in the background
+    // Connection service event for answering the call, synchronized with Flutter if the app is in the background.
+    // Does NOT call connectionController.answer() on success: Telecom already confirmed the answer by
+    // invoking this method; a second answer() call would send a duplicate signal to the connection service.
     fun performAnswerCall(metadata: CallMetadata) {
         IsolateSelector.executeIfBackground {
-            flutterApi?.performAnswer(metadata.callId, onSuccess = {
-                connectionController.answer(metadata)
+            val api = flutterApi
+            if (api == null) {
+                Log.w(TAG, "performAnswerCall: flutterApi is null, no Flutter isolate to notify for callId=${metadata.callId}")
+                return@executeIfBackground
+            }
+            api.performAnswer(metadata.callId, onSuccess = {
+                Log.d(TAG, "performAnswerCall: Flutter isolate acknowledged answer for callId=${metadata.callId}")
             }, onFailure = {
                 Log.d(TAG, "Tear down connection due to answer failure: $it")
                 connectionController.tearDown()
