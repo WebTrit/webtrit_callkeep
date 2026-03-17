@@ -156,6 +156,7 @@ class ForegroundService : Service(), PHostApi {
             // previously persisted custom sound on each setUp() call.
             options.android.ringtoneSound?.let { StorageDelegate.Sound.initRingtonePath(baseContext, it) }
             options.android.ringbackSound?.let { StorageDelegate.Sound.initRingbackPath(baseContext, it) }
+            options.android.incomingCallFullScreen?.let { StorageDelegate.IncomingCall.setFullScreen(baseContext, it) }
         }.onFailure { Log.w("CallKeep", "Sound init failed: ${it.message}", it) }
 
         callback.invoke(Result.success(Unit))

@@ -230,14 +230,16 @@ class PIOSOptions {
 }
 
 class PAndroidOptions {
-  PAndroidOptions({this.ringtoneSound, this.ringbackSound});
+  PAndroidOptions({this.ringtoneSound, this.ringbackSound, this.incomingCallFullScreen});
 
   String? ringtoneSound;
 
   String? ringbackSound;
 
+  bool? incomingCallFullScreen;
+
   List<Object?> _toList() {
-    return <Object?>[ringtoneSound, ringbackSound];
+    return <Object?>[ringtoneSound, ringbackSound, incomingCallFullScreen];
   }
 
   Object encode() {
@@ -246,7 +248,11 @@ class PAndroidOptions {
 
   static PAndroidOptions decode(Object result) {
     result as List<Object?>;
-    return PAndroidOptions(ringtoneSound: result[0] as String?, ringbackSound: result[1] as String?);
+    return PAndroidOptions(
+      ringtoneSound: result[0] as String?,
+      ringbackSound: result[1] as String?,
+      incomingCallFullScreen: result[2] as bool?,
+    );
   }
 
   @override

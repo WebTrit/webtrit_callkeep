@@ -20,6 +20,11 @@ void main() {
       expect(options.ringbackSound, isNull);
     });
 
+    test('incomingCallFullScreen defaults to null', () {
+      const options = CallkeepAndroidOptions();
+      expect(options.incomingCallFullScreen, isNull);
+    });
+
     // -------------------------------------------------------------------------
     // Field assignment
     // -------------------------------------------------------------------------
@@ -32,6 +37,16 @@ void main() {
     test('ringbackSound is set correctly', () {
       const options = CallkeepAndroidOptions(ringbackSound: '/assets/ringback.mp3');
       expect(options.ringbackSound, equals('/assets/ringback.mp3'));
+    });
+
+    test('incomingCallFullScreen is set correctly when true', () {
+      const options = CallkeepAndroidOptions(incomingCallFullScreen: true);
+      expect(options.incomingCallFullScreen, isTrue);
+    });
+
+    test('incomingCallFullScreen is set correctly when false', () {
+      const options = CallkeepAndroidOptions(incomingCallFullScreen: false);
+      expect(options.incomingCallFullScreen, isFalse);
     });
 
     // -------------------------------------------------------------------------
@@ -48,6 +63,18 @@ void main() {
       const a = CallkeepAndroidOptions(ringtoneSound: '/assets/ring.mp3', ringbackSound: '/assets/ringback.mp3');
       const b = CallkeepAndroidOptions(ringtoneSound: '/assets/ring.mp3', ringbackSound: '/assets/ringback.mp3');
       expect(a, equals(b));
+    });
+
+    test('instances differ when incomingCallFullScreen differs', () {
+      const a = CallkeepAndroidOptions(incomingCallFullScreen: true);
+      const b = CallkeepAndroidOptions(incomingCallFullScreen: false);
+      expect(a, isNot(equals(b)));
+    });
+
+    test('instance with incomingCallFullScreen set differs from default', () {
+      const a = CallkeepAndroidOptions(incomingCallFullScreen: true);
+      const b = CallkeepAndroidOptions();
+      expect(a, isNot(equals(b)));
     });
 
     test('instances differ when ringtoneSound differs', () {
@@ -103,6 +130,24 @@ void main() {
       final pigeon = options.toPigeon();
       expect(pigeon.ringtoneSound, equals('/assets/ring.mp3'));
       expect(pigeon.ringbackSound, equals('/assets/ringback.mp3'));
+    });
+
+    test('toPigeon maps incomingCallFullScreen true', () {
+      const options = CallkeepAndroidOptions(incomingCallFullScreen: true);
+      final pigeon = options.toPigeon();
+      expect(pigeon.incomingCallFullScreen, isTrue);
+    });
+
+    test('toPigeon maps incomingCallFullScreen false', () {
+      const options = CallkeepAndroidOptions(incomingCallFullScreen: false);
+      final pigeon = options.toPigeon();
+      expect(pigeon.incomingCallFullScreen, isFalse);
+    });
+
+    test('toPigeon maps null incomingCallFullScreen', () {
+      const options = CallkeepAndroidOptions();
+      final pigeon = options.toPigeon();
+      expect(pigeon.incomingCallFullScreen, isNull);
     });
   });
 }
