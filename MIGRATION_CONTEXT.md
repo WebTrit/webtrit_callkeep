@@ -4,7 +4,7 @@
 > new session, read this file first, then read `MIGRATION_PLAN.md` for full
 > detail. Update this file after every meaningful decision or state change.
 >
-> Last updated: 2026-03-17 (session 13)
+> Last updated: 2026-03-17 (session 14)
 
 ---
 
@@ -21,8 +21,7 @@ into a separate `:callkeep_core` OS process.
 
 **Next action to take:**
 
-- PR-7b-guards -- ready to start (standalone, no dependencies)
-- PR-8a/8b -- ready to start (standalone, no dependencies; `incomingCallFullScreen` Pigeon + Dart API)
+All standalone PRs done. Migration chain starts with PR-6a.
 
 ---
 
@@ -30,7 +29,7 @@ into a separate `:callkeep_core` OS process.
 
 | Branch | Last known commit | Notes |
 |--------|------------------|-------|
-| `develop` | `401d4c8` | refactor(android): replace OutgoingCallbacksManager with per-call BroadcastReceiver in startCall (#175) |
+| `develop` | `2bc5080` | feat(android): expose incomingCallFullScreen option via Pigeon API (#178) |
 | `feat/android-callkeep-core-process-migration` | `c2c1f42` | docs: mark PR-2e open as PR #158 |
 
 ---
@@ -62,14 +61,13 @@ into a separate `:callkeep_core` OS process.
 | -- | `refactor/remove-outgoing-call-retry` | `merged` -- PR #172 (out-of-plan, supersedes PR-5a/5c) | `9be1d30` | 2026-03-17 |
 | -- | `fix/storage-delegate-test-isolation` | `merged` -- PR #173 (out-of-plan, fixes Known Bug #2) | `84aa6f1` | 2026-03-17 |
 | -- | `refactor/android-split-connection-event-enums` | `merged` -- PR #176 (out-of-plan, splits ConnectionPerform into CallLifecycleEvent + CallMediaEvent) | `ea74bb0` | 2026-03-17 |
+| PR-7b-guards | `fix/android-call-lifecycle-null-guards` | `merged` -- PR #177 | `572d71e` | 2026-03-17 |
+| PR-8a + PR-8b | `feat/android-pigeon-incoming-call-fullscreen` | `merged` -- PR #178 (combined 8a+8b in one PR) | `2bc5080` | 2026-03-17 |
 
 ### Remaining (sorted by execution order)
 
 | PR | Branch | Status | Notes |
 |----|--------|--------|-------|
-| PR-7b-guards | `fix/android-call-lifecycle-null-guards` | `not started` | `CallLifecycleHandler.performAnswerCall`: remove duplicate `connectionController.answer(metadata)` call from `onSuccess` to suppress double-answer signal. `performEndCall` null guard already on develop via #166. Standalone. |
-| PR-8a | `feat/android-pigeon-regenerate` | `not started` | Add `incomingCallFullScreen: bool?` to `PAndroidOptions` in `callkeep.messages.dart`; wire in `ForegroundService.setUp()` -> `StorageDelegate.IncomingCall.setFullScreen()`; regenerate `Generated.kt` + Dart pigeon files. **Standalone** -- StorageDelegate already has `isFullScreen`/`setFullScreen`; just needs the API field added. |
-| PR-8b | `feat/android-options-dart-api` | `not started` | Add `incomingCallFullScreen` to `CallkeepAndroidOptions` in `webtrit_callkeep_platform_interface`. Depends on PR-8a. |
 | PR-6a | `feat/android-connection-tracker-class` | `not started` | New `MainProcessConnectionTracker.kt` + `MainProcessConnectionTrackerTest.kt` (migration). Also brings `ValidateConnectionAdditionTest.kt` which tests tracker-based `validateConnectionAddition`. |
 | PR-6c | `feat/android-connections-api-switch` | `not started` | `ConnectionsApi.kt`: switch from `ConnectionManager` to `MainProcessConnectionTracker`. Depends on PR-6a. |
 | PR-7a-replay | `feat/android-foreground-service-reconnect-replay` | `not started` | Reconnect replay via `MainProcessConnectionTracker.getAll()` + `FailedCallsStoreTest.kt`. Depends on PR-6a. |
@@ -84,8 +82,6 @@ into a separate `:callkeep_core` OS process.
 
 ```
 PR-6a --> PR-6c --> PR-7a-replay --> PR-7b-coldstart --> PR-9a --> PR-9b --> PR-3
-PR-7b-guards (standalone)
-PR-8a --> PR-8b (standalone, then feeds into PR-9a)
 ```
 
 ---
