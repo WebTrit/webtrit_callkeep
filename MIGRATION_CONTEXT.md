@@ -20,9 +20,9 @@ into a separate `:callkeep_core` OS process.
 **Current overall phase:** Wave 1 mostly done. Wave 2 partial.
 
 **Next action to take:**
-- PR-4d — ready to start (PR-4a merged, dependency satisfied)
+
 - PR-4c — ready to start (independent)
-- PR-5a, PR-5c, PR-5e — ready to start (independent)
+- PR-5a, PR-5c, PR-5e — ready to start
 - PR-6 — needs re-evaluation (ConnectionManager/ForegroundService significantly
   changed by out-of-plan commits #163–#166; read those diffs before extracting
   the feature branch version)
@@ -33,7 +33,7 @@ into a separate `:callkeep_core` OS process.
 
 | Branch | Last known commit | Notes |
 |--------|------------------|-------|
-| `develop` | `7037531` | test(integration): add call scenarios (#169) |
+| `develop` | `aa653bb` | fix(android): guard full-screen intent (#170) |
 | `feat/android-callkeep-core-process-migration` | `c2c1f42` | docs: mark PR-2e open as PR #158 |
 
 ---
@@ -52,7 +52,7 @@ into a separate `:callkeep_core` OS process.
 | PR-4a | `feat/android-storage-delegate-options` | `merged` — PR #157 | `85749be` | 2026-03-17 |
 | PR-4b | `refactor/asset-holder-remove-flutter-assets-dependency` | `merged` — PR #156 | `ea9033b` | 2026-03-13 |
 | PR-4c | `feat/android-metadata-diagnostics` | `not started` | — | — |
-| PR-4d | `fix/incoming-call-notification-null-safety` | `open` — PR #170 | — | — |
+| PR-4d | `fix/incoming-call-notification-null-safety` | `merged` — PR #170 | `aa653bb` | 2026-03-17 |
 | PR-5a | `test/retry-manager-test` | `not started` | — | — |
 | PR-5b | `test/storage-delegate-sound-test` | `merged` — shipped inside #157 | `85749be` | 2026-03-17 |
 | PR-5c | `test/is-call-phone-security-exception-test` | `not started` | — | — |
