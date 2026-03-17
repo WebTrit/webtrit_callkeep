@@ -51,7 +51,7 @@ into a separate `:callkeep_core` OS process.
 | PR-3 | `docs/android-architecture-guide` | `not started` | — | — |
 | PR-4a | `feat/android-storage-delegate-options` | `merged` — PR #157 | `85749be` | 2026-03-17 |
 | PR-4b | `refactor/asset-holder-remove-flutter-assets-dependency` | `merged` — PR #156 | `ea9033b` | 2026-03-13 |
-| PR-4c | `feat/android-metadata-diagnostics` | `not started` | — | — |
+| PR-4c | `feat/android-metadata-diagnostics` | `open` — PR #171 | — | — |
 | PR-4d | `fix/incoming-call-notification-null-safety` | `merged` — PR #170 | `aa653bb` | 2026-03-17 |
 | PR-5a | `test/retry-manager-test` | `not started` | — | — |
 | PR-5b | `test/storage-delegate-sound-test` | `merged` — shipped inside #157 | `85749be` | 2026-03-17 |
