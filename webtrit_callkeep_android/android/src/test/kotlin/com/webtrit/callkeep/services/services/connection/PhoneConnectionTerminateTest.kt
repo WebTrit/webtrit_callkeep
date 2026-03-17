@@ -6,7 +6,8 @@ import android.telecom.Connection
 import android.telecom.DisconnectCause
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
+import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
+import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
 import com.webtrit.callkeep.services.services.connection.models.PerformDispatchHandle
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -34,7 +35,7 @@ class PhoneConnectionTerminateTest {
     private val context: Context = RuntimeEnvironment.getApplication()
 
     // Captured dispatcher events — order matters for multi-call assertions.
-    private val dispatchedEvents = mutableListOf<ConnectionPerform>()
+    private val dispatchedEvents = mutableListOf<ConnectionEvent>()
     private val dispatcher: PerformDispatchHandle = { event, _ -> dispatchedEvents.add(event) }
 
     // Count of onDisconnectCallback invocations.
@@ -71,7 +72,7 @@ class PhoneConnectionTerminateTest {
 
         connection.terminateWithCause(DisconnectCause(DisconnectCause.LOCAL))
 
-        assertEquals(listOf(ConnectionPerform.HungUp), dispatchedEvents)
+        assertEquals(listOf(CallLifecycleEvent.HungUp), dispatchedEvents)
     }
 
     @Test
@@ -80,7 +81,7 @@ class PhoneConnectionTerminateTest {
 
         connection.terminateWithCause(DisconnectCause(DisconnectCause.REMOTE))
 
-        assertEquals(listOf(ConnectionPerform.DeclineCall), dispatchedEvents)
+        assertEquals(listOf(CallLifecycleEvent.DeclineCall), dispatchedEvents)
     }
 
     @Test
@@ -90,7 +91,7 @@ class PhoneConnectionTerminateTest {
         connection.terminateWithCause(DisconnectCause(DisconnectCause.REJECTED))
 
         // REJECTED code != REMOTE → falls into the HungUp branch
-        assertEquals(listOf(ConnectionPerform.HungUp), dispatchedEvents)
+        assertEquals(listOf(CallLifecycleEvent.HungUp), dispatchedEvents)
     }
 
     @Test
@@ -125,7 +126,7 @@ class PhoneConnectionTerminateTest {
 
         connection.terminateWithCause(DisconnectCause(DisconnectCause.LOCAL))
 
-        assertEquals(listOf(ConnectionPerform.HungUp), dispatchedEvents)
+        assertEquals(listOf(CallLifecycleEvent.HungUp), dispatchedEvents)
     }
 
     @Test
@@ -136,7 +137,7 @@ class PhoneConnectionTerminateTest {
         // Incoming cause is LOCAL, but stored cause is REMOTE — stored cause wins
         connection.terminateWithCause(DisconnectCause(DisconnectCause.LOCAL))
 
-        assertEquals(listOf(ConnectionPerform.DeclineCall), dispatchedEvents)
+        assertEquals(listOf(CallLifecycleEvent.DeclineCall), dispatchedEvents)
     }
 
     @Test
@@ -147,7 +148,7 @@ class PhoneConnectionTerminateTest {
         connection.terminateWithCause(DisconnectCause(DisconnectCause.LOCAL)) // else branch
 
         assertEquals(2, dispatchedEvents.size)
-        assertTrue(dispatchedEvents.all { it == ConnectionPerform.HungUp })
+        assertTrue(dispatchedEvents.all { it == CallLifecycleEvent.HungUp })
         assertEquals("onDisconnectCallback must fire only once", 1, disconnectCallbackCount)
     }
 
@@ -160,7 +161,7 @@ class PhoneConnectionTerminateTest {
 
         assertEquals(
             "Both dispatches must use the original REMOTE cause",
-            listOf(ConnectionPerform.DeclineCall, ConnectionPerform.DeclineCall),
+            listOf(CallLifecycleEvent.DeclineCall, CallLifecycleEvent.DeclineCall),
             dispatchedEvents
         )
     }
@@ -174,7 +175,7 @@ class PhoneConnectionTerminateTest {
 
         assertEquals(
             "Both dispatches must use the original LOCAL cause",
-            listOf(ConnectionPerform.HungUp, ConnectionPerform.HungUp),
+            listOf(CallLifecycleEvent.HungUp, CallLifecycleEvent.HungUp),
             dispatchedEvents
         )
     }
@@ -214,7 +215,7 @@ class PhoneConnectionTerminateTest {
         connection.terminateWithCause(DisconnectCause(DisconnectCause.LOCAL))
 
         // Broadcast fired — no 5-second timeout, endCall resolves immediately.
-        assertEquals(listOf(ConnectionPerform.DeclineCall), dispatchedEvents)
+        assertEquals(listOf(CallLifecycleEvent.DeclineCall), dispatchedEvents)
     }
 
     @Test
@@ -238,6 +239,6 @@ class PhoneConnectionTerminateTest {
 
         connection.terminateWithCause(DisconnectCause(DisconnectCause.LOCAL))
 
-        assertEquals(listOf(ConnectionPerform.HungUp), dispatchedEvents)
+        assertEquals(listOf(CallLifecycleEvent.HungUp), dispatchedEvents)
     }
 }

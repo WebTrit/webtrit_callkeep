@@ -16,7 +16,7 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.toPCallkeepIncomingCallData
 import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
-import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
+import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.common.DefaultIsolateLaunchPolicy
 import com.webtrit.callkeep.services.services.incoming_call.handlers.CallLifecycleHandler
@@ -39,7 +39,7 @@ class IncomingCallService : Service() {
     fun getCallLifecycleHandler(): CallLifecycleHandler = callLifecycleHandler
 
     private val connectionService = listOf(
-        ConnectionPerform.AnswerCall,
+        CallLifecycleEvent.AnswerCall,
     )
 
     private val connectionServicePerformReceiver = object : BroadcastReceiver() {
@@ -48,7 +48,7 @@ class IncomingCallService : Service() {
 
             when (intent?.action) {
                 // Listen connection service actions (and try to notify isolate if it background)
-                ConnectionPerform.AnswerCall.name -> performAnswerCall(metadata!!)
+                CallLifecycleEvent.AnswerCall.name -> performAnswerCall(metadata!!)
                 // DeclineCall and HungUp are handled via IC_RELEASE_WITH_DECLINE intent
                 // (triggered from PhoneConnection.onDisconnect → cancelIncomingNotification).
                 // Handling them here as well would cause a double performEndCall: once from

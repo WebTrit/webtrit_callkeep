@@ -2,7 +2,7 @@ package com.webtrit.callkeep.services.services.connection.dispatchers
 
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
+import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.services.connection.ActivityWakelockManager
 import com.webtrit.callkeep.services.services.connection.ConnectionManager
 import com.webtrit.callkeep.services.services.connection.PhoneConnection
@@ -260,7 +260,7 @@ class PhoneConnectionServiceDispatcher(
 
     /**
      * Helper to safely execute an action on a connection.
-     * If the connection is missing, it logs a warning and dispatches [ConnectionPerform.ConnectionNotFound].
+     * If the connection is missing, it logs a warning and dispatches [CallLifecycleEvent.ConnectionNotFound].
      */
     private inline fun executeOnConnection(
         metadata: CallMetadata, actionName: String, block: (PhoneConnection) -> Unit
@@ -279,7 +279,7 @@ class PhoneConnectionServiceDispatcher(
             // pass the isPending() gate, and create a zombie connection for a call already ended.
             connectionManager.removePending(metadata.callId)
             connectionManager.consumeAnswer(metadata.callId)
-            dispatcher(ConnectionPerform.ConnectionNotFound, metadata)
+            dispatcher(CallLifecycleEvent.ConnectionNotFound, metadata)
         }
     }
 

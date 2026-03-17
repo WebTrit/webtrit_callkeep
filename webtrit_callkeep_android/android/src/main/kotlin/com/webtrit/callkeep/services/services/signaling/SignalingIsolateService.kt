@@ -38,7 +38,7 @@ import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder.Companion.ACTION_RESTORE_NOTIFICATION
 import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
-import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
+import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
 import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
@@ -278,7 +278,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
      * Ends a single active call identified by [callId].
      *
      * Sends a hang-up intent to [PhoneConnectionService] and then waits for a
-     * [ConnectionPerform.HungUp] or [ConnectionPerform.DeclineCall] broadcast that carries
+     * [CallLifecycleEvent.HungUp] or [CallLifecycleEvent.DeclineCall] broadcast that carries
      * the same [callId] before resolving [callback] with success. This ensures Dart is not
      * notified before the Telecom framework has actually torn down the connection.
      *
@@ -312,7 +312,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         }
 
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(ConnectionPerform.HungUp, ConnectionPerform.DeclineCall), baseContext, receiver,
+            listOf(CallLifecycleEvent.HungUp, CallLifecycleEvent.DeclineCall), baseContext, receiver,
             exported = false,
         )
 
@@ -332,7 +332,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
      * - **No active connections** — teardown is sent and [callback] is resolved immediately,
      *   since there are no broadcasts to wait for.
      * - **One or more active connections** — a [BroadcastReceiver] is registered for
-     *   [ConnectionPerform.HungUp] / [ConnectionPerform.DeclineCall]. An [AtomicInteger]
+     *   [CallLifecycleEvent.HungUp] / [CallLifecycleEvent.DeclineCall]. An [AtomicInteger]
      *   counts down each arriving broadcast; [callback] is resolved once the counter reaches
      *   zero, meaning every tracked connection has confirmed teardown.
      *
@@ -373,7 +373,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         }
 
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(ConnectionPerform.HungUp, ConnectionPerform.DeclineCall), baseContext, receiver,
+            listOf(CallLifecycleEvent.HungUp, CallLifecycleEvent.DeclineCall), baseContext, receiver,
             exported = false,
         )
 

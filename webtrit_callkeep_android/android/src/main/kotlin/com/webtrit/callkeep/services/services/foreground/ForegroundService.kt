@@ -38,7 +38,8 @@ import com.webtrit.callkeep.models.toAudioDevice
 import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.models.toPAudioDevice
 import com.webtrit.callkeep.models.toPHandle
-import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
+import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
+import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 
@@ -102,20 +103,20 @@ class ForegroundService : Service(), PHostApi {
             val action = intent?.action
             logger.d("connectionServicePerformReceiver onReceive: $action")
             when (action) {
-                ConnectionPerform.DidPushIncomingCall.name -> handleCSReportDidPushIncomingCall(
+                CallLifecycleEvent.DidPushIncomingCall.name -> handleCSReportDidPushIncomingCall(
                     intent.extras
                 )
 
-                ConnectionPerform.DeclineCall.name -> handleCSReportDeclineCall(intent.extras)
-                ConnectionPerform.HungUp.name -> handleCSReportDeclineCall(intent.extras)
-                ConnectionPerform.AnswerCall.name -> handleCSReportAnswerCall(intent.extras)
-                ConnectionPerform.OngoingCall.name -> handleCSReportOngoingCall(intent.extras)
-                ConnectionPerform.AudioDeviceSet.name -> handleCSReportAudioDeviceSet(intent.extras)
-                ConnectionPerform.AudioDevicesUpdate.name -> handleCsReportAudioDevicesUpdate(intent.extras)
-                ConnectionPerform.AudioMuting.name -> handleCSReportAudioMuting(intent.extras)
-                ConnectionPerform.ConnectionHolding.name -> handleCSReportConnectionHolding(intent.extras)
-                ConnectionPerform.SentDTMF.name -> handleCSReportSentDTMF(intent.extras)
-                ConnectionPerform.OutgoingFailure.name -> handleCSReportOutgoingFailure(intent.extras)
+                CallLifecycleEvent.DeclineCall.name -> handleCSReportDeclineCall(intent.extras)
+                CallLifecycleEvent.HungUp.name -> handleCSReportDeclineCall(intent.extras)
+                CallLifecycleEvent.AnswerCall.name -> handleCSReportAnswerCall(intent.extras)
+                CallLifecycleEvent.OngoingCall.name -> handleCSReportOngoingCall(intent.extras)
+                CallMediaEvent.AudioDeviceSet.name -> handleCSReportAudioDeviceSet(intent.extras)
+                CallMediaEvent.AudioDevicesUpdate.name -> handleCsReportAudioDevicesUpdate(intent.extras)
+                CallMediaEvent.AudioMuting.name -> handleCSReportAudioMuting(intent.extras)
+                CallMediaEvent.ConnectionHolding.name -> handleCSReportConnectionHolding(intent.extras)
+                CallMediaEvent.SentDTMF.name -> handleCSReportSentDTMF(intent.extras)
+                CallLifecycleEvent.OutgoingFailure.name -> handleCSReportOutgoingFailure(intent.extras)
             }
         }
     }
@@ -127,7 +128,7 @@ class ForegroundService : Service(), PHostApi {
         logger.d("onCreate")
         // Register the service to receive connection service perform events
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            ConnectionPerform.entries, baseContext, connectionServicePerformReceiver
+            CallLifecycleEvent.entries + CallMediaEvent.entries, baseContext, connectionServicePerformReceiver
         )
         isRunning = true
     }
