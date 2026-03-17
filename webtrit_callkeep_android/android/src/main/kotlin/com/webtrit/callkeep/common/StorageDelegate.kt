@@ -23,7 +23,6 @@ object StorageDelegate {
     object Sound {
         private const val RINGTONE_PATH = "RINGTONE_PATH_KEY"
         private const val RINGBACK_PATH = "RINGBACK_PATH_KEY"
-        private const val INCOMING_CALL_FULL_SCREEN = "INCOMING_CALL_FULL_SCREEN"
 
         /** Persists [path] as the ringtone asset path. Passing `null` clears the stored value. */
         fun initRingtonePath(context: Context, path: String?) {
@@ -48,17 +47,21 @@ object StorageDelegate {
         fun getRingbackPath(context: Context): String? {
             return getSharedPreferences(context)?.getString(RINGBACK_PATH, null)
         }
+    }
+
+    object IncomingCall {
+        private const val FULL_SCREEN = "INCOMING_CALL_FULL_SCREEN"
 
         /** Persists whether incoming calls should launch in full-screen mode. Defaults to `true`. */
-        fun setIncomingCallFullScreen(context: Context, enabled: Boolean) {
+        fun setFullScreen(context: Context, enabled: Boolean) {
             getSharedPreferences(context)?.edit()?.apply {
-                putBoolean(INCOMING_CALL_FULL_SCREEN, enabled)
+                putBoolean(FULL_SCREEN, enabled)
                 apply()
             }
         }
 
-        fun isIncomingCallFullScreen(context: Context): Boolean {
-            return getSharedPreferences(context)?.getBoolean(INCOMING_CALL_FULL_SCREEN, true) ?: true
+        fun isFullScreen(context: Context): Boolean {
+            return getSharedPreferences(context)?.getBoolean(FULL_SCREEN, true) ?: true
         }
     }
 

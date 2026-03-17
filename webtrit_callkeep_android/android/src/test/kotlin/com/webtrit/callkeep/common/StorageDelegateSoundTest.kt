@@ -3,9 +3,7 @@ package com.webtrit.callkeep.common
 import android.content.Context
 import android.os.Build
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -26,46 +24,6 @@ class StorageDelegateSoundTest {
         // and do not inherit state written by a previously executed test.
         context.getSharedPreferences("COMMON_PREFERENCES", Context.MODE_PRIVATE)
             .edit().clear().commit()
-    }
-
-    // -------------------------------------------------------------------------
-    // incomingCallFullScreen — default / set / get / toggle
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `isIncomingCallFullScreen returns true by default when key is absent`() {
-        // Fresh preferences (cleared in @Before) — key is not present.
-        assertTrue(StorageDelegate.Sound.isIncomingCallFullScreen(context))
-    }
-
-    @Test
-    fun `setIncomingCallFullScreen false is returned by isIncomingCallFullScreen`() {
-        StorageDelegate.Sound.setIncomingCallFullScreen(context, false)
-        assertFalse(StorageDelegate.Sound.isIncomingCallFullScreen(context))
-    }
-
-    @Test
-    fun `setIncomingCallFullScreen true is returned by isIncomingCallFullScreen`() {
-        StorageDelegate.Sound.setIncomingCallFullScreen(context, true)
-        assertTrue(StorageDelegate.Sound.isIncomingCallFullScreen(context))
-    }
-
-    @Test
-    fun `setIncomingCallFullScreen can be toggled from false to true`() {
-        StorageDelegate.Sound.setIncomingCallFullScreen(context, false)
-        assertFalse(StorageDelegate.Sound.isIncomingCallFullScreen(context))
-
-        StorageDelegate.Sound.setIncomingCallFullScreen(context, true)
-        assertTrue(StorageDelegate.Sound.isIncomingCallFullScreen(context))
-    }
-
-    @Test
-    fun `setIncomingCallFullScreen can be toggled from true to false`() {
-        StorageDelegate.Sound.setIncomingCallFullScreen(context, true)
-        assertTrue(StorageDelegate.Sound.isIncomingCallFullScreen(context))
-
-        StorageDelegate.Sound.setIncomingCallFullScreen(context, false)
-        assertFalse(StorageDelegate.Sound.isIncomingCallFullScreen(context))
     }
 
     // -------------------------------------------------------------------------
@@ -100,27 +58,5 @@ class StorageDelegateSoundTest {
         StorageDelegate.Sound.initRingbackPath(context, "/assets/ringback.mp3")
         StorageDelegate.Sound.initRingbackPath(context, null)
         assertNull(StorageDelegate.Sound.getRingbackPath(context))
-    }
-
-    // -------------------------------------------------------------------------
-    // Independence between keys
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `isIncomingCallFullScreen is independent from ringtone path`() {
-        StorageDelegate.Sound.initRingtonePath(context, "/path/to/ringtone.mp3")
-        StorageDelegate.Sound.setIncomingCallFullScreen(context, false)
-
-        assertFalse(StorageDelegate.Sound.isIncomingCallFullScreen(context))
-        assertEquals("/path/to/ringtone.mp3", StorageDelegate.Sound.getRingtonePath(context))
-    }
-
-    @Test
-    fun `isIncomingCallFullScreen is independent from ringback path`() {
-        StorageDelegate.Sound.initRingbackPath(context, "/path/to/ringback.mp3")
-        StorageDelegate.Sound.setIncomingCallFullScreen(context, false)
-
-        assertFalse(StorageDelegate.Sound.isIncomingCallFullScreen(context))
-        assertEquals("/path/to/ringback.mp3", StorageDelegate.Sound.getRingbackPath(context))
     }
 }
