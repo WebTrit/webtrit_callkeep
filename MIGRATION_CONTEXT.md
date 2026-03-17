@@ -4,7 +4,7 @@
 > new session, read this file first, then read `MIGRATION_PLAN.md` for full
 > detail. Update this file after every meaningful decision or state change.
 >
-> Last updated: 2026-03-17 (session 12)
+> Last updated: 2026-03-17 (session 13)
 
 ---
 
@@ -21,9 +21,8 @@ into a separate `:callkeep_core` OS process.
 
 **Next action to take:**
 
-- PR-6a — ready to start (`MainProcessConnectionTracker` new class, zero risk)
-- PR-6b — ready to start (independent of 6a)
-- PR-7b-guards — ready to start (independent, no dependencies)
+- PR-7b-guards -- ready to start (standalone, no dependencies)
+- PR-8a/8b -- ready to start (standalone, no dependencies; `incomingCallFullScreen` Pigeon + Dart API)
 
 ---
 
@@ -42,40 +41,40 @@ into a separate `:callkeep_core` OS process.
 
 | PR | Branch | Status | Merged commit | Date |
 |----|--------|--------|--------------|------|
-| PR-1 | ~~`fix/standardize-analysis-options`~~ | `skipped` | — | 2026-03-13 |
-| PR-2a | `fix/signaling-wakelock-cache` | `merged` — PR #152 closed, superseded by #154 | `e58e456` | 2026-03-13 |
-| PR-2b | `fix/signaling-logging` | `merged` — PR #151 | `efb911a` | 2026-03-13 |
-| PR-2c | `fix/broadcast-receiver-context` | `merged` — PR #150 | `9306d95` | 2026-03-13 |
-| PR-2d | `fix/lifecycle-null-safety` | `merged` — PR #153 | `b2b391f` | 2026-03-13 |
-| PR-2e | `fix/endcall-callback-timing` | `merged` — PR #158 | `faf8de6` | 2026-03-17 |
-| PR-4a | `feat/android-storage-delegate-options` | `merged` — PR #157 | `85749be` | 2026-03-17 |
-| PR-4b | `refactor/asset-holder-remove-flutter-assets-dependency` | `merged` — PR #156 | `ea9033b` | 2026-03-13 |
-| PR-4c | `feat/android-metadata-diagnostics` | `merged` — PR #171 | `28a6148` | 2026-03-17 |
-| PR-4d | `fix/incoming-call-notification-null-safety` | `merged` — PR #170 | `aa653bb` | 2026-03-17 |
-| PR-5a | `test/retry-manager-test` | `dropped` — RetryManager removed in #172 | — | 2026-03-17 |
-| PR-5b | `test/storage-delegate-sound-test` | `merged` — shipped inside #157 | `85749be` | 2026-03-17 |
-| PR-5c | `test/is-call-phone-security-exception-test` | `dropped` — isCallPhoneSecurityException() removed in #172 | — | 2026-03-17 |
-| PR-5d | `test/signaling-wakelock-test` | `merged` — shipped inside #153 | `b2b391f` | 2026-03-13 |
-| PR-5e | `test/callkeep-android-options-dart` | `merged` — PR #174 | `b2f4da5` | 2026-03-17 |
-| PR-7a-fix | `fix/android-foreground-service-start-call-race` | `merged` — PR #175 | `401d4c8` | 2026-03-17 |
-| PR-10 | `feat/example-app-multi-line-calls` | `merged` — PR #149 (merged ahead of schedule) | `830a447` | 2026-03-13 |
-| — | `refactor/remove-outgoing-call-retry` | `merged` — PR #172 (out-of-plan, supersedes PR-5a/5c) | `9be1d30` | 2026-03-17 |
-| — | `fix/storage-delegate-test-isolation` | `merged` — PR #173 (out-of-plan, fixes Known Bug #2) | `84aa6f1` | 2026-03-17 |
-| — | `refactor/android-split-connection-event-enums` | `merged` — PR #176 (out-of-plan, splits ConnectionPerform into CallLifecycleEvent + CallMediaEvent) | `ea74bb0` | 2026-03-17 |
+| PR-1 | ~~`fix/standardize-analysis-options`~~ | `skipped` | -- | 2026-03-13 |
+| PR-2a | `fix/signaling-wakelock-cache` | `merged` -- PR #152 closed, superseded by #154 | `e58e456` | 2026-03-13 |
+| PR-2b | `fix/signaling-logging` | `merged` -- PR #151 | `efb911a` | 2026-03-13 |
+| PR-2c | `fix/broadcast-receiver-context` | `merged` -- PR #150 | `9306d95` | 2026-03-13 |
+| PR-2d | `fix/lifecycle-null-safety` | `merged` -- PR #153 | `b2b391f` | 2026-03-13 |
+| PR-2e | `fix/endcall-callback-timing` | `merged` -- PR #158 | `faf8de6` | 2026-03-17 |
+| PR-4a | `feat/android-storage-delegate-options` | `merged` -- PR #157 | `85749be` | 2026-03-17 |
+| PR-4b | `refactor/asset-holder-remove-flutter-assets-dependency` | `merged` -- PR #156 | `ea9033b` | 2026-03-13 |
+| PR-4c | `feat/android-metadata-diagnostics` | `merged` -- PR #171 | `28a6148` | 2026-03-17 |
+| PR-4d | `fix/incoming-call-notification-null-safety` | `merged` -- PR #170 | `aa653bb` | 2026-03-17 |
+| PR-5a | `test/retry-manager-test` | `dropped` -- RetryManager removed in #172 | -- | 2026-03-17 |
+| PR-5b | `test/storage-delegate-sound-test` | `merged` -- shipped inside #157 | `85749be` | 2026-03-17 |
+| PR-5c | `test/is-call-phone-security-exception-test` | `dropped` -- isCallPhoneSecurityException() removed in #172 | -- | 2026-03-17 |
+| PR-5d | `test/signaling-wakelock-test` | `merged` -- shipped inside #153 | `b2b391f` | 2026-03-13 |
+| PR-5e | `test/callkeep-android-options-dart` | `merged` -- PR #174 | `b2f4da5` | 2026-03-17 |
+| PR-6b | `feat/android-connection-manager-hardening` | `satisfied` -- atomic hardening + `checkAndReservePending()` + `ConnectionManagerTest.kt` shipped in out-of-plan #163-#165; tracker-based `ValidateConnectionAdditionTest.kt` folded into migration PR-6a | -- | 2026-03-17 |
+| PR-7a-fix | `fix/android-foreground-service-start-call-race` | `merged` -- PR #175 | `401d4c8` | 2026-03-17 |
+| PR-10 | `feat/example-app-multi-line-calls` | `merged` -- PR #149 (merged ahead of schedule) | `830a447` | 2026-03-13 |
+| -- | `refactor/remove-outgoing-call-retry` | `merged` -- PR #172 (out-of-plan, supersedes PR-5a/5c) | `9be1d30` | 2026-03-17 |
+| -- | `fix/storage-delegate-test-isolation` | `merged` -- PR #173 (out-of-plan, fixes Known Bug #2) | `84aa6f1` | 2026-03-17 |
+| -- | `refactor/android-split-connection-event-enums` | `merged` -- PR #176 (out-of-plan, splits ConnectionPerform into CallLifecycleEvent + CallMediaEvent) | `ea74bb0` | 2026-03-17 |
 
 ### Remaining (sorted by execution order)
 
 | PR | Branch | Status | Notes |
 |----|--------|--------|-------|
-| PR-6a | `feat/android-connection-tracker-class` | `not started` | New `MainProcessConnectionTracker.kt` + `MainProcessConnectionTrackerTest.kt`. Zero risk -- nothing uses it yet. |
-| PR-6b | `feat/android-connection-manager-hardening` | `not started` | `ConnectionManager.kt` atomic check-and-add + `validateConnectionAddition()` + `ConnectionManagerTest.kt` + `ValidateConnectionAdditionTest.kt`. Independent of 6a. |
+| PR-7b-guards | `fix/android-call-lifecycle-null-guards` | `not started` | `CallLifecycleHandler.performAnswerCall`: remove duplicate `connectionController.answer(metadata)` call from `onSuccess` to suppress double-answer signal. `performEndCall` null guard already on develop via #166. Standalone. |
+| PR-8a | `feat/android-pigeon-regenerate` | `not started` | Add `incomingCallFullScreen: bool?` to `PAndroidOptions` in `callkeep.messages.dart`; wire in `ForegroundService.setUp()` -> `StorageDelegate.IncomingCall.setFullScreen()`; regenerate `Generated.kt` + Dart pigeon files. **Standalone** -- StorageDelegate already has `isFullScreen`/`setFullScreen`; just needs the API field added. |
+| PR-8b | `feat/android-options-dart-api` | `not started` | Add `incomingCallFullScreen` to `CallkeepAndroidOptions` in `webtrit_callkeep_platform_interface`. Depends on PR-8a. |
+| PR-6a | `feat/android-connection-tracker-class` | `not started` | New `MainProcessConnectionTracker.kt` + `MainProcessConnectionTrackerTest.kt` (migration). Also brings `ValidateConnectionAdditionTest.kt` which tests tracker-based `validateConnectionAddition`. |
 | PR-6c | `feat/android-connections-api-switch` | `not started` | `ConnectionsApi.kt`: switch from `ConnectionManager` to `MainProcessConnectionTracker`. Depends on PR-6a. |
 | PR-7a-replay | `feat/android-foreground-service-reconnect-replay` | `not started` | Reconnect replay via `MainProcessConnectionTracker.getAll()` + `FailedCallsStoreTest.kt`. Depends on PR-6a. |
-| PR-7b-guards | `fix/android-call-lifecycle-null-guards` | `not started` | `CallLifecycleHandler` null guards + suppress double notification after answer. Standalone, no dependencies. |
 | PR-7b-coldstart | `feat/android-incoming-call-cold-start` | `not started` | `IncomingCallService.handleLaunch()` pre-populate tracker, `markAnswered` + `IncomingCallServiceFullScreenTest.kt`. Depends on PR-6a, PR-7a-replay. Re-diff required -- #166 rewrote `IncomingCallService` + `CallLifecycleHandler`. |
-| PR-8a | `feat/android-pigeon-regenerate` | `not started` | Update `callkeep.messages.dart`, regenerate `Generated.kt` + `callkeep.pigeon.dart` + `converters.dart`. Depends on PR-7b-coldstart. |
-| PR-8b | `feat/android-options-dart-api` | `not started` | `CallkeepAndroidOptions` + `webtrit_callkeep_android.dart` + `callkeep_options.dart` in platform_interface. Depends on PR-8a. |
-| PR-9a | `feat/android-broadcast-transport-migration` | `not started` | Replace all direct main-process -> `PhoneConnectionService` calls with broadcasts (still single process). Depends on PR-8b. **Note:** keep 9a-broadcaster / 9a-receiver / 9a-foreground as one PR -- partial broadcast migration leaves the system in broken state between merges. |
+| PR-9a | `feat/android-broadcast-transport-migration` | `not started` | Replace all direct main-process -> `PhoneConnectionService` calls with broadcasts (still single process). Depends on PR-8b and full migration chain. Note: keep as one atomic PR. |
 | PR-9b | `feat/android-callkeep-core-process-declaration` | `not started` | `android:process=":callkeep_core"` in manifest + `AssetHolder.initForIsolatedProcess()`. Depends on PR-9a. |
 | PR-3 | `docs/android-architecture-guide` | `not started` | 13 doc files in `webtrit_callkeep_android/docs/`. Written last -- after PR-9b. |
 
@@ -84,9 +83,9 @@ into a separate `:callkeep_core` OS process.
 ## Critical Path
 
 ```
-PR-6a --> PR-6c --> PR-7a-replay --> PR-7b-coldstart --> PR-8a --> PR-8b --> PR-9a --> PR-9b --> PR-3
-PR-6b (independent)
-PR-7b-guards (independent)
+PR-6a --> PR-6c --> PR-7a-replay --> PR-7b-coldstart --> PR-9a --> PR-9b --> PR-3
+PR-7b-guards (standalone)
+PR-8a --> PR-8b (standalone, then feeds into PR-9a)
 ```
 
 ---
@@ -102,7 +101,7 @@ PRs still need to be done and which feature-branch code needs re-evaluation.
 | `e54b78d` | #163 | `PhoneConnection.kt`, build.gradle, `PhoneConnectionTerminateTest.kt` | terminateWithCause idempotent + test |
 | `e37dfc9` | #164 | `ConnectionManager.kt`, `PhoneConnection.kt`, `PhoneConnectionService.kt`, `PhoneConnectionServiceDispatcher.kt`, `ForegroundService.kt`, `IncomingCallHandler.kt`, `ConnectionManagerTest.kt`, `PhoneConnectionServiceDispatcherTest.kt` | **Major**: pending reservation, deferred-answer, directNotifiedCallIds, tearDown rewrite. PR-6 feature-branch code will conflict -- must re-diff before extracting |
 | `09d659b` | #165 | `PhoneConnectionService.kt`, `ConnectionManagerTest.kt` | removePending after addConnection -- extends #164 |
-| `f894982` | #166 | `IncomingCallService.kt`, `CallLifecycleHandler.kt`, `CallLifecycleHandlerTest.kt` | SIP BYE ordering fix -- PR-7b feature-branch code will conflict |
+| `f894982` | #166 | `IncomingCallService.kt`, `CallLifecycleHandler.kt`, `CallLifecycleHandlerTest.kt` | SIP BYE ordering fix -- PR-7b feature-branch code will conflict. Also added `performEndCall` null guard to develop. |
 | `edca45a` | #167 | integration tests only | test coverage for #166 |
 | `19cb855` | #168 | example `build.gradle` | NDK version -- no plan impact |
 | `7037531` | #169 | integration tests only | extensive call scenario + background service tests |
@@ -110,9 +109,9 @@ PRs still need to be done and which feature-branch code needs re-evaluation.
 | `ea74bb0` | #176 | `ConnectionServicePerformBroadcaster.kt` + all callers | out-of-plan -- `ConnectionPerform` split into `CallLifecycleEvent` + `CallMediaEvent`; any future PR touching broadcast events must use the new enum names |
 | `401d4c8` | #175 | `ForegroundService.kt` | out-of-plan -- `startCall()` rewritten with per-call BroadcastReceiver pattern |
 
-**Key takeaway for PR-6 and PR-7b-coldstart:** The production code for `ConnectionManager`,
+**Key takeaway for PR-6a and PR-7b-coldstart:** The production code for `ConnectionManager`,
 `ForegroundService`, `IncomingCallService`, and `CallLifecycleHandler` has been
-significantly rewritten in #163–#166 and further in #175–#176. Do NOT blindly
+significantly rewritten in #163--#166 and further in #175--#176. Do NOT blindly
 `git checkout feature-branch -- file` for those files. Diff the feature branch
 additions against the new develop baseline and apply only the delta.
 
@@ -144,6 +143,10 @@ Decisions already made -- do not re-litigate without strong reason.
 | 2026-03-17 | PR-6 decomposed into 6a/6b/6c, PR-7a into 7a-fix/7a-replay, PR-7b into 7b-guards/7b-coldstart, PR-8 into 8a/8b | Smaller atomic PRs, faster review cycles, independent work where possible |
 | 2026-03-17 | PR-7a-fix landed as PR #175 -- replaced OutgoingCallbacksManager with per-call BroadcastReceiver | Race: performStartCall fired after timeout; fix: AtomicBoolean + per-call receiver + pendingCallCleanupsByCallId map |
 | 2026-03-17 | ConnectionPerform split into CallLifecycleEvent + CallMediaEvent (PR #176) -- out-of-plan refactor | Single flat enum mixed lifecycle and media concerns; sealed interface ConnectionEvent now groups both; all future broadcast event code must use the new names |
+| 2026-03-17 | PR-6b satisfied -- atomic hardening already shipped in #163-#165; tracker-based ValidateConnectionAdditionTest folded into PR-6a | checkAndReservePending() + ConnectionManagerTest.kt already on develop; no separate PR needed |
+| 2026-03-17 | PR-8a/8b are standalone (no migration dependency) | StorageDelegate.IncomingCall.setFullScreen/isFullScreen already on develop; PR-8a only needs to add incomingCallFullScreen to PAndroidOptions and wire setUp(); PR-8b adds it to CallkeepAndroidOptions |
+| 2026-03-17 | PR-7b-guards scope narrowed: only suppress double `connectionController.answer` in `performAnswerCall.onSuccess` | `performEndCall` null guard already on develop via #166; feature branch version of that guard is actually weaker |
+| 2026-03-17 | User decision: migration PRs (PR-6a, PR-6c, PR-7a-replay, PR-7b-coldstart, PR-9a, PR-9b, PR-3) deferred; doing standalone PRs first | Standalone value first, migration chain last |
 
 ---
 
@@ -152,7 +155,7 @@ Decisions already made -- do not re-litigate without strong reason.
 | Question | Relevant PR | Status |
 |----------|-------------|--------|
 | CI/CD workflow changes on feature branch -- include or skip? | skip | **open** |
-| After out-of-plan #163-#165 + #175-#176 rewrites: which exact delta does PR-6 still need to add? | PR-6a/6b/6c | **open** -- run `git diff origin/develop..feat/android-callkeep-core-process-migration -- '*.kt'` for ConnectionManager + ForegroundService before starting |
+| After out-of-plan #163-#165 + #175-#176 rewrites: which exact delta does PR-6a still need to add? | PR-6a | **open** -- diff `MainProcessConnectionTracker.kt` + `ConnectionsApi.kt` before starting |
 | After out-of-plan #166 rewrite: which exact delta does PR-7b-coldstart still need to add? | PR-7b-coldstart | **open** -- same approach: diff before extracting |
 
 ---
@@ -208,7 +211,7 @@ MIGRATION_CONTEXT.md               <- (this file) agent working memory
    ```bash
    git checkout feat/android-callkeep-core-process-migration -- <file1> <file2>
    ```
-   **Exception for PR-6 and PR-7b-coldstart** -- see Out-of-Plan Commits section; diff first.
+   **Exception for PR-6a and PR-7b-coldstart** -- see Out-of-Plan Commits section; diff first.
 8. Verify, push, open PR targeting `develop`.
 9. After merge: update **Branch Heads**, **PR Status**, and **Open Questions**
    in this file, commit the update to `feat/android-callkeep-core-process-migration`.
@@ -227,6 +230,10 @@ MIGRATION_CONTEXT.md               <- (this file) agent working memory
   feature branch -- do NOT carry that deletion to develop.
 - Broadcast receivers now use `CallLifecycleEvent` / `CallMediaEvent` (not `ConnectionPerform`).
   Any future PR touching broadcast event registration or dispatch must use the new enum names.
-- PR-6 + PR-7b-coldstart: develop baseline has changed significantly from the feature
+- PR-6a + PR-7b-coldstart: develop baseline has changed significantly from the feature
   branch version of those files (#163-#166 + #175). Always diff before extracting.
 - PR-9a must land as one atomic PR -- partial broadcast migration breaks the system.
+- Feature branch `CallLifecycleHandler.performEndCall` uses weak `?.` without fallback;
+  develop already has the better explicit null guard. Do NOT regress this when extracting PR-7b-coldstart.
+- PR-8a/8b are standalone: `StorageDelegate.IncomingCall.setFullScreen/isFullScreen` already
+  exists on develop; PR-8a just adds `incomingCallFullScreen` to `PAndroidOptions` + wires setUp().
