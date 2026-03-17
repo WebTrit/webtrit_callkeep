@@ -4,7 +4,7 @@
 > new session, read this file first, then read `MIGRATION_PLAN.md` for full
 > detail. Update this file after every meaningful decision or state change.
 >
-> Last updated: 2026-03-13 (session 5)
+> Last updated: 2026-03-17 (session 6)
 
 ---
 
@@ -12,17 +12,20 @@
 
 **What is happening:**
 We are migrating `feat/android-callkeep-core-process-migration` into `develop`
-via 23 atomic PRs. The feature isolates Android `PhoneConnectionService`
+via atomic PRs. The feature isolates Android `PhoneConnectionService`
 into a separate `:callkeep_core` OS process.
 
 **Where is the full plan:** `MIGRATION_PLAN.md` (this repo root, this branch)
 
-**Current overall phase:** Wave 1 in progress — PR-2a/2b/2c/2d merged. PR-4b/PR-10 merged.
+**Current overall phase:** Wave 1 mostly done. Wave 2 partial.
 
-**Next action to take:** Continue Wave 1 remaining:
-PR-4a (open PR #157), PR-2e (open PR #158) await review.
-PR-4d — not started, depends on PR-4a merge (uses `StorageDelegate.Sound.isIncomingCallFullScreen`).
-PR-3 moved to Wave 4 — after PR-9b (full migration complete).
+**Next action to take:**
+- PR-4d — ready to start (PR-4a merged, dependency satisfied)
+- PR-4c — ready to start (independent)
+- PR-5a, PR-5c, PR-5e — ready to start (independent)
+- PR-6 — needs re-evaluation (ConnectionManager/ForegroundService significantly
+  changed by out-of-plan commits #163–#166; read those diffs before extracting
+  the feature branch version)
 
 ---
 
@@ -30,8 +33,8 @@ PR-3 moved to Wave 4 — after PR-9b (full migration complete).
 
 | Branch | Last known commit | Notes |
 |--------|------------------|-------|
-| `develop` | `ea9033b` | refactor(android): remove FlutterAssets dependency (#156) |
-| `feat/android-callkeep-core-process-migration` | `613f372` | docs: update migration context for PR-4b refactor |
+| `develop` | `7037531` | test(integration): add call scenarios (#169) |
+| `feat/android-callkeep-core-process-migration` | `c2c1f42` | docs: mark PR-2e open as PR #158 |
 
 ---
 
@@ -44,16 +47,16 @@ PR-3 moved to Wave 4 — after PR-9b (full migration complete).
 | PR-2b | `fix/signaling-logging` | `merged` — PR #151 | `efb911a` | 2026-03-13 |
 | PR-2c | `fix/broadcast-receiver-context` | `merged` — PR #150 | `9306d95` | 2026-03-13 |
 | PR-2d | `fix/lifecycle-null-safety` | `merged` — PR #153 | `b2b391f` | 2026-03-13 |
-| PR-2e | `fix/endcall-callback-timing` | `open` — PR #158 | — | — |
+| PR-2e | `fix/endcall-callback-timing` | `merged` — PR #158 | `faf8de6` | 2026-03-17 |
 | PR-3 | `docs/android-architecture-guide` | `not started` | — | — |
-| PR-4a | `feat/android-storage-delegate-options` | `open` — PR #157 | — | — |
+| PR-4a | `feat/android-storage-delegate-options` | `merged` — PR #157 | `85749be` | 2026-03-17 |
 | PR-4b | `refactor/asset-holder-remove-flutter-assets-dependency` | `merged` — PR #156 | `ea9033b` | 2026-03-13 |
 | PR-4c | `feat/android-metadata-diagnostics` | `not started` | — | — |
 | PR-4d | `fix/incoming-call-notification-null-safety` | `not started` | — | — |
 | PR-5a | `test/retry-manager-test` | `not started` | — | — |
-| PR-5b | `test/storage-delegate-sound-test` | `not started` | — | — |
+| PR-5b | `test/storage-delegate-sound-test` | `merged` — shipped inside #157 | `85749be` | 2026-03-17 |
 | PR-5c | `test/is-call-phone-security-exception-test` | `not started` | — | — |
-| PR-5d | `test/signaling-wakelock-test` | `merged` — already in `b2b391f` (#153) | `b2b391f` | 2026-03-13 |
+| PR-5d | `test/signaling-wakelock-test` | `merged` — shipped inside #153 | `b2b391f` | 2026-03-13 |
 | PR-5e | `test/callkeep-android-options-dart` | `not started` | — | — |
 | PR-6 | `feat/android-connection-tracker` | `not started` | — | — |
 | PR-7a | `feat/android-foreground-service-tracker` | `not started` | — | — |
@@ -62,6 +65,31 @@ PR-3 moved to Wave 4 — after PR-9b (full migration complete).
 | PR-9a | `feat/android-broadcast-transport-migration` | `not started` | — | — |
 | PR-9b | `feat/android-callkeep-core-process-declaration` | `not started` | — | — |
 | PR-10 | `feat/example-app-multi-line-calls` | `merged` — PR #149 (merged ahead of schedule) | `830a447` | 2026-03-13 |
+
+---
+
+## Out-of-Plan Commits on develop (2026-03-13 to 2026-03-17)
+
+These were merged directly by the user outside the plan. They affect which plan
+PRs still need to be done and which feature-branch code needs re-evaluation.
+
+| Commit | PR | Files touched | Impact on plan |
+|--------|-----|--------------|----------------|
+| `6aa7894` | #159 | `IncomingCallHandler.kt` | foregroundServiceType fix — independent |
+| `e54b78d` | #163 | `PhoneConnection.kt`, build.gradle, `PhoneConnectionTerminateTest.kt` | terminateWithCause idempotent + test |
+| `e37dfc9` | #164 | `ConnectionManager.kt`, `PhoneConnection.kt`, `PhoneConnectionService.kt`, `PhoneConnectionServiceDispatcher.kt`, `ForegroundService.kt`, `IncomingCallHandler.kt`, `ConnectionManagerTest.kt`, `PhoneConnectionServiceDispatcherTest.kt` | **Major**: pending reservation, deferred-answer, directNotifiedCallIds, tearDown rewrite. PR-6 feature-branch code will conflict — must re-diff before extracting |
+| `09d659b` | #165 | `PhoneConnectionService.kt`, `ConnectionManagerTest.kt` | removePending after addConnection — extends #164 |
+| `f894982` | #166 | `IncomingCallService.kt`, `CallLifecycleHandler.kt`, `CallLifecycleHandlerTest.kt` | SIP BYE ordering fix — PR-7b feature-branch code will conflict |
+| `edca45a` | #167 | integration tests only | test coverage for #166 |
+| `19cb855` | #168 | example `build.gradle` | NDK version — no plan impact |
+| `7037531` | #169 | integration tests only | extensive call scenario + background service tests |
+
+**Key takeaway for PR-6 and PR-7b:** The production code for `ConnectionManager`,
+`ForegroundService`, `IncomingCallService`, and `CallLifecycleHandler` has been
+significantly rewritten in #163–#166. Do NOT blindly `git checkout feature-branch -- file`
+for those files. Instead, diff the feature branch additions against the new develop
+baseline and apply only the delta (MainProcessConnectionTracker itself + ConnectionsApi
+switch for PR-6; cold-start handler for PR-7b).
 
 ---
 
@@ -88,7 +116,10 @@ Decisions already made — do not re-litigate without strong reason.
 | 2026-03-13 | PR-2a (#152) closed, superseded by #154 | Reviewer added improvements to resetWakeLock + Context.POWER_SERVICE; both landed as single commit `e58e456` |
 | 2026-03-13 | PR-10 (example app) merged ahead of schedule as #149 | Out-of-order merge; does not block any other PR — example app is independent of library |
 | 2026-03-13 | PR-5d already satisfied — test shipped inside #153 commit | `SignalingIsolateServiceWakeLockTest.kt` was included in the force-unwrap PR; no separate PR needed |
-| 2026-03-13 | PR-4b refactored: remove `FlutterAssets` dependency entirely instead of adding `initForIsolatedProcess` stub | `FlutterPlugin.FlutterAssets` should not travel beyond `WebtritCallkeepPlugin`. The path `"flutter_assets/$asset"` is a fixed Flutter convention — inline it directly in `FlutterAssetManager`. PR #155 (initForIsolatedProcess approach) closed; PR #156 (clean refactor) opened on branch `refactor/asset-holder-remove-flutter-assets-dependency` |
+| 2026-03-13 | PR-4b refactored: remove `FlutterAssets` dependency entirely instead of adding `initForIsolatedProcess` stub | `FlutterPlugin.FlutterAssets` should not travel beyond `WebtritCallkeepPlugin`. Path `"flutter_assets/$asset"` is a fixed Flutter convention — inline it in `FlutterAssetManager`. PR #155 closed; PR #156 opened on `refactor/asset-holder-remove-flutter-assets-dependency` |
+| 2026-03-17 | PR-5b satisfied — StorageDelegateSoundTest shipped inside PR-4a (#157) | Test file was included when PR-4a was merged; no separate PR needed |
+| 2026-03-17 | PR-6 must be re-diffed before extraction — out-of-plan commits #163–#165 rewrote ConnectionManager + ForegroundService | Do not blindly checkout those files from feature branch; apply only the MainProcessConnectionTracker delta |
+| 2026-03-17 | PR-7b must be re-diffed before extraction — out-of-plan commit #166 rewrote IncomingCallService + CallLifecycleHandler | Apply only the cold-start handler addition delta |
 
 ---
 
@@ -96,11 +127,11 @@ Decisions already made — do not re-litigate without strong reason.
 
 | Question | Relevant PR | Status |
 |----------|-------------|--------|
-| ~~Commit `2620715` content~~ | PR-2e | **resolved** — only settings + TODO.md, skip |
 | CI/CD workflow changes on feature branch — include or skip? | skip | **open** |
-| Exact fields added to `CallMetaData.kt`? | PR-4c | **open** — run `git show 6af63bd -- '*CallMetaData.kt'` |
-| `StorageDelegate` existing keys on develop — conflict risk? | PR-4a | **resolved** — no conflicts; new keys only |
+| `isIncomingCall` field — only new field in `CallMetaData.kt`? | PR-4c | **resolved** — confirmed: `isIncomingCall: Boolean?` is the only new field |
 | `RetryManager` — does it reference `StorageDelegate`? (affects PR-5a prerequisite) | PR-5a | **open** |
+| After out-of-plan #163–#165 rewrites: which exact delta does PR-6 still need to add? | PR-6 | **open** — run `git diff origin/develop..feat/android-callkeep-core-process-migration -- '*.kt'` for ConnectionManager + ForegroundService before starting |
+| After out-of-plan #166 rewrite: which exact delta does PR-7b still need to add? | PR-7b | **open** — same approach: diff before extracting |
 
 ---
 
@@ -119,12 +150,12 @@ Decisions already made — do not re-litigate without strong reason.
 ## Repo Layout Reminder
 
 ```
-webtrit_callkeep/                  ← main user-facing package
-webtrit_callkeep_android/          ← Android implementation (Kotlin + Dart)
-webtrit_callkeep_platform_interface/ ← shared API contract (models, delegates)
-webtrit_callkeep_ios/              ← iOS implementation
-MIGRATION_PLAN.md                  ← (this branch root) full PR plan
-MIGRATION_CONTEXT.md               ← (this file) agent working memory
+webtrit_callkeep/                  <- main user-facing package
+webtrit_callkeep_android/          <- Android implementation (Kotlin + Dart)
+webtrit_callkeep_platform_interface/ <- shared API contract (models, delegates)
+webtrit_callkeep_ios/              <- iOS implementation
+MIGRATION_PLAN.md                  <- (this branch root) full PR plan
+MIGRATION_CONTEXT.md               <- (this file) agent working memory
 ```
 
 ---
@@ -146,6 +177,7 @@ MIGRATION_CONTEXT.md               ← (this file) agent working memory
    ```bash
    git checkout feat/android-callkeep-core-process-migration -- <file1> <file2>
    ```
+   **Exception for PR-6 and PR-7b** — see Out-of-Plan Commits section; diff first.
 8. Verify, push, open PR targeting `develop`.
 9. After merge: update **Branch Heads**, **PR Status**, and **Open Questions**
    in this file, commit the update to `feat/android-callkeep-core-process-migration`.
@@ -166,3 +198,5 @@ MIGRATION_CONTEXT.md               ← (this file) agent working memory
   feature branch — do NOT carry that deletion to develop.
 - Broadcast receivers for `ConnectionPerform` events use `applicationContext`
   — using an Activity context will silently fail cross-process.
+- PR-6 + PR-7b: develop baseline has changed significantly from the feature branch
+  version of those files. Always diff before extracting.
