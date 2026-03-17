@@ -23,23 +23,42 @@ object StorageDelegate {
     object Sound {
         private const val RINGTONE_PATH = "RINGTONE_PATH_KEY"
         private const val RINGBACK_PATH = "RINGBACK_PATH_KEY"
+        private const val INCOMING_CALL_FULL_SCREEN = "INCOMING_CALL_FULL_SCREEN"
 
+        /** Persists [path] as the ringtone asset path. Passing `null` clears the stored value. */
         fun initRingtonePath(context: Context, path: String?) {
-            if (path == null) return
-            getSharedPreferences(context)?.edit()?.apply { putString(RINGTONE_PATH, path).apply() }
+            getSharedPreferences(context)?.edit()?.apply {
+                if (path != null) putString(RINGTONE_PATH, path) else remove(RINGTONE_PATH)
+                apply()
+            }
         }
 
         fun getRingtonePath(context: Context): String? {
             return getSharedPreferences(context)?.getString(RINGTONE_PATH, null)
         }
 
+        /** Persists [path] as the ringback asset path. Passing `null` clears the stored value. */
         fun initRingbackPath(context: Context, path: String?) {
-            if (path == null) return
-            getSharedPreferences(context)?.edit()?.apply { putString(RINGBACK_PATH, path)?.apply() }
+            getSharedPreferences(context)?.edit()?.apply {
+                if (path != null) putString(RINGBACK_PATH, path) else remove(RINGBACK_PATH)
+                apply()
+            }
         }
 
         fun getRingbackPath(context: Context): String? {
             return getSharedPreferences(context)?.getString(RINGBACK_PATH, null)
+        }
+
+        /** Persists whether incoming calls should launch in full-screen mode. Defaults to `true`. */
+        fun setIncomingCallFullScreen(context: Context, enabled: Boolean) {
+            getSharedPreferences(context)?.edit()?.apply {
+                putBoolean(INCOMING_CALL_FULL_SCREEN, enabled)
+                apply()
+            }
+        }
+
+        fun isIncomingCallFullScreen(context: Context): Boolean {
+            return getSharedPreferences(context)?.getBoolean(INCOMING_CALL_FULL_SCREEN, true) ?: true
         }
     }
 
