@@ -581,7 +581,7 @@ void main() {
       await callkeep.sendDTMF(id, '3');
 
       await _waitFor(allDone.future, label: 'all DTMF events');
-      expect(receivedKeys, containsAll(['1', '2', '3']));
+      expect(receivedKeys, equals(['1', '2', '3']));
     });
   });
 
@@ -593,8 +593,12 @@ void main() {
   //   → performAudioDeviceSet → platform routes audio
   // -------------------------------------------------------------------------
 
-  group('audio device selection', () {
+  group('audio device selection (Android only)', () {
     test('setAudioDevice completes without error on an answered call', () async {
+      if (!Platform.isAndroid) {
+        markTestSkipped('Android only');
+        return;
+      }
       // performAudioDeviceSet is a system-driven command callback (Android
       // fires it when IT routes audio — e.g. at answer time — not in response
       // to our setAudioDevice call).  We therefore verify that setAudioDevice
