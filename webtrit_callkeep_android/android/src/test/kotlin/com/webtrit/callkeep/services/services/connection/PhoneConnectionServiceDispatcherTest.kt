@@ -5,7 +5,8 @@ import android.os.Build
 import android.telecom.DisconnectCause
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
+import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
+import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
 import com.webtrit.callkeep.services.services.connection.dispatchers.ConnectionLifecycleAction
 import com.webtrit.callkeep.services.services.connection.dispatchers.PhoneConnectionServiceDispatcher
 import com.webtrit.callkeep.services.services.connection.models.PerformDispatchHandle
@@ -26,7 +27,7 @@ import org.robolectric.annotation.Config
  * Unit tests for [PhoneConnectionServiceDispatcher].
  *
  * Verifies that each [ServiceAction] is routed to the correct [PhoneConnection] method,
- * that missing connections produce a [ConnectionPerform.ConnectionNotFound] fallback,
+ * that missing connections produce a [CallLifecycleEvent.ConnectionNotFound] fallback,
  * and that lifecycle events (ServiceDestroyed) clean up all active connections.
  *
  * TearDown only synchronises sensor state — connection cleanup is performed synchronously
@@ -41,7 +42,7 @@ class PhoneConnectionServiceDispatcherTest {
 
     private val context: Context = RuntimeEnvironment.getApplication()
 
-    private val capturedEvents = mutableListOf<ConnectionPerform>()
+    private val capturedEvents = mutableListOf<ConnectionEvent>()
     private val captureDispatcher: PerformDispatchHandle = { event, _ -> capturedEvents.add(event) }
 
     private val wakelockManager: ActivityWakelockManager = mock()
@@ -89,7 +90,7 @@ class PhoneConnectionServiceDispatcherTest {
     fun `dispatch HungUpCall for unknown callId dispatches ConnectionNotFound`() {
         dispatcher.dispatch(ServiceAction.HungUpCall, CallMetadata(callId = "unknown"))
 
-        assertTrue(capturedEvents.contains(ConnectionPerform.ConnectionNotFound))
+        assertTrue(capturedEvents.contains(CallLifecycleEvent.ConnectionNotFound))
     }
 
     // -------------------------------------------------------------------------
@@ -110,7 +111,7 @@ class PhoneConnectionServiceDispatcherTest {
     fun `dispatch DeclineCall for unknown callId dispatches ConnectionNotFound`() {
         dispatcher.dispatch(ServiceAction.DeclineCall, CallMetadata(callId = "ghost"))
 
-        assertTrue(capturedEvents.contains(ConnectionPerform.ConnectionNotFound))
+        assertTrue(capturedEvents.contains(CallLifecycleEvent.ConnectionNotFound))
     }
 
     // -------------------------------------------------------------------------
@@ -134,7 +135,7 @@ class PhoneConnectionServiceDispatcherTest {
     fun `dispatch AnswerCall for unknown callId dispatches ConnectionNotFound`() {
         dispatcher.dispatch(ServiceAction.AnswerCall, CallMetadata(callId = "ghost"))
 
-        assertTrue(capturedEvents.contains(ConnectionPerform.ConnectionNotFound))
+        assertTrue(capturedEvents.contains(CallLifecycleEvent.ConnectionNotFound))
     }
 
     // -------------------------------------------------------------------------
@@ -201,7 +202,7 @@ class PhoneConnectionServiceDispatcherTest {
     fun `ConnectionNotFound is dispatched exactly once for a single missing-connection action`() {
         dispatcher.dispatch(ServiceAction.HungUpCall, CallMetadata(callId = "no-such-call"))
 
-        assertEquals(1, capturedEvents.count { it == ConnectionPerform.ConnectionNotFound })
+        assertEquals(1, capturedEvents.count { it == CallLifecycleEvent.ConnectionNotFound })
     }
 
     // -------------------------------------------------------------------------

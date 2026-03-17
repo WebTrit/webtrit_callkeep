@@ -24,7 +24,8 @@ import com.webtrit.callkeep.managers.NotificationManager
 import com.webtrit.callkeep.models.AudioDevice
 import com.webtrit.callkeep.models.AudioDeviceType
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
+import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
+import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
 import com.webtrit.callkeep.services.services.connection.models.PerformDispatchHandle
 
 /**
@@ -112,7 +113,7 @@ class PhoneConnection internal constructor(
     fun changeMuteState(muted: Boolean) {
         logger.d("Changing mute state to: $muted for callId: $callId")
         this.isMute = muted
-        dispatcher(ConnectionPerform.AudioMuting, metadata.copy(hasMute = this.isMute))
+        dispatcher(CallMediaEvent.AudioMuting, metadata.copy(hasMute = this.isMute))
     }
 
     /**
@@ -132,7 +133,7 @@ class PhoneConnection internal constructor(
         super.onAnswer()
         hasAnswered = true
         setActive()
-        dispatcher(ConnectionPerform.AnswerCall, metadata)
+        dispatcher(CallLifecycleEvent.AnswerCall, metadata)
         ActivityHolder.start(context)
     }
 
@@ -169,7 +170,7 @@ class PhoneConnection internal constructor(
         logger.d("Putting call on hold: $callId")
         super.onHold()
         setOnHold()
-        dispatcher(ConnectionPerform.ConnectionHolding, metadata.copy(hasHold = true))
+        dispatcher(CallMediaEvent.ConnectionHolding, metadata.copy(hasHold = true))
     }
 
     /**
@@ -179,7 +180,7 @@ class PhoneConnection internal constructor(
         logger.d("Taking call off hold: $callId")
         super.onUnhold()
         setActive()
-        dispatcher(ConnectionPerform.ConnectionHolding, metadata.copy(hasHold = false))
+        dispatcher(CallMediaEvent.ConnectionHolding, metadata.copy(hasHold = false))
     }
 
     /**
@@ -188,7 +189,7 @@ class PhoneConnection internal constructor(
     override fun onPlayDtmfTone(c: Char) {
         logger.d("Playing DTMF tone: $c for callId: $callId")
         super.onPlayDtmfTone(c)
-        dispatcher(ConnectionPerform.SentDTMF, metadata.copy(dualToneMultiFrequency = c))
+        dispatcher(CallMediaEvent.SentDTMF, metadata.copy(dualToneMultiFrequency = c))
     }
 
     /**
@@ -235,11 +236,11 @@ class PhoneConnection internal constructor(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
 
         val audioDevices = state?.supportedRouteMask?.let(::mapSupportedRoutes) ?: emptyList()
-        dispatcher(ConnectionPerform.AudioDevicesUpdate, metadata.copy(audioDevices = audioDevices))
+        dispatcher(CallMediaEvent.AudioDevicesUpdate, metadata.copy(audioDevices = audioDevices))
 
         val currentDevice =
             state?.route?.let(::mapRouteToAudioDevice) ?: AudioDevice(AudioDeviceType.UNKNOWN)
-        dispatcher(ConnectionPerform.AudioDeviceSet, metadata.copy(audioDevice = currentDevice))
+        dispatcher(CallMediaEvent.AudioDeviceSet, metadata.copy(audioDevice = currentDevice))
     }
 
     /**
@@ -264,7 +265,7 @@ class PhoneConnection internal constructor(
         if (availableCallEndpoints.isNotEmpty()) {
             onAvailableCallEndpointsChanged(availableCallEndpoints)
         }
-        dispatcher(ConnectionPerform.AudioMuting, metadata.copy(hasMute = isMute))
+        dispatcher(CallMediaEvent.AudioMuting, metadata.copy(hasMute = isMute))
     }
 
     /**
@@ -282,7 +283,7 @@ class PhoneConnection internal constructor(
         availableCallEndpoints = callEndpoints
 
         val devices = callEndpoints.map(::mapEndpointToAudioDevice)
-        dispatcher(ConnectionPerform.AudioDevicesUpdate, metadata.copy(audioDevices = devices))
+        dispatcher(CallMediaEvent.AudioDevicesUpdate, metadata.copy(audioDevices = devices))
 
         try {
             /**
@@ -317,7 +318,7 @@ class PhoneConnection internal constructor(
         super.onCallEndpointChanged(callEndpoint)
         logger.i("Call endpoint changed to: $callEndpoint")
         val device = mapEndpointToAudioDevice(callEndpoint)
-        dispatcher(ConnectionPerform.AudioDeviceSet, metadata.copy(audioDevice = device))
+        dispatcher(CallMediaEvent.AudioDeviceSet, metadata.copy(audioDevice = device))
 
         isHasSpeaker = callEndpoint.endpointType == CallEndpoint.TYPE_SPEAKER
         // Guard against the system automatically switching back to Earpiece/Wired.
@@ -333,7 +334,7 @@ class PhoneConnection internal constructor(
         super.onMuteStateChanged(isMuted)
         logger.d("Mute state changed via system: $isMuted")
         isMute = isMuted
-        dispatcher(ConnectionPerform.AudioMuting, metadata.copy(hasMute = isMute))
+        dispatcher(CallMediaEvent.AudioMuting, metadata.copy(hasMute = isMute))
     }
 
     /**
@@ -489,7 +490,7 @@ class PhoneConnection internal constructor(
      */
     fun hungUp() {
         logger.d("Local hang up for callId: $callId")
-        dispatcher(ConnectionPerform.AudioMuting, metadata.copy(hasMute = isMute))
+        dispatcher(CallMediaEvent.AudioMuting, metadata.copy(hasMute = isMute))
         terminateWithCause(DisconnectCause(DisconnectCause.LOCAL))
     }
 
@@ -504,7 +505,7 @@ class PhoneConnection internal constructor(
 
         if (Build.VERSION.SDK_INT == Build.VERSION_CODES.O_MR1) {
             val update = metadata.copy(hasMute = isMute)
-            dispatcher(ConnectionPerform.AudioMuting, update)
+            dispatcher(CallMediaEvent.AudioMuting, update)
         }
 
         // If the incoming call is answered as audio-only, we set a flag to prevent
@@ -522,7 +523,7 @@ class PhoneConnection internal constructor(
      */
     private fun onDialing() {
         logger.i("Dialing callId: $callId")
-        dispatcher(ConnectionPerform.OngoingCall, metadata)
+        dispatcher(CallLifecycleEvent.OngoingCall, metadata)
 
         // If the outgoing call is initiated as audio-only, we prevent the speaker
         // from being forced on if the remote party answers with video or upgrades mid-call.
@@ -652,14 +653,14 @@ class PhoneConnection internal constructor(
     }
 
     /**
-     * Maps a [DisconnectCause] to the corresponding [ConnectionPerform] broadcast event.
+     * Maps a [DisconnectCause] to the corresponding [CallLifecycleEvent] broadcast event.
      *
-     * [DisconnectCause.REMOTE] maps to [ConnectionPerform.DeclineCall].
-     * All other causes (local hang-up, rejection, timeout, etc.) map to [ConnectionPerform.HungUp].
+     * [DisconnectCause.REMOTE] maps to [CallLifecycleEvent.DeclineCall].
+     * All other causes (local hang-up, rejection, timeout, etc.) map to [CallLifecycleEvent.HungUp].
      */
-    private fun eventForDisconnectCause(cause: DisconnectCause?): ConnectionPerform =
-        if (cause?.code == DisconnectCause.REMOTE) ConnectionPerform.DeclineCall
-        else ConnectionPerform.HungUp
+    private fun eventForDisconnectCause(cause: DisconnectCause?): CallLifecycleEvent =
+        if (cause?.code == DisconnectCause.REMOTE) CallLifecycleEvent.DeclineCall
+        else CallLifecycleEvent.HungUp
 
     /**
      * Terminates the connection with the given [disconnectCause].

@@ -20,7 +20,8 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.EmergencyNumberException
 import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.models.OutgoingFailureType
-import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
+import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
+import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.services.connection.dispatchers.ConnectionLifecycleAction
 import com.webtrit.callkeep.services.services.connection.dispatchers.PhoneConnectionServiceDispatcher
@@ -73,7 +74,7 @@ class PhoneConnectionService : ConnectionService() {
      * @param event The connection-related event to be handled.
      * @param data Optional call metadata associated with the event.
      */
-    fun performEventHandle(event: ConnectionPerform, data: CallMetadata? = null) {
+    fun performEventHandle(event: ConnectionEvent, data: CallMetadata? = null) {
         Log.i(TAG, "performEventHandle: $event")
         dispatcher.dispatch(baseContext, event, data?.toBundle())
     }
@@ -143,7 +144,7 @@ class PhoneConnectionService : ConnectionService() {
 
         Log.e(TAG, failureMessage)
 
-        dispatcher.dispatch(baseContext, ConnectionPerform.OutgoingFailure, failureMetadata)
+        dispatcher.dispatch(baseContext, CallLifecycleEvent.OutgoingFailure, failureMetadata)
 
         phoneConnectionServiceDispatcher.dispatchLifecycle(ConnectionLifecycleAction.ConnectionChanged)
 
@@ -255,10 +256,10 @@ class PhoneConnectionService : ConnectionService() {
         if (wasPending && callId != null) {
             // Notify Flutter that this call ended so it can clean up its call state.
             Log.i(TAG, "onCreateIncomingConnectionFailed: firing HungUp for pending callId=$callId")
-            dispatcher.dispatch(baseContext, ConnectionPerform.HungUp, CallMetadata(callId = callId).toBundle())
+            dispatcher.dispatch(baseContext, CallLifecycleEvent.HungUp, CallMetadata(callId = callId).toBundle())
         } else {
             val failureMetadata = FailureMetadata(callMetadata, failureMessage).toBundle()
-            dispatcher.dispatch(baseContext, ConnectionPerform.IncomingFailure, failureMetadata)
+            dispatcher.dispatch(baseContext, CallLifecycleEvent.IncomingFailure, failureMetadata)
         }
 
         phoneConnectionServiceDispatcher.dispatchLifecycle(ConnectionLifecycleAction.ConnectionChanged)
@@ -450,7 +451,7 @@ class PhoneConnectionService : ConnectionService() {
                 //
                 // To avoid the call hanging indefinitely, we proactively finish the call
                 // as "HungUp" to ensure consistent call termination on the UI side.
-                reportDispatcher.dispatch(context, ConnectionPerform.HungUp, metadata?.toBundle())
+                reportDispatcher.dispatch(context, CallLifecycleEvent.HungUp, metadata?.toBundle())
                 Log.d(TAG, "Failed to start service with action: ${action.name}, error: $e")
             }
         }

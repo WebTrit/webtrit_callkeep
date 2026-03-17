@@ -8,7 +8,7 @@ import android.os.Handler
 import android.os.Looper
 import com.webtrit.callkeep.common.CallDataConst
 import com.webtrit.callkeep.common.sendInternalBroadcast
-import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
+import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -53,11 +53,11 @@ class EndCallConfirmationTest {
         val receiver = buildReceiverAndFinish(callId) { resolved.set(true) }
 
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(ConnectionPerform.HungUp), ctx, receiver, exported = false,
+            listOf(CallLifecycleEvent.HungUp), ctx, receiver, exported = false,
         )
 
         val extras = Bundle().apply { putString(CallDataConst.CALL_ID, callId) }
-        ctx.sendInternalBroadcast(ConnectionPerform.HungUp.name, extras)
+        ctx.sendInternalBroadcast(CallLifecycleEvent.HungUp.name, extras)
         Shadows.shadowOf(Looper.getMainLooper()).idle()
 
         assertTrue(resolved.get())
@@ -71,12 +71,12 @@ class EndCallConfirmationTest {
         val receiver = buildReceiverAndFinish(callId) { resolved.set(true) }
 
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(ConnectionPerform.HungUp, ConnectionPerform.DeclineCall), ctx, receiver,
+            listOf(CallLifecycleEvent.HungUp, CallLifecycleEvent.DeclineCall), ctx, receiver,
             exported = false,
         )
 
         val extras = Bundle().apply { putString(CallDataConst.CALL_ID, callId) }
-        ctx.sendInternalBroadcast(ConnectionPerform.DeclineCall.name, extras)
+        ctx.sendInternalBroadcast(CallLifecycleEvent.DeclineCall.name, extras)
         Shadows.shadowOf(Looper.getMainLooper()).idle()
 
         assertTrue(resolved.get())
@@ -90,11 +90,11 @@ class EndCallConfirmationTest {
         val receiver = buildReceiverAndFinish(callId) { resolved.set(true) }
 
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(ConnectionPerform.HungUp), ctx, receiver, exported = false,
+            listOf(CallLifecycleEvent.HungUp), ctx, receiver, exported = false,
         )
 
         val extras = Bundle().apply { putString(CallDataConst.CALL_ID, "other-call") }
-        ctx.sendInternalBroadcast(ConnectionPerform.HungUp.name, extras)
+        ctx.sendInternalBroadcast(CallLifecycleEvent.HungUp.name, extras)
         Shadows.shadowOf(Looper.getMainLooper()).idle()
 
         assertFalse(resolved.get())

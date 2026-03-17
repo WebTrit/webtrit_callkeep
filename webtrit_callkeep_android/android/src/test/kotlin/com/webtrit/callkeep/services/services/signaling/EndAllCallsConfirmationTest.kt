@@ -8,7 +8,7 @@ import android.os.Handler
 import android.os.Looper
 import com.webtrit.callkeep.common.CallDataConst
 import com.webtrit.callkeep.common.sendInternalBroadcast
-import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
+import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -56,16 +56,16 @@ class EndAllCallsConfirmationTest {
         val receiver = buildReceiver(pendingIds) { resolved.set(true) }
 
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(ConnectionPerform.HungUp, ConnectionPerform.DeclineCall), ctx, receiver,
+            listOf(CallLifecycleEvent.HungUp, CallLifecycleEvent.DeclineCall), ctx, receiver,
             exported = false,
         )
 
-        ctx.sendInternalBroadcast(ConnectionPerform.HungUp.name,
+        ctx.sendInternalBroadcast(CallLifecycleEvent.HungUp.name,
             Bundle().apply { putString(CallDataConst.CALL_ID, "call-A") })
         Shadows.shadowOf(Looper.getMainLooper()).idle()
         assertFalse("should not resolve after first of two confirmations", resolved.get())
 
-        ctx.sendInternalBroadcast(ConnectionPerform.HungUp.name,
+        ctx.sendInternalBroadcast(CallLifecycleEvent.HungUp.name,
             Bundle().apply { putString(CallDataConst.CALL_ID, "call-B") })
         Shadows.shadowOf(Looper.getMainLooper()).idle()
         assertTrue("should resolve after all confirmations", resolved.get())
@@ -80,10 +80,10 @@ class EndAllCallsConfirmationTest {
         val receiver = buildReceiver(pendingIds) { resolved.set(true) }
 
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(ConnectionPerform.HungUp), ctx, receiver, exported = false,
+            listOf(CallLifecycleEvent.HungUp), ctx, receiver, exported = false,
         )
 
-        ctx.sendInternalBroadcast(ConnectionPerform.HungUp.name,
+        ctx.sendInternalBroadcast(CallLifecycleEvent.HungUp.name,
             Bundle().apply { putString(CallDataConst.CALL_ID, "unrelated-call") })
         Shadows.shadowOf(Looper.getMainLooper()).idle()
 
@@ -98,10 +98,10 @@ class EndAllCallsConfirmationTest {
         val receiver = buildReceiver(pendingIds) { resolved.set(true) }
 
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(ConnectionPerform.HungUp), ctx, receiver, exported = false,
+            listOf(CallLifecycleEvent.HungUp), ctx, receiver, exported = false,
         )
 
-        ctx.sendInternalBroadcast(ConnectionPerform.HungUp.name, extras = null)
+        ctx.sendInternalBroadcast(CallLifecycleEvent.HungUp.name, extras = null)
         Shadows.shadowOf(Looper.getMainLooper()).idle()
 
         assertFalse(resolved.get())
