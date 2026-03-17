@@ -4,7 +4,7 @@
 > new session, read this file first, then read `MIGRATION_PLAN.md` for full
 > detail. Update this file after every meaningful decision or state change.
 >
-> Last updated: 2026-03-17 (session 9)
+> Last updated: 2026-03-17 (session 10)
 
 ---
 
@@ -21,8 +21,7 @@ into a separate `:callkeep_core` OS process.
 
 **Next action to take:**
 
-- PR-5e — ready to start (Dart test, no blockers)
-- PR-6 — needs re-evaluation (ConnectionManager/ForegroundService significantly
+- PR-6 — next up, needs re-evaluation (ConnectionManager/ForegroundService significantly
   changed by out-of-plan commits #163–#166; read those diffs before extracting)
 
 ---
@@ -31,7 +30,7 @@ into a separate `:callkeep_core` OS process.
 
 | Branch | Last known commit | Notes |
 |--------|------------------|-------|
-| `develop` | `84aa6f1` | fix(android): remove SharedPreferences caching from StorageDelegate (#173) |
+| `develop` | `b2f4da5` | test(android): add CallkeepAndroidOptions Dart unit tests (#174) |
 | `feat/android-callkeep-core-process-migration` | `c2c1f42` | docs: mark PR-2e open as PR #158 |
 
 ---
@@ -55,7 +54,7 @@ into a separate `:callkeep_core` OS process.
 | PR-5b | `test/storage-delegate-sound-test` | `merged` — shipped inside #157 | `85749be` | 2026-03-17 |
 | PR-5c | `test/is-call-phone-security-exception-test` | `dropped` — isCallPhoneSecurityException() removed in #172 | — | 2026-03-17 |
 | PR-5d | `test/signaling-wakelock-test` | `merged` — shipped inside #153 | `b2b391f` | 2026-03-13 |
-| PR-5e | `test/callkeep-android-options-dart` | `not started` | — | — |
+| PR-5e | `test/callkeep-android-options-dart` | `merged` — PR #174 | `b2f4da5` | 2026-03-17 |
 | PR-6 | `feat/android-connection-tracker` | `not started` | — | — |
 | PR-7a | `feat/android-foreground-service-tracker` | `not started` | — | — |
 | PR-7b | `feat/android-incoming-call-cold-start` | `not started` | — | — |
