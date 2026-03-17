@@ -1,8 +1,11 @@
 package com.webtrit.callkeep.services.services.incoming_call
 
+import android.content.Context
 import android.os.Build
 import com.webtrit.callkeep.PCallkeepIncomingCallData
 import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.models.SignalingStatus
+import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
 import com.webtrit.callkeep.services.services.incoming_call.handlers.CallLifecycleHandler
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -12,6 +15,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.Mockito.mock
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 
 /**
@@ -110,6 +114,8 @@ class CallLifecycleHandlerTest {
     // Fixtures
     // -------------------------------------------------------------------------
 
+    private val context: Context = RuntimeEnvironment.getApplication()
+
     private lateinit var handler: CallLifecycleHandler
     private lateinit var communicator: FakeCommunicator
     private lateinit var fakeController: FakeConnectionController
@@ -117,6 +123,11 @@ class CallLifecycleHandlerTest {
 
     @Before
     fun setUp() {
+        // Force BACKGROUND isolate so executeIfBackground always runs the action.
+        // Without this, tests can become order-dependent if another test class leaves
+        // SignalingStatusBroadcaster in a CONNECT/CONNECTING (MAIN) state.
+        SignalingStatusBroadcaster.setValue(context, SignalingStatus.DISCONNECT)
+
         communicator = FakeCommunicator()
         fakeController = FakeConnectionController()
         handler = CallLifecycleHandler(
@@ -263,6 +274,12 @@ class CallLifecycleHandlerTest {
     fun `performAnswerCall does not call connectionController answer on success`() {
         handler.performAnswerCall(CallMetadata(callId = "call-1"))
 
+        // Confirm the background path actually ran (Flutter was notified) so the
+        // answerCallCount == 0 assertion is not trivially satisfied by a no-op.
+        assertTrue(
+            "performAnswer must be forwarded to Flutter to confirm the background path ran",
+            communicator.events.contains("performAnswer"),
+        )
         assertEquals("answer() must not be called -- Telecom already confirmed the answer", 0, fakeController.answerCallCount)
     }
 
@@ -294,5 +311,16 @@ class CallLifecycleHandlerTest {
         handler.performAnswerCall(CallMetadata(callId = "call-1"))
 
         assertEquals("tearDown() must be called once on answer failure", 1, fakeController.tearDownCallCount)
+    }
+
+    @Test
+    fun `performAnswerCall with null flutterApi is a no-op and does not throw`() {
+        handler.flutterApi = null
+
+        handler.performAnswerCall(CallMetadata(callId = "call-1"))
+
+        // No Flutter notification, no teardown, no crash -- graceful degradation.
+        assertEquals(0, fakeController.answerCallCount)
+        assertEquals(0, fakeController.tearDownCallCount)
     }
 }
