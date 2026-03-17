@@ -151,13 +151,13 @@ class ForegroundService : Service(), PHostApi {
         }.onFailure { Log.w("CallKeep", "Channel registration failed: ${it.message}", it) }
 
         runCatching {
-            // Only update the stored paths when the caller explicitly provides a value.
-            // A null option means "unspecified / leave as-is"; it must not erase a
-            // previously persisted custom sound on each setUp() call.
+            // Only persist a field when the caller explicitly provides a value.
+            // A null option means "unspecified / leave as-is"; it must not overwrite a
+            // previously persisted value on each setUp() call.
             options.android.ringtoneSound?.let { StorageDelegate.Sound.initRingtonePath(baseContext, it) }
             options.android.ringbackSound?.let { StorageDelegate.Sound.initRingbackPath(baseContext, it) }
             options.android.incomingCallFullScreen?.let { StorageDelegate.IncomingCall.setFullScreen(baseContext, it) }
-        }.onFailure { Log.w("CallKeep", "Sound init failed: ${it.message}", it) }
+        }.onFailure { Log.w("CallKeep", "Android options init failed: ${it.message}", it) }
 
         callback.invoke(Result.success(Unit))
     }
