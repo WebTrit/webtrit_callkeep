@@ -1,13 +1,13 @@
 package com.webtrit.callkeep.services.services.foreground
 
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import android.annotation.SuppressLint
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Binder
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
@@ -65,26 +65,6 @@ import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 class ForegroundService : Service(), PHostApi {
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
 
-    /**
-     * Manages all pending outgoing call callbacks and their associated timeouts.
-     *
-     * This manager is required because communication between the [ForegroundService]
-     * and [PhoneConnectionService] happens asynchronously through broadcast receivers.
-     * When an outgoing call is initiated, the request and its response (success, failure,
-     * or timeout) may occur at different times, often triggered by asynchronous intents
-     * from the connection service layer.
-     *
-     * Responsibilities:
-     * - Tracks active outgoing call requests identified by `callId`.
-     * - Stores the callback to be invoked once the connection service reports a result.
-     * - Automatically cancels pending timeouts when a call completes, fails, or times out.
-     * - Ensures safe cleanup on service destruction to prevent memory leaks.
-     *
-     * The manager runs on the main thread using a [Handler] backed by [Looper.getMainLooper],
-     * and applies CALLBACK_TIMEOUT_MS as the default timeout duration for each outgoing call.
-     */
-    private val outgoingCallbacksManager by lazy { OutgoingCallbacksManager(mainHandler) }
-
     private val binder = LocalBinder()
 
     // Call IDs for which performEndCall was fired directly in tearDown().
@@ -111,13 +91,11 @@ class ForegroundService : Service(), PHostApi {
                 CallLifecycleEvent.DeclineCall.name -> handleCSReportDeclineCall(intent.extras)
                 CallLifecycleEvent.HungUp.name -> handleCSReportDeclineCall(intent.extras)
                 CallLifecycleEvent.AnswerCall.name -> handleCSReportAnswerCall(intent.extras)
-                CallLifecycleEvent.OngoingCall.name -> handleCSReportOngoingCall(intent.extras)
                 CallMediaEvent.AudioDeviceSet.name -> handleCSReportAudioDeviceSet(intent.extras)
                 CallMediaEvent.AudioDevicesUpdate.name -> handleCsReportAudioDevicesUpdate(intent.extras)
                 CallMediaEvent.AudioMuting.name -> handleCSReportAudioMuting(intent.extras)
                 CallMediaEvent.ConnectionHolding.name -> handleCSReportConnectionHolding(intent.extras)
                 CallMediaEvent.SentDTMF.name -> handleCSReportSentDTMF(intent.extras)
-                CallLifecycleEvent.OutgoingFailure.name -> handleCSReportOutgoingFailure(intent.extras)
             }
         }
     }
@@ -185,21 +163,71 @@ class ForegroundService : Service(), PHostApi {
         val logContext = "startCall($callId|$handle)"
         logger.i("$logContext: trying to start call")
 
-        // reset any previous pending callback for this call
-        outgoingCallbacksManager.remove(callId)
+        // Each outgoing call owns its own receiver + AtomicBoolean so that the callback
+        // and performStartCall are invoked exactly once, regardless of whether the
+        // ConnectionService responds before or after the timeout fires.
+        val handler = Handler(Looper.getMainLooper())
+        val resolved = AtomicBoolean(false)
+        lateinit var receiver: BroadcastReceiver
 
-        // Register callback + global timeout for the whole outgoing flow.
-        // The callback may be invoked:
-        //   - synchronously below, if startOutgoingCall() throws immediately
-        //   - asynchronously from handleCSReportOngoingCall on success
-        //   - asynchronously from handleCSReportOutgoingFailure on CS-reported failure
-        //   - asynchronously by the timeout handler if no response arrives in time
-        outgoingCallbacksManager.put(callId, callback) { cb ->
-            val exception = Exception("Overall timeout reached")
-            logger.w("$logContext: ", exception)
-            saveFailedOutgoingCall(metadata, OutgoingFailureSource.TIMEOUT, exception)
-            cb(Result.success(PCallRequestError(PCallRequestErrorEnum.TIMEOUT)))
+        fun finish(result: Result<PCallRequestError?>) {
+            if (!resolved.compareAndSet(false, true)) return
+            handler.removeCallbacksAndMessages(null)
+            try {
+                ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(
+                    baseContext, receiver
+                )
+            } catch (_: IllegalArgumentException) {}
+            callback(result)
         }
+
+        receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                when (intent?.action) {
+                    CallLifecycleEvent.OngoingCall.name -> {
+                        val callMetaData = CallMetadata.fromBundle(intent.extras ?: return)
+                        if (callMetaData.callId != callId) return
+                        logger.i("$logContext: ongoing call confirmed by CS")
+                        flutterDelegateApi?.performStartCall(
+                            callMetaData.callId,
+                            callMetaData.handle!!.toPHandle(),
+                            callMetaData.name,
+                            callMetaData.hasVideo ?: false,
+                        ) {}
+                        finish(Result.success(null))
+                    }
+                    CallLifecycleEvent.OutgoingFailure.name -> {
+                        val failureMetaData = FailureMetadata.fromBundle(intent.extras ?: return)
+                        if (failureMetaData.callMetadata?.callId != callId) return
+                        logger.e("$logContext: CS reported failure: ${failureMetaData.outgoingFailureType}")
+                        saveFailedOutgoingCall(
+                            metadata, OutgoingFailureSource.CS_CALLBACK, failureMetaData.getThrowable()
+                        )
+                        val result = when (failureMetaData.outgoingFailureType) {
+                            OutgoingFailureType.UNENTITLED ->
+                                Result.failure(failureMetaData.getThrowable())
+                            OutgoingFailureType.EMERGENCY_NUMBER ->
+                                Result.success(PCallRequestError(PCallRequestErrorEnum.EMERGENCY_NUMBER))
+                        }
+                        finish(result)
+                    }
+                }
+            }
+        }
+
+        ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
+            listOf(CallLifecycleEvent.OngoingCall, CallLifecycleEvent.OutgoingFailure),
+            baseContext,
+            receiver,
+            exported = false,
+        )
+
+        handler.postDelayed({
+            val exception = Exception("Overall timeout reached")
+            logger.w("$logContext: timeout", exception)
+            saveFailedOutgoingCall(metadata, OutgoingFailureSource.TIMEOUT, exception)
+            finish(Result.success(PCallRequestError(PCallRequestErrorEnum.TIMEOUT)))
+        }, OUTGOING_CALL_TIMEOUT_MS)
 
         try {
             // Suppress MissingPermission lint: self-managed PhoneAccount does not require
@@ -207,20 +235,15 @@ class ForegroundService : Service(), PHostApi {
             @SuppressLint("MissingPermission") PhoneConnectionService.startOutgoingCall(
                 baseContext, metadata
             )
-            // Success is confirmed asynchronously via handleCSReportOngoingCall.
             logger.i("$logContext: startOutgoingCall dispatched")
         } catch (e: EmergencyNumberException) {
             logger.e("$logContext failed: emergency number", e)
             saveFailedOutgoingCall(metadata, OutgoingFailureSource.DISPATCH_ERROR, e)
-            outgoingCallbacksManager.invokeAndRemove(
-                callId, Result.success(PCallRequestError(PCallRequestErrorEnum.EMERGENCY_NUMBER))
-            )
+            finish(Result.success(PCallRequestError(PCallRequestErrorEnum.EMERGENCY_NUMBER)))
         } catch (e: Exception) {
             logger.e("$logContext failed: ${e.javaClass.simpleName}: ${e.message}", e)
             saveFailedOutgoingCall(metadata, OutgoingFailureSource.DISPATCH_ERROR, e)
-            outgoingCallbacksManager.invokeAndRemove(
-                callId, Result.success(PCallRequestError(PCallRequestErrorEnum.INTERNAL))
-            )
+            finish(Result.success(PCallRequestError(PCallRequestErrorEnum.INTERNAL)))
         }
     }
 
@@ -508,21 +531,6 @@ class ForegroundService : Service(), PHostApi {
         }
     }
 
-    private fun handleCSReportOngoingCall(extras: Bundle?) {
-        logger.d("handleCSReportOngoingCall")
-        extras?.let {
-            val callMetaData = CallMetadata.fromBundle(it)
-            outgoingCallbacksManager.invokeAndRemove(callMetaData.callId, Result.success(null))
-
-            flutterDelegateApi?.performStartCall(
-                callMetaData.callId,
-                callMetaData.handle!!.toPHandle(),
-                callMetaData.name,
-                callMetaData.hasVideo ?: false,
-            ) {}
-        }
-    }
-
     private fun handleCSReportAudioDeviceSet(extras: Bundle?) {
         logger.d("handleCSReportAudioDeviceSet")
         extras?.let {
@@ -570,35 +578,6 @@ class ForegroundService : Service(), PHostApi {
             flutterDelegateApi?.performSendDTMF(
                 callMetaData.callId, callMetaData.dualToneMultiFrequency.toString()
             ) {}
-        }
-    }
-
-    private fun handleCSReportOutgoingFailure(extras: Bundle?) {
-        logger.d("handleCSReportOutgoingFailure")
-        extras?.let { failure ->
-            val failureMetaData = FailureMetadata.fromBundle(failure)
-            logger.e("handleCSReportOutgoingFailure: ${failureMetaData.outgoingFailureType}")
-
-            failureMetaData.callMetadata?.let { meta ->
-                saveFailedOutgoingCall(
-                    meta, OutgoingFailureSource.CS_CALLBACK, failureMetaData.getThrowable()
-                )
-            }
-
-            val callId = failureMetaData.callMetadata?.callId ?: return
-            val cb = outgoingCallbacksManager.remove(callId)
-
-            when (failureMetaData.outgoingFailureType) {
-                OutgoingFailureType.UNENTITLED -> {
-                    cb?.invoke(Result.failure(failureMetaData.getThrowable()))
-                }
-
-                OutgoingFailureType.EMERGENCY_NUMBER -> {
-                    cb?.invoke(
-                        Result.success(PCallRequestError(PCallRequestErrorEnum.EMERGENCY_NUMBER))
-                    )
-                }
-            }
         }
     }
 
@@ -653,8 +632,6 @@ class ForegroundService : Service(), PHostApi {
             baseContext, connectionServicePerformReceiver
         )
 
-        outgoingCallbacksManager.clear()
-
         isRunning = false
     }
 
@@ -670,84 +647,8 @@ class ForegroundService : Service(), PHostApi {
         val failedCallsStore = FailedCallsStore()
 
         var isRunning = false
-    }
-}
 
-private class OutgoingCallbacksManager(
-    private val handler: Handler, private val timeoutMs: Long = CALLBACK_TIMEOUT_MS
-) {
-    private val logger = Log("OutgoingCallbacksManager")
-    private val callbacks = mutableMapOf<String, (Result<PCallRequestError?>) -> Unit>()
-    private val timeouts = mutableMapOf<String, Runnable>()
-    private val timeoutHandlers =
-        mutableMapOf<String, ((Result<PCallRequestError?>) -> Unit) -> Unit>()
-
-    fun put(
-        callId: String,
-        callback: (Result<PCallRequestError?>) -> Unit,
-        onTimeout: ((Result<PCallRequestError?>) -> Unit) -> Unit
-    ) {
-        logger.d("put: callId=$callId")
-        remove(callId)
-        callbacks[callId] = callback
-        timeoutHandlers[callId] = onTimeout
-
-        val runnable = Runnable {
-            val cb = remove(callId) ?: return@Runnable
-            onTimeout(cb)
-        }
-        timeouts[callId] = runnable
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            handler.postDelayed(runnable, callId, timeoutMs)
-        } else {
-            handler.postDelayed(runnable, timeoutMs)
-        }
-    }
-
-    /**
-     * Reschedules the existing timeout for the given callId.
-     * Useful when retrying a call to prevent premature timeout firing.
-     */
-    fun rescheduleTimeout(callId: String) {
-        logger.d("rescheduleTimeout: callId=$callId")
-        val onTimeout = timeoutHandlers[callId] ?: return
-        timeouts.remove(callId)?.let { handler.removeCallbacks(it) }
-
-        val runnable = Runnable {
-            val cb = remove(callId) ?: return@Runnable
-            onTimeout(cb)
-        }
-        timeouts[callId] = runnable
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            handler.postDelayed(runnable, callId, timeoutMs)
-        } else {
-            handler.postDelayed(runnable, timeoutMs)
-        }
-    }
-
-    fun remove(callId: String): ((Result<PCallRequestError?>) -> Unit)? {
-        timeouts.remove(callId)?.let { handler.removeCallbacks(it) }
-        timeoutHandlers.remove(callId)
-        return callbacks.remove(callId)
-    }
-
-    fun invokeAndRemove(callId: String, result: Result<PCallRequestError?>) {
-        logger.d("invokeAndRemove: callId=$callId")
-        remove(callId)?.invoke(result)
-    }
-
-    fun clear() {
-        logger.d("clear")
-        timeouts.values.forEach { handler.removeCallbacks(it) }
-        callbacks.clear()
-        timeouts.clear()
-        timeoutHandlers.clear()
-    }
-
-    companion object {
-        const val CALLBACK_TIMEOUT_MS = 5000L
+        private const val OUTGOING_CALL_TIMEOUT_MS = 5_000L
     }
 }
 
