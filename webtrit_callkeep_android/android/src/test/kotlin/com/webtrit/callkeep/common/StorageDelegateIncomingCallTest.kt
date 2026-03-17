@@ -20,8 +20,6 @@ class StorageDelegateIncomingCallTest {
     @Before
     fun setUp() {
         context = RuntimeEnvironment.getApplication()
-        context.getSharedPreferences("COMMON_PREFERENCES", Context.MODE_PRIVATE)
-            .edit().clear().commit()
     }
 
     // -------------------------------------------------------------------------
