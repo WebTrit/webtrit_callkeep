@@ -67,6 +67,12 @@ class ForegroundService : Service(), PHostApi {
 
     private val binder = LocalBinder()
 
+    // Cleanup lambdas for all pending outgoing calls. Each entry cancels the per-call
+    // timeout and unregisters the per-call receiver without invoking the Pigeon callback
+    // (the service is being destroyed, so the channel is already gone). Populated in
+    // startCall() and removed in finish() when the call resolves normally.
+    private val pendingCallCleanups: MutableSet<() -> Unit> = ConcurrentHashMap.newKeySet()
+
     // Call IDs for which performEndCall was fired directly in tearDown().
     // Used to suppress the subsequent stale async HungUp broadcast that arrives
     // via connectionServicePerformReceiver after the new session has already started.
@@ -105,13 +111,17 @@ class ForegroundService : Service(), PHostApi {
     override fun onCreate() {
         super.onCreate()
         logger.d("onCreate")
-        // Register the service to receive connection service perform events
-        val allEvents: List<ConnectionEvent> = buildList {
-            addAll(CallLifecycleEvent.entries)
+        // Register the service to receive connection service perform events.
+        // OngoingCall and OutgoingFailure are handled by per-call receivers created in
+        // startCall() and must NOT be included here to avoid duplicate delivery.
+        val globalEvents: List<ConnectionEvent> = buildList {
+            addAll(CallLifecycleEvent.entries.filter {
+                it != CallLifecycleEvent.OngoingCall && it != CallLifecycleEvent.OutgoingFailure
+            })
             addAll(CallMediaEvent.entries)
         }
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            allEvents, baseContext, connectionServicePerformReceiver
+            globalEvents, baseContext, connectionServicePerformReceiver
         )
         isRunning = true
     }
@@ -169,17 +179,33 @@ class ForegroundService : Service(), PHostApi {
         val handler = Handler(Looper.getMainLooper())
         val resolved = AtomicBoolean(false)
         lateinit var receiver: BroadcastReceiver
+        lateinit var cleanupOnDestroy: () -> Unit
 
-        fun finish(result: Result<PCallRequestError?>) {
-            if (!resolved.compareAndSet(false, true)) return
+        fun cancelResources() {
             handler.removeCallbacksAndMessages(null)
             try {
                 ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(
                     baseContext, receiver
                 )
             } catch (_: IllegalArgumentException) {}
+        }
+
+        fun finish(result: Result<PCallRequestError?>) {
+            if (!resolved.compareAndSet(false, true)) return
+            pendingCallCleanups.remove(cleanupOnDestroy)
+            cancelResources()
             callback(result)
         }
+
+        // Registered into pendingCallCleanups so onDestroy() can cancel resources for any
+        // call that is still pending when the service is destroyed. Does not invoke callback
+        // since the Pigeon channel is already gone at that point.
+        cleanupOnDestroy = {
+            if (resolved.compareAndSet(false, true)) {
+                cancelResources()
+            }
+        }
+        pendingCallCleanups.add(cleanupOnDestroy)
 
         receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
@@ -631,6 +657,9 @@ class ForegroundService : Service(), PHostApi {
         ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(
             baseContext, connectionServicePerformReceiver
         )
+
+        pendingCallCleanups.toList().forEach { it() }
+        pendingCallCleanups.clear()
 
         isRunning = false
     }
