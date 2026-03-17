@@ -169,7 +169,11 @@ extension CallkeepIOSOptionsConverter on CallkeepIOSOptions {
 
 extension CallkeepAndroidOptionsConverter on CallkeepAndroidOptions {
   PAndroidOptions toPigeon() {
-    return PAndroidOptions(ringtoneSound: ringtoneSound, ringbackSound: ringbackSound);
+    return PAndroidOptions(
+      ringtoneSound: ringtoneSound,
+      ringbackSound: ringbackSound,
+      incomingCallFullScreen: incomingCallFullScreen,
+    );
   }
 }
 
