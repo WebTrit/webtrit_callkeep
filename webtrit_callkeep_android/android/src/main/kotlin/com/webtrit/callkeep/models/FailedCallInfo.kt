@@ -5,7 +5,13 @@ package com.webtrit.callkeep.models
  */
 enum class OutgoingFailureSource {
     /**
-     * The app successfully requested the call, but Android Telecom or the ConnectionService
+     * The call dispatch failed synchronously before reaching the ConnectionService —
+     * e.g., an emergency number was dialled or startOutgoingCall() threw immediately.
+     */
+    DISPATCH_ERROR,
+
+    /**
+     * The app successfully dispatched the call, but Android Telecom or the ConnectionService
      * reported a failure asynchronously (e.g., connection failed, account issues).
      */
     CS_CALLBACK,

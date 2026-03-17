@@ -183,8 +183,11 @@ class ForegroundService : Service(), PHostApi {
         outgoingCallbacksManager.remove(callId)
 
         // Register callback + global timeout for the whole outgoing flow.
-        // The callback is invoked asynchronously from handleCSReportOngoingCall on success,
-        // or from handleCSReportOutgoingFailure / timeout on failure.
+        // The callback may be invoked:
+        //   - synchronously below, if startOutgoingCall() throws immediately
+        //   - asynchronously from handleCSReportOngoingCall on success
+        //   - asynchronously from handleCSReportOutgoingFailure on CS-reported failure
+        //   - asynchronously by the timeout handler if no response arrives in time
         outgoingCallbacksManager.put(callId, callback) { cb ->
             val exception = Exception("Overall timeout reached")
             logger.w("$logContext: ", exception)
@@ -202,13 +205,13 @@ class ForegroundService : Service(), PHostApi {
             logger.i("$logContext: startOutgoingCall dispatched")
         } catch (e: EmergencyNumberException) {
             logger.e("$logContext failed: emergency number", e)
-            saveFailedOutgoingCall(metadata, OutgoingFailureSource.CS_CALLBACK, e)
+            saveFailedOutgoingCall(metadata, OutgoingFailureSource.DISPATCH_ERROR, e)
             outgoingCallbacksManager.invokeAndRemove(
                 callId, Result.success(PCallRequestError(PCallRequestErrorEnum.EMERGENCY_NUMBER))
             )
         } catch (e: Exception) {
             logger.e("$logContext failed: ${e.javaClass.simpleName}: ${e.message}", e)
-            saveFailedOutgoingCall(metadata, OutgoingFailureSource.CS_CALLBACK, e)
+            saveFailedOutgoingCall(metadata, OutgoingFailureSource.DISPATCH_ERROR, e)
             outgoingCallbacksManager.invokeAndRemove(
                 callId, Result.success(PCallRequestError(PCallRequestErrorEnum.INTERNAL))
             )
