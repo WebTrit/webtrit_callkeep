@@ -67,11 +67,13 @@ class ForegroundService : Service(), PHostApi {
 
     private val binder = LocalBinder()
 
-    // Cleanup lambdas for all pending outgoing calls. Each entry cancels the per-call
-    // timeout and unregisters the per-call receiver without invoking the Pigeon callback
-    // (the service is being destroyed, so the channel is already gone). Populated in
-    // startCall() and removed in finish() when the call resolves normally.
-    private val pendingCallCleanups: MutableSet<() -> Unit> = ConcurrentHashMap.newKeySet()
+    // Per-call cleanup lambdas keyed by callId. Each entry cancels the per-call timeout
+    // and unregisters the per-call receiver without invoking the Pigeon callback (the
+    // service is being destroyed, so the channel is already gone). Populated in startCall()
+    // after the receiver is registered, and removed in finish() when the call resolves
+    // normally. Using a map instead of a set allows cancelling a previous pending call
+    // when startCall() is invoked again with the same callId.
+    private val pendingCallCleanupsByCallId: ConcurrentHashMap<String, () -> Unit> = ConcurrentHashMap()
 
     // Call IDs for which performEndCall was fired directly in tearDown().
     // Used to suppress the subsequent stale async HungUp broadcast that arrives
@@ -111,15 +113,20 @@ class ForegroundService : Service(), PHostApi {
     override fun onCreate() {
         super.onCreate()
         logger.d("onCreate")
-        // Register the service to receive connection service perform events.
-        // OngoingCall and OutgoingFailure are handled by per-call receivers created in
-        // startCall() and must NOT be included here to avoid duplicate delivery.
-        val globalEvents: List<ConnectionEvent> = buildList {
-            addAll(CallLifecycleEvent.entries.filter {
-                it != CallLifecycleEvent.OngoingCall && it != CallLifecycleEvent.OutgoingFailure
-            })
-            addAll(CallMediaEvent.entries)
-        }
+        // Register only the events that connectionServicePerformReceiver actually handles.
+        // OngoingCall/OutgoingFailure go to per-call receivers in startCall().
+        // IncomingFailure/ConnectionNotFound are not handled here and are excluded to avoid noise.
+        val globalEvents: List<ConnectionEvent> = listOf(
+            CallLifecycleEvent.DidPushIncomingCall,
+            CallLifecycleEvent.DeclineCall,
+            CallLifecycleEvent.HungUp,
+            CallLifecycleEvent.AnswerCall,
+            CallMediaEvent.AudioDeviceSet,
+            CallMediaEvent.AudioDevicesUpdate,
+            CallMediaEvent.AudioMuting,
+            CallMediaEvent.ConnectionHolding,
+            CallMediaEvent.SentDTMF,
+        )
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
             globalEvents, baseContext, connectionServicePerformReceiver
         )
@@ -173,42 +180,40 @@ class ForegroundService : Service(), PHostApi {
         val logContext = "startCall($callId|$handle)"
         logger.i("$logContext: trying to start call")
 
+        // Cancel any previous pending call for this callId before creating a new one.
+        // This prevents duplicate receivers/timeouts if startCall() is invoked again with the same callId.
+        pendingCallCleanupsByCallId.remove(callId)?.invoke()
+
         // Each outgoing call owns its own receiver + AtomicBoolean so that the callback
         // and performStartCall are invoked exactly once, regardless of whether the
         // ConnectionService responds before or after the timeout fires.
         val handler = Handler(Looper.getMainLooper())
         val resolved = AtomicBoolean(false)
-        lateinit var receiver: BroadcastReceiver
-        lateinit var cleanupOnDestroy: () -> Unit
+        var receiver: BroadcastReceiver? = null
 
         fun cancelResources() {
             handler.removeCallbacksAndMessages(null)
-            try {
-                ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(
-                    baseContext, receiver
-                )
-            } catch (_: IllegalArgumentException) {}
+            // Guard against the window where the cleanup is invoked before receiver
+            // is registered (i.e., between pendingCallCleanupsByCallId.put and registerConnectionPerformReceiver).
+            receiver?.let {
+                try {
+                    ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, it)
+                } catch (_: IllegalArgumentException) {}
+            }
         }
 
         fun finish(result: Result<PCallRequestError?>) {
             if (!resolved.compareAndSet(false, true)) return
-            pendingCallCleanups.remove(cleanupOnDestroy)
+            pendingCallCleanupsByCallId.remove(callId)
             cancelResources()
             callback(result)
         }
 
-        // Registered into pendingCallCleanups so onDestroy() can cancel resources for any
-        // call that is still pending when the service is destroyed. Does not invoke callback
-        // since the Pigeon channel is already gone at that point.
-        cleanupOnDestroy = {
-            if (resolved.compareAndSet(false, true)) {
-                cancelResources()
-            }
-        }
-        pendingCallCleanups.add(cleanupOnDestroy)
-
         receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
+                // Acquire resolution before any side effects so that a stale broadcast
+                // arriving after a timeout cannot trigger performStartCall or saveFailedOutgoingCall.
+                if (resolved.get()) return
                 when (intent?.action) {
                     CallLifecycleEvent.OngoingCall.name -> {
                         val callMetaData = CallMetadata.fromBundle(intent.extras ?: return)
@@ -244,9 +249,15 @@ class ForegroundService : Service(), PHostApi {
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
             listOf(CallLifecycleEvent.OngoingCall, CallLifecycleEvent.OutgoingFailure),
             baseContext,
-            receiver,
+            receiver!!,
             exported = false,
         )
+
+        // Add cleanup AFTER receiver is registered to avoid UninitializedPropertyAccessException
+        // if onDestroy() fires in the narrow window before receiver assignment.
+        pendingCallCleanupsByCallId[callId] = {
+            if (resolved.compareAndSet(false, true)) { cancelResources() }
+        }
 
         handler.postDelayed({
             val exception = Exception("Overall timeout reached")
@@ -658,8 +669,8 @@ class ForegroundService : Service(), PHostApi {
             baseContext, connectionServicePerformReceiver
         )
 
-        pendingCallCleanups.toList().forEach { it() }
-        pendingCallCleanups.clear()
+        pendingCallCleanupsByCallId.values.toList().forEach { it() }
+        pendingCallCleanupsByCallId.clear()
 
         isRunning = false
     }
