@@ -4,7 +4,7 @@
 > new session, read this file first, then read `MIGRATION_PLAN.md` for full
 > detail. Update this file after every meaningful decision or state change.
 >
-> Last updated: 2026-03-17 (session 7)
+> Last updated: 2026-03-17 (session 8)
 
 ---
 
@@ -21,13 +21,10 @@ into a separate `:callkeep_core` OS process.
 
 **Next action to take:**
 
-- PR-5a, PR-5c, PR-5e — ready to start (independent, no blockers)
+- PR-5e — ready to start (Dart test, no blockers)
 - PR-6 — needs re-evaluation (ConnectionManager/ForegroundService significantly
-  changed by out-of-plan commits #163–#166; read those diffs before extracting
-  the feature branch version)
-- Bug to fix in PR-6 or earlier: `ForegroundService.kt` still references
-  `StorageDelegate.Sound.setIncomingCallFullScreen` (line ~192) — must become
-  `StorageDelegate.IncomingCall.setFullScreen` after PR-4d merged
+  changed by out-of-plan commits #163–#166; read those diffs before extracting)
+- fix/storage-delegate-test-isolation — new small fix (see Known Bugs)
 
 ---
 
@@ -35,7 +32,7 @@ into a separate `:callkeep_core` OS process.
 
 | Branch | Last known commit | Notes |
 |--------|------------------|-------|
-| `develop` | `28a6148` | feat(android): ActivityManager for PhoneConnectionService detection (#171) |
+| `develop` | `9be1d30` | refactor(android): remove outgoing call retry logic (#172) |
 | `feat/android-callkeep-core-process-migration` | `c2c1f42` | docs: mark PR-2e open as PR #158 |
 
 ---
@@ -55,9 +52,9 @@ into a separate `:callkeep_core` OS process.
 | PR-4b | `refactor/asset-holder-remove-flutter-assets-dependency` | `merged` — PR #156 | `ea9033b` | 2026-03-13 |
 | PR-4c | `feat/android-metadata-diagnostics` | `merged` — PR #171 | `28a6148` | 2026-03-17 |
 | PR-4d | `fix/incoming-call-notification-null-safety` | `merged` — PR #170 | `aa653bb` | 2026-03-17 |
-| PR-5a | `test/retry-manager-test` | `not started` | — | — |
+| PR-5a | `test/retry-manager-test` | `dropped` — RetryManager removed in #172 | — | 2026-03-17 |
 | PR-5b | `test/storage-delegate-sound-test` | `merged` — shipped inside #157 | `85749be` | 2026-03-17 |
-| PR-5c | `test/is-call-phone-security-exception-test` | `not started` | — | — |
+| PR-5c | `test/is-call-phone-security-exception-test` | `dropped` — isCallPhoneSecurityException() removed in #172 | — | 2026-03-17 |
 | PR-5d | `test/signaling-wakelock-test` | `merged` — shipped inside #153 | `b2b391f` | 2026-03-13 |
 | PR-5e | `test/callkeep-android-options-dart` | `not started` | — | — |
 | PR-6 | `feat/android-connection-tracker` | `not started` | — | — |
@@ -67,6 +64,7 @@ into a separate `:callkeep_core` OS process.
 | PR-9a | `feat/android-broadcast-transport-migration` | `not started` | — | — |
 | PR-9b | `feat/android-callkeep-core-process-declaration` | `not started` | — | — |
 | PR-10 | `feat/example-app-multi-line-calls` | `merged` — PR #149 (merged ahead of schedule) | `830a447` | 2026-03-13 |
+| — | `refactor/remove-outgoing-call-retry` | `merged` — PR #172 (out-of-plan, supersedes PR-5a/5c) | `9be1d30` | 2026-03-17 |
 
 ---
 
