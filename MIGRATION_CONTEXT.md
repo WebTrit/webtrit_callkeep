@@ -4,7 +4,7 @@
 > new session, read this file first, then read `MIGRATION_PLAN.md` for full
 > detail. Update this file after every meaningful decision or state change.
 >
-> Last updated: 2026-03-17 (session 6)
+> Last updated: 2026-03-17 (session 7)
 
 ---
 
@@ -21,11 +21,13 @@ into a separate `:callkeep_core` OS process.
 
 **Next action to take:**
 
-- PR-4c — ready to start (independent)
-- PR-5a, PR-5c, PR-5e — ready to start
+- PR-5a, PR-5c, PR-5e — ready to start (independent, no blockers)
 - PR-6 — needs re-evaluation (ConnectionManager/ForegroundService significantly
   changed by out-of-plan commits #163–#166; read those diffs before extracting
   the feature branch version)
+- Bug to fix in PR-6 or earlier: `ForegroundService.kt` still references
+  `StorageDelegate.Sound.setIncomingCallFullScreen` (line ~192) — must become
+  `StorageDelegate.IncomingCall.setFullScreen` after PR-4d merged
 
 ---
 
@@ -33,7 +35,7 @@ into a separate `:callkeep_core` OS process.
 
 | Branch | Last known commit | Notes |
 |--------|------------------|-------|
-| `develop` | `aa653bb` | fix(android): guard full-screen intent (#170) |
+| `develop` | `28a6148` | feat(android): ActivityManager for PhoneConnectionService detection (#171) |
 | `feat/android-callkeep-core-process-migration` | `c2c1f42` | docs: mark PR-2e open as PR #158 |
 
 ---
@@ -51,7 +53,7 @@ into a separate `:callkeep_core` OS process.
 | PR-3 | `docs/android-architecture-guide` | `not started` | — | — |
 | PR-4a | `feat/android-storage-delegate-options` | `merged` — PR #157 | `85749be` | 2026-03-17 |
 | PR-4b | `refactor/asset-holder-remove-flutter-assets-dependency` | `merged` — PR #156 | `ea9033b` | 2026-03-13 |
-| PR-4c | `feat/android-metadata-diagnostics` | `open` — PR #171 | — | — |
+| PR-4c | `feat/android-metadata-diagnostics` | `merged` — PR #171 | `28a6148` | 2026-03-17 |
 | PR-4d | `fix/incoming-call-notification-null-safety` | `merged` — PR #170 | `aa653bb` | 2026-03-17 |
 | PR-5a | `test/retry-manager-test` | `not started` | — | — |
 | PR-5b | `test/storage-delegate-sound-test` | `merged` — shipped inside #157 | `85749be` | 2026-03-17 |
@@ -128,7 +130,7 @@ Decisions already made — do not re-litigate without strong reason.
 | Question | Relevant PR | Status |
 |----------|-------------|--------|
 | CI/CD workflow changes on feature branch — include or skip? | skip | **open** |
-| `isIncomingCall` field — only new field in `CallMetaData.kt`? | PR-4c | **resolved** — confirmed: `isIncomingCall: Boolean?` is the only new field |
+| `isIncomingCall` field — only new field in `CallMetaData.kt`? | PR-4c | **resolved** — confirmed: `isIncomingCall: Boolean?` is the only new field. PR-4c merged. |
 | `RetryManager` — does it reference `StorageDelegate`? (affects PR-5a prerequisite) | PR-5a | **open** |
 | After out-of-plan #163–#165 rewrites: which exact delta does PR-6 still need to add? | PR-6 | **open** — run `git diff origin/develop..feat/android-callkeep-core-process-migration -- '*.kt'` for ConnectionManager + ForegroundService before starting |
 | After out-of-plan #166 rewrite: which exact delta does PR-7b still need to add? | PR-7b | **open** — same approach: diff before extracting |
