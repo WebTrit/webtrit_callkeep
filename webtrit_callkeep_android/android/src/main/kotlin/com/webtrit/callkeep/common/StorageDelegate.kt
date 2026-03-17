@@ -22,10 +22,9 @@ object StorageDelegate {
 
         /** Persists [path] as the ringtone asset path. Passing `null` clears the stored value. */
         fun initRingtonePath(context: Context, path: String?) {
-            sharedPreferences(context).edit().apply {
-                if (path != null) putString(RINGTONE_PATH, path) else remove(RINGTONE_PATH)
-                apply()
-            }
+            sharedPreferences(context).edit()
+                .also { if (path != null) it.putString(RINGTONE_PATH, path) else it.remove(RINGTONE_PATH) }
+                .apply()
         }
 
         fun getRingtonePath(context: Context): String? =
@@ -33,10 +32,9 @@ object StorageDelegate {
 
         /** Persists [path] as the ringback asset path. Passing `null` clears the stored value. */
         fun initRingbackPath(context: Context, path: String?) {
-            sharedPreferences(context).edit().apply {
-                if (path != null) putString(RINGBACK_PATH, path) else remove(RINGBACK_PATH)
-                apply()
-            }
+            sharedPreferences(context).edit()
+                .also { if (path != null) it.putString(RINGBACK_PATH, path) else it.remove(RINGBACK_PATH) }
+                .apply()
         }
 
         fun getRingbackPath(context: Context): String? =
@@ -62,33 +60,23 @@ object StorageDelegate {
             "LAUNCH_BACKGROUND_ISOLATE_EVEN_IF_APP_IS_OPEN"
 
         fun setLaunchBackgroundIsolateEvenIfAppIsOpen(context: Context, value: Boolean) {
-            sharedPreferences(context).edit().apply {
-                putBoolean(LAUNCH_BACKGROUND_ISOLATE_EVEN_IF_APP_IS_OPEN, value)
-                apply()
-            }
+            sharedPreferences(context).edit()
+                .putBoolean(LAUNCH_BACKGROUND_ISOLATE_EVEN_IF_APP_IS_OPEN, value)
+                .apply()
         }
 
-        fun isLaunchBackgroundIsolateEvenIfAppIsOpen(context: Context): Boolean {
-            return sharedPreferences(context).getBoolean(
-                LAUNCH_BACKGROUND_ISOLATE_EVEN_IF_APP_IS_OPEN, false
-            ) == true
-        }
+        fun isLaunchBackgroundIsolateEvenIfAppIsOpen(context: Context): Boolean =
+            sharedPreferences(context).getBoolean(LAUNCH_BACKGROUND_ISOLATE_EVEN_IF_APP_IS_OPEN, false)
 
         fun setOnNotificationSync(context: Context, value: Long) {
-            sharedPreferences(context).edit().apply {
-                putLong(ON_NOTIFICATION_SYNC, value)
-                apply()
-            }
+            sharedPreferences(context).edit().putLong(ON_NOTIFICATION_SYNC, value).apply()
         }
 
         fun getOnNotificationSync(context: Context): Long =
             sharedPreferences(context).getLong(ON_NOTIFICATION_SYNC, -1)
 
         fun setCallbackDispatcher(context: Context, value: Long) {
-            sharedPreferences(context).edit().apply {
-                putLong(INCOMING_CALL_HANDLER, value)
-                apply()
-            }
+            sharedPreferences(context).edit().putLong(INCOMING_CALL_HANDLER, value).apply()
         }
 
         fun getCallbackDispatcher(context: Context): Long =
@@ -105,30 +93,20 @@ object StorageDelegate {
         private const val CALLBACK_DISPATCHER = "CALLBACK_DISPATCHER"
 
         fun setSignalingServiceEnabled(context: Context, value: Boolean) {
-            sharedPreferences(context).edit().apply {
-                putBoolean(SIGNALING_SERVICE_ENABLED, value)
-                apply()
-            }
+            sharedPreferences(context).edit().putBoolean(SIGNALING_SERVICE_ENABLED, value).apply()
         }
 
-        fun isSignalingServiceEnabled(context: Context): Boolean {
-            return sharedPreferences(context).getBoolean(
-                SIGNALING_SERVICE_ENABLED, false
-            ) == true
-        }
+        fun isSignalingServiceEnabled(context: Context): Boolean =
+            sharedPreferences(context).getBoolean(SIGNALING_SERVICE_ENABLED, false)
 
         fun setNotificationTitle(context: Context, value: String?) {
-            sharedPreferences(context).edit().apply {
-                putString(SS_NOTIFICATION_TITLE_KEY, value)
-                apply()
-            }
+            sharedPreferences(context).edit().putString(SS_NOTIFICATION_TITLE_KEY, value).apply()
         }
 
         fun setNotificationDescription(context: Context, value: String?) {
-            sharedPreferences(context).edit().apply {
-                putString(SS_NOTIFICATION_DESCRIPTION_KEY, value)
-                apply()
-            }
+            sharedPreferences(context).edit()
+                .putString(SS_NOTIFICATION_DESCRIPTION_KEY, value)
+                .apply()
         }
 
         fun getNotificationTitle(context: Context): String {
@@ -139,16 +117,12 @@ object StorageDelegate {
 
         fun getNotificationDescription(context: Context): String {
             val default = context.getString(R.string.signaling_service_notification_description)
-            return sharedPreferences(context).getString(
-                SS_NOTIFICATION_DESCRIPTION_KEY, default
-            ) ?: default
+            return sharedPreferences(context).getString(SS_NOTIFICATION_DESCRIPTION_KEY, default)
+                ?: default
         }
 
         fun setOnSyncHandler(context: Context, value: Long) {
-            sharedPreferences(context).edit().apply {
-                putLong(ON_SYNC_HANDLER, value)
-                apply()
-            }
+            sharedPreferences(context).edit().putLong(ON_SYNC_HANDLER, value).apply()
         }
 
         fun getOnSyncHandler(context: Context): Long =
@@ -158,36 +132,26 @@ object StorageDelegate {
             sharedPreferences(context).getLong(CALLBACK_DISPATCHER, -1)
 
         fun setCallbackDispatcher(context: Context, value: Long) {
-            sharedPreferences(context).edit().apply {
-                putLong(CALLBACK_DISPATCHER, value)
-                apply()
-            }
+            sharedPreferences(context).edit().putLong(CALLBACK_DISPATCHER, value).apply()
         }
     }
 
     object IncomingCallSmsConfig {
         private const val SMS_PREFIX = "SMS_PREFIX"
         private const val SMS_REGEX_PATTERN = "SMS_REGEX_PATTERN"
+
         fun setSmsPrefix(context: Context, prefix: String) {
-            sharedPreferences(context).edit().apply {
-                putString(SMS_PREFIX, prefix)
-                apply()
-            }
+            sharedPreferences(context).edit().putString(SMS_PREFIX, prefix).apply()
         }
 
-        fun getSmsPrefix(context: Context): String? {
-            return sharedPreferences(context).getString(SMS_PREFIX, null)
-        }
+        fun getSmsPrefix(context: Context): String? =
+            sharedPreferences(context).getString(SMS_PREFIX, null)
 
         fun setRegexPattern(context: Context, pattern: String) {
-            sharedPreferences(context).edit().apply {
-                putString(SMS_REGEX_PATTERN, pattern)
-                apply()
-            }
+            sharedPreferences(context).edit().putString(SMS_REGEX_PATTERN, pattern).apply()
         }
 
-        fun getRegexPattern(context: Context): String? {
-            return sharedPreferences(context).getString(SMS_REGEX_PATTERN, null)
-        }
+        fun getRegexPattern(context: Context): String? =
+            sharedPreferences(context).getString(SMS_REGEX_PATTERN, null)
     }
 }
