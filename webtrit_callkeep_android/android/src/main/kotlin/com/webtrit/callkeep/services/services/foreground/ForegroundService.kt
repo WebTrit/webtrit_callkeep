@@ -40,6 +40,7 @@ import com.webtrit.callkeep.models.toPAudioDevice
 import com.webtrit.callkeep.models.toPHandle
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
+import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 
@@ -127,8 +128,12 @@ class ForegroundService : Service(), PHostApi {
         super.onCreate()
         logger.d("onCreate")
         // Register the service to receive connection service perform events
+        val allEvents: List<ConnectionEvent> = buildList {
+            addAll(CallLifecycleEvent.entries)
+            addAll(CallMediaEvent.entries)
+        }
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            CallLifecycleEvent.entries + CallMediaEvent.entries, baseContext, connectionServicePerformReceiver
+            allEvents, baseContext, connectionServicePerformReceiver
         )
         isRunning = true
     }
