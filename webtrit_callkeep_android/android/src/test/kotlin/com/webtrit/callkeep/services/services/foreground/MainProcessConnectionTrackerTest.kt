@@ -193,6 +193,27 @@ class MainProcessConnectionTrackerTest {
     }
 
     // -------------------------------------------------------------------------
+    // markHeld
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `markHeld true — getState returns STATE_HOLDING`() {
+        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
+        tracker.markAnswered("call-1")
+        tracker.markHeld("call-1", true)
+        assertEquals(PCallkeepConnectionState.STATE_HOLDING, tracker.getState("call-1"))
+    }
+
+    @Test
+    fun `markHeld false — getState returns STATE_ACTIVE`() {
+        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
+        tracker.markAnswered("call-1")
+        tracker.markHeld("call-1", true)
+        tracker.markHeld("call-1", false)
+        assertEquals(PCallkeepConnectionState.STATE_ACTIVE, tracker.getState("call-1"))
+    }
+
+    // -------------------------------------------------------------------------
     // getAll
     // -------------------------------------------------------------------------
 

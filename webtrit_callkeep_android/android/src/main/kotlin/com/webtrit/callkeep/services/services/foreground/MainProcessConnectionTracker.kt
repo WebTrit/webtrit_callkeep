@@ -94,6 +94,21 @@ class MainProcessConnectionTracker {
     }
 
     /**
+     * Update the hold state for [callId].
+     * Advances its state to [PCallkeepConnectionState.STATE_HOLDING] when [onHold] is true,
+     * or back to [PCallkeepConnectionState.STATE_ACTIVE] when false.
+     * This keeps [getConnections] in sync with the Telecom hold state so that callers never
+     * see a stale ACTIVE state for a held call.
+     */
+    fun markHeld(callId: String, onHold: Boolean) {
+        connectionStates[callId] = if (onHold) {
+            PCallkeepConnectionState.STATE_HOLDING
+        } else {
+            PCallkeepConnectionState.STATE_ACTIVE
+        }
+    }
+
+    /**
      * Mark [callId] as terminated. Removes it from the active connections map so that
      * subsequent [exists] / [getAll] calls exclude it, and records it in [terminatedCallIds]
      * so that [isTerminated] returns true for duplicate endCall guards.

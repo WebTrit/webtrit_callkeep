@@ -667,9 +667,10 @@ class ForegroundService : Service(), PHostApi {
         logger.d("handleCSReportConnectionHolding")
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
-            flutterDelegateApi?.performSetHeld(
-                callMetaData.callId, callMetaData.hasHold ?: false
-            ) {}
+            val onHold = callMetaData.hasHold ?: false
+            // Keep tracker state in sync so getConnections() reflects HOLDING / ACTIVE correctly.
+            tracker.markHeld(callMetaData.callId, onHold)
+            flutterDelegateApi?.performSetHeld(callMetaData.callId, onHold) {}
         }
     }
 
