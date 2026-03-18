@@ -42,6 +42,7 @@ import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
 import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
+import com.webtrit.callkeep.services.services.foreground.MainProcessConnectionTracker
 import java.util.Collections
 import java.util.concurrent.atomic.AtomicBoolean
 import com.webtrit.callkeep.services.services.signaling.workers.SignalingServiceBootWorker
@@ -345,7 +346,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
      * @param callback Pigeon-generated callback; receives [Result.success] on completion.
      */
     override fun endAllCalls(callback: (Result<Unit>) -> Unit) {
-        val active = PhoneConnectionService.connectionManager.getConnections()
+        val active = MainProcessConnectionTracker.instance.getAll()
 
         if (active.isEmpty()) {
             PhoneConnectionService.tearDown(baseContext)

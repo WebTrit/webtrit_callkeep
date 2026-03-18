@@ -17,8 +17,8 @@ import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.setShowWhenLockedCompat
 import com.webtrit.callkeep.common.setTurnScreenOnCompat
 import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
-import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 import com.webtrit.callkeep.services.services.foreground.ForegroundService
+import com.webtrit.callkeep.services.services.foreground.MainProcessConnectionTracker
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
 import com.webtrit.callkeep.services.services.signaling.SignalingIsolateService
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -253,7 +253,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
          * the app was force-stopped).
          */
         if (event == Lifecycle.Event.ON_START) {
-            val connections = PhoneConnectionService.connectionManager.getConnections()
+            val connections = MainProcessConnectionTracker.instance.getAll()
             val hasActiveConnections = connections.isNotEmpty()
             Log.i(
                 TAG,
