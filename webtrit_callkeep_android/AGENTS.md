@@ -34,18 +34,18 @@ The Android implementation runs in **two separate OS processes**:
 | Main app process | `ForegroundService` | Hosts Flutter engine; Pigeon host API; bridges Telecom ↔ Flutter |
 | `:callkeep_core` | `PhoneConnectionService` | Android Telecom `ConnectionService`; manages `PhoneConnection` objects |
 
-**IPC between processes**: local broadcasts via `CommunicateServiceDispatcher` and `ConnectionServicePerformBroadcaster`.
+**IPC between processes**: app-scoped broadcasts (`sendBroadcast` with `setPackage`) via `ConnectionServicePerformBroadcaster`, and explicit `startService` intents for commands.
 
-`MainProcessConnectionTracker` tracks connection state in the main process, updated from broadcasts. It is exposed through the `CallkeepCore` interface.
+`MainProcessConnectionTracker` is the main-process shadow of connection state, updated from broadcasts sent by `:callkeep_core`. It is an internal implementation detail exposed through `CallkeepCore`.
 
-### CallkeepCore -- the single access point (target state post-split)
+### CallkeepCore -- the single access point
 
-**All new code in the main process must interact with `PhoneConnectionService` through `CallkeepCore.instance`, not `connectionManager` directly.**
+**All code in the main process must interact with `PhoneConnectionService` through `CallkeepCore.instance`, not `connectionManager` directly.**
 
 - State reads: `CallkeepCore.instance.getAll()`, `.exists()`, `.getState()`, etc. -- backed by `MainProcessConnectionTracker`.
 - Commands: `CallkeepCore.instance.startAnswerCall()`, `.tearDownService()`, `.sendTearDownConnections()`, etc. -- dispatched via explicit `startService` intents or app-scoped broadcasts.
 
-**Do NOT add new `connectionManager.*` calls from the main process.** After the `:callkeep_core` process split (`android:process=":callkeep_core"` in the manifest), `connectionManager` in the main JVM heap is an empty object -- any call to it becomes a silent no-op that is extremely hard to debug. A small number of pre-existing call sites carry `TODO(PR-9b)` and will be removed when the split is complete.
+**Never call `connectionManager.*` from the main process.** `PhoneConnectionService` runs in the `:callkeep_core` OS process -- `connectionManager` in the main JVM heap is an empty object and any call to it is a silent no-op.
 
 ### IPC events
 
@@ -65,6 +65,7 @@ All cross-process communication uses app-scoped broadcasts (`sendBroadcast` with
 | `TearDownComplete` | `:callkeep_core` -> Main | -- | Ack that tearDown completed |
 | `ReserveAnswer` | Main -> `:callkeep_core` | `callId` | Deferred answer reservation cross-process |
 | `CleanConnections` | Main -> `:callkeep_core` | -- | Clear all connections without `hungUp()` |
+| `SyncAudioState` | Main -> `:callkeep_core` | -- | Ask all PhoneConnections to re-emit audio device + mute state; used by `ForegroundService.onDelegateSet()` to restore Flutter audio UI after hot restart |
 
 ---
 
@@ -146,5 +147,5 @@ Two mutually exclusive modes — choose one per app:
 - Classes annotated `@Keep` in Kotlin **must not** be renamed or removed — they are referenced by ProGuard/R8 rules.
 - All Pigeon host API implementations run on the platform thread; do not block.
 - `PhoneConnectionService` runs in a separate process — it cannot share in-memory state with the main process; use IPC.
-- **Do not add new `connectionManager.*` calls from the main process.** Use `CallkeepCore.instance` instead. Pre-existing violations carry `TODO(PR-9b)` and will be removed when the `:callkeep_core` process split is complete.
+- **Never call `connectionManager.*` from the main process.** Use `CallkeepCore.instance` instead. `PhoneConnectionService` runs in a separate OS process -- any direct `connectionManager` access from the main process is a silent no-op.
 - Never import Kotlin-layer constants or classes into the Dart layer directly; go through Pigeon.
