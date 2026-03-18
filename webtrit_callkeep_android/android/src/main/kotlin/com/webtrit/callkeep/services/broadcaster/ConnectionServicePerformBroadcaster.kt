@@ -50,6 +50,27 @@ enum class CallMediaEvent : ConnectionEvent {
 }
 
 /**
+ * Commands sent from the main process to the `:callkeep_core` process (or received back as acks).
+ *
+ * Direction:
+ * - [TearDownConnections] — Main -> `:callkeep_core`: call [PhoneConnection.hungUp] on all
+ *   active connections and [ConnectionManager.cleanConnections].
+ * - [TearDownComplete]    — `:callkeep_core` -> Main: ack that [TearDownConnections] completed.
+ * - [ReserveAnswer]       — Main -> `:callkeep_core`: deferred answer reservation for a callId
+ *   before its [PhoneConnection] is created (payload: [com.webtrit.callkeep.common.CallDataConst.CALL_ID]).
+ * - [CleanConnections]    — Main -> `:callkeep_core`: clear all connections without [PhoneConnection.hungUp].
+ *
+ * Using a dedicated enum (rather than adding to [CallLifecycleEvent]) makes the IPC direction
+ * explicit and keeps report events separate from command events.
+ */
+enum class CallCommandEvent : ConnectionEvent {
+    TearDownConnections,
+    TearDownComplete,
+    ReserveAnswer,
+    CleanConnections;
+}
+
+/**
  * This object is responsible for broadcasting the connection service perform events from the connection service.
  */
 object ConnectionServicePerformBroadcaster {

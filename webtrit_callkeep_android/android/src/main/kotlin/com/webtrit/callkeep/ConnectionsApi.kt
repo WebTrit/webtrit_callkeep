@@ -39,9 +39,11 @@ class ConnectionsApi() : PHostConnectionsApi {
     override fun cleanConnections(
         callback: (Result<Unit>) -> Unit
     ) {
-        // Clear both the tracker and the underlying ConnectionService state.
+        // Clear the tracker and send CleanConnections command to :callkeep_core via broadcast.
+        // PhoneConnectionService handles it by calling connectionManager.cleanConnections()
+        // on its own heap, which is safe cross-process after the split.
         tracker.clear()
-        PhoneConnectionService.connectionManager.cleanConnections()
+        PhoneConnectionService.sendCleanConnections(ContextHolder.context)
         callback(Result.success(Unit))
     }
 }

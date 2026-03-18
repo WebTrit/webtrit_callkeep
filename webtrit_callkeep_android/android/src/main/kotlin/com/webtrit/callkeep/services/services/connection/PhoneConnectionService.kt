@@ -1,6 +1,7 @@
 package com.webtrit.callkeep.services.services.connection
 
 import android.Manifest
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -20,6 +21,7 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.EmergencyNumberException
 import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.models.OutgoingFailureType
+import com.webtrit.callkeep.services.broadcaster.CallCommandEvent
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
@@ -42,11 +44,41 @@ class PhoneConnectionService : ConnectionService() {
     private val dispatcher: ConnectionServicePerformBroadcaster.DispatchHandle =
         ConnectionServicePerformBroadcaster.handle
 
+    /**
+     * Receiver for commands sent from the main process to this service.
+     * Handles [CallCommandEvent.TearDownConnections], [CallCommandEvent.ReserveAnswer],
+     * and [CallCommandEvent.CleanConnections].
+     */
+    private val commandReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                CallCommandEvent.TearDownConnections.name -> handleTearDownConnections()
+                CallCommandEvent.ReserveAnswer.name -> {
+                    val callId = intent.extras?.getString(com.webtrit.callkeep.common.CallDataConst.CALL_ID)
+                    if (callId != null) handleReserveAnswer(callId)
+                }
+                CallCommandEvent.CleanConnections.name -> handleCleanConnections()
+            }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         // Set the service state to true when the system starts the service.
         isRunning = true
         telephonyUtils = TelephonyUtils(applicationContext)
+
+        // Register receiver for commands from the main process.
+        ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
+            listOf(
+                CallCommandEvent.TearDownConnections,
+                CallCommandEvent.ReserveAnswer,
+                CallCommandEvent.CleanConnections,
+            ),
+            baseContext,
+            commandReceiver,
+            exported = false,
+        )
 
         val activityWakelockManager = ActivityWakelockManager(ActivityHolder)
         val proximitySensorManager =
@@ -273,8 +305,32 @@ class PhoneConnectionService : ConnectionService() {
         phoneConnectionServiceDispatcher.dispatchLifecycle(ConnectionLifecycleAction.ConnectionChanged)
     }
 
+    private fun handleTearDownConnections() {
+        Log.i(TAG, "handleTearDownConnections: hanging up all connections and cleaning up")
+        val connections = connectionManager.getConnections()
+        connections.forEach { connection ->
+            runCatching { connection.hungUp() }
+                .onFailure { e -> Log.e(TAG, "handleTearDownConnections: hungUp failed for ${connection.callId}", e) }
+        }
+        connectionManager.cleanConnections()
+        dispatcher.dispatch(baseContext, CallCommandEvent.TearDownComplete)
+    }
+
+    private fun handleReserveAnswer(callId: String) {
+        Log.i(TAG, "handleReserveAnswer: callId=$callId")
+        connectionManager.reserveAnswer(callId)
+    }
+
+    private fun handleCleanConnections() {
+        Log.i(TAG, "handleCleanConnections: clearing all connections")
+        connectionManager.cleanConnections()
+    }
+
     override fun onDestroy() {
         Log.i(TAG, "onDestroy")
+        runCatching {
+            ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, commandReceiver)
+        }.onFailure { /* already unregistered */ }
         cleanupResources()
         super.onDestroy()
     }
@@ -363,6 +419,33 @@ class PhoneConnectionService : ConnectionService() {
 
         fun tearDown(context: Context) {
             communicate(context, ServiceAction.TearDown, null)
+        }
+
+        /**
+         * Sends [CallCommandEvent.TearDownConnections] broadcast to `:callkeep_core`.
+         * The process will hang up all active [PhoneConnection]s, call [ConnectionManager.cleanConnections],
+         * and reply with [CallCommandEvent.TearDownComplete].
+         */
+        fun sendTearDownConnections(context: Context) {
+            ConnectionServicePerformBroadcaster.handle.dispatch(context, CallCommandEvent.TearDownConnections)
+        }
+
+        /**
+         * Sends [CallCommandEvent.ReserveAnswer] broadcast with [callId] to `:callkeep_core`.
+         * The process will call [ConnectionManager.reserveAnswer] so the deferred answer is applied
+         * when [PhoneConnectionService.onCreateIncomingConnection] fires.
+         */
+        fun sendReserveAnswer(context: Context, callId: String) {
+            val data = Bundle().apply { putString(com.webtrit.callkeep.common.CallDataConst.CALL_ID, callId) }
+            ConnectionServicePerformBroadcaster.handle.dispatch(context, CallCommandEvent.ReserveAnswer, data)
+        }
+
+        /**
+         * Sends [CallCommandEvent.CleanConnections] broadcast to `:callkeep_core`.
+         * The process will call [ConnectionManager.cleanConnections] without hanging up individual connections.
+         */
+        fun sendCleanConnections(context: Context) {
+            ConnectionServicePerformBroadcaster.handle.dispatch(context, CallCommandEvent.CleanConnections)
         }
 
         /**
