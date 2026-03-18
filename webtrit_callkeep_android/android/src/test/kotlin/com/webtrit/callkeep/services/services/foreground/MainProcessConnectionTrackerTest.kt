@@ -362,4 +362,45 @@ class MainProcessConnectionTrackerTest {
         assertTrue(tracker.isTerminated(id))
         assertEquals(PCallkeepConnectionState.STATE_DISCONNECTED, tracker.getState(id))
     }
+
+    // -------------------------------------------------------------------------
+    // callId reuse within the same session
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `addPending after markTerminated — isTerminated resets to false`() {
+        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
+        tracker.markTerminated("call-1")
+        assertTrue(tracker.isTerminated("call-1"))
+
+        // Same callId reused for a new incoming call
+        tracker.addPending("call-1")
+        assertFalse(tracker.isTerminated("call-1"))
+        assertTrue(tracker.isPending("call-1"))
+    }
+
+    @Test
+    fun `promote after markTerminated — isTerminated resets to false`() {
+        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
+        tracker.markAnswered("call-1")
+        tracker.markTerminated("call-1")
+        assertTrue(tracker.isTerminated("call-1"))
+
+        // Same callId re-promoted (push path — no addPending)
+        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
+        assertFalse(tracker.isTerminated("call-1"))
+        assertFalse(tracker.isAnswered("call-1"))
+        assertTrue(tracker.exists("call-1"))
+    }
+
+    @Test
+    fun `addPending after markTerminated — stale pendingAnswer is cleared`() {
+        tracker.addPending("call-1")
+        tracker.reserveAnswer("call-1")
+        tracker.markTerminated("call-1")
+
+        // Reuse the same callId
+        tracker.addPending("call-1")
+        assertFalse(tracker.consumeAnswer("call-1"))
+    }
 }

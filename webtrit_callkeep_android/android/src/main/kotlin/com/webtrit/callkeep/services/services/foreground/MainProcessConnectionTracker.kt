@@ -59,6 +59,11 @@ class MainProcessConnectionTracker {
      * a PhoneConnection that does not yet exist. [connections] is populated only in [promote].
      */
     fun addPending(callId: String) {
+        // Reset any stale lifecycle state from a prior use of this callId in the same session.
+        // Without this, isTerminated() / isAnswered() could return true for a genuinely new call.
+        terminatedCallIds.remove(callId)
+        answeredCallIds.remove(callId)
+        pendingAnswers.remove(callId)
         pendingCallIds.add(callId)
     }
 
@@ -70,6 +75,11 @@ class MainProcessConnectionTracker {
      *   Use [PCallkeepConnectionState.STATE_RINGING] for incoming, [PCallkeepConnectionState.STATE_DIALING] for outgoing.
      */
     fun promote(callId: String, metadata: CallMetadata, state: PCallkeepConnectionState) {
+        // Reset stale lifecycle sets in case addPending was not called first (push-path),
+        // or in case this callId was reused without going through addPending.
+        terminatedCallIds.remove(callId)
+        answeredCallIds.remove(callId)
+        pendingAnswers.remove(callId)
         connections[callId] = metadata
         pendingCallIds.remove(callId)
         connectionStates[callId] = state
