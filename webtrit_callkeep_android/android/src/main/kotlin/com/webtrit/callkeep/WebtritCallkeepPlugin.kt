@@ -257,7 +257,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
             val promoted = core.getAll()
             // Also check pending calls to cover the broadcast-lag window: CS may have
             // created a PhoneConnection and be about to send DidPushIncomingCall, but the
-            // tracker has not yet promoted the call. Without this check, ON_START during
+            // core shadow has not yet promoted the call. Without this check, ON_START during
             // that window would incorrectly clear the lock-screen and turn-screen-on flags.
             val hasActiveConnections = promoted.isNotEmpty() || core.getPendingCallIds().isNotEmpty()
             Log.i(

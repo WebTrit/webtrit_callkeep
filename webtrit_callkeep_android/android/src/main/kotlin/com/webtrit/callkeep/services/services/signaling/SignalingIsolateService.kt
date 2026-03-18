@@ -346,7 +346,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
     override fun endAllCalls(callback: (Result<Unit>) -> Unit) {
         // Union promoted connections and pending calls to cover the broadcast-lag window:
         // CS may have created a PhoneConnection and be about to send DidPushIncomingCall,
-        // but the tracker has not yet received the broadcast and promoted the call.
+        // but the core shadow has not yet received the broadcast and promoted the call.
         // Including pending call IDs ensures we register a HungUp listener for them too;
         // the 5-second safety timeout handles the case where CS had no connection for a
         // pending ID (i.e. the call was truly still queued and tearDown clears it silently).

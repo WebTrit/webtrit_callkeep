@@ -193,7 +193,7 @@ class ForegroundService : Service(), PHostApi {
         // This prevents duplicate receivers/timeouts if startCall() is invoked again with the same callId.
         pendingCallCleanupsByCallId.remove(callId)?.invoke()
 
-        // Register as pending so answerCall/endCall can locate this call via tracker
+        // Register as pending so answerCall/endCall can locate this call via the core shadow
         // before the outgoing connection is confirmed by ConnectionService.
         core.addPending(callId)
 
@@ -382,7 +382,7 @@ class ForegroundService : Service(), PHostApi {
         // legitimate broadcasts if callIds are ever reused.
         directNotifiedCallIds.clear()
 
-        // Step 1: Collect active call IDs from the tracker (promoted connections).
+        // Step 1: Collect active call IDs from the core shadow state (promoted connections).
         val activeCallIds = core.getAll().map { it.callId }
 
         // Step 2: Drain pending calls that were registered with Telecom but whose
@@ -534,26 +534,26 @@ class ForegroundService : Service(), PHostApi {
         val csConnection = PhoneConnectionService.connectionManager.getConnection(callId)
         when {
             core.exists(callId) -> {
-                logger.i("answerCall $callId: connection exists in tracker, answering immediately.")
+                logger.i("answerCall $callId: connection exists in core shadow, answering immediately.")
                 core.startAnswerCall(metadata)
                 callback.invoke(Result.success(null))
             }
             csConnection != null -> {
-                logger.i("answerCall $callId: CS has connection (tracker broadcast lag), answering via CS.")
+                logger.i("answerCall $callId: CS has connection (core shadow broadcast lag), answering via CS.")
                 core.startAnswerCall(metadata)
                 callback.invoke(Result.success(null))
             }
             core.isPending(callId) -> {
                 // Telecom accepted the call but CS has not yet created the PhoneConnection.
-                // Reserve the answer in the shadow and send a ReserveAnswer command to CS so
+                // Reserve the answer in the core shadow and send a ReserveAnswer command to CS so
                 // onCreateIncomingConnection can apply it immediately on the :callkeep_core side.
-                logger.i("answerCall $callId: pending in tracker, CS has no connection yet, deferring answer.")
+                logger.i("answerCall $callId: pending in core shadow, CS has no connection yet, deferring answer.")
                 core.reserveAnswer(callId)
                 core.sendReserveAnswer(callId)
                 callback.invoke(Result.success(null))
             }
             else -> {
-                logger.e("answerCall: no connection or pending entry for callId=$callId in tracker or CS")
+                logger.e("answerCall: no connection or pending entry for callId=$callId in core shadow or CS")
                 callback.invoke(Result.success(PCallRequestError(PCallRequestErrorEnum.INTERNAL)))
             }
         }
@@ -562,7 +562,7 @@ class ForegroundService : Service(), PHostApi {
     override fun endCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit) {
         logger.i("endCall $callId.")
         if (core.isTerminated(callId)) {
-            logger.w("endCall: connection $callId is already terminated (tracker).")
+            logger.w("endCall: connection $callId is already terminated (core shadow).")
             callback.invoke(Result.success(PCallRequestError(PCallRequestErrorEnum.UNKNOWN_CALL_UUID)))
             return
         }

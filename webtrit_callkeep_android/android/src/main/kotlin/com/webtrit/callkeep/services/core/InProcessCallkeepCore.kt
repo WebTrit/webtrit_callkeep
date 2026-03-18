@@ -25,8 +25,9 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
 
     private val tracker: ConnectionTracker = MainProcessConnectionTracker.instance
 
-    // The context is read lazily per call so there is no initialisation-order dependency
-    // on ContextHolder (which is set up during Application.onCreate).
+    // The context is read per call (not at construction time) so the singleton can be
+    // created early without risking a NullPointerException. ContextHolder.init() must
+    // have been called before any CS command method is invoked (guaranteed by Application.onCreate).
     private val context get() = ContextHolder.context
 
     // -------------------------------------------------------------------------
