@@ -38,18 +38,18 @@ The Android implementation runs in **two separate OS processes**:
 
 `MainProcessConnectionTracker` tracks connection state in the main process, updated from broadcasts. It is exposed through the `CallkeepCore` interface.
 
-### CallkeepCore -- the single access point
+### CallkeepCore -- the single access point (target state post-split)
 
-**All code in the main process must interact with `PhoneConnectionService` exclusively through `CallkeepCore.instance`.**
+**All new code in the main process must interact with `PhoneConnectionService` through `CallkeepCore.instance`, not `connectionManager` directly.**
 
 - State reads: `CallkeepCore.instance.getAll()`, `.exists()`, `.getState()`, etc. -- backed by `MainProcessConnectionTracker`.
-- Commands: `CallkeepCore.instance.startAnswerCall()`, `.tearDownService()`, `.sendTearDownConnections()`, etc. -- dispatched via explicit `startService` intents or broadcasts.
+- Commands: `CallkeepCore.instance.startAnswerCall()`, `.tearDownService()`, `.sendTearDownConnections()`, etc. -- dispatched via explicit `startService` intents or app-scoped broadcasts.
 
-**Do NOT call `connectionManager.*` directly from the main process.** After the `:callkeep_core` process split, `connectionManager` in the main JVM heap is an empty object -- any direct call to it becomes a silent no-op that is extremely hard to debug. The only correct path is through `CallkeepCore`.
+**Do NOT add new `connectionManager.*` calls from the main process.** After the `:callkeep_core` process split (`android:process=":callkeep_core"` in the manifest), `connectionManager` in the main JVM heap is an empty object -- any call to it becomes a silent no-op that is extremely hard to debug. A small number of pre-existing call sites carry `TODO(PR-9b)` and will be removed when the split is complete.
 
 ### IPC events
 
-All cross-process communication uses local broadcasts. Events are grouped by broadcaster:
+All cross-process communication uses app-scoped broadcasts (`sendBroadcast` with `setPackage`) and explicit `startService` intents. Events are grouped by broadcaster:
 
 **CallLifecycleEvent** (`:callkeep_core` -> Main):
 `AnswerCall`, `DeclineCall`, `HungUp`, `OngoingCall`, `DidPushIncomingCall`, `OutgoingFailure`, `IncomingFailure`, `ConnectionNotFound`
@@ -146,5 +146,5 @@ Two mutually exclusive modes — choose one per app:
 - Classes annotated `@Keep` in Kotlin **must not** be renamed or removed — they are referenced by ProGuard/R8 rules.
 - All Pigeon host API implementations run on the platform thread; do not block.
 - `PhoneConnectionService` runs in a separate process — it cannot share in-memory state with the main process; use IPC.
-- **Never call `connectionManager.*` directly from the main process.** Use `CallkeepCore.instance` instead (see Dual-process architecture above).
+- **Do not add new `connectionManager.*` calls from the main process.** Use `CallkeepCore.instance` instead. Pre-existing violations carry `TODO(PR-9b)` and will be removed when the `:callkeep_core` process split is complete.
 - Never import Kotlin-layer constants or classes into the Dart layer directly; go through Pigeon.
