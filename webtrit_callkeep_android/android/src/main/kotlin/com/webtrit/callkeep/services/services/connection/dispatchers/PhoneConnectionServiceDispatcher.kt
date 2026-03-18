@@ -61,6 +61,11 @@ class PhoneConnectionServiceDispatcher(
             ServiceAction.Speaker -> metadata?.let { handleSpeaker(it) }
             ServiceAction.AudioDeviceSet -> metadata?.let { handleAudioDeviceSet(it) }
             ServiceAction.TearDown -> handleTearDown()
+            // IPC command actions are handled directly in PhoneConnectionService.onStartCommand
+            // before reaching the dispatcher, so they should never arrive here.
+            ServiceAction.TearDownConnections,
+            ServiceAction.ReserveAnswer,
+            ServiceAction.CleanConnections -> logger.w("dispatch: unexpected IPC command action: $action")
         }
     }
 

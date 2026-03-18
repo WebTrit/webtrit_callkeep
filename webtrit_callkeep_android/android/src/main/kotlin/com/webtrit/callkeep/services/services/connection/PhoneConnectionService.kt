@@ -20,6 +20,7 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.EmergencyNumberException
 import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.models.OutgoingFailureType
+import com.webtrit.callkeep.services.broadcaster.CallCommandEvent
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
@@ -87,7 +88,17 @@ class PhoneConnectionService : ConnectionService() {
         val metadata = intent.extras?.let { CallMetadata.fromBundle(it) }
 
         try {
-            phoneConnectionServiceDispatcher.dispatch(action, metadata)
+            when (action) {
+                // IPC commands from the main process — handled directly, not routed through the
+                // call-connection dispatcher. Using startService (instead of broadcasts) guarantees
+                // delivery even if the service is starting up: the intent is queued and processed
+                // after onCreate() completes, so these handlers are always reachable.
+                ServiceAction.TearDownConnections -> handleTearDownConnections()
+                ServiceAction.ReserveAnswer -> metadata?.callId?.let { handleReserveAnswer(it) }
+                    ?: Log.w(TAG, "onStartCommand: ReserveAnswer missing callId")
+                ServiceAction.CleanConnections -> handleCleanConnections()
+                else -> phoneConnectionServiceDispatcher.dispatch(action, metadata)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Exception $e with service action: ${intent.action},")
         }
@@ -273,6 +284,27 @@ class PhoneConnectionService : ConnectionService() {
         phoneConnectionServiceDispatcher.dispatchLifecycle(ConnectionLifecycleAction.ConnectionChanged)
     }
 
+    private fun handleTearDownConnections() {
+        Log.i(TAG, "handleTearDownConnections: hanging up all connections and cleaning up")
+        val connections = connectionManager.getConnections()
+        connections.forEach { connection ->
+            runCatching { connection.hungUp() }
+                .onFailure { e -> Log.e(TAG, "handleTearDownConnections: hungUp failed for ${connection.callId}", e) }
+        }
+        connectionManager.cleanConnections()
+        dispatcher.dispatch(baseContext, CallCommandEvent.TearDownComplete)
+    }
+
+    private fun handleReserveAnswer(callId: String) {
+        Log.i(TAG, "handleReserveAnswer: callId=$callId")
+        connectionManager.reserveAnswer(callId)
+    }
+
+    private fun handleCleanConnections() {
+        Log.i(TAG, "handleCleanConnections: clearing all connections")
+        connectionManager.cleanConnections()
+    }
+
     override fun onDestroy() {
         Log.i(TAG, "onDestroy")
         cleanupResources()
@@ -363,6 +395,56 @@ class PhoneConnectionService : ConnectionService() {
 
         fun tearDown(context: Context) {
             communicate(context, ServiceAction.TearDown, null)
+        }
+
+        /**
+         * Sends a [ServiceAction.TearDownConnections] command to this service via [startService].
+         *
+         * Using an explicit [startService] intent (instead of a broadcast) guarantees that:
+         * - Only this app can trigger the action (explicit intents are not interceptable by others).
+         * - The command is queued and processed after [onCreate] completes, so it is never dropped
+         *   even if the service is starting up concurrently.
+         *
+         * The service will hang up all active [PhoneConnection]s, call [ConnectionManager.cleanConnections],
+         * and reply with [CallCommandEvent.TearDownComplete].
+         */
+        fun sendTearDownConnections(context: Context) {
+            val intent = Intent(context, PhoneConnectionService::class.java).apply {
+                action = ServiceAction.TearDownConnections.action
+            }
+            runCatching { context.startService(intent) }
+                .onFailure { e -> Log.w(TAG, "sendTearDownConnections: startService failed: $e") }
+        }
+
+        /**
+         * Sends a [ServiceAction.ReserveAnswer] command with [callId] to this service via [startService].
+         *
+         * Using an explicit [startService] intent guarantees delivery even if the service is still
+         * starting up (the intent is queued to [onStartCommand] after [onCreate] completes), which
+         * closes the race where a broadcast could be dropped before [commandReceiver] is registered.
+         */
+        fun sendReserveAnswer(context: Context, callId: String) {
+            val intent = Intent(context, PhoneConnectionService::class.java).apply {
+                action = ServiceAction.ReserveAnswer.action
+                putExtras(CallMetadata(callId = callId).toBundle())
+            }
+            runCatching { context.startService(intent) }
+                .onFailure { e -> Log.w(TAG, "sendReserveAnswer: startService failed for callId=$callId: $e") }
+        }
+
+        /**
+         * Sends a [ServiceAction.CleanConnections] command to this service via [startService].
+         *
+         * Using an explicit [startService] intent (instead of a broadcast) prevents external apps
+         * from injecting a fake CleanConnections command on API < 33 where broadcast receivers
+         * registered without a permission are effectively exported.
+         */
+        fun sendCleanConnections(context: Context) {
+            val intent = Intent(context, PhoneConnectionService::class.java).apply {
+                action = ServiceAction.CleanConnections.action
+            }
+            runCatching { context.startService(intent) }
+                .onFailure { e -> Log.w(TAG, "sendCleanConnections: startService failed: $e") }
         }
 
         /**

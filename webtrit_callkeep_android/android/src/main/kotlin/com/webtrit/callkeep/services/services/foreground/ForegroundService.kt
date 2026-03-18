@@ -39,6 +39,7 @@ import com.webtrit.callkeep.models.toAudioDevice
 import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.models.toPAudioDevice
 import com.webtrit.callkeep.models.toPHandle
+import com.webtrit.callkeep.services.broadcaster.CallCommandEvent
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
@@ -65,6 +66,11 @@ import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 @Keep
 class ForegroundService : Service(), PHostApi {
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
+
+    // Stored as fields so onDestroy() can cancel the timeout and unregister the receiver
+    // if the service is destroyed before the TearDownComplete ack arrives.
+    private var tearDownAckReceiver: BroadcastReceiver? = null
+    private var tearDownTimeoutRunnable: Runnable? = null
 
     private val binder = LocalBinder()
 
@@ -406,26 +412,65 @@ class ForegroundService : Service(), PHostApi {
             flutterDelegateApi?.didDeactivateAudioSession {}
         }
 
-        // Step 5: Native cleanup — still requires live PhoneConnection objects for hungUp().
-        // TODO(PR-9b): replace direct PhoneConnectionService access with IPC when
-        //   the `:callkeep_core` process split is implemented.
-        val connections = PhoneConnectionService.connectionManager.getConnections()
-        connections.forEach { connection -> connection.hungUp() }
+        // Step 5: Send TearDownConnections command to :callkeep_core via startService.
+        // PhoneConnectionService will call hungUp() on all its PhoneConnections,
+        // cleanConnections(), and reply with TearDownComplete.
+        // We wait for the ack (or a short timeout) before resetting tracker state
+        // so that the next session is not started with stale connection objects.
 
-        PhoneConnectionService.connectionManager.cleanConnections()
+        // Cancel any in-progress tearDown from a previous invocation before setting up a new one.
+        tearDownTimeoutRunnable?.let { mainHandler.removeCallbacks(it) }
+        tearDownAckReceiver?.let {
+            runCatching {
+                ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, it)
+            }
+        }
 
-        // Step 6: Reset tracker state for the next session.
-        tracker.clear()
+        val tearDownResolved = AtomicBoolean(false)
 
-        // Send TearDown intent to keep PhoneConnectionService alive for the next session.
-        // Telecom unbinds ConnectionService when all connections are destroyed, and without
-        // a startService call to keep it warm, the next session's intents (e.g. AnswerCall)
-        // arrive at a dead/restarted service with empty connection state.
-        //
-        // handleTearDown() is safe because it no longer calls cleanConnections() or
-        // drainUnconnectedPendingCallIds() — those are already done synchronously above.
-        PhoneConnectionService.tearDown(baseContext)
-        callback.invoke(Result.success(Unit))
+        fun finishTearDown() {
+            if (!tearDownResolved.compareAndSet(false, true)) return
+            tearDownTimeoutRunnable?.let { mainHandler.removeCallbacks(it) }
+            tearDownTimeoutRunnable = null
+            tearDownAckReceiver?.let {
+                runCatching {
+                    ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, it)
+                }
+            }
+            tearDownAckReceiver = null
+            // Step 6: Reset tracker state for the next session.
+            tracker.clear()
+            // Keep PhoneConnectionService alive for the next session so that its next
+            // incoming intents (e.g. AnswerCall) arrive at a live service instance.
+            PhoneConnectionService.tearDown(baseContext)
+            callback.invoke(Result.success(Unit))
+        }
+
+        tearDownAckReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == CallCommandEvent.TearDownComplete.name) {
+                    logger.d("tearDown: received TearDownComplete ack")
+                    finishTearDown()
+                }
+            }
+        }
+
+        ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
+            listOf(CallCommandEvent.TearDownComplete),
+            baseContext,
+            tearDownAckReceiver!!,
+            exported = false,
+        )
+
+        // Safety timeout: if TearDownComplete never arrives (e.g. CS was not running),
+        // proceed anyway so tearDown() always resolves.
+        tearDownTimeoutRunnable = Runnable {
+            logger.w("tearDown: TearDownComplete ack timed out, proceeding")
+            finishTearDown()
+        }
+        mainHandler.postDelayed(tearDownTimeoutRunnable!!, TEAR_DOWN_ACK_TIMEOUT_MS)
+
+        PhoneConnectionService.sendTearDownConnections(baseContext)
     }
 
     // Only for iOS, not used in Android
@@ -502,10 +547,11 @@ class ForegroundService : Service(), PHostApi {
             }
             tracker.isPending(callId) -> {
                 // Telecom accepted the call but CS has not yet created the PhoneConnection.
-                // Reserve the answer so onCreateIncomingConnection can apply it immediately.
+                // Reserve the answer in the tracker and send a ReserveAnswer command to CS so
+                // onCreateIncomingConnection can apply it immediately on the :callkeep_core side.
                 logger.i("answerCall $callId: pending in tracker, CS has no connection yet, deferring answer.")
                 tracker.reserveAnswer(callId)
-                PhoneConnectionService.connectionManager.reserveAnswer(callId)
+                PhoneConnectionService.sendReserveAnswer(baseContext, callId)
                 callback.invoke(Result.success(null))
             }
             else -> {
@@ -741,6 +787,16 @@ class ForegroundService : Service(), PHostApi {
         pendingCallCleanupsByCallId.values.toList().forEach { it() }
         pendingCallCleanupsByCallId.clear()
 
+        // Cancel any in-progress tearDown so the receiver and timeout do not outlive the service.
+        tearDownTimeoutRunnable?.let { mainHandler.removeCallbacks(it) }
+        tearDownTimeoutRunnable = null
+        tearDownAckReceiver?.let {
+            runCatching {
+                ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, it)
+            }
+        }
+        tearDownAckReceiver = null
+
         isRunning = false
     }
 
@@ -758,6 +814,7 @@ class ForegroundService : Service(), PHostApi {
         var isRunning = false
 
         private const val OUTGOING_CALL_TIMEOUT_MS = 5_000L
+        private const val TEAR_DOWN_ACK_TIMEOUT_MS = 3_000L
 
         /**
          * Main-process shadow of PhoneConnectionService connection state.
