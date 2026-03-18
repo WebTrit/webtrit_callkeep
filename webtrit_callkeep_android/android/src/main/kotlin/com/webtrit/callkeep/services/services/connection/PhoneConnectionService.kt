@@ -14,6 +14,7 @@ import android.telecom.PhoneAccountHandle
 import androidx.annotation.RequiresPermission
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.common.ActivityHolder
+import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.TelephonyUtils
 import com.webtrit.callkeep.models.CallMetadata
@@ -45,6 +46,10 @@ class PhoneConnectionService : ConnectionService() {
 
     override fun onCreate() {
         super.onCreate()
+        // ContextHolder must be initialized before any code in this process reads it.
+        // In the :callkeep_core process there is no Flutter engine and WebtritCallkeepPlugin
+        // is never attached, so ContextHolder.init() would not be called otherwise.
+        ContextHolder.init(applicationContext)
         // Set the service state to true when the system starts the service.
         isRunning = true
         telephonyUtils = TelephonyUtils(applicationContext)
