@@ -212,6 +212,12 @@ class ForegroundService : Service(), PHostApi {
             if (!resolved.compareAndSet(false, true)) return
             pendingCallCleanupsByCallId.remove(callId)
             cancelResources()
+            // Remove from pending regardless of outcome. On the success path (OngoingCall)
+            // promote() has already removed the callId from pendingCallIds, so this is a
+            // no-op. On failure/timeout paths the pending entry would otherwise linger until
+            // tearDown(), causing drainUnconnectedPendingCallIds() to fire a spurious
+            // performEndCall and routing answerCall() into the deferred-answer path.
+            tracker.removePending(callId)
             callback(result)
         }
 
