@@ -43,6 +43,7 @@ android {
 
     defaultConfig {
         minSdkVersion 26
+        consumerProguardFiles 'consumer-rules.pro'
     }
 
     compileOptions {
