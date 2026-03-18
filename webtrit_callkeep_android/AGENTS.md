@@ -36,7 +36,35 @@ The Android implementation runs in **two separate OS processes**:
 
 **IPC between processes**: local broadcasts via `CommunicateServiceDispatcher` and `ConnectionServicePerformBroadcaster`.
 
-`MainProcessConnectionTracker` (companion object on `ForegroundService`) tracks connection answered-state across both processes.
+`MainProcessConnectionTracker` tracks connection state in the main process, updated from broadcasts. It is exposed through the `CallkeepCore` interface.
+
+### CallkeepCore -- the single access point
+
+**All code in the main process must interact with `PhoneConnectionService` exclusively through `CallkeepCore.instance`.**
+
+- State reads: `CallkeepCore.instance.getAll()`, `.exists()`, `.getState()`, etc. -- backed by `MainProcessConnectionTracker`.
+- Commands: `CallkeepCore.instance.startAnswerCall()`, `.tearDownService()`, `.sendTearDownConnections()`, etc. -- dispatched via explicit `startService` intents or broadcasts.
+
+**Do NOT call `connectionManager.*` directly from the main process.** After the `:callkeep_core` process split, `connectionManager` in the main JVM heap is an empty object -- any direct call to it becomes a silent no-op that is extremely hard to debug. The only correct path is through `CallkeepCore`.
+
+### IPC events
+
+All cross-process communication uses local broadcasts. Events are grouped by broadcaster:
+
+**CallLifecycleEvent** (`:callkeep_core` -> Main):
+`AnswerCall`, `DeclineCall`, `HungUp`, `OngoingCall`, `DidPushIncomingCall`, `OutgoingFailure`, `IncomingFailure`, `ConnectionNotFound`
+
+**CallMediaEvent** (`:callkeep_core` -> Main):
+`AudioMuting`, `AudioDeviceSet`, `AudioDevicesUpdate`, `SentDTMF`, `ConnectionHolding`
+
+**CallCommandEvent** (Main -> `:callkeep_core`, with one ack going the other way):
+
+| Event | Direction | Payload | Purpose |
+|---|---|---|---|
+| `TearDownConnections` | Main -> `:callkeep_core` | -- | Trigger `hungUp()` + `cleanConnections()` on all PhoneConnections |
+| `TearDownComplete` | `:callkeep_core` -> Main | -- | Ack that tearDown completed |
+| `ReserveAnswer` | Main -> `:callkeep_core` | `callId` | Deferred answer reservation cross-process |
+| `CleanConnections` | Main -> `:callkeep_core` | -- | Clear all connections without `hungUp()` |
 
 ---
 
@@ -118,4 +146,5 @@ Two mutually exclusive modes — choose one per app:
 - Classes annotated `@Keep` in Kotlin **must not** be renamed or removed — they are referenced by ProGuard/R8 rules.
 - All Pigeon host API implementations run on the platform thread; do not block.
 - `PhoneConnectionService` runs in a separate process — it cannot share in-memory state with the main process; use IPC.
+- **Never call `connectionManager.*` directly from the main process.** Use `CallkeepCore.instance` instead (see Dual-process architecture above).
 - Never import Kotlin-layer constants or classes into the Dart layer directly; go through Pigeon.
