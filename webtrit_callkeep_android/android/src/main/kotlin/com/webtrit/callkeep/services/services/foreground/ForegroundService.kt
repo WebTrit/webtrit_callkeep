@@ -762,13 +762,12 @@ class ForegroundService : Service(), PHostApi {
         /**
          * Main-process shadow of PhoneConnectionService connection state.
          *
-         * Updated from [ConnectionServicePerformBroadcaster] events so that
-         * [ForegroundService] and [com.webtrit.callkeep.ConnectionsApi] can read
-         * connection state without crossing a process boundary.
+         * Delegates to [MainProcessConnectionTracker.instance] — the process-wide singleton
+         * shared with [com.webtrit.callkeep.ConnectionsApi] and other main-process components.
          *
-         * Must be reset via [MainProcessConnectionTracker.clear] at the end of [tearDown].
+         * Must be reset via [ConnectionTracker.clear] at the end of [tearDown].
          */
-        val tracker = MainProcessConnectionTracker()
+        val tracker: ConnectionTracker get() = MainProcessConnectionTracker.instance
     }
 }
 
