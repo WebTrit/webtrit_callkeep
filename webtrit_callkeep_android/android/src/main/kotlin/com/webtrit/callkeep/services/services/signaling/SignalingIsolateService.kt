@@ -454,5 +454,5 @@ enum class ForegroundCallServiceEnums {
     ANSWER, DECLINE;
 
     val action: String
-        get() = ContextHolder.appUniqueKey + name + "_foreground_call_service"
+        get() = "callkeep_$name"
 }
