@@ -93,6 +93,7 @@ class MainProcessConnectionTracker {
         connections.remove(callId)
         answeredCallIds.remove(callId)
         pendingCallIds.remove(callId)
+        pendingAnswers.remove(callId)
         connectionStates[callId] = PCallkeepConnectionState.STATE_DISCONNECTED
     }
 

@@ -183,6 +183,15 @@ class MainProcessConnectionTrackerTest {
         assertEquals(PCallkeepConnectionState.STATE_DISCONNECTED, tracker.getState("call-1"))
     }
 
+    @Test
+    fun `markTerminated — clears pending answer reservation`() {
+        tracker.addPending("call-1")
+        tracker.reserveAnswer("call-1")
+        tracker.markTerminated("call-1")
+        // consumeAnswer must return false: reservation was cleared by markTerminated
+        assertFalse(tracker.consumeAnswer("call-1"))
+    }
+
     // -------------------------------------------------------------------------
     // getAll
     // -------------------------------------------------------------------------
