@@ -623,6 +623,9 @@ class ForegroundService : Service(), PHostApi {
         logger.d("handleCSReportAnswerCall")
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
+            // Consume any deferred answer reservation (set by the answerCall deferred path).
+            // This mirrors ConnectionManager.consumeAnswer so pendingAnswers does not leak.
+            tracker.consumeAnswer(callMetaData.callId)
             // Update tracker: call has been answered.
             tracker.markAnswered(callMetaData.callId)
             flutterDelegateApi?.performAnswerCall(callMetaData.callId) {}
