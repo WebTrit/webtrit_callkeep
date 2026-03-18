@@ -337,6 +337,10 @@ class ForegroundService : Service(), PHostApi {
             },
             onError = { error ->
                 logger.e("reportNewIncomingCall: startIncomingCall failed callId=$callId, error=$error")
+                // Roll back the pending entry: Telecom rejected the call, so it was never
+                // registered. Without this, drainUnconnectedPendingCallIds() would fire a
+                // spurious performEndCall during tearDown() for a call that never existed.
+                tracker.removePending(callId)
                 callback(Result.success(error))
             })
     }
@@ -475,8 +479,22 @@ class ForegroundService : Service(), PHostApi {
                 callback.invoke(Result.success(null))
             }
             else -> {
-                logger.e("answerCall: no connection or pending entry for callId=$callId in tracker")
-                callback.invoke(Result.success(PCallRequestError(PCallRequestErrorEnum.INTERNAL)))
+                // The tracker may not yet reflect this call if the DidPushIncomingCall
+                // broadcast (sent via sendBroadcast, which is async) has not been
+                // delivered to ForegroundService yet. This window exists for push-path
+                // calls that bypass tracker.addPending(). Fall back to the CS connection
+                // manager as the authoritative source while we are in a single process.
+                // TODO(PR-9b): replace this fallback with an IPC lookup when the
+                //   :callkeep_core process split is implemented.
+                val csHasCall = PhoneConnectionService.connectionManager.getConnection(callId) != null
+                if (csHasCall) {
+                    logger.w("answerCall $callId: not yet in tracker (broadcast lag), falling back to CS.")
+                    PhoneConnectionService.startAnswerCall(baseContext, metadata)
+                    callback.invoke(Result.success(null))
+                } else {
+                    logger.e("answerCall: no connection or pending entry for callId=$callId in tracker or CS")
+                    callback.invoke(Result.success(PCallRequestError(PCallRequestErrorEnum.INTERNAL)))
+                }
             }
         }
     }

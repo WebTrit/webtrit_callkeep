@@ -52,9 +52,13 @@ class MainProcessConnectionTracker {
      * Register a call that has been sent to Telecom but whose [com.webtrit.callkeep.services.services.connection.PhoneConnection]
      * has not yet been created (i.e., between addNewIncomingCall / startOutgoingCall and
      * onCreateIncoming/OutgoingConnection).
+     *
+     * The call is intentionally NOT added to [connections] here — only to [pendingCallIds].
+     * This keeps [exists] returning false so that [ForegroundService.answerCall] correctly
+     * routes to the deferred-answer path ([reserveAnswer]) rather than attempting to answer
+     * a PhoneConnection that does not yet exist. [connections] is populated only in [promote].
      */
     fun addPending(callId: String, metadata: CallMetadata) {
-        connections[callId] = metadata
         pendingCallIds.add(callId)
     }
 
@@ -136,6 +140,19 @@ class MainProcessConnectionTracker {
     // -------------------------------------------------------------------------
 
     /**
+     * Remove [callId] from the pending set without touching any other state.
+     *
+     * Called when [com.webtrit.callkeep.services.services.foreground.ForegroundService.reportNewIncomingCall]
+     * receives an error from [com.webtrit.callkeep.services.services.connection.PhoneConnectionService]:
+     * the call was never actually registered with Telecom, so the pending entry must be
+     * rolled back to prevent [drainUnconnectedPendingCallIds] from firing a spurious
+     * performEndCall during the next [com.webtrit.callkeep.services.services.foreground.ForegroundService.tearDown].
+     */
+    fun removePending(callId: String) {
+        pendingCallIds.remove(callId)
+    }
+
+    /**
      * Reserve a deferred answer for [callId] before its [com.webtrit.callkeep.services.services.connection.PhoneConnection]
      * is created. Mirrors [com.webtrit.callkeep.services.services.connection.ConnectionManager.reserveAnswer].
      */
@@ -163,7 +180,6 @@ class MainProcessConnectionTracker {
     fun drainUnconnectedPendingCallIds(): Set<String> {
         val unconnected = pendingCallIds.toSet()
         pendingCallIds.clear()
-        unconnected.forEach { connections.remove(it) }
         return unconnected
     }
 
