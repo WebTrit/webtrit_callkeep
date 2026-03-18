@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.PowerManager
 import androidx.core.content.ContextCompat
 import com.webtrit.callkeep.managers.NotificationChannelManager
+import com.webtrit.callkeep.services.core.CallkeepCore
 import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 import com.webtrit.callkeep.services.services.foreground.ForegroundService
 import java.util.Locale
@@ -50,8 +51,8 @@ object CallDiagnostics {
             // via ActivityManager to correctly detect it regardless of process boundaries.
             "isPhoneConnectionServiceRunning" to isServiceRunning(context, PhoneConnectionService::class.java),
             "isLockScreen" to Platform.isLockScreen(context),
-            "connectionManagerState" to runCatching {
-                PhoneConnectionService.connectionManager.toString()
+            "trackerState" to runCatching {
+                CallkeepCore.instance.getAll().toString()
             }.getOrElse { "Error: ${it.message}" })
 
     /**

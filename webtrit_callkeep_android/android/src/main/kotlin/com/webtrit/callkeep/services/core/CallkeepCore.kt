@@ -114,6 +114,14 @@ interface CallkeepCore {
      */
     fun sendCleanConnections()
 
+    /**
+     * Sends [ServiceAction.SyncAudioState] to [PhoneConnectionService].
+     * The service re-emits audio device and mute state for all active connections back to the
+     * main process via broadcasts. Called from [ForegroundService.onDelegateSet] to restore
+     * Flutter audio UI after hot restart.
+     */
+    fun sendSyncAudioState()
+
     companion object {
         /**
          * Process-wide singleton. Swap the implementation here to change IPC strategy
