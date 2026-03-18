@@ -17,8 +17,8 @@ import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.setShowWhenLockedCompat
 import com.webtrit.callkeep.common.setTurnScreenOnCompat
 import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
-import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 import com.webtrit.callkeep.services.services.foreground.ForegroundService
+import com.webtrit.callkeep.services.services.foreground.MainProcessConnectionTracker
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
 import com.webtrit.callkeep.services.services.signaling.SignalingIsolateService
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -253,11 +253,17 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
          * the app was force-stopped).
          */
         if (event == Lifecycle.Event.ON_START) {
-            val connections = PhoneConnectionService.connectionManager.getConnections()
-            val hasActiveConnections = connections.isNotEmpty()
+            val tracker = MainProcessConnectionTracker.instance
+            val promoted = tracker.getAll()
+            // Also check pending calls to cover the broadcast-lag window: CS may have
+            // created a PhoneConnection and be about to send DidPushIncomingCall, but the
+            // tracker has not yet promoted the call. Without this check, ON_START during
+            // that window would incorrectly clear the lock-screen and turn-screen-on flags.
+            val hasActiveConnections = promoted.isNotEmpty() || tracker.getPendingCallIds().isNotEmpty()
             Log.i(
                 TAG,
-                "onStateChanged: ON_START. Has active connections: $hasActiveConnections (${connections.size})"
+                "onStateChanged: ON_START. Has active connections: $hasActiveConnections" +
+                    " (promoted=${promoted.size}, pending=${tracker.getPendingCallIds().size})"
             )
             activityPluginBinding?.activity?.setShowWhenLockedCompat(hasActiveConnections)
             activityPluginBinding?.activity?.setTurnScreenOnCompat(hasActiveConnections)

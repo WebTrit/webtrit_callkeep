@@ -137,6 +137,9 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
     /** Returns true if [callId] is in pending state (Telecom notified, PhoneConnection not yet created). */
     override fun isPending(callId: String): Boolean = pendingCallIds.contains(callId)
 
+    /** Returns a non-destructive snapshot of all currently pending call IDs. */
+    override fun getPendingCallIds(): Set<String> = pendingCallIds.toSet()
+
     /** Returns true if [callId] has been marked terminated. */
     override fun isTerminated(callId: String): Boolean = terminatedCallIds.contains(callId)
 

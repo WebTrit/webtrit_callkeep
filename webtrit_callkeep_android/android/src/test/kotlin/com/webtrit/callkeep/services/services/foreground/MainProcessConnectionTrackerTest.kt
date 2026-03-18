@@ -294,6 +294,41 @@ class MainProcessConnectionTrackerTest {
     }
 
     // -------------------------------------------------------------------------
+    // getPendingCallIds
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `getPendingCallIds — returns all pending callIds`() {
+        tracker.addPending("call-1")
+        tracker.addPending("call-2")
+        assertEquals(setOf("call-1", "call-2"), tracker.getPendingCallIds())
+    }
+
+    @Test
+    fun `getPendingCallIds — does not include promoted calls`() {
+        tracker.addPending("call-pending")
+        tracker.addPending("call-promoted")
+        tracker.promote("call-promoted", metadata("call-promoted"), PCallkeepConnectionState.STATE_RINGING)
+        assertFalse(tracker.getPendingCallIds().contains("call-promoted"))
+        assertTrue(tracker.getPendingCallIds().contains("call-pending"))
+    }
+
+    @Test
+    fun `getPendingCallIds — is non-destructive`() {
+        tracker.addPending("call-1")
+        tracker.getPendingCallIds()
+        assertTrue(tracker.isPending("call-1"))
+        assertEquals(setOf("call-1"), tracker.getPendingCallIds())
+    }
+
+    @Test
+    fun `getPendingCallIds — empty after clear`() {
+        tracker.addPending("call-1")
+        tracker.clear()
+        assertTrue(tracker.getPendingCallIds().isEmpty())
+    }
+
+    // -------------------------------------------------------------------------
     // reserveAnswer / consumeAnswer
     // -------------------------------------------------------------------------
 
