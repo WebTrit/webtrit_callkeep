@@ -74,7 +74,15 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
         metadata: CallMetadata,
         onSuccess: () -> Unit,
         onError: (PIncomingCallError?) -> Unit,
-    ) = PhoneConnectionService.startIncomingCall(context, metadata, onSuccess, onError)
+    ) {
+        // Register as pending before handing off to Telecom so that answerCall() can
+        // find the call via core.isPending() during the broadcast-lag window, regardless
+        // of which entry point initiated the incoming call (ForegroundService,
+        // SignalingIsolateService, BackgroundPushNotificationIsolateBootstrapApi, etc.).
+        // addPending() is idempotent — safe to call even if the caller already did so.
+        tracker.addPending(metadata.callId)
+        PhoneConnectionService.startIncomingCall(context, metadata, onSuccess, onError)
+    }
 
     override fun startAnswerCall(metadata: CallMetadata) =
         PhoneConnectionService.startAnswerCall(context, metadata)
