@@ -97,6 +97,7 @@ class PhoneConnectionService : ConnectionService() {
                 ServiceAction.ReserveAnswer -> metadata?.callId?.let { handleReserveAnswer(it) }
                     ?: Log.w(TAG, "onStartCommand: ReserveAnswer missing callId")
                 ServiceAction.CleanConnections -> handleCleanConnections()
+                ServiceAction.SyncAudioState -> handleSyncAudioState()
                 else -> phoneConnectionServiceDispatcher.dispatch(action, metadata)
             }
         } catch (e: Exception) {
@@ -305,6 +306,11 @@ class PhoneConnectionService : ConnectionService() {
         connectionManager.cleanConnections()
     }
 
+    private fun handleSyncAudioState() {
+        Log.i(TAG, "handleSyncAudioState: re-emitting audio state for all active connections")
+        connectionManager.getConnections().forEach { it.forceUpdateAudioState() }
+    }
+
     override fun onDestroy() {
         Log.i(TAG, "onDestroy")
         cleanupResources()
@@ -445,6 +451,20 @@ class PhoneConnectionService : ConnectionService() {
             }
             runCatching { context.startService(intent) }
                 .onFailure { e -> Log.w(TAG, "sendCleanConnections: startService failed: $e") }
+        }
+
+        /**
+         * Sends [ServiceAction.SyncAudioState] to [PhoneConnectionService].
+         * The service will call [PhoneConnection.forceUpdateAudioState] on all active connections,
+         * which re-emits audio device and mute state broadcasts back to the main process.
+         * Used by [ForegroundService.onDelegateSet] to restore Flutter UI after hot restart.
+         */
+        fun sendSyncAudioState(context: Context) {
+            val intent = Intent(context, PhoneConnectionService::class.java).apply {
+                action = ServiceAction.SyncAudioState.action
+            }
+            runCatching { context.startService(intent) }
+                .onFailure { e -> Log.w(TAG, "sendSyncAudioState: startService failed: $e") }
         }
 
         /**

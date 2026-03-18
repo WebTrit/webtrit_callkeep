@@ -45,7 +45,6 @@ import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.core.CallkeepCore
-import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 
 /**
  * ForegroundService is an Android bound Service that maintains a connection with the main Flutter isolate
@@ -523,23 +522,13 @@ class ForegroundService : Service(), PHostApi {
         // DidPushIncomingCall is delivered via sendBroadcast() which is async. Between the
         // moment CS creates the PhoneConnection and the moment the broadcast reaches
         // ForegroundService, core.exists() is false even though the call is live on the
-        // CS side. This window hits both the main-process signaling path (addPending called
-        // in reportNewIncomingCall, but broadcast not yet delivered) and the push-path (no
-        // addPending at all). Resolution order:
-        //   1. core.exists()                         -> promoted, answer immediately.
-        //   2. CS connectionManager has the connection  -> broadcast lag, answer via CS.
-        //   3. core.isPending() && CS has no conn.  -> PhoneConnection not yet created, defer.
-        //   4. none of the above                        -> unknown call, return error.
-        // TODO(PR-9b): collapse steps 2-3 into a single IPC lookup when :callkeep_core splits.
-        val csConnection = PhoneConnectionService.connectionManager.getConnection(callId)
+        // CS side. Resolution order:
+        //   1. core.exists()     -> promoted, answer immediately.
+        //   2. core.isPending()  -> PhoneConnection not yet created, defer via ReserveAnswer.
+        //   3. none of the above -> unknown call, return error.
         when {
             core.exists(callId) -> {
                 logger.i("answerCall $callId: connection exists in core shadow, answering immediately.")
-                core.startAnswerCall(metadata)
-                callback.invoke(Result.success(null))
-            }
-            csConnection != null -> {
-                logger.i("answerCall $callId: CS has connection (core shadow broadcast lag), answering via CS.")
                 core.startAnswerCall(metadata)
                 callback.invoke(Result.success(null))
             }
@@ -741,25 +730,17 @@ class ForegroundService : Service(), PHostApi {
      */
     override fun onDelegateSet() {
         logger.d("onDelegateSet: Flutter delegate attached. Checking for active connections to restore...")
-        val connections = PhoneConnectionService.connectionManager.getConnections()
+        val connections = core.getAll()
 
         if (connections.isEmpty()) {
             Log.d(TAG, "onDelegateSet: No active connections found.")
             return
         }
 
-        Handler(Looper.getMainLooper()).post {
-            connections.forEach { connection ->
-                val handle = connection.handle
-
-                if (handle == null) {
-                    Log.w(TAG, "onDelegateSet: Skipping connection with null handle")
-                    return@forEach
-                }
-
-                connection.forceUpdateAudioState()
-            }
-        }
+        // Ask :callkeep_core to re-emit audio state (device + mute) for all active connections.
+        // PhoneConnection.forceUpdateAudioState() runs in the :callkeep_core process and sends
+        // CallMediaEvent broadcasts back to the main process, which updates the Flutter UI.
+        core.sendSyncAudioState()
     }
 
 
