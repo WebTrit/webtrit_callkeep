@@ -44,6 +44,7 @@ import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
+import com.webtrit.callkeep.services.core.CallkeepCore
 import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 
 /**
@@ -192,9 +193,9 @@ class ForegroundService : Service(), PHostApi {
         // This prevents duplicate receivers/timeouts if startCall() is invoked again with the same callId.
         pendingCallCleanupsByCallId.remove(callId)?.invoke()
 
-        // Register as pending so answerCall/endCall can locate this call via tracker
+        // Register as pending so answerCall/endCall can locate this call via the core shadow
         // before the outgoing connection is confirmed by ConnectionService.
-        tracker.addPending(callId)
+        core.addPending(callId)
 
         // Each outgoing call owns its own receiver + AtomicBoolean so that the callback
         // and performStartCall are invoked exactly once, regardless of whether the
@@ -223,7 +224,7 @@ class ForegroundService : Service(), PHostApi {
             // no-op. On failure/timeout paths the pending entry would otherwise linger until
             // tearDown(), causing drainUnconnectedPendingCallIds() to fire a spurious
             // performEndCall and routing answerCall() into the deferred-answer path.
-            tracker.removePending(callId)
+            core.removePending(callId)
             callback(result)
         }
 
@@ -238,7 +239,7 @@ class ForegroundService : Service(), PHostApi {
                         if (callMetaData.callId != callId) return
                         logger.i("$logContext: ongoing call confirmed by CS")
                         // Outgoing call is now active in Telecom — promote from pending.
-                        tracker.promote(callMetaData.callId, callMetaData, PCallkeepConnectionState.STATE_DIALING)
+                        core.promote(callMetaData.callId, callMetaData, PCallkeepConnectionState.STATE_DIALING)
                         flutterDelegateApi?.performStartCall(
                             callMetaData.callId,
                             callMetaData.handle!!.toPHandle(),
@@ -289,9 +290,7 @@ class ForegroundService : Service(), PHostApi {
         try {
             // Suppress MissingPermission lint: self-managed PhoneAccount does not require
             // CALL_PHONE permission — the Telecom framework handles the call directly.
-            @SuppressLint("MissingPermission") PhoneConnectionService.startOutgoingCall(
-                baseContext, metadata
-            )
+            @SuppressLint("MissingPermission") core.startOutgoingCall(metadata)
             logger.i("$logContext: startOutgoingCall dispatched")
         } catch (e: EmergencyNumberException) {
             logger.e("$logContext failed: emergency number", e)
@@ -337,14 +336,13 @@ class ForegroundService : Service(), PHostApi {
         )
 
         // Register as pending before sending to Telecom so that answerCall() / endCall()
-        // issued before DidPushIncomingCall fires can locate the call via tracker.isPending().
+        // issued before DidPushIncomingCall fires can locate the call via core.isPending().
         // addPending returns true only if this invocation actually inserted the entry, so the
         // rollback in onError does not remove a concurrent genuine pending registration for the
         // same callId (e.g. a second reportNewIncomingCall racing against the first).
-        val addedPending = tracker.addPending(callId)
+        val addedPending = core.addPending(callId)
 
-        PhoneConnectionService.startIncomingCall(
-            context = baseContext,
+        core.startIncomingCall(
             metadata = metadata,
             onSuccess = {
                 logger.d("reportNewIncomingCall: startIncomingCall success callId=$callId")
@@ -355,7 +353,7 @@ class ForegroundService : Service(), PHostApi {
                 // Roll back the pending entry only if this invocation added it. This avoids
                 // removing a genuine pending entry registered by a concurrent first invocation
                 // when a duplicate call's error arrives.
-                if (addedPending) tracker.removePending(callId)
+                if (addedPending) core.removePending(callId)
                 callback(Result.success(error))
             })
     }
@@ -384,12 +382,12 @@ class ForegroundService : Service(), PHostApi {
         // legitimate broadcasts if callIds are ever reused.
         directNotifiedCallIds.clear()
 
-        // Step 1: Collect active call IDs from the tracker (promoted connections).
-        val activeCallIds = tracker.getAll().map { it.callId }
+        // Step 1: Collect active call IDs from the core shadow state (promoted connections).
+        val activeCallIds = core.getAll().map { it.callId }
 
         // Step 2: Drain pending calls that were registered with Telecom but whose
         // PhoneConnection was never created (no DidPushIncomingCall received yet).
-        val unconnectedPending = tracker.drainUnconnectedPendingCallIds()
+        val unconnectedPending = core.drainUnconnectedPendingCallIds()
 
         // Step 3: Notify Flutter for active connections. Register in directNotifiedCallIds
         // BEFORE calling connection.hungUp() so the async HungUp broadcast is suppressed.
@@ -439,10 +437,10 @@ class ForegroundService : Service(), PHostApi {
             }
             tearDownAckReceiver = null
             // Step 6: Reset tracker state for the next session.
-            tracker.clear()
+            core.clear()
             // Keep PhoneConnectionService alive for the next session so that its next
             // incoming intents (e.g. AnswerCall) arrive at a live service instance.
-            PhoneConnectionService.tearDown(baseContext)
+            core.tearDownService()
             callback.invoke(Result.success(Unit))
         }
 
@@ -470,7 +468,7 @@ class ForegroundService : Service(), PHostApi {
         }
         mainHandler.postDelayed(tearDownTimeoutRunnable!!, TEAR_DOWN_ACK_TIMEOUT_MS)
 
-        PhoneConnectionService.sendTearDownConnections(baseContext)
+        core.sendTearDownConnections()
     }
 
     // Only for iOS, not used in Android
@@ -484,7 +482,7 @@ class ForegroundService : Service(), PHostApi {
     override fun reportConnectedOutgoingCall(callId: String, callback: (Result<Unit>) -> Unit) {
         logger.i("reportConnectedOutgoingCall: callId=$callId")
         val metadata = CallMetadata(callId = callId)
-        PhoneConnectionService.startEstablishCall(baseContext, metadata)
+        core.startEstablishCall(metadata)
         callback.invoke(Result.success(Unit))
     }
 
@@ -504,7 +502,7 @@ class ForegroundService : Service(), PHostApi {
             hasVideo = hasVideo,
             proximityEnabled = proximityEnabled,
         )
-        PhoneConnectionService.startUpdateCall(baseContext, metadata)
+        core.startUpdateCall(metadata)
         callback.invoke(Result.success(Unit))
     }
 
@@ -516,7 +514,7 @@ class ForegroundService : Service(), PHostApi {
     ) {
         logger.i("reportEndCall: callId=$callId, reason=$reason")
         val callMetaData = CallMetadata(callId = callId, displayName = displayName)
-        PhoneConnectionService.startDeclineCall(baseContext, callMetaData)
+        core.startDeclineCall(callMetaData)
         callback.invoke(Result.success(Unit))
     }
 
@@ -524,38 +522,38 @@ class ForegroundService : Service(), PHostApi {
         val metadata = CallMetadata(callId = callId)
         // DidPushIncomingCall is delivered via sendBroadcast() which is async. Between the
         // moment CS creates the PhoneConnection and the moment the broadcast reaches
-        // ForegroundService, tracker.exists() is false even though the call is live on the
+        // ForegroundService, core.exists() is false even though the call is live on the
         // CS side. This window hits both the main-process signaling path (addPending called
         // in reportNewIncomingCall, but broadcast not yet delivered) and the push-path (no
         // addPending at all). Resolution order:
-        //   1. tracker.exists()                         → promoted, answer immediately.
-        //   2. CS connectionManager has the connection  → broadcast lag, answer via CS.
-        //   3. tracker.isPending() && CS has no conn.  → PhoneConnection not yet created, defer.
-        //   4. none of the above                        → unknown call, return error.
+        //   1. core.exists()                         -> promoted, answer immediately.
+        //   2. CS connectionManager has the connection  -> broadcast lag, answer via CS.
+        //   3. core.isPending() && CS has no conn.  -> PhoneConnection not yet created, defer.
+        //   4. none of the above                        -> unknown call, return error.
         // TODO(PR-9b): collapse steps 2-3 into a single IPC lookup when :callkeep_core splits.
         val csConnection = PhoneConnectionService.connectionManager.getConnection(callId)
         when {
-            tracker.exists(callId) -> {
-                logger.i("answerCall $callId: connection exists in tracker, answering immediately.")
-                PhoneConnectionService.startAnswerCall(baseContext, metadata)
+            core.exists(callId) -> {
+                logger.i("answerCall $callId: connection exists in core shadow, answering immediately.")
+                core.startAnswerCall(metadata)
                 callback.invoke(Result.success(null))
             }
             csConnection != null -> {
-                logger.i("answerCall $callId: CS has connection (tracker broadcast lag), answering via CS.")
-                PhoneConnectionService.startAnswerCall(baseContext, metadata)
+                logger.i("answerCall $callId: CS has connection (core shadow broadcast lag), answering via CS.")
+                core.startAnswerCall(metadata)
                 callback.invoke(Result.success(null))
             }
-            tracker.isPending(callId) -> {
+            core.isPending(callId) -> {
                 // Telecom accepted the call but CS has not yet created the PhoneConnection.
-                // Reserve the answer in the tracker and send a ReserveAnswer command to CS so
+                // Reserve the answer in the core shadow and send a ReserveAnswer command to CS so
                 // onCreateIncomingConnection can apply it immediately on the :callkeep_core side.
-                logger.i("answerCall $callId: pending in tracker, CS has no connection yet, deferring answer.")
-                tracker.reserveAnswer(callId)
-                PhoneConnectionService.sendReserveAnswer(baseContext, callId)
+                logger.i("answerCall $callId: pending in core shadow, CS has no connection yet, deferring answer.")
+                core.reserveAnswer(callId)
+                core.sendReserveAnswer(callId)
                 callback.invoke(Result.success(null))
             }
             else -> {
-                logger.e("answerCall: no connection or pending entry for callId=$callId in tracker or CS")
+                logger.e("answerCall: no connection or pending entry for callId=$callId in core shadow or CS")
                 callback.invoke(Result.success(PCallRequestError(PCallRequestErrorEnum.INTERNAL)))
             }
         }
@@ -563,13 +561,13 @@ class ForegroundService : Service(), PHostApi {
 
     override fun endCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit) {
         logger.i("endCall $callId.")
-        if (tracker.isTerminated(callId)) {
-            logger.w("endCall: connection $callId is already terminated (tracker).")
+        if (core.isTerminated(callId)) {
+            logger.w("endCall: connection $callId is already terminated (core shadow).")
             callback.invoke(Result.success(PCallRequestError(PCallRequestErrorEnum.UNKNOWN_CALL_UUID)))
             return
         }
         val metadata = CallMetadata(callId = callId)
-        PhoneConnectionService.startHungUpCall(baseContext, metadata)
+        core.startHungUpCall(metadata)
         callback.invoke(Result.success(null))
     }
 
@@ -578,7 +576,7 @@ class ForegroundService : Service(), PHostApi {
     ) {
         logger.i("sendDTMF: callId=$callId, key=$key")
         val metadata = CallMetadata(callId = callId, dualToneMultiFrequency = key.getOrNull(0))
-        PhoneConnectionService.startSendDtmfCall(baseContext, metadata)
+        core.startSendDtmfCall(metadata)
         callback.invoke(Result.success(null))
     }
 
@@ -587,7 +585,7 @@ class ForegroundService : Service(), PHostApi {
     ) {
         logger.i("setMuted: callId=$callId, muted=$muted")
         val metadata = CallMetadata(callId = callId, hasMute = muted)
-        PhoneConnectionService.startMutingCall(baseContext, metadata)
+        core.startMutingCall(metadata)
         callback.invoke(Result.success(null))
     }
 
@@ -596,7 +594,7 @@ class ForegroundService : Service(), PHostApi {
     ) {
         logger.i("setHeld: callId=$callId, onHold=$onHold")
         val metadata = CallMetadata(callId = callId, hasHold = onHold)
-        PhoneConnectionService.startHoldingCall(baseContext, metadata)
+        core.startHoldingCall(metadata)
         callback.invoke(Result.success(null))
     }
 
@@ -605,7 +603,7 @@ class ForegroundService : Service(), PHostApi {
     ) {
         logger.i("setSpeaker: callId=$callId, enabled=$enabled")
         val metadata = CallMetadata(callId = callId, hasSpeaker = enabled)
-        PhoneConnectionService.startSpeaker(baseContext, metadata)
+        core.startSpeaker(metadata)
         callback.invoke(Result.success(null))
     }
 
@@ -616,7 +614,7 @@ class ForegroundService : Service(), PHostApi {
         val metadata = CallMetadata(
             callId = callId, audioDevice = device.toAudioDevice()
         )
-        PhoneConnectionService.setAudioDevice(baseContext, metadata)
+        core.setAudioDevice(metadata)
         callback.invoke(Result.success(null))
     }
 
@@ -630,7 +628,7 @@ class ForegroundService : Service(), PHostApi {
         extras?.let {
             val metadata = CallMetadata.fromBundle(it)
             // Promote from pending to fully registered incoming connection.
-            tracker.promote(metadata.callId, metadata, PCallkeepConnectionState.STATE_RINGING)
+            core.promote(metadata.callId, metadata, PCallkeepConnectionState.STATE_RINGING)
             flutterDelegateApi?.didPushIncomingCall(
                 handleArg = metadata.handle!!.toPHandle(),
                 displayNameArg = metadata.displayName,
@@ -657,7 +655,7 @@ class ForegroundService : Service(), PHostApi {
             }
 
             // Update tracker: call has ended.
-            tracker.markTerminated(callId)
+            core.markTerminated(callId)
 
             flutterDelegateApi?.performEndCall(callId) {}
             flutterDelegateApi?.didDeactivateAudioSession {}
@@ -674,9 +672,9 @@ class ForegroundService : Service(), PHostApi {
             val callMetaData = CallMetadata.fromBundle(it)
             // Consume any deferred answer reservation (set by the answerCall deferred path).
             // This mirrors ConnectionManager.consumeAnswer so pendingAnswers does not leak.
-            tracker.consumeAnswer(callMetaData.callId)
+            core.consumeAnswer(callMetaData.callId)
             // Update tracker: call has been answered.
-            tracker.markAnswered(callMetaData.callId)
+            core.markAnswered(callMetaData.callId)
             flutterDelegateApi?.performAnswerCall(callMetaData.callId) {}
             flutterDelegateApi?.didActivateAudioSession {}
         }
@@ -718,7 +716,7 @@ class ForegroundService : Service(), PHostApi {
             val callMetaData = CallMetadata.fromBundle(it)
             val onHold = callMetaData.hasHold ?: false
             // Keep tracker state in sync so getConnections() reflects HOLDING / ACTIVE correctly.
-            tracker.markHeld(callMetaData.callId, onHold)
+            core.markHeld(callMetaData.callId, onHold)
             flutterDelegateApi?.performSetHeld(callMetaData.callId, onHold) {}
         }
     }
@@ -817,14 +815,13 @@ class ForegroundService : Service(), PHostApi {
         private const val TEAR_DOWN_ACK_TIMEOUT_MS = 3_000L
 
         /**
-         * Main-process shadow of PhoneConnectionService connection state.
+         * Process-wide facade for all interactions with the `:callkeep_core` process.
          *
-         * Delegates to [MainProcessConnectionTracker.instance] — the process-wide singleton
-         * shared with [com.webtrit.callkeep.ConnectionsApi] and other main-process components.
-         *
-         * Must be reset via [ConnectionTracker.clear] at the end of [tearDown].
+         * Provides a single access point for both reading shadow connection state and
+         * sending commands to [PhoneConnectionService]. After the process split, swap
+         * [CallkeepCore.instance] to change the IPC strategy without touching call sites.
          */
-        val tracker: ConnectionTracker get() = MainProcessConnectionTracker.instance
+        val core: CallkeepCore get() = CallkeepCore.instance
     }
 }
 
