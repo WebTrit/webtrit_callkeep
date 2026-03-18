@@ -44,6 +44,17 @@ class MainProcessConnectionTrackerTest {
     }
 
     @Test
+    fun `addPending — returns true when newly inserted`() {
+        assertTrue(tracker.addPending("call-1"))
+    }
+
+    @Test
+    fun `addPending — returns false when already pending`() {
+        tracker.addPending("call-1")
+        assertFalse(tracker.addPending("call-1"))
+    }
+
+    @Test
     fun `addPending — exists returns false before promote`() {
         // Pending calls are not in connections; only promote() populates connections.
         // This ensures answerCall routes to the deferred-answer path, not startAnswerCall.

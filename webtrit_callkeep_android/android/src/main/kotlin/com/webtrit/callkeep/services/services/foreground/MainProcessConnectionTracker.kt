@@ -58,13 +58,19 @@ class MainProcessConnectionTracker {
      * routes to the deferred-answer path ([reserveAnswer]) rather than attempting to answer
      * a PhoneConnection that does not yet exist. [connections] is populated only in [promote].
      */
-    fun addPending(callId: String) {
+    /**
+     * Returns true if [callId] was newly inserted into the pending set, false if it was already
+     * present. Callers can use this to determine whether they own the pending entry and should
+     * roll it back on error — avoiding a race where a second caller's error removes the first
+     * caller's genuine pending entry.
+     */
+    fun addPending(callId: String): Boolean {
         // Reset any stale lifecycle state from a prior use of this callId in the same session.
         // Without this, isTerminated() / isAnswered() could return true for a genuinely new call.
         terminatedCallIds.remove(callId)
         answeredCallIds.remove(callId)
         pendingAnswers.remove(callId)
-        pendingCallIds.add(callId)
+        return pendingCallIds.add(callId)
     }
 
     /**

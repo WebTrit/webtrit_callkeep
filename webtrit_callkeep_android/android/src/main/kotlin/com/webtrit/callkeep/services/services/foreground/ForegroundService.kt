@@ -332,7 +332,10 @@ class ForegroundService : Service(), PHostApi {
 
         // Register as pending before sending to Telecom so that answerCall() / endCall()
         // issued before DidPushIncomingCall fires can locate the call via tracker.isPending().
-        tracker.addPending(callId)
+        // addPending returns true only if this invocation actually inserted the entry, so the
+        // rollback in onError does not remove a concurrent genuine pending registration for the
+        // same callId (e.g. a second reportNewIncomingCall racing against the first).
+        val addedPending = tracker.addPending(callId)
 
         PhoneConnectionService.startIncomingCall(
             context = baseContext,
@@ -343,10 +346,10 @@ class ForegroundService : Service(), PHostApi {
             },
             onError = { error ->
                 logger.e("reportNewIncomingCall: startIncomingCall failed callId=$callId, error=$error")
-                // Roll back the pending entry: Telecom rejected the call, so it was never
-                // registered. Without this, drainUnconnectedPendingCallIds() would fire a
-                // spurious performEndCall during tearDown() for a call that never existed.
-                tracker.removePending(callId)
+                // Roll back the pending entry only if this invocation added it. This avoids
+                // removing a genuine pending entry registered by a concurrent first invocation
+                // when a duplicate call's error arrives.
+                if (addedPending) tracker.removePending(callId)
                 callback(Result.success(error))
             })
     }
