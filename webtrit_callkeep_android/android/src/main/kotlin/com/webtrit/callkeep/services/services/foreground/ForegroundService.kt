@@ -383,8 +383,13 @@ class ForegroundService : Service(), PHostApi {
             flutterDelegateApi?.performEndCall(callId) {}
         }
 
-        // Step 4: Notify Flutter for pending-only calls (no PhoneConnection to hang up on).
+        // Step 4: Notify Flutter for pending-only calls.
+        // Register in directNotifiedCallIds BEFORE firing performEndCall so that any async
+        // HungUp broadcast from connection.hungUp() (Step 5) is suppressed — this happens
+        // when the deferred-answer path caused CS to create a PhoneConnection via reserveAnswer
+        // even though DidPushIncomingCall had not yet arrived and the callId was still pending.
         unconnectedPending.forEach { callId ->
+            directNotifiedCallIds.add(callId)
             flutterDelegateApi?.performEndCall(callId) {}
         }
 
@@ -463,38 +468,40 @@ class ForegroundService : Service(), PHostApi {
 
     override fun answerCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit) {
         val metadata = CallMetadata(callId = callId)
+        // DidPushIncomingCall is delivered via sendBroadcast() which is async. Between the
+        // moment CS creates the PhoneConnection and the moment the broadcast reaches
+        // ForegroundService, tracker.exists() is false even though the call is live on the
+        // CS side. This window hits both the main-process signaling path (addPending called
+        // in reportNewIncomingCall, but broadcast not yet delivered) and the push-path (no
+        // addPending at all). Resolution order:
+        //   1. tracker.exists()                         → promoted, answer immediately.
+        //   2. CS connectionManager has the connection  → broadcast lag, answer via CS.
+        //   3. tracker.isPending() && CS has no conn.  → PhoneConnection not yet created, defer.
+        //   4. none of the above                        → unknown call, return error.
+        // TODO(PR-9b): collapse steps 2-3 into a single IPC lookup when :callkeep_core splits.
+        val csConnection = PhoneConnectionService.connectionManager.getConnection(callId)
         when {
             tracker.exists(callId) -> {
                 logger.i("answerCall $callId: connection exists in tracker, answering immediately.")
                 PhoneConnectionService.startAnswerCall(baseContext, metadata)
                 callback.invoke(Result.success(null))
             }
+            csConnection != null -> {
+                logger.i("answerCall $callId: CS has connection (tracker broadcast lag), answering via CS.")
+                PhoneConnectionService.startAnswerCall(baseContext, metadata)
+                callback.invoke(Result.success(null))
+            }
             tracker.isPending(callId) -> {
-                // DidPushIncomingCall has not arrived yet. Reserve the answer in both the
-                // tracker (main-process awareness) and the ConnectionService (so that
-                // onCreateIncomingConnection applies it immediately after creating the connection).
-                logger.i("answerCall $callId: connection pending in tracker, deferring answer.")
+                // Telecom accepted the call but CS has not yet created the PhoneConnection.
+                // Reserve the answer so onCreateIncomingConnection can apply it immediately.
+                logger.i("answerCall $callId: pending in tracker, CS has no connection yet, deferring answer.")
                 tracker.reserveAnswer(callId)
                 PhoneConnectionService.connectionManager.reserveAnswer(callId)
                 callback.invoke(Result.success(null))
             }
             else -> {
-                // The tracker may not yet reflect this call if the DidPushIncomingCall
-                // broadcast (sent via sendBroadcast, which is async) has not been
-                // delivered to ForegroundService yet. This window exists for push-path
-                // calls that bypass tracker.addPending(). Fall back to the CS connection
-                // manager as the authoritative source while we are in a single process.
-                // TODO(PR-9b): replace this fallback with an IPC lookup when the
-                //   :callkeep_core process split is implemented.
-                val csHasCall = PhoneConnectionService.connectionManager.getConnection(callId) != null
-                if (csHasCall) {
-                    logger.w("answerCall $callId: not yet in tracker (broadcast lag), falling back to CS.")
-                    PhoneConnectionService.startAnswerCall(baseContext, metadata)
-                    callback.invoke(Result.success(null))
-                } else {
-                    logger.e("answerCall: no connection or pending entry for callId=$callId in tracker or CS")
-                    callback.invoke(Result.success(PCallRequestError(PCallRequestErrorEnum.INTERNAL)))
-                }
+                logger.e("answerCall: no connection or pending entry for callId=$callId in tracker or CS")
+                callback.invoke(Result.success(PCallRequestError(PCallRequestErrorEnum.INTERNAL)))
             }
         }
     }
