@@ -346,15 +346,22 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
      * @param callback Pigeon-generated callback; receives [Result.success] on completion.
      */
     override fun endAllCalls(callback: (Result<Unit>) -> Unit) {
-        val active = MainProcessConnectionTracker.instance.getAll()
+        // Union promoted connections and pending calls to cover the broadcast-lag window:
+        // CS may have created a PhoneConnection and be about to send DidPushIncomingCall,
+        // but the tracker has not yet received the broadcast and promoted the call.
+        // Including pending call IDs ensures we register a HungUp listener for them too;
+        // the 5-second safety timeout handles the case where CS had no connection for a
+        // pending ID (i.e. the call was truly still queued and tearDown clears it silently).
+        val tracker = MainProcessConnectionTracker.instance
+        val allCallIds = tracker.getAll().map { it.callId }.toSet() + tracker.getPendingCallIds()
 
-        if (active.isEmpty()) {
+        if (allCallIds.isEmpty()) {
             PhoneConnectionService.tearDown(baseContext)
             callback(Result.success(Unit))
             return
         }
 
-        val pendingIds = Collections.synchronizedSet(active.map { it.callId }.toMutableSet())
+        val pendingIds = Collections.synchronizedSet(allCallIds.toMutableSet())
         val handler = Handler(Looper.getMainLooper())
         val resolved = AtomicBoolean(false)
         lateinit var receiver: BroadcastReceiver

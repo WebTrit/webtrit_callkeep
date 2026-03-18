@@ -69,6 +69,16 @@ interface ConnectionTracker {
     /** Returns true if [callId] is in pending state. */
     fun isPending(callId: String): Boolean
 
+    /**
+     * Returns a snapshot of all call IDs currently in pending state
+     * (registered with Telecom, PhoneConnection not yet created).
+     *
+     * Non-destructive — unlike [drainUnconnectedPendingCallIds], this does not remove
+     * any entries. Use this for read-only checks that must account for the broadcast-lag
+     * window between PhoneConnection creation in CS and the [promote] call in the tracker.
+     */
+    fun getPendingCallIds(): Set<String>
+
     /** Returns true if [callId] has been marked terminated. */
     fun isTerminated(callId: String): Boolean
 

@@ -253,11 +253,17 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
          * the app was force-stopped).
          */
         if (event == Lifecycle.Event.ON_START) {
-            val connections = MainProcessConnectionTracker.instance.getAll()
-            val hasActiveConnections = connections.isNotEmpty()
+            val tracker = MainProcessConnectionTracker.instance
+            val promoted = tracker.getAll()
+            // Also check pending calls to cover the broadcast-lag window: CS may have
+            // created a PhoneConnection and be about to send DidPushIncomingCall, but the
+            // tracker has not yet promoted the call. Without this check, ON_START during
+            // that window would incorrectly clear the lock-screen and turn-screen-on flags.
+            val hasActiveConnections = promoted.isNotEmpty() || tracker.getPendingCallIds().isNotEmpty()
             Log.i(
                 TAG,
-                "onStateChanged: ON_START. Has active connections: $hasActiveConnections (${connections.size})"
+                "onStateChanged: ON_START. Has active connections: $hasActiveConnections" +
+                    " (promoted=${promoted.size}, pending=${tracker.getPendingCallIds().size})"
             )
             activityPluginBinding?.activity?.setShowWhenLockedCompat(hasActiveConnections)
             activityPluginBinding?.activity?.setTurnScreenOnCompat(hasActiveConnections)
