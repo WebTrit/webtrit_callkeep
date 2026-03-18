@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap
  * When the `:callkeep_core` process split lands (PR-9b), only the broadcast wiring needs to
  * change — all callers of this tracker remain unchanged.
  */
-class MainProcessConnectionTracker {
+class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
 
     // callId -> metadata for all known, non-terminated calls
     private val connections = ConcurrentHashMap<String, CallMetadata>()
@@ -57,14 +57,13 @@ class MainProcessConnectionTracker {
      * This keeps [exists] returning false so that [ForegroundService.answerCall] correctly
      * routes to the deferred-answer path ([reserveAnswer]) rather than attempting to answer
      * a PhoneConnection that does not yet exist. [connections] is populated only in [promote].
-     */
-    /**
+     *
      * Returns true if [callId] was newly inserted into the pending set, false if it was already
      * present. Callers can use this to determine whether they own the pending entry and should
      * roll it back on error — avoiding a race where a second caller's error removes the first
      * caller's genuine pending entry.
      */
-    fun addPending(callId: String): Boolean {
+    override fun addPending(callId: String): Boolean {
         // Reset any stale lifecycle state from a prior use of this callId in the same session.
         // Without this, isTerminated() / isAnswered() could return true for a genuinely new call.
         terminatedCallIds.remove(callId)
@@ -80,7 +79,7 @@ class MainProcessConnectionTracker {
      * @param state the initial Telecom state reported for this call.
      *   Use [PCallkeepConnectionState.STATE_RINGING] for incoming, [PCallkeepConnectionState.STATE_DIALING] for outgoing.
      */
-    fun promote(callId: String, metadata: CallMetadata, state: PCallkeepConnectionState) {
+    override fun promote(callId: String, metadata: CallMetadata, state: PCallkeepConnectionState) {
         // Reset stale lifecycle sets in case addPending was not called first (push-path),
         // or in case this callId was reused without going through addPending.
         terminatedCallIds.remove(callId)
@@ -94,7 +93,7 @@ class MainProcessConnectionTracker {
     /**
      * Mark [callId] as answered and advance its state to [PCallkeepConnectionState.STATE_ACTIVE].
      */
-    fun markAnswered(callId: String) {
+    override fun markAnswered(callId: String) {
         answeredCallIds.add(callId)
         connectionStates[callId] = PCallkeepConnectionState.STATE_ACTIVE
     }
@@ -106,7 +105,7 @@ class MainProcessConnectionTracker {
      * This keeps [getConnections] in sync with the Telecom hold state so that callers never
      * see a stale ACTIVE state for a held call.
      */
-    fun markHeld(callId: String, onHold: Boolean) {
+    override fun markHeld(callId: String, onHold: Boolean) {
         connectionStates[callId] = if (onHold) {
             PCallkeepConnectionState.STATE_HOLDING
         } else {
@@ -119,7 +118,7 @@ class MainProcessConnectionTracker {
      * subsequent [exists] / [getAll] calls exclude it, and records it in [terminatedCallIds]
      * so that [isTerminated] returns true for duplicate endCall guards.
      */
-    fun markTerminated(callId: String) {
+    override fun markTerminated(callId: String) {
         terminatedCallIds.add(callId)
         connections.remove(callId)
         answeredCallIds.remove(callId)
@@ -133,31 +132,31 @@ class MainProcessConnectionTracker {
     // -------------------------------------------------------------------------
 
     /** Returns true if an active connection record exists for [callId]. */
-    fun exists(callId: String): Boolean = connections.containsKey(callId)
+    override fun exists(callId: String): Boolean = connections.containsKey(callId)
 
     /** Returns true if [callId] is in pending state (Telecom notified, PhoneConnection not yet created). */
-    fun isPending(callId: String): Boolean = pendingCallIds.contains(callId)
+    override fun isPending(callId: String): Boolean = pendingCallIds.contains(callId)
 
     /** Returns true if [callId] has been marked terminated. */
-    fun isTerminated(callId: String): Boolean = terminatedCallIds.contains(callId)
+    override fun isTerminated(callId: String): Boolean = terminatedCallIds.contains(callId)
 
     /** Returns true if [callId] has been answered. */
-    fun isAnswered(callId: String): Boolean = answeredCallIds.contains(callId)
+    override fun isAnswered(callId: String): Boolean = answeredCallIds.contains(callId)
 
     /** Returns [CallMetadata] for [callId], or null if not tracked. */
-    fun get(callId: String): CallMetadata? = connections[callId]
+    override fun get(callId: String): CallMetadata? = connections[callId]
 
     /** Returns metadata for all active (non-terminated) calls. */
-    fun getAll(): List<CallMetadata> = connections.values.toList()
+    override fun getAll(): List<CallMetadata> = connections.values.toList()
 
     /** Returns the last known Pigeon connection state for [callId], or null if not tracked. */
-    fun getState(callId: String): PCallkeepConnectionState? = connectionStates[callId]
+    override fun getState(callId: String): PCallkeepConnectionState? = connectionStates[callId]
 
     /**
      * Constructs a [PCallkeepConnection] for [callId] using stored metadata and state.
      * Returns null if [callId] is not currently tracked.
      */
-    fun toPCallkeepConnection(callId: String): PCallkeepConnection? {
+    override fun toPCallkeepConnection(callId: String): PCallkeepConnection? {
         val metadata = connections[callId] ?: return null
         val state = connectionStates[callId] ?: PCallkeepConnectionState.STATE_NEW
         val disconnectCause = PCallkeepDisconnectCause(
@@ -180,7 +179,7 @@ class MainProcessConnectionTracker {
      * rolled back to prevent [drainUnconnectedPendingCallIds] from firing a spurious
      * performEndCall during the next [com.webtrit.callkeep.services.services.foreground.ForegroundService.tearDown].
      */
-    fun removePending(callId: String) {
+    override fun removePending(callId: String) {
         pendingCallIds.remove(callId)
     }
 
@@ -188,7 +187,7 @@ class MainProcessConnectionTracker {
      * Reserve a deferred answer for [callId] before its [com.webtrit.callkeep.services.services.connection.PhoneConnection]
      * is created. Mirrors [com.webtrit.callkeep.services.services.connection.ConnectionManager.reserveAnswer].
      */
-    fun reserveAnswer(callId: String) {
+    override fun reserveAnswer(callId: String) {
         pendingAnswers.add(callId)
     }
 
@@ -196,7 +195,7 @@ class MainProcessConnectionTracker {
      * Consume and return whether a deferred answer was reserved for [callId].
      * Returns true and removes the reservation; false if none existed.
      */
-    fun consumeAnswer(callId: String): Boolean = pendingAnswers.remove(callId)
+    override fun consumeAnswer(callId: String): Boolean = pendingAnswers.remove(callId)
 
     // -------------------------------------------------------------------------
     // tearDown helpers
@@ -209,7 +208,7 @@ class MainProcessConnectionTracker {
      *
      * The drained IDs are removed from tracking; subsequent [isPending] calls return false.
      */
-    fun drainUnconnectedPendingCallIds(): Set<String> {
+    override fun drainUnconnectedPendingCallIds(): Set<String> {
         val unconnected = pendingCallIds.toSet()
         pendingCallIds.clear()
         return unconnected
@@ -219,12 +218,25 @@ class MainProcessConnectionTracker {
      * Clear all tracked state. Called at the end of [ForegroundService.tearDown]
      * after all Flutter notifications and native connection cleanup have been dispatched.
      */
-    fun clear() {
+    override fun clear() {
         connections.clear()
         pendingCallIds.clear()
         answeredCallIds.clear()
         terminatedCallIds.clear()
         pendingAnswers.clear()
         connectionStates.clear()
+    }
+
+    companion object {
+        /**
+         * Process-wide singleton. All main-process components ([ForegroundService],
+         * [com.webtrit.callkeep.ConnectionsApi], etc.) share this single instance so that
+         * connection state is consistent across the process.
+         *
+         * Typed as [ConnectionTracker] so that the implementation can be swapped
+         * (e.g. for a broadcast-backed variant after the `:callkeep_core` process split)
+         * without touching any caller.
+         */
+        val instance: ConnectionTracker = MainProcessConnectionTracker()
     }
 }
