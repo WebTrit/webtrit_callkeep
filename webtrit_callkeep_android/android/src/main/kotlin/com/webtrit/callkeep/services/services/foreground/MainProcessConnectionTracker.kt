@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap
  * When the `:callkeep_core` process split lands (PR-9b), only the broadcast wiring needs to
  * change — all callers of this tracker remain unchanged.
  */
-class MainProcessConnectionTracker : ConnectionTracker {
+class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
 
     // callId -> metadata for all known, non-terminated calls
     private val connections = ConcurrentHashMap<String, CallMetadata>()
@@ -57,8 +57,7 @@ class MainProcessConnectionTracker : ConnectionTracker {
      * This keeps [exists] returning false so that [ForegroundService.answerCall] correctly
      * routes to the deferred-answer path ([reserveAnswer]) rather than attempting to answer
      * a PhoneConnection that does not yet exist. [connections] is populated only in [promote].
-     */
-    /**
+     *
      * Returns true if [callId] was newly inserted into the pending set, false if it was already
      * present. Callers can use this to determine whether they own the pending entry and should
      * roll it back on error — avoiding a race where a second caller's error removes the first
