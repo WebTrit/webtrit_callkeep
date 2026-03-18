@@ -1,10 +1,9 @@
 # Keep rules for webtrit_callkeep_android
 #
-# These classes are referenced by name at runtime via explicit Intents
-# (startService / sendBroadcast with ComponentName) for cross-process IPC.
-# R8 must not rename or remove them, even after the :callkeep_core process split
-# when PhoneConnectionService runs in a separate JVM heap.
+# PhoneConnectionService is declared in the manifest (Android build tools protect it
+# automatically), but we also ship it as a library AAR where the consuming app's R8
+# pass runs after manifest merging. -keepnames ensures the class name is never
+# rewritten, which is required for explicit ComponentName-based startService() calls
+# used for cross-process IPC after the android:process=":callkeep_core" split.
 
--keep class com.webtrit.callkeep.services.services.connection.PhoneConnectionService { *; }
--keep class com.webtrit.callkeep.services.services.connection.ConnectionManager { *; }
--keep class com.webtrit.callkeep.services.services.connection.PhoneConnection { *; }
+-keepnames class com.webtrit.callkeep.services.services.connection.PhoneConnectionService
