@@ -188,7 +188,7 @@ class ForegroundService : Service(), PHostApi {
 
         // Register as pending so answerCall/endCall can locate this call via tracker
         // before the outgoing connection is confirmed by ConnectionService.
-        tracker.addPending(callId, metadata)
+        tracker.addPending(callId)
 
         // Each outgoing call owns its own receiver + AtomicBoolean so that the callback
         // and performStartCall are invoked exactly once, regardless of whether the
@@ -326,7 +326,7 @@ class ForegroundService : Service(), PHostApi {
 
         // Register as pending before sending to Telecom so that answerCall() / endCall()
         // issued before DidPushIncomingCall fires can locate the call via tracker.isPending().
-        tracker.addPending(callId, metadata)
+        tracker.addPending(callId)
 
         PhoneConnectionService.startIncomingCall(
             context = baseContext,

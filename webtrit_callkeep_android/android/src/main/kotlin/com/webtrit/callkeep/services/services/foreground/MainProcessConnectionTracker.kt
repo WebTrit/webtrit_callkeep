@@ -58,7 +58,7 @@ class MainProcessConnectionTracker {
      * routes to the deferred-answer path ([reserveAnswer]) rather than attempting to answer
      * a PhoneConnection that does not yet exist. [connections] is populated only in [promote].
      */
-    fun addPending(callId: String, metadata: CallMetadata) {
+    fun addPending(callId: String) {
         pendingCallIds.add(callId)
     }
 

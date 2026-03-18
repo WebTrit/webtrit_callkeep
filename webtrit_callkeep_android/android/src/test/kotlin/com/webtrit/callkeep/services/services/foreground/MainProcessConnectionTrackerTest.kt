@@ -39,7 +39,7 @@ class MainProcessConnectionTrackerTest {
 
     @Test
     fun `addPending — isPending returns true`() {
-        tracker.addPending("call-1", metadata())
+        tracker.addPending("call-1")
         assertTrue(tracker.isPending("call-1"))
     }
 
@@ -47,25 +47,25 @@ class MainProcessConnectionTrackerTest {
     fun `addPending — exists returns false before promote`() {
         // Pending calls are not in connections; only promote() populates connections.
         // This ensures answerCall routes to the deferred-answer path, not startAnswerCall.
-        tracker.addPending("call-1", metadata())
+        tracker.addPending("call-1")
         assertFalse(tracker.exists("call-1"))
     }
 
     @Test
     fun `addPending — isTerminated returns false`() {
-        tracker.addPending("call-1", metadata())
+        tracker.addPending("call-1")
         assertFalse(tracker.isTerminated("call-1"))
     }
 
     @Test
     fun `addPending — get returns null before promote`() {
-        tracker.addPending("call-1", metadata())
+        tracker.addPending("call-1")
         assertNull(tracker.get("call-1"))
     }
 
     @Test
     fun `addPending — getAll does not include pending calls`() {
-        tracker.addPending("call-1", metadata())
+        tracker.addPending("call-1")
         assertTrue(tracker.getAll().isEmpty())
     }
 
@@ -75,7 +75,7 @@ class MainProcessConnectionTrackerTest {
 
     @Test
     fun `promote — isPending becomes false`() {
-        tracker.addPending("call-1", metadata())
+        tracker.addPending("call-1")
         tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
         assertFalse(tracker.isPending("call-1"))
     }
@@ -88,14 +88,14 @@ class MainProcessConnectionTrackerTest {
 
     @Test
     fun `promote — getState returns supplied state`() {
-        tracker.addPending("call-1", metadata())
+        tracker.addPending("call-1")
         tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
         assertEquals(PCallkeepConnectionState.STATE_RINGING, tracker.getState("call-1"))
     }
 
     @Test
     fun `promote outgoing — getState returns STATE_DIALING`() {
-        tracker.addPending("call-out", metadata("call-out"))
+        tracker.addPending("call-out")
         tracker.promote("call-out", metadata("call-out"), PCallkeepConnectionState.STATE_DIALING)
         assertEquals(PCallkeepConnectionState.STATE_DIALING, tracker.getState("call-out"))
     }
@@ -113,7 +113,7 @@ class MainProcessConnectionTrackerTest {
 
     @Test
     fun `markAnswered — isAnswered returns true`() {
-        tracker.addPending("call-1", metadata())
+        tracker.addPending("call-1")
         tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
         tracker.markAnswered("call-1")
         assertTrue(tracker.isAnswered("call-1"))
@@ -153,7 +153,7 @@ class MainProcessConnectionTrackerTest {
 
     @Test
     fun `markTerminated — isPending becomes false`() {
-        tracker.addPending("call-1", metadata())
+        tracker.addPending("call-1")
         tracker.markTerminated("call-1")
         assertFalse(tracker.isPending("call-1"))
     }
@@ -230,15 +230,15 @@ class MainProcessConnectionTrackerTest {
 
     @Test
     fun `removePending — isPending becomes false`() {
-        tracker.addPending("call-1", metadata())
+        tracker.addPending("call-1")
         tracker.removePending("call-1")
         assertFalse(tracker.isPending("call-1"))
     }
 
     @Test
     fun `removePending — drainUnconnectedPendingCallIds excludes removed call`() {
-        tracker.addPending("call-1", metadata("call-1"))
-        tracker.addPending("call-2", metadata("call-2"))
+        tracker.addPending("call-1")
+        tracker.addPending("call-2")
         tracker.removePending("call-1")
         val drained = tracker.drainUnconnectedPendingCallIds()
         assertFalse(drained.contains("call-1"))
@@ -274,16 +274,16 @@ class MainProcessConnectionTrackerTest {
 
     @Test
     fun `drainUnconnectedPendingCallIds — returns all pending callIds`() {
-        tracker.addPending("call-1", metadata("call-1"))
-        tracker.addPending("call-2", metadata("call-2"))
+        tracker.addPending("call-1")
+        tracker.addPending("call-2")
         val drained = tracker.drainUnconnectedPendingCallIds()
         assertEquals(setOf("call-1", "call-2"), drained)
     }
 
     @Test
     fun `drainUnconnectedPendingCallIds — promoted calls are not drained`() {
-        tracker.addPending("call-pending", metadata("call-pending"))
-        tracker.addPending("call-promoted", metadata("call-promoted"))
+        tracker.addPending("call-pending")
+        tracker.addPending("call-promoted")
         tracker.promote("call-promoted", metadata("call-promoted"), PCallkeepConnectionState.STATE_RINGING)
         val drained = tracker.drainUnconnectedPendingCallIds()
         assertFalse(drained.contains("call-promoted"))
@@ -292,7 +292,7 @@ class MainProcessConnectionTrackerTest {
 
     @Test
     fun `drainUnconnectedPendingCallIds — subsequent isPending returns false`() {
-        tracker.addPending("call-1", metadata())
+        tracker.addPending("call-1")
         tracker.drainUnconnectedPendingCallIds()
         assertFalse(tracker.isPending("call-1"))
     }
@@ -300,7 +300,7 @@ class MainProcessConnectionTrackerTest {
     @Test
     fun `drainUnconnectedPendingCallIds — drained call never appeared in getAll`() {
         // Pending calls are not in connections, so getAll was already empty before drain.
-        tracker.addPending("call-1", metadata())
+        tracker.addPending("call-1")
         assertTrue(tracker.getAll().isEmpty())
         tracker.drainUnconnectedPendingCallIds()
         assertTrue(tracker.getAll().isEmpty())
@@ -312,7 +312,7 @@ class MainProcessConnectionTrackerTest {
 
     @Test
     fun `clear — resets all state`() {
-        tracker.addPending("call-1", metadata("call-1"))
+        tracker.addPending("call-1")
         tracker.promote("call-2", metadata("call-2"), PCallkeepConnectionState.STATE_RINGING)
         tracker.markAnswered("call-2")
         tracker.markTerminated("call-1")
@@ -336,7 +336,7 @@ class MainProcessConnectionTrackerTest {
         val id = "call-lifecycle"
         val meta = metadata(id)
 
-        tracker.addPending(id, meta)
+        tracker.addPending(id)
         assertTrue(tracker.isPending(id))
         assertFalse(tracker.exists(id))  // not yet promoted, so not in connections
 
