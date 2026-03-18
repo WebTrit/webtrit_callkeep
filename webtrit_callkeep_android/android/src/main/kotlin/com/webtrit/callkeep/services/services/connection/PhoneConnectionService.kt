@@ -82,7 +82,7 @@ class PhoneConnectionService : ConnectionService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action?.let { ServiceAction.from(it) } ?: run {
-            Log.w(TAG, "onStartCommand called with null intent or action, ignoring")
+            Log.w(TAG, "onStartCommand: unknown or missing action '${intent?.action}', ignoring")
             return START_NOT_STICKY
         }
         val metadata = intent.extras?.let { CallMetadata.fromBundle(it) }

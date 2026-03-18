@@ -4,10 +4,8 @@ enum class ServiceAction {
     HungUpCall, DeclineCall, AnswerCall, EstablishCall, Muting, Speaker, AudioDeviceSet, Holding, UpdateCall, SendDTMF, TearDown, TearDownConnections, ReserveAnswer, CleanConnections, SyncAudioState;
 
     companion object {
-        fun from(action: String?): ServiceAction {
-            return ServiceAction.entries.find { it.action == action }
-                ?: throw IllegalArgumentException("Unknown action: $action")
-        }
+        fun from(action: String?): ServiceAction? =
+            ServiceAction.entries.find { it.action == action }
     }
 
     // Explicit service intents target the component directly — the action string is only used
