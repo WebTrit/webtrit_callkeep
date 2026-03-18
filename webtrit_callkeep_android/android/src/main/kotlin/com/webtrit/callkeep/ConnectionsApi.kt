@@ -3,29 +3,22 @@ package com.webtrit.callkeep
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.toSignalingStatus
 import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
-import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
-import com.webtrit.callkeep.services.services.foreground.ConnectionTracker
-import com.webtrit.callkeep.services.services.foreground.MainProcessConnectionTracker
+import com.webtrit.callkeep.services.core.CallkeepCore
 
 class ConnectionsApi() : PHostConnectionsApi {
 
-    // Access the tracker through the interface type so that the concrete implementation
-    // can be swapped (e.g. a broadcast-backed variant after the :callkeep_core split)
-    // by changing only MainProcessConnectionTracker.instance — no call sites change.
-    private val tracker: ConnectionTracker = MainProcessConnectionTracker.instance
+    private val core: CallkeepCore = CallkeepCore.instance
 
     override fun getConnection(
         callId: String, callback: (Result<PCallkeepConnection?>) -> Unit
     ) {
-        // Read from the main-process tracker instead of crossing to PhoneConnectionService.
-        val connection = tracker.toPCallkeepConnection(callId)
+        val connection = core.toPCallkeepConnection(callId)
         callback.invoke(Result.success(connection))
     }
 
     override fun getConnections(callback: (Result<List<PCallkeepConnection>>) -> Unit) {
-        // Read from the main-process tracker instead of crossing to PhoneConnectionService.
-        val connections = tracker.getAll()
-            .mapNotNull { tracker.toPCallkeepConnection(it.callId) }
+        val connections = core.getAll()
+            .mapNotNull { core.toPCallkeepConnection(it.callId) }
         callback.invoke(Result.success(connections))
     }
 
@@ -39,11 +32,11 @@ class ConnectionsApi() : PHostConnectionsApi {
     override fun cleanConnections(
         callback: (Result<Unit>) -> Unit
     ) {
-        // Clear the tracker and send CleanConnections command to :callkeep_core via broadcast.
+        // Clear the shadow state and send CleanConnections command to :callkeep_core.
         // PhoneConnectionService handles it by calling connectionManager.cleanConnections()
         // on its own heap, which is safe cross-process after the split.
-        tracker.clear()
-        PhoneConnectionService.sendCleanConnections(ContextHolder.context)
+        core.clear()
+        core.sendCleanConnections()
         callback(Result.success(Unit))
     }
 }

@@ -41,8 +41,7 @@ import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
-import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
-import com.webtrit.callkeep.services.services.foreground.MainProcessConnectionTracker
+import com.webtrit.callkeep.services.core.CallkeepCore
 import java.util.Collections
 import java.util.concurrent.atomic.AtomicBoolean
 import com.webtrit.callkeep.services.services.signaling.workers.SignalingServiceBootWorker
@@ -204,14 +203,14 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
             ForegroundCallServiceEnums.DECLINE.action -> {
                 metadata?.let {
-                    PhoneConnectionService.startHungUpCall(baseContext, it)
+                    CallkeepCore.instance.startHungUpCall(it)
                     ensureNotification()
                 } ?: Log.w(TAG, "Missing metadata for DECLINE action")
             }
 
             ForegroundCallServiceEnums.ANSWER.action -> {
                 metadata?.let {
-                    PhoneConnectionService.startAnswerCall(baseContext, it)
+                    CallkeepCore.instance.startAnswerCall(it)
                     ensureNotification()
                 } ?: Log.w(TAG, "Missing metadata for ANSWER action")
             }
@@ -268,8 +267,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
             createdTime = System.currentTimeMillis()
         )
 
-        PhoneConnectionService.startIncomingCall(
-            context = baseContext,
+        CallkeepCore.instance.startIncomingCall(
             metadata = metadata,
             onSuccess = { callback(Result.success(Unit)) },
             onError = { error -> callback(Result.failure(Exception("Incoming call failed with error: $error"))) })
@@ -322,7 +320,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
             finish()
         }, END_CALL_TIMEOUT_MS)
 
-        PhoneConnectionService.startHungUpCall(baseContext, CallMetadata(callId = callId))
+        CallkeepCore.instance.startHungUpCall(CallMetadata(callId = callId))
     }
 
     /**
@@ -352,11 +350,11 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         // Including pending call IDs ensures we register a HungUp listener for them too;
         // the 5-second safety timeout handles the case where CS had no connection for a
         // pending ID (i.e. the call was truly still queued and tearDown clears it silently).
-        val tracker = MainProcessConnectionTracker.instance
-        val allCallIds = tracker.getAll().map { it.callId }.toSet() + tracker.getPendingCallIds()
+        val core = CallkeepCore.instance
+        val allCallIds = core.getAll().map { it.callId }.toSet() + core.getPendingCallIds()
 
         if (allCallIds.isEmpty()) {
-            PhoneConnectionService.tearDown(baseContext)
+            core.tearDownService()
             callback(Result.success(Unit))
             return
         }
@@ -390,7 +388,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
             finish()
         }, END_CALL_TIMEOUT_MS)
 
-        PhoneConnectionService.tearDown(baseContext)
+        CallkeepCore.instance.tearDownService()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
