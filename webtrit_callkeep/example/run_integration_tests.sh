@@ -63,10 +63,11 @@ for TEST_FILE in "${TESTS[@]}"; do
   if [[ "$FIRST" == "true" ]]; then
     FIRST=false
   else
-    # Standard inter-file cleanup: force-stop + 5s for Telecom to settle.
-    # callkeep_call_scenarios_test runs many answer/end cycles; Android Telecom
-    # may need extra time to process all disconnect events before the next file.
-    cleanup_device 5
+    # Standard inter-file cleanup: force-stop + 8s for Telecom to settle.
+    # Some test files run many answer/end cycles; Android Telecom needs time
+    # to process all disconnect events and release the UiAutomation connection
+    # before the next flutter test process can attach.
+    cleanup_device 8
   fi
 
   echo ""
@@ -81,7 +82,7 @@ for TEST_FILE in "${TESTS[@]}"; do
     # by residual Telecom state from the previous suite (app startup crash).
     echo ""
     echo "  [retry] Cleaning up and retrying $TEST_FILE ..."
-    cleanup_device 8
+    cleanup_device 15
     if run_test_file "$TEST_FILE"; then
       echo "  [retry] Passed on second attempt."
       PASS=$((PASS + 1))
