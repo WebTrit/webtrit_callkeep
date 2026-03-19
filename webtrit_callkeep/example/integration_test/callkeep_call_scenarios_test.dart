@@ -273,9 +273,9 @@ void main() {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Eve');
 
-      final answerLatch = Completer<String>();
+      final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
-        if (cid == id && !answerLatch.isCompleted) answerLatch.complete(cid);
+        if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
       await _waitFor(answerLatch.future, label: 'performAnswerCall');
@@ -309,9 +309,9 @@ void main() {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Frank');
 
-      final answerLatch = Completer<String>();
+      final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
-        if (cid == id && !answerLatch.isCompleted) answerLatch.complete(cid);
+        if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
       await _waitFor(answerLatch.future, label: 'performAnswerCall');
@@ -343,9 +343,9 @@ void main() {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Hank');
 
-      final answerLatch = Completer<String>();
+      final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
-        if (cid == id && !answerLatch.isCompleted) answerLatch.complete(cid);
+        if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
       await _waitFor(answerLatch.future, label: 'performAnswerCall');
@@ -366,9 +366,9 @@ void main() {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Irene');
 
-      final answerLatch = Completer<String>();
+      final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
-        if (cid == id && !answerLatch.isCompleted) answerLatch.complete(cid);
+        if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
       await _waitFor(answerLatch.future, label: 'performAnswerCall');
@@ -399,9 +399,9 @@ void main() {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Jack');
 
-      final answerLatch = Completer<String>();
+      final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
-        if (cid == id && !answerLatch.isCompleted) answerLatch.complete(cid);
+        if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
       await _waitFor(answerLatch.future, label: 'performAnswerCall');
@@ -437,9 +437,9 @@ void main() {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Kate');
 
-      final answerLatch = Completer<String>();
+      final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
-        if (cid == id && !answerLatch.isCompleted) answerLatch.complete(cid);
+        if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
       await _waitFor(answerLatch.future, label: 'performAnswerCall');
@@ -465,9 +465,9 @@ void main() {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Leo');
 
-      final answerLatch = Completer<String>();
+      final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
-        if (cid == id && !answerLatch.isCompleted) answerLatch.complete(cid);
+        if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
       await _waitFor(answerLatch.future, label: 'performAnswerCall');
@@ -537,9 +537,9 @@ void main() {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Olivia');
 
-      final answerLatch = Completer<String>();
+      final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
-        if (cid == id && !answerLatch.isCompleted) answerLatch.complete(cid);
+        if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
       await _waitFor(answerLatch.future, label: 'performAnswerCall');
@@ -560,9 +560,9 @@ void main() {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Paul');
 
-      final answerLatch = Completer<String>();
+      final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
-        if (cid == id && !answerLatch.isCompleted) answerLatch.complete(cid);
+        if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
       await _waitFor(answerLatch.future, label: 'performAnswerCall');
@@ -606,9 +606,9 @@ void main() {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Quinn');
 
-      final answerLatch = Completer<String>();
+      final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
-        if (cid == id && !answerLatch.isCompleted) answerLatch.complete(cid);
+        if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
       await _waitFor(answerLatch.future, label: 'performAnswerCall');
@@ -931,6 +931,419 @@ void main() {
 
       final secondErr = await callkeep.endCall(id);
       expect(secondErr, isNotNull);
+    });
+
+    test('answerCall on a call already ended via endCall returns error', () async {
+      // Mirrors CallBloc defensive check: state.retrieveActiveCall returns null
+      final id = _nextId();
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Dora');
+
+      final endLatch = Completer<void>();
+      delegate.onPerformEndCall = (cid) {
+        if (cid == id && !endLatch.isCompleted) endLatch.complete();
+      };
+      await callkeep.endCall(id);
+      await _waitFor(endLatch.future, label: 'performEndCall');
+
+      final err = await callkeep.answerCall(id);
+      expect(err, isNotNull);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Operations after reportEndCall
+  // -------------------------------------------------------------------------
+
+  group('operations after reportEndCall', () {
+    test('endCall after reportEndCall(remoteEnded) completes safely', () async {
+      final id = _nextId();
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Ellis');
+
+      final answerLatch = Completer<void>();
+      delegate.onPerformAnswerCall = (cid) {
+        if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
+      };
+      await callkeep.answerCall(id);
+      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+
+      await callkeep.reportEndCall(id, 'Ellis', CallkeepEndCallReason.remoteEnded);
+      await Future.delayed(const Duration(milliseconds: 400));
+
+      // Must not throw
+      await expectLater(callkeep.endCall(id), completes);
+    });
+
+    test('setHeld after reportEndCall(remoteEnded) completes safely', () async {
+      final id = _nextId();
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Flora');
+
+      final answerLatch = Completer<void>();
+      delegate.onPerformAnswerCall = (cid) {
+        if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
+      };
+      await callkeep.answerCall(id);
+      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+
+      await callkeep.reportEndCall(id, 'Flora', CallkeepEndCallReason.remoteEnded);
+      await Future.delayed(const Duration(milliseconds: 400));
+
+      await expectLater(callkeep.setHeld(id, onHold: true), completes);
+    });
+
+    test('setMuted after reportEndCall(remoteEnded) completes safely', () async {
+      final id = _nextId();
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Glen');
+
+      final answerLatch = Completer<void>();
+      delegate.onPerformAnswerCall = (cid) {
+        if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
+      };
+      await callkeep.answerCall(id);
+      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+
+      await callkeep.reportEndCall(id, 'Glen', CallkeepEndCallReason.remoteEnded);
+      await Future.delayed(const Duration(milliseconds: 400));
+
+      await expectLater(callkeep.setMuted(id, muted: true), completes);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Additional DTMF tones (extend existing group)
+  // -------------------------------------------------------------------------
+
+  group('DTMF extended keys', () {
+    test("DTMF key '0' fires performSendDTMF with '0'", () async {
+      final id = _nextId();
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Helen');
+
+      final answerLatch = Completer<void>();
+      delegate.onPerformAnswerCall = (cid) {
+        if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
+      };
+      await callkeep.answerCall(id);
+      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+
+      final dtmfLatch = Completer<String>();
+      delegate.onPerformSendDTMF = (cid, key) {
+        if (cid == id && !dtmfLatch.isCompleted) dtmfLatch.complete(key);
+      };
+      await callkeep.sendDTMF(id, '0');
+
+      final key = await _waitFor(dtmfLatch.future, label: 'performSendDTMF 0');
+      expect(key, '0');
+    });
+
+    test("DTMF key '*' fires performSendDTMF with '*'", () async {
+      final id = _nextId();
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Ivan');
+
+      final answerLatch = Completer<void>();
+      delegate.onPerformAnswerCall = (cid) {
+        if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
+      };
+      await callkeep.answerCall(id);
+      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+
+      final dtmfLatch = Completer<String>();
+      delegate.onPerformSendDTMF = (cid, key) {
+        if (cid == id && !dtmfLatch.isCompleted) dtmfLatch.complete(key);
+      };
+      await callkeep.sendDTMF(id, '*');
+
+      final key = await _waitFor(dtmfLatch.future, label: 'performSendDTMF *');
+      expect(key, '*');
+    });
+
+    test("DTMF key '#' fires performSendDTMF with '#'", () async {
+      final id = _nextId();
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Jane');
+
+      final answerLatch = Completer<void>();
+      delegate.onPerformAnswerCall = (cid) {
+        if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
+      };
+      await callkeep.answerCall(id);
+      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+
+      final dtmfLatch = Completer<String>();
+      delegate.onPerformSendDTMF = (cid, key) {
+        if (cid == id && !dtmfLatch.isCompleted) dtmfLatch.complete(key);
+      };
+      await callkeep.sendDTMF(id, '#');
+
+      final key = await _waitFor(dtmfLatch.future, label: 'performSendDTMF #');
+      expect(key, '#');
+    });
+
+    test('DTMF keys A, B, C, D are each delivered in order', () async {
+      final id = _nextId();
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Karl');
+
+      final answerLatch = Completer<void>();
+      delegate.onPerformAnswerCall = (cid) {
+        if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
+      };
+      await callkeep.answerCall(id);
+      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+
+      final receivedKeys = <String>[];
+      final allDone = Completer<void>();
+      delegate.onPerformSendDTMF = (cid, key) {
+        if (cid == id) {
+          receivedKeys.add(key);
+          if (receivedKeys.length == 4 && !allDone.isCompleted) allDone.complete();
+        }
+      };
+
+      await callkeep.sendDTMF(id, 'A');
+      await callkeep.sendDTMF(id, 'B');
+      await callkeep.sendDTMF(id, 'C');
+      await callkeep.sendDTMF(id, 'D');
+
+      await _waitFor(allDone.future, label: 'all DTMF A-D events');
+      expect(receivedKeys, equals(['A', 'B', 'C', 'D']));
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // reportNewIncomingCall with no displayName
+  // -------------------------------------------------------------------------
+
+  group('reportNewIncomingCall with no displayName', () {
+    test('reportNewIncomingCall with displayName omitted does not return error', () async {
+      final id = _nextId();
+      final err = await callkeep.reportNewIncomingCall(id, _handle1);
+      expect(err, isNull);
+    });
+
+    test('reportNewIncomingCall with displayName null and hasVideo true does not return error', () async {
+      final id = _nextId();
+      final err = await callkeep.reportNewIncomingCall(id, _handle1, hasVideo: true);
+      expect(err, isNull);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // reportUpdateCall with handle and flags
+  // -------------------------------------------------------------------------
+
+  group('reportUpdateCall with handle and flags', () {
+    test('reportUpdateCall with hasVideo=true completes', () async {
+      final id = _nextId();
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Lena');
+      await expectLater(callkeep.reportUpdateCall(id, hasVideo: true), completes);
+    });
+
+    test('reportUpdateCall with handle change completes', () async {
+      final id = _nextId();
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Mike');
+      await expectLater(
+        callkeep.reportUpdateCall(id, handle: const CallkeepHandle.number('380000000099')),
+        completes,
+      );
+    });
+
+    test('reportUpdateCall with proximityEnabled=true completes', () async {
+      final id = _nextId();
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Nora');
+      await expectLater(callkeep.reportUpdateCall(id, proximityEnabled: true), completes);
+    });
+
+    test('reportUpdateCall with all fields set at once completes', () async {
+      final id = _nextId();
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Oscar');
+      await expectLater(
+        callkeep.reportUpdateCall(
+          id,
+          handle: const CallkeepHandle.number('380000000088'),
+          displayName: 'Oscar Updated',
+          hasVideo: true,
+          proximityEnabled: true,
+        ),
+        completes,
+      );
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Outgoing call extended (Android only)
+  // -------------------------------------------------------------------------
+
+  group('outgoing call extended (Android only)', () {
+    test('startCall with hasVideo=true fires performStartCall', () async {
+      if (!Platform.isAndroid) {
+        markTestSkipped('Android only');
+        return;
+      }
+      globalTearDownNeeded = false;
+      final id = _nextId();
+
+      final latch = Completer<String>();
+      delegate.onPerformStartCall = (cid) {
+        if (cid == id && !latch.isCompleted) latch.complete(cid);
+      };
+
+      final err = await callkeep.startCall(id, _handle1, displayNameOrContactIdentifier: 'Pat', hasVideo: true);
+      expect(err, isNull, reason: 'startCall with hasVideo must succeed');
+
+      final started = await _waitFor(latch.future, label: 'performStartCall hasVideo');
+      expect(started, id);
+
+      final endLatch = Completer<void>();
+      delegate.onPerformEndCall = (cid) {
+        if (cid == id && !endLatch.isCompleted) endLatch.complete();
+      };
+      await callkeep.endCall(id);
+      await _waitFor(endLatch.future, label: 'performEndCall');
+      await callkeep.tearDown();
+    });
+
+    test('startCall with proximityEnabled=true completes', () async {
+      if (!Platform.isAndroid) {
+        markTestSkipped('Android only');
+        return;
+      }
+      globalTearDownNeeded = false;
+      final id = _nextId();
+
+      final latch = Completer<void>();
+      delegate.onPerformStartCall = (cid) {
+        if (cid == id && !latch.isCompleted) latch.complete();
+      };
+
+      await expectLater(
+        callkeep.startCall(id, _handle1, displayNameOrContactIdentifier: 'Quinn', proximityEnabled: true),
+        completes,
+      );
+
+      final endLatch = Completer<void>();
+      delegate.onPerformEndCall = (cid) {
+        if (cid == id && !endLatch.isCompleted) endLatch.complete();
+      };
+      await callkeep.endCall(id);
+      try {
+        await _waitFor(endLatch.future, label: 'performEndCall');
+      } catch (_) {}
+      await callkeep.tearDown();
+    });
+
+    test('full outgoing sequence: start + connect + hold + DTMF + unhold + end', () async {
+      if (!Platform.isAndroid) {
+        markTestSkipped('Android only');
+        return;
+      }
+      globalTearDownNeeded = false;
+      final id = _nextId();
+
+      final startLatch = Completer<void>();
+      delegate.onPerformStartCall = (cid) {
+        if (cid == id && !startLatch.isCompleted) startLatch.complete();
+      };
+      await callkeep.startCall(id, _handle1, displayNameOrContactIdentifier: 'Rose');
+      await _waitFor(startLatch.future, label: 'performStartCall');
+
+      await callkeep.reportConnectingOutgoingCall(id);
+      await callkeep.reportConnectedOutgoingCall(id);
+
+      // Hold
+      final holdLatch = Completer<void>();
+      delegate.onPerformSetHeld = (cid, onHold) {
+        if (cid == id && onHold && !holdLatch.isCompleted) holdLatch.complete();
+      };
+      await callkeep.setHeld(id, onHold: true);
+      await _waitFor(holdLatch.future, label: 'performSetHeld(true) outgoing');
+
+      // DTMF
+      final dtmfLatch = Completer<String>();
+      delegate.onPerformSendDTMF = (cid, key) {
+        if (cid == id && !dtmfLatch.isCompleted) dtmfLatch.complete(key);
+      };
+      await callkeep.sendDTMF(id, '9');
+      await _waitFor(dtmfLatch.future, label: 'performSendDTMF outgoing');
+
+      // Unhold
+      final unholdLatch = Completer<void>();
+      delegate.onPerformSetHeld = (cid, onHold) {
+        if (cid == id && !onHold && !unholdLatch.isCompleted) unholdLatch.complete();
+      };
+      await callkeep.setHeld(id, onHold: false);
+      await _waitFor(unholdLatch.future, label: 'performSetHeld(false) outgoing');
+
+      // End
+      final endLatch = Completer<void>();
+      delegate.onPerformEndCall = (cid) {
+        if (cid == id && !endLatch.isCompleted) endLatch.complete();
+      };
+      await callkeep.endCall(id);
+      await _waitFor(endLatch.future, label: 'performEndCall outgoing full');
+      await callkeep.tearDown();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Handle type diversity (Android only)
+  // -------------------------------------------------------------------------
+
+  group('handle type diversity (Android only)', () {
+    test('reportNewIncomingCall with CallkeepHandle.generic reports without error', () async {
+      if (!Platform.isAndroid) {
+        markTestSkipped('Android only');
+        return;
+      }
+      final id = _nextId();
+      final err = await callkeep.reportNewIncomingCall(
+        id,
+        const CallkeepHandle.generic('generic-user-id'),
+        displayName: 'Steve',
+      );
+      expect(err, isNull);
+    });
+
+    test('reportNewIncomingCall with CallkeepHandle.email reports without error', () async {
+      if (!Platform.isAndroid) {
+        markTestSkipped('Android only');
+        return;
+      }
+      final id = _nextId();
+      final err = await callkeep.reportNewIncomingCall(
+        id,
+        const CallkeepHandle.email('test@example.com'),
+        displayName: 'Tina',
+      );
+      expect(err, isNull);
+    });
+
+    test('startCall with CallkeepHandle.generic fires performStartCall', () async {
+      if (!Platform.isAndroid) {
+        markTestSkipped('Android only');
+        return;
+      }
+      globalTearDownNeeded = false;
+      final id = _nextId();
+
+      final latch = Completer<String>();
+      delegate.onPerformStartCall = (cid) {
+        if (cid == id && !latch.isCompleted) latch.complete(cid);
+      };
+
+      final err = await callkeep.startCall(
+        id,
+        const CallkeepHandle.generic('sip:user@domain.com'),
+        displayNameOrContactIdentifier: 'Uma',
+      );
+      expect(err, isNull, reason: 'startCall with generic handle must succeed');
+
+      final started = await _waitFor(latch.future, label: 'performStartCall generic handle');
+      expect(started, id);
+
+      final endLatch = Completer<void>();
+      delegate.onPerformEndCall = (cid) {
+        if (cid == id && !endLatch.isCompleted) endLatch.complete();
+      };
+      await callkeep.endCall(id);
+      await _waitFor(endLatch.future, label: 'performEndCall');
+      await callkeep.tearDown();
     });
   });
 }
