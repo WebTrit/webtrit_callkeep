@@ -22,6 +22,7 @@ import com.webtrit.callkeep.PEndCallReason
 import com.webtrit.callkeep.PHandle
 import com.webtrit.callkeep.PHostApi
 import com.webtrit.callkeep.PIncomingCallError
+import com.webtrit.callkeep.PIncomingCallErrorEnum
 import com.webtrit.callkeep.POptions
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.Log
@@ -82,11 +83,6 @@ class ForegroundService : Service(), PHostApi {
     // when startCall() is invoked again with the same callId.
     private val pendingCallCleanupsByCallId: ConcurrentHashMap<String, () -> Unit> = ConcurrentHashMap()
 
-    // Call IDs for which performEndCall was fired directly in tearDown().
-    // Used to suppress the subsequent stale async HungUp broadcast that arrives
-    // via connectionServicePerformReceiver after the new session has already started.
-    private val directNotifiedCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
-
     private var _flutterDelegateApi: PDelegateFlutterApi? = null
     var flutterDelegateApi: PDelegateFlutterApi?
         get() = _flutterDelegateApi
@@ -105,6 +101,7 @@ class ForegroundService : Service(), PHostApi {
 
                 CallLifecycleEvent.DeclineCall.name -> handleCSReportDeclineCall(intent.extras)
                 CallLifecycleEvent.HungUp.name -> handleCSReportDeclineCall(intent.extras)
+                CallLifecycleEvent.ConnectionNotFound.name -> handleCSReportDeclineCall(intent.extras)
                 CallLifecycleEvent.AnswerCall.name -> handleCSReportAnswerCall(intent.extras)
                 CallMediaEvent.AudioDeviceSet.name -> handleCSReportAudioDeviceSet(intent.extras)
                 CallMediaEvent.AudioDevicesUpdate.name -> handleCsReportAudioDevicesUpdate(intent.extras)
@@ -122,11 +119,12 @@ class ForegroundService : Service(), PHostApi {
         logger.d("onCreate")
         // Register only the events that connectionServicePerformReceiver actually handles.
         // OngoingCall/OutgoingFailure go to per-call receivers in startCall().
-        // IncomingFailure/ConnectionNotFound are not handled here and are excluded to avoid noise.
+        // IncomingFailure is not handled here and is excluded to avoid noise.
         val globalEvents: List<ConnectionEvent> = listOf(
             CallLifecycleEvent.DidPushIncomingCall,
             CallLifecycleEvent.DeclineCall,
             CallLifecycleEvent.HungUp,
+            CallLifecycleEvent.ConnectionNotFound,
             CallLifecycleEvent.AnswerCall,
             CallMediaEvent.AudioDeviceSet,
             CallMediaEvent.AudioDevicesUpdate,
@@ -324,6 +322,25 @@ class ForegroundService : Service(), PHostApi {
     ) {
         logger.i("reportNewIncomingCall: callId=$callId, handle=$handle")
 
+        // Query tracker state BEFORE addPending, which resets lifecycle flags (answeredCallIds,
+        // terminatedCallIds). MainProcessConnectionTracker is the authoritative view of call state
+        // in the main process, updated via broadcasts from :callkeep_core. In contrast,
+        // checkAndReservePending (inside startIncomingCall) only checks
+        // PhoneConnectionService.connectionManager, which is isolated from :callkeep_core and
+        // is never updated with answered/terminated transitions — so it cannot detect these states.
+        val trackerError: PIncomingCallError? = when {
+            core.isTerminated(callId) ->
+                PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED)
+            core.isAnswered(callId) ->
+                PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED)
+            else -> null
+        }
+        if (trackerError != null) {
+            logger.w("reportNewIncomingCall: rejecting callId=$callId, tracker state=${trackerError.value}")
+            callback(Result.success(trackerError))
+            return
+        }
+
         val ringtonePath = StorageDelegate.Sound.getRingtonePath(baseContext)
 
         val metadata = CallMetadata(
@@ -345,6 +362,11 @@ class ForegroundService : Service(), PHostApi {
             metadata = metadata,
             onSuccess = {
                 logger.d("reportNewIncomingCall: startIncomingCall success callId=$callId")
+                // Mark this callId as signaling-registered so that the DidPushIncomingCall
+                // broadcast (which arrives later via the :callkeep_core IPC round-trip) does
+                // not fire an additional didPushIncomingCall Pigeon call. Flutter already
+                // learns about this call from __onCallSignalingEventIncoming.
+                core.markSignalingRegistered(callId)
                 callback(Result.success(null))
             },
             onError = { error ->
@@ -376,10 +398,8 @@ class ForegroundService : Service(), PHostApi {
         // Solution: fire performEndCall directly here, register each callId in
         // directNotifiedCallIds so the stale async HungUp broadcast is suppressed
         // in handleCSReportDeclineCall.
-        // Clear stale entries from previous sessions. If a broadcast for a prior session's
-        // callId never arrived, those entries would linger indefinitely and could suppress
-        // legitimate broadcasts if callIds are ever reused.
-        directNotifiedCallIds.clear()
+        // core.clear() at the end of tearDown handles all per-session state including
+        // callback guards (directNotified, endCallDispatched, signalingRegistered).
 
         // Step 1: Collect active call IDs from the core shadow state (promoted connections).
         val activeCallIds = core.getAll().map { it.callId }
@@ -388,20 +408,20 @@ class ForegroundService : Service(), PHostApi {
         // PhoneConnection was never created (no DidPushIncomingCall received yet).
         val unconnectedPending = core.drainUnconnectedPendingCallIds()
 
-        // Step 3: Notify Flutter for active connections. Register in directNotifiedCallIds
+        // Step 3: Notify Flutter for active connections. Mark in directNotified
         // BEFORE calling connection.hungUp() so the async HungUp broadcast is suppressed.
         activeCallIds.forEach { callId ->
-            directNotifiedCallIds.add(callId)
+            core.markDirectNotified(callId)
             flutterDelegateApi?.performEndCall(callId) {}
         }
 
         // Step 4: Notify Flutter for pending-only calls.
-        // Register in directNotifiedCallIds BEFORE firing performEndCall so that any async
-        // HungUp broadcast from connection.hungUp() (Step 5) is suppressed — this happens
-        // when the deferred-answer path caused CS to create a PhoneConnection via reserveAnswer
+        // Mark in directNotified BEFORE firing performEndCall so that any async HungUp
+        // broadcast from connection.hungUp() (Step 5) is suppressed — this happens when
+        // the deferred-answer path caused CS to create a PhoneConnection via reserveAnswer
         // even though DidPushIncomingCall had not yet arrived and the callId was still pending.
         unconnectedPending.forEach { callId ->
-            directNotifiedCallIds.add(callId)
+            core.markDirectNotified(callId)
             flutterDelegateApi?.performEndCall(callId) {}
         }
 
@@ -551,10 +571,21 @@ class ForegroundService : Service(), PHostApi {
     override fun endCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit) {
         logger.i("endCall $callId.")
         if (core.isTerminated(callId)) {
-            logger.w("endCall: connection $callId is already terminated (core shadow).")
+            // Re-fire performEndCall only on the first endCall for a Telecom-terminated call
+            // (e.g. onCreateIncomingConnectionFailed fired before the Dart callback was registered).
+            // markEndCallDispatched guards against a second explicit endCall() re-firing the event
+            // and inflating the delegate's endCallIds count.
+            val isFirstEndCall = core.markEndCallDispatched(callId)
+            if (isFirstEndCall) {
+                logger.w("endCall: $callId terminated by Telecom before endCall was dispatched — re-notifying Flutter.")
+                flutterDelegateApi?.performEndCall(callId) {}
+            } else {
+                logger.w("endCall: $callId already terminated and endCall was already dispatched — returning error without re-notifying.")
+            }
             callback.invoke(Result.success(PCallRequestError(PCallRequestErrorEnum.UNKNOWN_CALL_UUID)))
             return
         }
+        core.markEndCallDispatched(callId)
         val metadata = CallMetadata(callId = callId)
         core.startHungUpCall(metadata)
         callback.invoke(Result.success(null))
@@ -618,6 +649,20 @@ class ForegroundService : Service(), PHostApi {
             val metadata = CallMetadata.fromBundle(it)
             // Promote from pending to fully registered incoming connection.
             core.promote(metadata.callId, metadata, PCallkeepConnectionState.STATE_RINGING)
+
+            // If this call was registered via reportNewIncomingCall (the foreground signaling
+            // path), Flutter already knows about it through __onCallSignalingEventIncoming.
+            // Suppress didPushIncomingCall to prevent a duplicate push-path entry (line -1)
+            // from being added to state.activeCalls alongside the existing signaling entry
+            // (line 0). In the :callkeep_core separate-process architecture, this broadcast
+            // arrives AFTER the reportNewIncomingCall Pigeon response (IPC round-trip latency),
+            // so without this guard the push-path handler always runs after the signaling
+            // handler and creates a second ActiveCall for the same callId.
+            if (core.consumeSignalingRegistered(metadata.callId)) {
+                logger.d("handleCSReportDidPushIncomingCall: suppressing didPushIncomingCall for signaling-registered call ${metadata.callId}")
+                return@let
+            }
+
             flutterDelegateApi?.didPushIncomingCall(
                 handleArg = metadata.handle!!.toPHandle(),
                 displayNameArg = metadata.displayName,
@@ -634,11 +679,15 @@ class ForegroundService : Service(), PHostApi {
             val callMetaData = CallMetadata.fromBundle(it)
             val callId = callMetaData.callId
 
+            // consumeSignalingRegistered cleans up any pending signaling guard for this
+            // callId (edge case: call terminates before DidPushIncomingCall arrives).
+            core.consumeSignalingRegistered(callId)
+
             // Suppress stale async HungUp/Decline broadcasts for calls that were already
             // directly notified via performEndCall in tearDown(). Without this guard, the
             // broadcast from the previous session's connection.hungUp() arrives after the
             // new session's delegate is set and fires performEndCall for the wrong callId.
-            if (directNotifiedCallIds.remove(callId)) {
+            if (core.consumeDirectNotified(callId)) {
                 logger.d("handleCSReportDeclineCall: suppressing stale broadcast for callId=$callId (already notified directly)")
                 return@let
             }

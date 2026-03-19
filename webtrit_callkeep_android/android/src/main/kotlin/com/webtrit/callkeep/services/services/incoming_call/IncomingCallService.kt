@@ -9,6 +9,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import androidx.annotation.Keep
+import androidx.core.content.ContextCompat
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.common.ContextHolder
@@ -230,14 +231,25 @@ class IncomingCallService : Service() {
         // During this time, the notification is replaced with a special "release" notification
         // using IncomingCallNotificationBuilder.buildReleaseNotification to inform the user that the call is being finalized.
         fun release(context: Context, type: IncomingCallRelease) {
-            if (isRunning) {
-                context.startService(
-                    Intent(
-                        context, IncomingCallService::class.java
-                    ).apply { this.action = type.name })
-                Log.d(TAG, "Service is running. Release action $type initiated.")
-            } else {
-                Log.w(TAG, "Service is not running. Release action $type ignored.")
+            // Do NOT guard on isRunning here. isRunning is a static field set only in the
+            // main-process JVM. After the :callkeep_core process split, PhoneConnection
+            // (which runs in :callkeep_core) calls this method; in that JVM isRunning is
+            // always false, so the guard would silently drop every cancel request and leave
+            // the incoming-call notification frozen after answer/decline.
+            //
+            // Sending the intent unconditionally is safe:
+            //  - If IncomingCallService IS running (main process) it receives the release action.
+            //  - If it is NOT running, startService either fails silently (background start
+            //    restrictions on API 26+) or starts the service briefly; handleRelease returns
+            //    early because lastMetadata is null, and the 2-second stopSelf timeout fires.
+            runCatching {
+                ContextCompat.startForegroundService(
+                    context,
+                    Intent(context, IncomingCallService::class.java).apply { this.action = type.name }
+                )
+                Log.d(TAG, "Release action $type initiated.")
+            }.onFailure { e ->
+                Log.w(TAG, "Release action $type: startForegroundService failed: $e")
             }
         }
     }

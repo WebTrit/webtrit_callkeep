@@ -123,6 +123,7 @@ class PhoneConnection internal constructor(
         logger.d("Showing incoming call UI for callId: $callId")
         notificationManager.showIncomingCallNotification(metadata)
         audioManager.startRingtone(metadata.ringtonePath)
+        dispatcher(CallLifecycleEvent.DidPushIncomingCall, metadata)
     }
 
     /**

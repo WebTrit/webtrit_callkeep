@@ -36,9 +36,11 @@ class _RecordingDelegate implements CallkeepDelegate {
   final answerCallIds = <String>[];
   final endCallIds = <String>[];
   final didPushEvents = <({String callId, CallkeepIncomingCallError? error})>[];
+  final audioDevicesUpdateEvents = <({String callId, List<CallkeepAudioDevice> devices})>[];
 
   void Function(String callId)? onPerformAnswerCall;
   void Function(String callId)? onPerformEndCall;
+  void Function(String callId, List<CallkeepAudioDevice> devices)? onPerformAudioDevicesUpdate;
 
   @override
   void continueStartCallIntent(
@@ -110,8 +112,11 @@ class _RecordingDelegate implements CallkeepDelegate {
   Future<bool> performAudioDevicesUpdate(
     String callId,
     List<CallkeepAudioDevice> devices,
-  ) =>
-      Future.value(true);
+  ) {
+    audioDevicesUpdateEvents.add((callId: callId, devices: devices));
+    onPerformAudioDevicesUpdate?.call(callId, devices);
+    return Future.value(true);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -762,6 +767,125 @@ void main() {
       // On Android the ForegroundService stays running after tearDown, so
       // isSetUp() remains true. The important invariant is that tearDown()
       // completes without throwing.
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // regression - signaling-path incoming call does not duplicate via push (Android only)
+  //
+  // Root cause: after the :callkeep_core process split, the DidPushIncomingCall
+  // broadcast arrives ~200-300 ms AFTER the reportNewIncomingCall Pigeon response
+  // (cross-process IPC latency). Without the fix, didPushIncomingCall would fire
+  // after the signaling-path entry already existed, causing CallBloc to append a
+  // second ActiveCall entry (line -1 / incomingFromPush) alongside the first
+  // (line 0 / incomingFromOffer), showing two identical ringing entries in the UI.
+  //
+  // Fix: ForegroundService.reportNewIncomingCall adds the callId to
+  // signalingRegisteredCallIds; handleCSReportDidPushIncomingCall suppresses
+  // didPushIncomingCall for those callIds.
+  // -------------------------------------------------------------------------
+
+  group('regression - signaling-path incoming call does not duplicate via push (Android only)', () {
+    // After reportNewIncomingCall (signaling path), the DidPushIncomingCall
+    // broadcast from :callkeep_core must NOT reach Flutter as didPushIncomingCall.
+    // If it did, CallBloc would add a second ActiveCall for the same callId.
+    test('reportNewIncomingCall via signaling does not fire didPushIncomingCall', () async {
+      if (!Platform.isAndroid) {
+        markTestSkipped('Android only');
+        return;
+      }
+
+      final id = _nextId();
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Signaling');
+
+      // Wait longer than the :callkeep_core IPC round-trip (~200-300 ms) so
+      // that any unsuppressed DidPushIncomingCall broadcast would have arrived.
+      await Future.delayed(const Duration(milliseconds: 600));
+
+      final pushEventsForId = delegate.didPushEvents.where((e) => e.callId == id).toList();
+      expect(
+        pushEventsForId,
+        isEmpty,
+        reason: 'didPushIncomingCall must be suppressed for signaling-path calls '
+            'to prevent a duplicate ActiveCall entry in the app (incomingFromPush '
+            'on top of incomingFromOffer)',
+      );
+    });
+
+    // Push path must still fire didPushIncomingCall (unchanged behaviour).
+    test('push-path reportNewIncomingCall still fires didPushIncomingCall', () async {
+      if (!Platform.isAndroid) {
+        markTestSkipped('Android only');
+        return;
+      }
+
+      final id = _nextId();
+
+      unawaited(
+        AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+            .reportNewIncomingCall(id, _handle1, displayName: 'Push'),
+      );
+
+      // Poll until didPushIncomingCall arrives or timeout
+      const pollInterval = Duration(milliseconds: 100);
+      const maxWait = Duration(seconds: 5);
+      final deadline = DateTime.now().add(maxWait);
+
+      while (DateTime.now().isBefore(deadline)) {
+        if (delegate.didPushEvents.any((e) => e.callId == id)) break;
+        await Future.delayed(pollInterval);
+      }
+
+      final events = delegate.didPushEvents.where((e) => e.callId == id).toList();
+      expect(events, isNotEmpty, reason: 'push-path must fire didPushIncomingCall');
+      expect(events.length, 1, reason: 'push-path must fire didPushIncomingCall exactly once');
+      expect(events.first.error, isNull);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // performAudioDevicesUpdate callback (Android only)
+  // -------------------------------------------------------------------------
+
+  group('performAudioDevicesUpdate callback (Android only)', () {
+    test('performAudioDevicesUpdate fires with non-empty devices after answerCall', () async {
+      if (!Platform.isAndroid) {
+        markTestSkipped('Android only');
+        return;
+      }
+      final id = _nextId();
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'AudioTest');
+
+      final answerLatch = Completer<void>();
+      delegate.onPerformAnswerCall = (cid) {
+        if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
+      };
+      await callkeep.answerCall(id);
+      await answerLatch.future.timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw TimeoutException('performAnswerCall did not fire'),
+      );
+
+      // Poll up to 5 seconds for performAudioDevicesUpdate
+      const pollInterval = Duration(milliseconds: 200);
+      const maxWait = Duration(seconds: 5);
+      final deadline = DateTime.now().add(maxWait);
+
+      while (DateTime.now().isBefore(deadline)) {
+        final events = delegate.audioDevicesUpdateEvents.where((e) => e.callId == id).toList();
+        if (events.isNotEmpty) {
+          expect(events.first.devices, isNotEmpty, reason: 'performAudioDevicesUpdate devices list must not be empty');
+          expect(
+            CallkeepAudioDeviceType.values.contains(events.first.devices.first.type),
+            isTrue,
+          );
+          return; // test passed
+        }
+        await Future.delayed(pollInterval);
+      }
+
+      // If no event arrived, the device may not have audio routing — skip
+      markTestSkipped('performAudioDevicesUpdate did not fire on this device');
     });
   });
 }

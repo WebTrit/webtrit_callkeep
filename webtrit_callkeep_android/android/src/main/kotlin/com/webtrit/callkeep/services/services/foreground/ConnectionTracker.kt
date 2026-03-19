@@ -60,6 +60,47 @@ interface ConnectionTracker {
     fun clear()
 
     // -------------------------------------------------------------------------
+    // Callback guards (moved from ForegroundService)
+    // These track which Pigeon callbacks have already been dispatched so that
+    // duplicate or stale events are suppressed without per-field clear() calls.
+    // -------------------------------------------------------------------------
+
+    /**
+     * Mark [callId] as directly notified via performEndCall inside tearDown().
+     * Suppresses the subsequent stale async HungUp broadcast that would otherwise
+     * fire performEndCall a second time on the new session's delegate.
+     */
+    fun markDirectNotified(callId: String)
+
+    /**
+     * Returns true and removes the mark if [callId] was directly notified.
+     * Consuming the mark on first read prevents repeated suppression across sessions.
+     */
+    fun consumeDirectNotified(callId: String): Boolean
+
+    /**
+     * Mark [callId] as having had endCall() dispatched (HungUpCall IPC sent, or
+     * performEndCall re-fired for a Telecom-terminated call). Prevents a second
+     * explicit endCall() from re-firing performEndCall.
+     * Returns true if newly marked, false if already present.
+     */
+    fun markEndCallDispatched(callId: String): Boolean
+
+    /**
+     * Mark [callId] as registered via ForegroundService.reportNewIncomingCall
+     * (the foreground signaling path). Suppresses the DidPushIncomingCall broadcast
+     * that follows via the :callkeep_core IPC round-trip, preventing a duplicate
+     * push-path ActiveCall entry in the app's call state.
+     */
+    fun markSignalingRegistered(callId: String)
+
+    /**
+     * Returns true and removes the mark if [callId] was signaling-registered.
+     * Consuming on first read ensures the guard fires at most once per call.
+     */
+    fun consumeSignalingRegistered(callId: String): Boolean
+
+    // -------------------------------------------------------------------------
     // Read operations
     // -------------------------------------------------------------------------
 
