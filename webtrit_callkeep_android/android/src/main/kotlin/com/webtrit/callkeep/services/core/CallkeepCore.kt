@@ -65,6 +65,16 @@ interface CallkeepCore {
     fun clear()
 
     // -------------------------------------------------------------------------
+    // Callback guards
+    // -------------------------------------------------------------------------
+
+    fun markDirectNotified(callId: String)
+    fun consumeDirectNotified(callId: String): Boolean
+    fun markEndCallDispatched(callId: String): Boolean
+    fun markSignalingRegistered(callId: String)
+    fun consumeSignalingRegistered(callId: String): Boolean
+
+    // -------------------------------------------------------------------------
     // CS commands
     // -------------------------------------------------------------------------
 

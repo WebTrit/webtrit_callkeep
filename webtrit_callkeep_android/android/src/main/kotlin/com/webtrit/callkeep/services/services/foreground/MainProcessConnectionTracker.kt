@@ -41,6 +41,24 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
     // callIds for which answerCall was requested before the PhoneConnection was created
     private val pendingAnswers: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
+    // -------------------------------------------------------------------------
+    // Callback guards (moved from ForegroundService)
+    // -------------------------------------------------------------------------
+
+    // callIds whose termination was directly notified via performEndCall in tearDown().
+    // Suppresses the stale async HungUp broadcast that arrives after the new session starts.
+    private val directNotifiedCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
+    // callIds for which endCall() has already dispatched a HungUpCall IPC or re-fired
+    // performEndCall for a Telecom-terminated call. Prevents duplicate performEndCall.
+    private val endCallDispatchedCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
+    // callIds successfully registered via ForegroundService.reportNewIncomingCall
+    // (foreground signaling path). Suppresses the DidPushIncomingCall broadcast that
+    // follows via the :callkeep_core IPC round-trip, preventing a duplicate push-path
+    // ActiveCall entry alongside the signaling-path entry.
+    private val signalingRegisteredCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
     // last known Pigeon connection state per callId, kept for getConnections() queries
     private val connectionStates = ConcurrentHashMap<String, PCallkeepConnectionState>()
 
@@ -228,7 +246,31 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         terminatedCallIds.clear()
         pendingAnswers.clear()
         connectionStates.clear()
+        directNotifiedCallIds.clear()
+        endCallDispatchedCallIds.clear()
+        signalingRegisteredCallIds.clear()
     }
+
+    // -------------------------------------------------------------------------
+    // Callback guards
+    // -------------------------------------------------------------------------
+
+    override fun markDirectNotified(callId: String) {
+        directNotifiedCallIds.add(callId)
+    }
+
+    override fun consumeDirectNotified(callId: String): Boolean =
+        directNotifiedCallIds.remove(callId)
+
+    override fun markEndCallDispatched(callId: String): Boolean =
+        endCallDispatchedCallIds.add(callId)
+
+    override fun markSignalingRegistered(callId: String) {
+        signalingRegisteredCallIds.add(callId)
+    }
+
+    override fun consumeSignalingRegistered(callId: String): Boolean =
+        signalingRegisteredCallIds.remove(callId)
 
     companion object {
         /**

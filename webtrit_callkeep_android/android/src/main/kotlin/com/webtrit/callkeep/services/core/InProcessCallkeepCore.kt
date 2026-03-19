@@ -63,6 +63,16 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
     override fun clear() = tracker.clear()
 
     // -------------------------------------------------------------------------
+    // Callback guards
+    // -------------------------------------------------------------------------
+
+    override fun markDirectNotified(callId: String) = tracker.markDirectNotified(callId)
+    override fun consumeDirectNotified(callId: String): Boolean = tracker.consumeDirectNotified(callId)
+    override fun markEndCallDispatched(callId: String): Boolean = tracker.markEndCallDispatched(callId)
+    override fun markSignalingRegistered(callId: String) = tracker.markSignalingRegistered(callId)
+    override fun consumeSignalingRegistered(callId: String): Boolean = tracker.consumeSignalingRegistered(callId)
+
+    // -------------------------------------------------------------------------
     // CS commands
     // -------------------------------------------------------------------------
 
