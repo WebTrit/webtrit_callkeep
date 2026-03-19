@@ -27,9 +27,8 @@ class IncomingCallHandler(
     private val service: Service,
     private val notificationBuilder: IncomingCallNotificationBuilder,
     private val isolateLaunchPolicy: IsolateLaunchPolicy,
-    private val isolateInitializer: IsolateInitializer
+    private val isolateInitializer: IsolateInitializer,
 ) {
-
     private var lastMetadata: CallMetadata? = null
     private val notifier by lazy { NotificationManagerCompat.from(service) }
 
@@ -40,7 +39,7 @@ class IncomingCallHandler(
     fun handle(metadata: CallMetadata) {
         Log.d(
             TAG,
-            "Handling incoming call: id=${metadata.callId}, handle=${metadata.handle}, " + "name=${metadata.displayName}, video=${metadata.hasVideo}"
+            "Handling incoming call: id=${metadata.callId}, handle=${metadata.handle}, " + "name=${metadata.displayName}, video=${metadata.hasVideo}",
         )
         lastMetadata = metadata
         showNotification(metadata)
@@ -58,8 +57,11 @@ class IncomingCallHandler(
             Log.w(TAG, "releaseIncomingCallNotification: no metadata (service not initialized), skipping")
             return
         }
-        if (answered) muteIncomingCallNotification()
-        else notificationBuilder.updateToReleaseIncomingCallNotification()
+        if (answered) {
+            muteIncomingCallNotification()
+        } else {
+            notificationBuilder.updateToReleaseIncomingCallNotification()
+        }
     }
 
     /**
@@ -94,7 +96,8 @@ class IncomingCallHandler(
             isolateInitializer.start()
         } else {
             Log.d(
-                TAG, "Skipped launching isolate.initializer=$isolateInitializer"
+                TAG,
+                "Skipped launching isolate.initializer=$isolateInitializer",
             )
         }
     }
@@ -107,7 +110,7 @@ class IncomingCallHandler(
             service.startForeground(
                 IncomingCallNotificationBuilder.NOTIFICATION_ID,
                 notification,
-                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL,
             )
         } else {
             service.startForeground(IncomingCallNotificationBuilder.NOTIFICATION_ID, notification)
@@ -122,7 +125,8 @@ class IncomingCallHandler(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             service.stopForeground(Service.STOP_FOREGROUND_DETACH)
         } else {
-            @Suppress("DEPRECATION") service.stopForeground(false)
+            @Suppress("DEPRECATION")
+            service.stopForeground(false)
         }
     }
 

@@ -30,23 +30,26 @@ fun PhoneConnection.toPConnection(): PCallkeepConnection? {
         return null
     }
 
-    val callkeepDisconnectCause = PCallkeepDisconnectCause(
-        callkeepDisconnectCauseType, disconnectCause.reason ?: "Unknown reason"
-    )
+    val callkeepDisconnectCause =
+        PCallkeepDisconnectCause(
+            callkeepDisconnectCauseType,
+            disconnectCause.reason ?: "Unknown reason",
+        )
 
     return PCallkeepConnection(callId, callkeepStatus, callkeepDisconnectCause)
 }
 
 fun PAudioDevice.toAudioDevice(): AudioDevice {
     return AudioDevice(
-        type = when (this.type) {
-            PAudioDeviceType.EARPIECE -> AudioDeviceType.EARPIECE
-            PAudioDeviceType.SPEAKER -> AudioDeviceType.SPEAKER
-            PAudioDeviceType.BLUETOOTH -> AudioDeviceType.BLUETOOTH
-            PAudioDeviceType.WIRED_HEADSET -> AudioDeviceType.WIRED_HEADSET
-            PAudioDeviceType.STREAMING -> AudioDeviceType.STREAMING
-            PAudioDeviceType.UNKNOWN -> AudioDeviceType.UNKNOWN
-        },
+        type =
+            when (this.type) {
+                PAudioDeviceType.EARPIECE -> AudioDeviceType.EARPIECE
+                PAudioDeviceType.SPEAKER -> AudioDeviceType.SPEAKER
+                PAudioDeviceType.BLUETOOTH -> AudioDeviceType.BLUETOOTH
+                PAudioDeviceType.WIRED_HEADSET -> AudioDeviceType.WIRED_HEADSET
+                PAudioDeviceType.STREAMING -> AudioDeviceType.STREAMING
+                PAudioDeviceType.UNKNOWN -> AudioDeviceType.UNKNOWN
+            },
         name = this.name,
         id = this.id,
     )
@@ -54,14 +57,15 @@ fun PAudioDevice.toAudioDevice(): AudioDevice {
 
 fun AudioDevice.toPAudioDevice(): PAudioDevice {
     return PAudioDevice(
-        type = when (this.type) {
-            AudioDeviceType.EARPIECE -> PAudioDeviceType.EARPIECE
-            AudioDeviceType.SPEAKER -> PAudioDeviceType.SPEAKER
-            AudioDeviceType.BLUETOOTH -> PAudioDeviceType.BLUETOOTH
-            AudioDeviceType.WIRED_HEADSET -> PAudioDeviceType.WIRED_HEADSET
-            AudioDeviceType.STREAMING -> PAudioDeviceType.STREAMING
-            AudioDeviceType.UNKNOWN -> PAudioDeviceType.UNKNOWN
-        },
+        type =
+            when (this.type) {
+                AudioDeviceType.EARPIECE -> PAudioDeviceType.EARPIECE
+                AudioDeviceType.SPEAKER -> PAudioDeviceType.SPEAKER
+                AudioDeviceType.BLUETOOTH -> PAudioDeviceType.BLUETOOTH
+                AudioDeviceType.WIRED_HEADSET -> PAudioDeviceType.WIRED_HEADSET
+                AudioDeviceType.STREAMING -> PAudioDeviceType.STREAMING
+                AudioDeviceType.UNKNOWN -> PAudioDeviceType.UNKNOWN
+            },
         name = this.name,
         id = this.id,
     )

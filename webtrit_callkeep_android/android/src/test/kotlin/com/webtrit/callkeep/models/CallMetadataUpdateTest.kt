@@ -17,17 +17,19 @@ class CallMetadataUpdateTest {
      */
     @Test
     fun `mergeWith updates only display name and preserves flags`() {
-        val initial = CallMetadata(
-            callId = "call-uuid-1",
-            hasVideo = true,
-            hasSpeaker = false,
-            displayName = "Unknown"
-        )
+        val initial =
+            CallMetadata(
+                callId = "call-uuid-1",
+                hasVideo = true,
+                hasSpeaker = false,
+                displayName = "Unknown",
+            )
 
-        val update = CallMetadata(
-            callId = "call-uuid-1",
-            displayName = "John Doe"
-        )
+        val update =
+            CallMetadata(
+                callId = "call-uuid-1",
+                displayName = "John Doe",
+            )
 
         val result = initial.mergeWith(update)
 
@@ -44,17 +46,19 @@ class CallMetadataUpdateTest {
     @Test
     fun `mergeWith updates only proximity and preserves handle and name`() {
         val handle = CallHandle("100")
-        val initial = CallMetadata(
-            callId = "call-uuid-2",
-            displayName = "Alice",
-            handle = handle,
-            proximityEnabled = false
-        )
+        val initial =
+            CallMetadata(
+                callId = "call-uuid-2",
+                displayName = "Alice",
+                handle = handle,
+                proximityEnabled = false,
+            )
 
-        val update = CallMetadata(
-            callId = "call-uuid-2",
-            proximityEnabled = true
-        )
+        val update =
+            CallMetadata(
+                callId = "call-uuid-2",
+                proximityEnabled = true,
+            )
 
         val result = initial.mergeWith(update)
 
@@ -70,16 +74,18 @@ class CallMetadataUpdateTest {
      */
     @Test
     fun `mergeWith updates only hasVideo and preserves other flags`() {
-        val initial = CallMetadata(
-            callId = "call-uuid-3",
-            hasVideo = false,
-            hasMute = true
-        )
+        val initial =
+            CallMetadata(
+                callId = "call-uuid-3",
+                hasVideo = false,
+                hasMute = true,
+            )
 
-        val update = CallMetadata(
-            callId = "call-uuid-3",
-            hasVideo = true
-        )
+        val update =
+            CallMetadata(
+                callId = "call-uuid-3",
+                hasVideo = true,
+            )
 
         val result = initial.mergeWith(update)
 
@@ -163,14 +169,16 @@ class CallMetadataUpdateTest {
      */
     @Test
     fun `mergeWith preserves explicit false for speakerOnVideo`() {
-        val initial = CallMetadata(
-            callId = "config-test-2",
-            speakerOnVideo = false
-        )
-        val update = CallMetadata(
-            callId = "config-test-2",
-            hasMute = true
-        )
+        val initial =
+            CallMetadata(
+                callId = "config-test-2",
+                speakerOnVideo = false,
+            )
+        val update =
+            CallMetadata(
+                callId = "config-test-2",
+                hasMute = true,
+            )
 
         val result = initial.mergeWith(update)
 
@@ -187,10 +195,11 @@ class CallMetadataUpdateTest {
     @Test
     fun `mergeWith updates speakerOnVideo from null to false`() {
         val initial = CallMetadata(callId = "config-test-3")
-        val update = CallMetadata(
-            callId = "config-test-3",
-            speakerOnVideo = false
-        )
+        val update =
+            CallMetadata(
+                callId = "config-test-3",
+                speakerOnVideo = false,
+            )
 
         val result = initial.mergeWith(update)
 
@@ -204,14 +213,16 @@ class CallMetadataUpdateTest {
      */
     @Test
     fun `mergeWith updates speakerOnVideo from false to true`() {
-        val initial = CallMetadata(
-            callId = "config-test-4",
-            speakerOnVideo = false
-        )
-        val update = CallMetadata(
-            callId = "config-test-4",
-            speakerOnVideo = true
-        )
+        val initial =
+            CallMetadata(
+                callId = "config-test-4",
+                speakerOnVideo = false,
+            )
+        val update =
+            CallMetadata(
+                callId = "config-test-4",
+                speakerOnVideo = true,
+            )
 
         val result = initial.mergeWith(update)
 

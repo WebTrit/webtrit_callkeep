@@ -1,11 +1,26 @@
 package com.webtrit.callkeep.services.services.connection
 
 enum class ServiceAction {
-    HungUpCall, DeclineCall, AnswerCall, EstablishCall, Muting, Speaker, AudioDeviceSet, Holding, UpdateCall, SendDTMF, TearDown, TearDownConnections, ReserveAnswer, CleanConnections, SyncAudioState, NotifyPending;
+    HungUpCall,
+    DeclineCall,
+    AnswerCall,
+    EstablishCall,
+    Muting,
+    Speaker,
+    AudioDeviceSet,
+    Holding,
+    UpdateCall,
+    SendDTMF,
+    TearDown,
+    TearDownConnections,
+    ReserveAnswer,
+    CleanConnections,
+    SyncAudioState,
+    NotifyPending,
+    ;
 
     companion object {
-        fun from(action: String?): ServiceAction? =
-            ServiceAction.entries.find { it.action == action }
+        fun from(action: String?): ServiceAction? = ServiceAction.entries.find { it.action == action }
     }
 
     // Explicit service intents target the component directly — the action string is only used

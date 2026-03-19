@@ -1,7 +1,5 @@
 package com.webtrit.callkeep.services.services.foreground
 
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicBoolean
 import android.annotation.SuppressLint
 import android.app.Service
 import android.content.BroadcastReceiver
@@ -46,6 +44,8 @@ import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.core.CallkeepCore
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * ForegroundService is an Android bound Service that maintains a connection with the main Flutter isolate
@@ -90,27 +90,32 @@ class ForegroundService : Service(), PHostApi {
             _flutterDelegateApi = value
         }
 
-    private val connectionServicePerformReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            val action = intent?.action
-            logger.d("connectionServicePerformReceiver onReceive: $action")
-            when (action) {
-                CallLifecycleEvent.DidPushIncomingCall.name -> handleCSReportDidPushIncomingCall(
-                    intent.extras
-                )
+    private val connectionServicePerformReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                context: Context?,
+                intent: Intent?,
+            ) {
+                val action = intent?.action
+                logger.d("connectionServicePerformReceiver onReceive: $action")
+                when (action) {
+                    CallLifecycleEvent.DidPushIncomingCall.name ->
+                        handleCSReportDidPushIncomingCall(
+                            intent.extras,
+                        )
 
-                CallLifecycleEvent.DeclineCall.name -> handleCSReportDeclineCall(intent.extras)
-                CallLifecycleEvent.HungUp.name -> handleCSReportDeclineCall(intent.extras)
-                CallLifecycleEvent.ConnectionNotFound.name -> handleCSReportDeclineCall(intent.extras)
-                CallLifecycleEvent.AnswerCall.name -> handleCSReportAnswerCall(intent.extras)
-                CallMediaEvent.AudioDeviceSet.name -> handleCSReportAudioDeviceSet(intent.extras)
-                CallMediaEvent.AudioDevicesUpdate.name -> handleCsReportAudioDevicesUpdate(intent.extras)
-                CallMediaEvent.AudioMuting.name -> handleCSReportAudioMuting(intent.extras)
-                CallMediaEvent.ConnectionHolding.name -> handleCSReportConnectionHolding(intent.extras)
-                CallMediaEvent.SentDTMF.name -> handleCSReportSentDTMF(intent.extras)
+                    CallLifecycleEvent.DeclineCall.name -> handleCSReportDeclineCall(intent.extras)
+                    CallLifecycleEvent.HungUp.name -> handleCSReportDeclineCall(intent.extras)
+                    CallLifecycleEvent.ConnectionNotFound.name -> handleCSReportDeclineCall(intent.extras)
+                    CallLifecycleEvent.AnswerCall.name -> handleCSReportAnswerCall(intent.extras)
+                    CallMediaEvent.AudioDeviceSet.name -> handleCSReportAudioDeviceSet(intent.extras)
+                    CallMediaEvent.AudioDevicesUpdate.name -> handleCsReportAudioDevicesUpdate(intent.extras)
+                    CallMediaEvent.AudioMuting.name -> handleCSReportAudioMuting(intent.extras)
+                    CallMediaEvent.ConnectionHolding.name -> handleCSReportConnectionHolding(intent.extras)
+                    CallMediaEvent.SentDTMF.name -> handleCSReportSentDTMF(intent.extras)
+                }
             }
         }
-    }
 
     override fun onBind(intent: Intent?): IBinder = binder
 
@@ -120,25 +125,31 @@ class ForegroundService : Service(), PHostApi {
         // Register only the events that connectionServicePerformReceiver actually handles.
         // OngoingCall/OutgoingFailure go to per-call receivers in startCall().
         // IncomingFailure is not handled here and is excluded to avoid noise.
-        val globalEvents: List<ConnectionEvent> = listOf(
-            CallLifecycleEvent.DidPushIncomingCall,
-            CallLifecycleEvent.DeclineCall,
-            CallLifecycleEvent.HungUp,
-            CallLifecycleEvent.ConnectionNotFound,
-            CallLifecycleEvent.AnswerCall,
-            CallMediaEvent.AudioDeviceSet,
-            CallMediaEvent.AudioDevicesUpdate,
-            CallMediaEvent.AudioMuting,
-            CallMediaEvent.ConnectionHolding,
-            CallMediaEvent.SentDTMF,
-        )
+        val globalEvents: List<ConnectionEvent> =
+            listOf(
+                CallLifecycleEvent.DidPushIncomingCall,
+                CallLifecycleEvent.DeclineCall,
+                CallLifecycleEvent.HungUp,
+                CallLifecycleEvent.ConnectionNotFound,
+                CallLifecycleEvent.AnswerCall,
+                CallMediaEvent.AudioDeviceSet,
+                CallMediaEvent.AudioDevicesUpdate,
+                CallMediaEvent.AudioMuting,
+                CallMediaEvent.ConnectionHolding,
+                CallMediaEvent.SentDTMF,
+            )
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            globalEvents, baseContext, connectionServicePerformReceiver
+            globalEvents,
+            baseContext,
+            connectionServicePerformReceiver,
         )
         isRunning = true
     }
 
-    override fun setUp(options: POptions, callback: (Result<Unit>) -> Unit) {
+    override fun setUp(
+        options: POptions,
+        callback: (Result<Unit>) -> Unit,
+    ) {
         logger.i("setUp")
 
         try {
@@ -173,15 +184,16 @@ class ForegroundService : Service(), PHostApi {
         displayNameOrContactIdentifier: String?,
         video: Boolean,
         proximityEnabled: Boolean,
-        callback: (Result<PCallRequestError?>) -> Unit
+        callback: (Result<PCallRequestError?>) -> Unit,
     ) {
-        val metadata = CallMetadata(
-            callId = callId,
-            handle = handle.toCallHandle(),
-            displayName = displayNameOrContactIdentifier,
-            hasVideo = video,
-            proximityEnabled = proximityEnabled
-        )
+        val metadata =
+            CallMetadata(
+                callId = callId,
+                handle = handle.toCallHandle(),
+                displayName = displayNameOrContactIdentifier,
+                hasVideo = video,
+                proximityEnabled = proximityEnabled,
+            )
 
         val logContext = "startCall($callId|$handle)"
         logger.i("$logContext: trying to start call")
@@ -208,7 +220,8 @@ class ForegroundService : Service(), PHostApi {
             receiver?.let {
                 try {
                     ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, it)
-                } catch (_: IllegalArgumentException) {}
+                } catch (_: IllegalArgumentException) {
+                }
             }
         }
 
@@ -225,44 +238,49 @@ class ForegroundService : Service(), PHostApi {
             callback(result)
         }
 
-        receiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                // Acquire resolution before any side effects so that a stale broadcast
-                // arriving after a timeout cannot trigger performStartCall or saveFailedOutgoingCall.
-                if (resolved.get()) return
-                when (intent?.action) {
-                    CallLifecycleEvent.OngoingCall.name -> {
-                        val callMetaData = CallMetadata.fromBundle(intent.extras ?: return)
-                        if (callMetaData.callId != callId) return
-                        logger.i("$logContext: ongoing call confirmed by CS")
-                        // Outgoing call is now active in Telecom — promote from pending.
-                        core.promote(callMetaData.callId, callMetaData, PCallkeepConnectionState.STATE_DIALING)
-                        flutterDelegateApi?.performStartCall(
-                            callMetaData.callId,
-                            callMetaData.handle!!.toPHandle(),
-                            callMetaData.name,
-                            callMetaData.hasVideo ?: false,
-                        ) {}
-                        finish(Result.success(null))
-                    }
-                    CallLifecycleEvent.OutgoingFailure.name -> {
-                        val failureMetaData = FailureMetadata.fromBundle(intent.extras ?: return)
-                        if (failureMetaData.callMetadata?.callId != callId) return
-                        logger.e("$logContext: CS reported failure: ${failureMetaData.outgoingFailureType}")
-                        saveFailedOutgoingCall(
-                            metadata, OutgoingFailureSource.CS_CALLBACK, failureMetaData.getThrowable()
-                        )
-                        val result = when (failureMetaData.outgoingFailureType) {
-                            OutgoingFailureType.UNENTITLED ->
-                                Result.failure(failureMetaData.getThrowable())
-                            OutgoingFailureType.EMERGENCY_NUMBER ->
-                                Result.success(PCallRequestError(PCallRequestErrorEnum.EMERGENCY_NUMBER))
+        receiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(
+                    context: Context?,
+                    intent: Intent?,
+                ) {
+                    // Acquire resolution before any side effects so that a stale broadcast
+                    // arriving after a timeout cannot trigger performStartCall or saveFailedOutgoingCall.
+                    if (resolved.get()) return
+                    when (intent?.action) {
+                        CallLifecycleEvent.OngoingCall.name -> {
+                            val callMetaData = CallMetadata.fromBundle(intent.extras ?: return)
+                            if (callMetaData.callId != callId) return
+                            logger.i("$logContext: ongoing call confirmed by CS")
+                            // Outgoing call is now active in Telecom — promote from pending.
+                            core.promote(callMetaData.callId, callMetaData, PCallkeepConnectionState.STATE_DIALING)
+                            flutterDelegateApi?.performStartCall(
+                                callMetaData.callId,
+                                callMetaData.handle!!.toPHandle(),
+                                callMetaData.name,
+                                callMetaData.hasVideo ?: false,
+                            ) {}
+                            finish(Result.success(null))
                         }
-                        finish(result)
+                        CallLifecycleEvent.OutgoingFailure.name -> {
+                            val failureMetaData = FailureMetadata.fromBundle(intent.extras ?: return)
+                            if (failureMetaData.callMetadata?.callId != callId) return
+                            logger.e("$logContext: CS reported failure: ${failureMetaData.outgoingFailureType}")
+                            saveFailedOutgoingCall(
+                                metadata, OutgoingFailureSource.CS_CALLBACK, failureMetaData.getThrowable(),
+                            )
+                            val result =
+                                when (failureMetaData.outgoingFailureType) {
+                                    OutgoingFailureType.UNENTITLED ->
+                                        Result.failure(failureMetaData.getThrowable())
+                                    OutgoingFailureType.EMERGENCY_NUMBER ->
+                                        Result.success(PCallRequestError(PCallRequestErrorEnum.EMERGENCY_NUMBER))
+                                }
+                            finish(result)
+                        }
                     }
                 }
             }
-        }
 
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
             listOf(CallLifecycleEvent.OngoingCall, CallLifecycleEvent.OutgoingFailure),
@@ -274,7 +292,9 @@ class ForegroundService : Service(), PHostApi {
         // Add cleanup AFTER receiver is registered to avoid UninitializedPropertyAccessException
         // if onDestroy() fires in the narrow window before receiver assignment.
         pendingCallCleanupsByCallId[callId] = {
-            if (resolved.compareAndSet(false, true)) { cancelResources() }
+            if (resolved.compareAndSet(false, true)) {
+                cancelResources()
+            }
         }
 
         handler.postDelayed({
@@ -287,7 +307,8 @@ class ForegroundService : Service(), PHostApi {
         try {
             // Suppress MissingPermission lint: self-managed PhoneAccount does not require
             // CALL_PHONE permission — the Telecom framework handles the call directly.
-            @SuppressLint("MissingPermission") core.startOutgoingCall(metadata)
+            @SuppressLint("MissingPermission")
+            core.startOutgoingCall(metadata)
             logger.i("$logContext: startOutgoingCall dispatched")
         } catch (e: EmergencyNumberException) {
             logger.e("$logContext failed: emergency number", e)
@@ -309,7 +330,9 @@ class ForegroundService : Service(), PHostApi {
      * @param error The [Throwable] that caused the failure, if available. Its message is extracted for logging.
      */
     private fun saveFailedOutgoingCall(
-        metadata: CallMetadata, source: OutgoingFailureSource, error: Throwable?
+        metadata: CallMetadata,
+        source: OutgoingFailureSource,
+        error: Throwable?,
     ) = failedCallsStore.add(metadata, source, error?.message)
 
     // TODO: Move logic to the PhoneConnectionService
@@ -318,7 +341,7 @@ class ForegroundService : Service(), PHostApi {
         handle: PHandle,
         displayName: String?,
         hasVideo: Boolean,
-        callback: (Result<PIncomingCallError?>) -> Unit
+        callback: (Result<PIncomingCallError?>) -> Unit,
     ) {
         logger.i("reportNewIncomingCall: callId=$callId, handle=$handle")
 
@@ -328,13 +351,14 @@ class ForegroundService : Service(), PHostApi {
         // checkAndReservePending (inside startIncomingCall) only checks
         // PhoneConnectionService.connectionManager, which is isolated from :callkeep_core and
         // is never updated with answered/terminated transitions — so it cannot detect these states.
-        val trackerError: PIncomingCallError? = when {
-            core.isTerminated(callId) ->
-                PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED)
-            core.isAnswered(callId) ->
-                PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED)
-            else -> null
-        }
+        val trackerError: PIncomingCallError? =
+            when {
+                core.isTerminated(callId) ->
+                    PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED)
+                core.isAnswered(callId) ->
+                    PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED)
+                else -> null
+            }
         if (trackerError != null) {
             logger.w("reportNewIncomingCall: rejecting callId=$callId, tracker state=${trackerError.value}")
             callback(Result.success(trackerError))
@@ -343,13 +367,14 @@ class ForegroundService : Service(), PHostApi {
 
         val ringtonePath = StorageDelegate.Sound.getRingtonePath(baseContext)
 
-        val metadata = CallMetadata(
-            callId = callId,
-            handle = handle.toCallHandle(),
-            displayName = displayName,
-            hasVideo = hasVideo,
-            ringtonePath = ringtonePath
-        )
+        val metadata =
+            CallMetadata(
+                callId = callId,
+                handle = handle.toCallHandle(),
+                displayName = displayName,
+                hasVideo = hasVideo,
+                ringtonePath = ringtonePath,
+            )
 
         // Register as pending before sending to Telecom so that answerCall() / endCall()
         // issued before DidPushIncomingCall fires can locate the call via core.isPending().
@@ -376,7 +401,8 @@ class ForegroundService : Service(), PHostApi {
                 // when a duplicate call's error arrives.
                 if (addedPending) core.removePending(callId)
                 callback(Result.success(error))
-            })
+            },
+        )
     }
 
     override fun isSetUp(): Boolean = true
@@ -463,14 +489,18 @@ class ForegroundService : Service(), PHostApi {
             callback.invoke(Result.success(Unit))
         }
 
-        tearDownAckReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                if (intent?.action == CallCommandEvent.TearDownComplete.name) {
-                    logger.d("tearDown: received TearDownComplete ack")
-                    finishTearDown()
+        tearDownAckReceiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(
+                    context: Context?,
+                    intent: Intent?,
+                ) {
+                    if (intent?.action == CallCommandEvent.TearDownComplete.name) {
+                        logger.d("tearDown: received TearDownComplete ack")
+                        finishTearDown()
+                    }
                 }
             }
-        }
 
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
             listOf(CallCommandEvent.TearDownComplete),
@@ -481,10 +511,11 @@ class ForegroundService : Service(), PHostApi {
 
         // Safety timeout: if TearDownComplete never arrives (e.g. CS was not running),
         // proceed anyway so tearDown() always resolves.
-        tearDownTimeoutRunnable = Runnable {
-            logger.w("tearDown: TearDownComplete ack timed out, proceeding")
-            finishTearDown()
-        }
+        tearDownTimeoutRunnable =
+            Runnable {
+                logger.w("tearDown: TearDownComplete ack timed out, proceeding")
+                finishTearDown()
+            }
         mainHandler.postDelayed(tearDownTimeoutRunnable!!, TEAR_DOWN_ACK_TIMEOUT_MS)
 
         core.sendTearDownConnections()
@@ -492,13 +523,17 @@ class ForegroundService : Service(), PHostApi {
 
     // Only for iOS, not used in Android
     override fun reportConnectingOutgoingCall(
-        callId: String, callback: (Result<Unit>) -> Unit
+        callId: String,
+        callback: (Result<Unit>) -> Unit,
     ) {
         logger.i("reportConnectingOutgoingCall: callId=$callId")
         callback.invoke(Result.success(Unit))
     }
 
-    override fun reportConnectedOutgoingCall(callId: String, callback: (Result<Unit>) -> Unit) {
+    override fun reportConnectedOutgoingCall(
+        callId: String,
+        callback: (Result<Unit>) -> Unit,
+    ) {
         logger.i("reportConnectedOutgoingCall: callId=$callId")
         val metadata = CallMetadata(callId = callId)
         core.startEstablishCall(metadata)
@@ -511,16 +546,17 @@ class ForegroundService : Service(), PHostApi {
         displayName: String?,
         hasVideo: Boolean?,
         proximityEnabled: Boolean?,
-        callback: (Result<Unit>) -> Unit
+        callback: (Result<Unit>) -> Unit,
     ) {
         logger.i("reportUpdateCall: callId=$callId")
-        val metadata = CallMetadata(
-            callId = callId,
-            handle = handle?.toCallHandle(),
-            displayName = displayName,
-            hasVideo = hasVideo,
-            proximityEnabled = proximityEnabled,
-        )
+        val metadata =
+            CallMetadata(
+                callId = callId,
+                handle = handle?.toCallHandle(),
+                displayName = displayName,
+                hasVideo = hasVideo,
+                proximityEnabled = proximityEnabled,
+            )
         core.startUpdateCall(metadata)
         callback.invoke(Result.success(Unit))
     }
@@ -529,7 +565,7 @@ class ForegroundService : Service(), PHostApi {
         callId: String,
         displayName: String,
         reason: PEndCallReason,
-        callback: (Result<Unit>) -> Unit
+        callback: (Result<Unit>) -> Unit,
     ) {
         logger.i("reportEndCall: callId=$callId, reason=$reason")
         val callMetaData = CallMetadata(callId = callId, displayName = displayName)
@@ -537,7 +573,10 @@ class ForegroundService : Service(), PHostApi {
         callback.invoke(Result.success(Unit))
     }
 
-    override fun answerCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit) {
+    override fun answerCall(
+        callId: String,
+        callback: (Result<PCallRequestError?>) -> Unit,
+    ) {
         val metadata = CallMetadata(callId = callId)
         // DidPushIncomingCall is delivered via sendBroadcast() which is async. Between the
         // moment CS creates the PhoneConnection and the moment the broadcast reaches
@@ -568,7 +607,10 @@ class ForegroundService : Service(), PHostApi {
         }
     }
 
-    override fun endCall(callId: String, callback: (Result<PCallRequestError?>) -> Unit) {
+    override fun endCall(
+        callId: String,
+        callback: (Result<PCallRequestError?>) -> Unit,
+    ) {
         logger.i("endCall $callId.")
         if (core.isTerminated(callId)) {
             // Re-fire performEndCall only on the first endCall for a Telecom-terminated call
@@ -580,7 +622,9 @@ class ForegroundService : Service(), PHostApi {
                 logger.w("endCall: $callId terminated by Telecom before endCall was dispatched — re-notifying Flutter.")
                 flutterDelegateApi?.performEndCall(callId) {}
             } else {
-                logger.w("endCall: $callId already terminated and endCall was already dispatched — returning error without re-notifying.")
+                logger.w(
+                    "endCall: $callId already terminated and endCall was already dispatched — returning error without re-notifying.",
+                )
             }
             callback.invoke(Result.success(PCallRequestError(PCallRequestErrorEnum.UNKNOWN_CALL_UUID)))
             return
@@ -592,7 +636,9 @@ class ForegroundService : Service(), PHostApi {
     }
 
     override fun sendDTMF(
-        callId: String, key: String, callback: (Result<PCallRequestError?>) -> Unit
+        callId: String,
+        key: String,
+        callback: (Result<PCallRequestError?>) -> Unit,
     ) {
         logger.i("sendDTMF: callId=$callId, key=$key")
         val metadata = CallMetadata(callId = callId, dualToneMultiFrequency = key.getOrNull(0))
@@ -601,7 +647,9 @@ class ForegroundService : Service(), PHostApi {
     }
 
     override fun setMuted(
-        callId: String, muted: Boolean, callback: (Result<PCallRequestError?>) -> Unit
+        callId: String,
+        muted: Boolean,
+        callback: (Result<PCallRequestError?>) -> Unit,
     ) {
         logger.i("setMuted: callId=$callId, muted=$muted")
         val metadata = CallMetadata(callId = callId, hasMute = muted)
@@ -610,7 +658,9 @@ class ForegroundService : Service(), PHostApi {
     }
 
     override fun setHeld(
-        callId: String, onHold: Boolean, callback: (Result<PCallRequestError?>) -> Unit
+        callId: String,
+        onHold: Boolean,
+        callback: (Result<PCallRequestError?>) -> Unit,
     ) {
         logger.i("setHeld: callId=$callId, onHold=$onHold")
         val metadata = CallMetadata(callId = callId, hasHold = onHold)
@@ -619,7 +669,9 @@ class ForegroundService : Service(), PHostApi {
     }
 
     override fun setSpeaker(
-        callId: String, enabled: Boolean, callback: (Result<PCallRequestError?>) -> Unit
+        callId: String,
+        enabled: Boolean,
+        callback: (Result<PCallRequestError?>) -> Unit,
     ) {
         logger.i("setSpeaker: callId=$callId, enabled=$enabled")
         val metadata = CallMetadata(callId = callId, hasSpeaker = enabled)
@@ -628,12 +680,16 @@ class ForegroundService : Service(), PHostApi {
     }
 
     override fun setAudioDevice(
-        callId: String, device: PAudioDevice, callback: (Result<PCallRequestError?>) -> Unit
+        callId: String,
+        device: PAudioDevice,
+        callback: (Result<PCallRequestError?>) -> Unit,
     ) {
         logger.i("setAudioDevice: callId=$callId, device=$device")
-        val metadata = CallMetadata(
-            callId = callId, audioDevice = device.toAudioDevice()
-        )
+        val metadata =
+            CallMetadata(
+                callId = callId,
+                audioDevice = device.toAudioDevice(),
+            )
         core.setAudioDevice(metadata)
         callback.invoke(Result.success(null))
     }
@@ -659,7 +715,9 @@ class ForegroundService : Service(), PHostApi {
             // so without this guard the push-path handler always runs after the signaling
             // handler and creates a second ActiveCall for the same callId.
             if (core.consumeSignalingRegistered(metadata.callId)) {
-                logger.d("handleCSReportDidPushIncomingCall: suppressing didPushIncomingCall for signaling-registered call ${metadata.callId}")
+                logger.d(
+                    "handleCSReportDidPushIncomingCall: suppressing didPushIncomingCall for signaling-registered call ${metadata.callId}",
+                )
                 return@let
             }
 
@@ -668,7 +726,7 @@ class ForegroundService : Service(), PHostApi {
                 displayNameArg = metadata.displayName,
                 videoArg = metadata.hasVideo ?: false,
                 callIdArg = metadata.callId,
-                errorArg = null
+                errorArg = null,
             ) {}
         }
     }
@@ -688,7 +746,9 @@ class ForegroundService : Service(), PHostApi {
             // broadcast from the previous session's connection.hungUp() arrives after the
             // new session's delegate is set and fires performEndCall for the wrong callId.
             if (core.consumeDirectNotified(callId)) {
-                logger.d("handleCSReportDeclineCall: suppressing stale broadcast for callId=$callId (already notified directly)")
+                logger.d(
+                    "handleCSReportDeclineCall: suppressing stale broadcast for callId=$callId (already notified directly)",
+                )
                 return@let
             }
 
@@ -723,7 +783,8 @@ class ForegroundService : Service(), PHostApi {
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
             flutterDelegateApi?.performAudioDeviceSet(
-                callMetaData.callId, callMetaData.audioDevice!!.toPAudioDevice()
+                callMetaData.callId,
+                callMetaData.audioDevice!!.toPAudioDevice(),
             ) {}
         }
     }
@@ -734,7 +795,8 @@ class ForegroundService : Service(), PHostApi {
             val callMetaData = CallMetadata.fromBundle(it)
             flutterDelegateApi?.performAudioDevicesUpdate(
                 callMetaData.callId,
-                callMetaData.audioDevices.map { audioDevice -> audioDevice.toPAudioDevice() }) {}
+                callMetaData.audioDevices.map { audioDevice -> audioDevice.toPAudioDevice() },
+            ) {}
         }
     }
 
@@ -743,7 +805,8 @@ class ForegroundService : Service(), PHostApi {
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
             flutterDelegateApi?.performSetMuted(
-                callMetaData.callId, callMetaData.hasMute ?: false
+                callMetaData.callId,
+                callMetaData.hasMute ?: false,
             ) {}
         }
     }
@@ -764,7 +827,8 @@ class ForegroundService : Service(), PHostApi {
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
             flutterDelegateApi?.performSendDTMF(
-                callMetaData.callId, callMetaData.dualToneMultiFrequency.toString()
+                callMetaData.callId,
+                callMetaData.dualToneMultiFrequency.toString(),
             ) {}
         }
     }
@@ -792,7 +856,6 @@ class ForegroundService : Service(), PHostApi {
         core.sendSyncAudioState()
     }
 
-
     //
     // --------------------------------
     // Handlers for ConnectionService reports to communicate with the Flutter side
@@ -809,7 +872,8 @@ class ForegroundService : Service(), PHostApi {
         logger.d("onDestroy")
         // Unregister the service from receiving connection service perform events
         ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(
-            baseContext, connectionServicePerformReceiver
+            baseContext,
+            connectionServicePerformReceiver,
         )
 
         pendingCallCleanupsByCallId.values.toList().forEach { it() }
@@ -871,11 +935,19 @@ class FailedCallsStore {
     private val logger = Log("FailedCallsStore")
     private val store = ConcurrentHashMap<String, FailedCallInfo>()
 
-    fun add(metadata: CallMetadata, source: OutgoingFailureSource, reason: String?) {
+    fun add(
+        metadata: CallMetadata,
+        source: OutgoingFailureSource,
+        reason: String?,
+    ) {
         logger.w("add: callId=${metadata.callId}, source=$source, reason=$reason")
-        val info = FailedCallInfo(
-            callId = metadata.callId, metadata = metadata, source = source, reason = reason
-        )
+        val info =
+            FailedCallInfo(
+                callId = metadata.callId,
+                metadata = metadata,
+                source = source,
+                reason = reason,
+            )
         store[metadata.callId] = info
     }
 

@@ -14,15 +14,19 @@ class NotificationManager() {
 
     fun cancelIncomingNotification(answered: Boolean) {
         IncomingCallService.release(
-            context, if (answered) {
+            context,
+            if (answered) {
                 IncomingCallRelease.IC_RELEASE_WITH_ANSWER
             } else {
                 IncomingCallRelease.IC_RELEASE_WITH_DECLINE
-            }
+            },
         )
     }
 
-    fun showActiveCallNotification(id: String, callMetaData: CallMetadata) {
+    fun showActiveCallNotification(
+        id: String,
+        callMetaData: CallMetadata,
+    ) {
         // Re add to head of the list if already exists to update position on held calls switch
         val existPosition = activeCalls.indexOfFirst { it.callId == id }
         if (existPosition != -1) activeCalls.removeAt(existPosition)

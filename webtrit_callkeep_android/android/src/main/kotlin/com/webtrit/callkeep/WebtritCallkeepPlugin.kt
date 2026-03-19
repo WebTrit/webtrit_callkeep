@@ -17,8 +17,8 @@ import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.setShowWhenLockedCompat
 import com.webtrit.callkeep.common.setTurnScreenOnCompat
 import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
-import com.webtrit.callkeep.services.services.foreground.ForegroundService
 import com.webtrit.callkeep.services.core.CallkeepCore
+import com.webtrit.callkeep.services.services.foreground.ForegroundService
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
 import com.webtrit.callkeep.services.services.signaling.SignalingIsolateService
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -168,11 +168,12 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
 
             pushNotificationIsolateService?.establishFlutterCommunication(
                 PDelegateBackgroundServiceFlutterApi(messenger),
-                PDelegateBackgroundRegisterFlutterApi(messenger)
+                PDelegateBackgroundRegisterFlutterApi(messenger),
             )
 
             PHostBackgroundPushNotificationIsolateApi.setUp(
-                messenger, pushNotificationIsolateService?.getCallLifecycleHandler()
+                messenger,
+                pushNotificationIsolateService?.getCallLifecycleHandler(),
             )
         }
 
@@ -213,10 +214,13 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         lifeCycle!!.addObserver(this)
     }
 
-    override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
+    override fun onStateChanged(
+        source: LifecycleOwner,
+        event: Lifecycle.Event,
+    ) {
         Log.d(
             TAG,
-            "onStateChanged: Lifecycle event received - $event, activity: ${activityPluginBinding?.activity}"
+            "onStateChanged: Lifecycle event received - $event, activity: ${activityPluginBinding?.activity}",
         )
         ActivityLifecycleBroadcaster.setValue(context, event)
 
@@ -263,7 +267,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
             Log.i(
                 TAG,
                 "onStateChanged: ON_START. Has active connections: $hasActiveConnections" +
-                    " (promoted=${promoted.size}, pending=${core.getPendingCallIds().size})"
+                    " (promoted=${promoted.size}, pending=${core.getPendingCallIds().size})",
             )
             activityPluginBinding?.activity?.setShowWhenLockedCompat(hasActiveConnections)
             activityPluginBinding?.activity?.setTurnScreenOnCompat(hasActiveConnections)
@@ -272,20 +276,24 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
 
     private fun bindForegroundService(activity: Context) {
         val intent = Intent(activity, ForegroundService::class.java)
-        serviceConnection = object : ServiceConnection {
-            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-                Log.i(TAG, "ForegroundService connected: ${service?.javaClass?.name}")
-                val binder = service as ForegroundService.LocalBinder
-                foregroundService = binder.getService()
-                foregroundService?.flutterDelegateApi = PDelegateFlutterApi(messenger)
-                PHostApi.setUp(messenger, foregroundService)
-            }
+        serviceConnection =
+            object : ServiceConnection {
+                override fun onServiceConnected(
+                    name: ComponentName?,
+                    service: IBinder?,
+                ) {
+                    Log.i(TAG, "ForegroundService connected: ${service?.javaClass?.name}")
+                    val binder = service as ForegroundService.LocalBinder
+                    foregroundService = binder.getService()
+                    foregroundService?.flutterDelegateApi = PDelegateFlutterApi(messenger)
+                    PHostApi.setUp(messenger, foregroundService)
+                }
 
-            override fun onServiceDisconnected(name: ComponentName?) {
-                Log.w(TAG, "ForegroundService disconnected")
-                foregroundService = null
+                override fun onServiceDisconnected(name: ComponentName?) {
+                    Log.w(TAG, "ForegroundService disconnected")
+                    foregroundService = null
+                }
             }
-        }
         activity.bindService(intent, serviceConnection!!, Context.BIND_AUTO_CREATE)
     }
 

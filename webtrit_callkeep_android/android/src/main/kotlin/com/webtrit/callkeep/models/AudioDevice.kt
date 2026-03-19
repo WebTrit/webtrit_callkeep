@@ -3,11 +3,18 @@ package com.webtrit.callkeep.models
 import android.os.Bundle
 
 enum class AudioDeviceType {
-    EARPIECE, SPEAKER, BLUETOOTH, WIRED_HEADSET, STREAMING, UNKNOWN;
+    EARPIECE,
+    SPEAKER,
+    BLUETOOTH,
+    WIRED_HEADSET,
+    STREAMING,
+    UNKNOWN,
 }
 
 class AudioDevice(
-    val type: AudioDeviceType, val name: String? = null, val id: String? = null
+    val type: AudioDeviceType,
+    val name: String? = null,
+    val id: String? = null,
 ) {
     fun toBundle(): Bundle {
         return Bundle().apply {

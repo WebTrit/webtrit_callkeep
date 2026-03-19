@@ -8,10 +8,12 @@ import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 
 class BackgroundPushNotificationIsolateBootstrapApi(
-    private val context: Context
+    private val context: Context,
 ) : PHostBackgroundPushNotificationIsolateBootstrapApi {
     override fun initializePushNotificationCallback(
-        callbackDispatcher: Long, onNotificationSync: Long, callback: (Result<Unit>) -> Unit
+        callbackDispatcher: Long,
+        onNotificationSync: Long,
+        callback: (Result<Unit>) -> Unit,
     ) {
         StorageDelegate.IncomingCallService.setCallbackDispatcher(context, callbackDispatcher)
         StorageDelegate.IncomingCallService.setOnNotificationSync(context, onNotificationSync)
@@ -20,10 +22,12 @@ class BackgroundPushNotificationIsolateBootstrapApi(
     }
 
     override fun configureSignalingService(
-        launchBackgroundIsolateEvenIfAppIsOpen: Boolean, callback: (Result<Unit>) -> Unit
+        launchBackgroundIsolateEvenIfAppIsOpen: Boolean,
+        callback: (Result<Unit>) -> Unit,
     ) {
         StorageDelegate.IncomingCallService.setLaunchBackgroundIsolateEvenIfAppIsOpen(
-            context, launchBackgroundIsolateEvenIfAppIsOpen
+            context,
+            launchBackgroundIsolateEvenIfAppIsOpen,
         )
 
         callback(Result.success(Unit))
@@ -34,24 +38,26 @@ class BackgroundPushNotificationIsolateBootstrapApi(
         handle: PHandle,
         displayName: String?,
         hasVideo: Boolean,
-        callback: (Result<PIncomingCallError?>) -> Unit
+        callback: (Result<PIncomingCallError?>) -> Unit,
     ) {
         Log.d(TAG, "reportNewIncomingCall: $callId, $handle, $displayName, $hasVideo")
         val ringtonePath = StorageDelegate.Sound.getRingtonePath(context)
 
-        val metadata = CallMetadata(
-            callId = callId,
-            handle = handle.toCallHandle(),
-            displayName = displayName,
-            hasVideo = hasVideo,
-            ringtonePath = ringtonePath
-        )
+        val metadata =
+            CallMetadata(
+                callId = callId,
+                handle = handle.toCallHandle(),
+                displayName = displayName,
+                hasVideo = hasVideo,
+                ringtonePath = ringtonePath,
+            )
 
         PhoneConnectionService.startIncomingCall(
             context = context,
             metadata = metadata,
             onSuccess = { callback(Result.success(null)) },
-            onError = { error -> callback(Result.success(error)) })
+            onError = { error -> callback(Result.success(error)) },
+        )
     }
 
     companion object {

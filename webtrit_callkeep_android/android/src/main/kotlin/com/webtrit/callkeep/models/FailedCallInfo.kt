@@ -19,7 +19,7 @@ enum class OutgoingFailureSource {
     /**
      * The call request timed out while waiting for a response from the ConnectionService.
      */
-    TIMEOUT
+    TIMEOUT,
 }
 
 /**
@@ -30,5 +30,5 @@ data class FailedCallInfo(
     val metadata: CallMetadata,
     val source: OutgoingFailureSource,
     val reason: String?,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
 )

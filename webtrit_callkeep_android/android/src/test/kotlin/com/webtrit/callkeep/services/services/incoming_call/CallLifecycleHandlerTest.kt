@@ -32,7 +32,6 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [Build.VERSION_CODES.UPSIDE_DOWN_CAKE])
 class CallLifecycleHandlerTest {
-
     // -------------------------------------------------------------------------
     // Fakes
     // -------------------------------------------------------------------------
@@ -44,7 +43,6 @@ class CallLifecycleHandlerTest {
     private class FakeCommunicator(
         private val endCallResult: EndCallResult = EndCallResult.SUCCESS,
     ) : FlutterIsolateCommunicator {
-
         enum class EndCallResult { SUCCESS, FAILURE }
 
         val events = mutableListOf<String>()
@@ -104,10 +102,17 @@ class CallLifecycleHandlerTest {
         var answerCallCount = 0
         var tearDownCallCount = 0
 
-        override fun answer(metadata: CallMetadata) { answerCallCount++ }
+        override fun answer(metadata: CallMetadata) {
+            answerCallCount++
+        }
+
         override fun decline(metadata: CallMetadata) {}
+
         override fun hangUp(metadata: CallMetadata) {}
-        override fun tearDown() { tearDownCallCount++ }
+
+        override fun tearDown() {
+            tearDownCallCount++
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -130,18 +135,20 @@ class CallLifecycleHandlerTest {
 
         communicator = FakeCommunicator()
         fakeController = FakeConnectionController()
-        handler = CallLifecycleHandler(
-            connectionController = fakeController,
-            stopService = { stopServiceCalls.add("stop") },
-            isolateHandler = mock(com.webtrit.callkeep.services.services.incoming_call.handlers.FlutterIsolateHandler::class.java),
-        )
+        handler =
+            CallLifecycleHandler(
+                connectionController = fakeController,
+                stopService = { stopServiceCalls.add("stop") },
+                isolateHandler = mock(com.webtrit.callkeep.services.services.incoming_call.handlers.FlutterIsolateHandler::class.java),
+            )
         handler.flutterApi = communicator
-        handler.currentCallData = PCallkeepIncomingCallData(
-            callId = "call-1",
-            handle = mock(com.webtrit.callkeep.PHandle::class.java),
-            displayName = null,
-            hasVideo = false,
-        )
+        handler.currentCallData =
+            PCallkeepIncomingCallData(
+                callId = "call-1",
+                handle = mock(com.webtrit.callkeep.PHandle::class.java),
+                displayName = null,
+                hasVideo = false,
+            )
     }
 
     // -------------------------------------------------------------------------
@@ -280,7 +287,11 @@ class CallLifecycleHandlerTest {
             "performAnswer must be forwarded to Flutter to confirm the background path ran",
             communicator.events.contains("performAnswer"),
         )
-        assertEquals("answer() must not be called -- Telecom already confirmed the answer", 0, fakeController.answerCallCount)
+        assertEquals(
+            "answer() must not be called -- Telecom already confirmed the answer",
+            0,
+            fakeController.answerCallCount,
+        )
     }
 
     @Test
@@ -295,17 +306,34 @@ class CallLifecycleHandlerTest {
 
     @Test
     fun `performAnswerCall tears down connection on Flutter answer failure`() {
-        val failingCommunicator = object : FlutterIsolateCommunicator {
-            override fun performAnswer(
-                callId: String,
-                onSuccess: () -> Unit,
-                onFailure: (Throwable) -> Unit,
-            ) { onFailure(RuntimeException("answer rejected")) }
+        val failingCommunicator =
+            object : FlutterIsolateCommunicator {
+                override fun performAnswer(
+                    callId: String,
+                    onSuccess: () -> Unit,
+                    onFailure: (Throwable) -> Unit,
+                ) {
+                    onFailure(RuntimeException("answer rejected"))
+                }
 
-            override fun performEndCall(callId: String, onSuccess: () -> Unit, onFailure: (Throwable) -> Unit) {}
-            override fun syncPushIsolate(callData: PCallkeepIncomingCallData?, onSuccess: () -> Unit, onFailure: (Throwable) -> Unit) {}
-            override fun releaseResources(callData: PCallkeepIncomingCallData?, onComplete: () -> Unit) {}
-        }
+                override fun performEndCall(
+                    callId: String,
+                    onSuccess: () -> Unit,
+                    onFailure: (Throwable) -> Unit,
+                ) {}
+
+                override fun syncPushIsolate(
+                    callData: PCallkeepIncomingCallData?,
+                    onSuccess: () -> Unit,
+                    onFailure: (Throwable) -> Unit,
+                ) {
+                }
+
+                override fun releaseResources(
+                    callData: PCallkeepIncomingCallData?,
+                    onComplete: () -> Unit,
+                ) {}
+            }
         handler.flutterApi = failingCommunicator
 
         handler.performAnswerCall(CallMetadata(callId = "call-1"))

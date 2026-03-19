@@ -64,12 +64,13 @@ class PermissionsApi(
 
     override fun getBatteryMode(callback: (Result<PCallkeepAndroidBatteryMode>) -> Unit) {
         val batteryMode = BatteryModeHelper(context)
-        val mode = when {
-            batteryMode.isUnrestricted() -> PCallkeepAndroidBatteryMode.UNRESTRICTED
-            batteryMode.isRestricted() -> PCallkeepAndroidBatteryMode.RESTRICTED
-            batteryMode.isOptimized() -> PCallkeepAndroidBatteryMode.OPTIMIZED
-            else -> PCallkeepAndroidBatteryMode.UNKNOWN
-        }
+        val mode =
+            when {
+                batteryMode.isUnrestricted() -> PCallkeepAndroidBatteryMode.UNRESTRICTED
+                batteryMode.isRestricted() -> PCallkeepAndroidBatteryMode.RESTRICTED
+                batteryMode.isOptimized() -> PCallkeepAndroidBatteryMode.OPTIMIZED
+                else -> PCallkeepAndroidBatteryMode.UNKNOWN
+            }
         callback.invoke(Result.success(mode))
     }
 
@@ -79,7 +80,8 @@ class PermissionsApi(
      * @param callback A callback that will be invoked with the results of the permission request.
      */
     override fun requestPermissions(
-        permissions: List<PCallkeepPermission>, callback: (Result<List<PPermissionResult>>) -> Unit
+        permissions: List<PCallkeepPermission>,
+        callback: (Result<List<PPermissionResult>>) -> Unit,
     ) {
         val activity = ActivityHolder.getActivity()
         if (activity == null) {
@@ -88,9 +90,10 @@ class PermissionsApi(
         }
 
         val androidPerms = permissions.toAndroidPermissions()
-        val missing = androidPerms.filter {
-            ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
-        }
+        val missing =
+            androidPerms.filter {
+                ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+            }
 
         if (missing.isEmpty()) {
             val results = androidPerms.toPPermissionResults(context)
@@ -106,24 +109,27 @@ class PermissionsApi(
             pendingPermissionCallback = callback
         }
 
-        timeoutRunnable = Runnable {
-            synchronized(this) {
-                if (pendingPermissionCallback != null) {
-                    pendingPermissionCallback?.invoke(
-                        Result.failure(TimeoutException("User did not accept/deny permissions within $PERMISSION_REQUEST_TIMEOUT_MS ms"))
-                    )
-                    pendingPermissionCallback = null
-                    timeoutRunnable = null
+        timeoutRunnable =
+            Runnable {
+                synchronized(this) {
+                    if (pendingPermissionCallback != null) {
+                        pendingPermissionCallback?.invoke(
+                            Result.failure(TimeoutException("User did not accept/deny permissions within $PERMISSION_REQUEST_TIMEOUT_MS ms")),
+                        )
+                        pendingPermissionCallback = null
+                        timeoutRunnable = null
+                    }
                 }
             }
-        }
 
         handler.postDelayed(timeoutRunnable!!, PERMISSION_REQUEST_TIMEOUT_MS)
 
         try {
             activity.runOnUiThread {
                 ActivityCompat.requestPermissions(
-                    activity, missing.toTypedArray(), PERMISSION_REQUEST_CODE
+                    activity,
+                    missing.toTypedArray(),
+                    PERMISSION_REQUEST_CODE,
                 )
             }
         } catch (e: Exception) {
@@ -140,7 +146,8 @@ class PermissionsApi(
      * @param callback A callback that will be invoked with the results of the permission status check.
      */
     override fun checkPermissionsStatus(
-        permissions: List<PCallkeepPermission>, callback: (Result<List<PPermissionResult>>) -> Unit
+        permissions: List<PCallkeepPermission>,
+        callback: (Result<List<PPermissionResult>>) -> Unit,
     ) {
         try {
             val androidPerms = permissions.toAndroidPermissions()
@@ -156,7 +163,9 @@ class PermissionsApi(
      * This method is called by the Android system when the user responds to a permission request.
      */
     override fun onRequestPermissionsResult(
-        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
     ): Boolean {
         if (requestCode != PERMISSION_REQUEST_CODE) {
             return false

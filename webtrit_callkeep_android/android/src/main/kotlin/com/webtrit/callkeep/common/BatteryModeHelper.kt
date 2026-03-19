@@ -6,7 +6,6 @@ import android.os.Build
 import android.os.PowerManager
 
 class BatteryModeHelper(private val context: Context) {
-
     private val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
     private val activityManager =
         context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager

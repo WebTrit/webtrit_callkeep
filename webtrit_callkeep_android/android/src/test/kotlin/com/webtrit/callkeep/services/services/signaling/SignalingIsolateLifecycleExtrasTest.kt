@@ -17,7 +17,6 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [Build.VERSION_CODES.UPSIDE_DOWN_CAKE])
 class SignalingIsolateLifecycleExtrasTest {
-
     @Test
     fun `fromBundle returns null for null bundle`() {
         assertNull(Lifecycle.Event.fromBundle(null))

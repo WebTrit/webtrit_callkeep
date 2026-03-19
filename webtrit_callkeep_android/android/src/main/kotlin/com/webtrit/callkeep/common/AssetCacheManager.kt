@@ -54,8 +54,9 @@ object AssetCacheManager {
      * @throws java.io.IOException if the asset does not exist in the APK.
      */
     fun getAsset(asset: String): Uri {
-        val ctx = context
-            ?: throw IllegalStateException("AssetCacheManager is not initialized. Call init() first.")
+        val ctx =
+            context
+                ?: throw IllegalStateException("AssetCacheManager is not initialized. Call init() first.")
 
         val assetPath = "$FLUTTER_ASSETS_DIR/$asset"
         val fileName = Uri.parse(assetPath).lastPathSegment ?: "cache"
@@ -78,7 +79,11 @@ object AssetCacheManager {
      * APK assets are only accessible as an [java.io.InputStream] via [android.content.res.AssetManager]
      * and cannot be referenced by a file URI directly.
      */
-    private fun cacheAsset(context: Context, assetPath: String, fileName: String): String {
+    private fun cacheAsset(
+        context: Context,
+        assetPath: String,
+        fileName: String,
+    ): String {
         val cachedFile = File(context.cacheDir, fileName)
         val inputStream = context.assets.open(assetPath)
         inputStream.use { stream ->

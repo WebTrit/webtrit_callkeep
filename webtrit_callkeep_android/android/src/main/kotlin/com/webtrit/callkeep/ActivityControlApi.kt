@@ -14,7 +14,6 @@ import com.webtrit.callkeep.common.setTurnScreenOnCompat
  * @param activity The current foreground Activity.
  */
 class ActivityControlApi(private val activity: Activity) : PHostActivityControlApi {
-
     companion object {
         private const val TAG = "ActivityControlApi"
         private val logger = Log(TAG)
@@ -23,7 +22,10 @@ class ActivityControlApi(private val activity: Activity) : PHostActivityControlA
     /**
      * Allows the app's activity to be shown over the device lock screen.
      */
-    override fun showOverLockscreen(enable: Boolean, callback: (Result<Unit>) -> Unit) {
+    override fun showOverLockscreen(
+        enable: Boolean,
+        callback: (Result<Unit>) -> Unit,
+    ) {
         logger.d("showOverLockscreen(enable: $enable) called")
         activity.runOnUiThread {
             try {
@@ -40,7 +42,10 @@ class ActivityControlApi(private val activity: Activity) : PHostActivityControlA
     /**
      * Turns the screen on when the app's window is shown.
      */
-    override fun wakeScreenOnShow(enable: Boolean, callback: (Result<Unit>) -> Unit) {
+    override fun wakeScreenOnShow(
+        enable: Boolean,
+        callback: (Result<Unit>) -> Unit,
+    ) {
         logger.d("wakeScreenOnShow(enable: $enable) called")
         activity.runOnUiThread {
             try {

@@ -2,7 +2,6 @@ package com.webtrit.callkeep.services.services.connection
 
 import android.content.Context
 import android.os.Build
-import android.telecom.Connection
 import android.telecom.DisconnectCause
 import com.webtrit.callkeep.PIncomingCallErrorEnum
 import com.webtrit.callkeep.common.ContextHolder
@@ -30,7 +29,6 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [Build.VERSION_CODES.UPSIDE_DOWN_CAKE])
 class ConnectionManagerTest {
-
     private val context: Context = RuntimeEnvironment.getApplication()
     private val noop: PerformDispatchHandle = { _, _ -> }
     private val noopCallback: (PhoneConnection) -> Unit = {}
@@ -311,7 +309,7 @@ class ConnectionManagerTest {
         // Step 2: onCreateIncomingConnection fires — add connection then remove pending (the fix).
         val conn = createRingingConnection(callId)
         manager.addConnection(callId, conn)
-        manager.removePending(callId)  // ← this is the fix under test
+        manager.removePending(callId) // ← this is the fix under test
 
         // Step 3: push isolate answers the call.
         conn.onAnswer()

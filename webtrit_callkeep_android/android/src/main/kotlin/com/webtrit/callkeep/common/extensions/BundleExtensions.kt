@@ -18,7 +18,6 @@ fun Bundle.getCharOrNull(key: String): Char? {
     return if (containsKey(key)) getChar(key) else null
 }
 
-
 /**
  * Safely retrieves a Boolean value from the Bundle.
  * Returns null if the key is not present, avoiding the default false value.

@@ -3,7 +3,8 @@ package com.webtrit.callkeep.models
 import android.os.Bundle
 
 enum class OutgoingFailureType {
-    UNENTITLED, EMERGENCY_NUMBER
+    UNENTITLED,
+    EMERGENCY_NUMBER,
 }
 
 open class FailureMetadata(
@@ -11,7 +12,6 @@ open class FailureMetadata(
     val message: String?,
     val outgoingFailureType: OutgoingFailureType = OutgoingFailureType.UNENTITLED,
 ) {
-
     fun toBundle(): Bundle {
         return Bundle().apply {
             // Serialize optional message
@@ -44,7 +44,7 @@ open class FailureMetadata(
             return FailureMetadata(
                 callMetadata = callMetadata,
                 message = message,
-                outgoingFailureType = outgoingFailureType
+                outgoingFailureType = outgoingFailureType,
             )
         }
     }

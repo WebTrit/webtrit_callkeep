@@ -33,7 +33,7 @@ enum class CallLifecycleEvent : ConnectionEvent {
     DidPushIncomingCall,
     OutgoingFailure,
     IncomingFailure,
-    ConnectionNotFound;
+    ConnectionNotFound,
 }
 
 /**
@@ -46,7 +46,7 @@ enum class CallMediaEvent : ConnectionEvent {
     AudioDeviceSet,
     AudioDevicesUpdate,
     SentDTMF,
-    ConnectionHolding;
+    ConnectionHolding,
 }
 
 /**
@@ -67,7 +67,7 @@ enum class CallCommandEvent : ConnectionEvent {
     TearDownConnections,
     TearDownComplete,
     ReserveAnswer,
-    CleanConnections;
+    CleanConnections,
 }
 
 /**
@@ -91,34 +91,46 @@ object ConnectionServicePerformBroadcaster {
         return IntentFilter().apply { events.forEach { addAction(it.name) } }
     }
 
-    fun unregisterConnectionPerformReceiver(context: Context, receiver: BroadcastReceiver) {
+    fun unregisterConnectionPerformReceiver(
+        context: Context,
+        receiver: BroadcastReceiver,
+    ) {
         context.unregisterReceiver(receiver)
     }
 
     interface DispatchHandle {
-        fun dispatch(context: Context, report: ConnectionEvent, data: Bundle? = null)
+        fun dispatch(
+            context: Context,
+            report: ConnectionEvent,
+            data: Bundle? = null,
+        )
     }
 
     /**
      * Singleton instance that dispatches connection reports via broadcast.
      */
-    val handle: DispatchHandle = object : DispatchHandle {
-        override fun dispatch(context: Context, report: ConnectionEvent, data: Bundle?) {
-            val appContext = context.applicationContext
+    val handle: DispatchHandle =
+        object : DispatchHandle {
+            override fun dispatch(
+                context: Context,
+                report: ConnectionEvent,
+                data: Bundle?,
+            ) {
+                val appContext = context.applicationContext
 
-            // When connection is not found, cancel any visible notification and synthesise a HungUp
-            // so that subscribers waiting for a termination event are not left hanging.
-            if (report == CallLifecycleEvent.ConnectionNotFound) {
-                data?.getString(CallDataConst.CALL_ID)?.let {
-                    notificationManager.cancelActiveCallNotification(it)
-                } ?: notificationManager.tearDown()
+                // When connection is not found, cancel any visible notification and synthesise a HungUp
+                // so that subscribers waiting for a termination event are not left hanging.
+                if (report == CallLifecycleEvent.ConnectionNotFound) {
+                    data?.getString(CallDataConst.CALL_ID)?.let {
+                        notificationManager.cancelActiveCallNotification(it)
+                    } ?: notificationManager.tearDown()
 
-                notificationManager.cancelIncomingNotification(true)
-                appContext.sendInternalBroadcast(CallLifecycleEvent.HungUp.name, data)
-                return
+                    notificationManager.cancelIncomingNotification(true)
+                    appContext.sendInternalBroadcast(CallLifecycleEvent.HungUp.name, data)
+                    return
+                }
+
+                appContext.sendInternalBroadcast(report.name, data)
             }
-
-            appContext.sendInternalBroadcast(report.name, data)
         }
-    }
 }

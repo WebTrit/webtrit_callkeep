@@ -32,7 +32,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 @Config(sdk = [Build.VERSION_CODES.UPSIDE_DOWN_CAKE])
 @LooperMode(LooperMode.Mode.PAUSED)
 class EndAllCallsConfirmationTest {
-
     private val ctx: Context = RuntimeEnvironment.getApplication()
     private val timeoutMs = 5_000L
 
@@ -41,7 +40,10 @@ class EndAllCallsConfirmationTest {
         onFinish: () -> Unit,
     ): BroadcastReceiver {
         return object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: android.content.Intent?) {
+            override fun onReceive(
+                context: Context?,
+                intent: android.content.Intent?,
+            ) {
                 val id = intent?.extras?.getString(CallDataConst.CALL_ID) ?: return
                 if (pendingIds.remove(id) && pendingIds.isEmpty()) onFinish()
             }
@@ -56,17 +58,23 @@ class EndAllCallsConfirmationTest {
         val receiver = buildReceiver(pendingIds) { resolved.set(true) }
 
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(CallLifecycleEvent.HungUp, CallLifecycleEvent.DeclineCall), ctx, receiver,
+            listOf(CallLifecycleEvent.HungUp, CallLifecycleEvent.DeclineCall),
+            ctx,
+            receiver,
             exported = false,
         )
 
-        ctx.sendInternalBroadcast(CallLifecycleEvent.HungUp.name,
-            Bundle().apply { putString(CallDataConst.CALL_ID, "call-A") })
+        ctx.sendInternalBroadcast(
+            CallLifecycleEvent.HungUp.name,
+            Bundle().apply { putString(CallDataConst.CALL_ID, "call-A") },
+        )
         Shadows.shadowOf(Looper.getMainLooper()).idle()
         assertFalse("should not resolve after first of two confirmations", resolved.get())
 
-        ctx.sendInternalBroadcast(CallLifecycleEvent.HungUp.name,
-            Bundle().apply { putString(CallDataConst.CALL_ID, "call-B") })
+        ctx.sendInternalBroadcast(
+            CallLifecycleEvent.HungUp.name,
+            Bundle().apply { putString(CallDataConst.CALL_ID, "call-B") },
+        )
         Shadows.shadowOf(Looper.getMainLooper()).idle()
         assertTrue("should resolve after all confirmations", resolved.get())
 
@@ -80,11 +88,16 @@ class EndAllCallsConfirmationTest {
         val receiver = buildReceiver(pendingIds) { resolved.set(true) }
 
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(CallLifecycleEvent.HungUp), ctx, receiver, exported = false,
+            listOf(CallLifecycleEvent.HungUp),
+            ctx,
+            receiver,
+            exported = false,
         )
 
-        ctx.sendInternalBroadcast(CallLifecycleEvent.HungUp.name,
-            Bundle().apply { putString(CallDataConst.CALL_ID, "unrelated-call") })
+        ctx.sendInternalBroadcast(
+            CallLifecycleEvent.HungUp.name,
+            Bundle().apply { putString(CallDataConst.CALL_ID, "unrelated-call") },
+        )
         Shadows.shadowOf(Looper.getMainLooper()).idle()
 
         assertFalse(resolved.get())
@@ -98,7 +111,10 @@ class EndAllCallsConfirmationTest {
         val receiver = buildReceiver(pendingIds) { resolved.set(true) }
 
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(CallLifecycleEvent.HungUp), ctx, receiver, exported = false,
+            listOf(CallLifecycleEvent.HungUp),
+            ctx,
+            receiver,
+            exported = false,
         )
 
         ctx.sendInternalBroadcast(CallLifecycleEvent.HungUp.name, extras = null)

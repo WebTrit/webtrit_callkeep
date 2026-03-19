@@ -11,7 +11,9 @@ import com.webtrit.callkeep.services.services.connection.ServiceAction
 import com.webtrit.callkeep.services.services.connection.models.PerformDispatchHandle
 
 enum class ConnectionLifecycleAction {
-    ConnectionCreated, ConnectionChanged, ServiceDestroyed
+    ConnectionCreated,
+    ConnectionChanged,
+    ServiceDestroyed,
 }
 
 /**
@@ -34,7 +36,6 @@ class PhoneConnectionServiceDispatcher(
     private val activityWakelockManager: ActivityWakelockManager,
     private val proximitySensorManager: ProximitySensorManager,
 ) {
-
     /**
      * Dispatches a given [ServiceAction] with optional [CallMetadata] to the appropriate
      * connection or fallback dispatcher.
@@ -46,7 +47,10 @@ class PhoneConnectionServiceDispatcher(
      * @param action The service action to be performed.
      * @param metadata Metadata associated with the call, if applicable.
      */
-    fun dispatch(action: ServiceAction, metadata: CallMetadata?) {
+    fun dispatch(
+        action: ServiceAction,
+        metadata: CallMetadata?,
+    ) {
         logger.d("Dispatching ServiceAction: $action | CallId: ${metadata?.callId ?: "N/A"}")
 
         when (action) {
@@ -67,19 +71,24 @@ class PhoneConnectionServiceDispatcher(
             ServiceAction.ReserveAnswer,
             ServiceAction.NotifyPending,
             ServiceAction.CleanConnections,
-            ServiceAction.SyncAudioState -> logger.w("dispatch: unexpected IPC command action: $action")
+            ServiceAction.SyncAudioState,
+            -> logger.w("dispatch: unexpected IPC command action: $action")
         }
     }
 
     /**
      * Dispatches lifecycle events related to connection state changes.
      */
-    fun dispatchLifecycle(action: ConnectionLifecycleAction, metadata: CallMetadata? = null) {
+    fun dispatchLifecycle(
+        action: ConnectionLifecycleAction,
+        metadata: CallMetadata? = null,
+    ) {
         logger.d("Dispatching LifecycleAction: $action")
         when (action) {
-            ConnectionLifecycleAction.ConnectionCreated -> metadata?.let {
-                handleConnectionCreated(it)
-            }
+            ConnectionLifecycleAction.ConnectionCreated ->
+                metadata?.let {
+                    handleConnectionCreated(it)
+                }
 
             ConnectionLifecycleAction.ConnectionChanged -> handleConnectionChanged()
             ConnectionLifecycleAction.ServiceDestroyed -> handleServiceDestroyed()
@@ -242,11 +251,12 @@ class PhoneConnectionServiceDispatcher(
         // or a connecting call hasn't updated its metadata yet.
         val hasVideo = activeConnections.any { it.hasVideo }
         // Proximity should only be enabled for audio-only calls that explicitly allow it.
-        val shouldEnableProximity = activeConnections.any {
-            !it.hasVideo && it.proximityEnabled
-        }
+        val shouldEnableProximity =
+            activeConnections.any {
+                !it.hasVideo && it.proximityEnabled
+            }
         logger.v(
-            "Updating sensors state. HasVideo: $hasVideo, HasAnyConnection: $hasAnyConnection, ShouldEnableProximity: $shouldEnableProximity"
+            "Updating sensors state. HasVideo: $hasVideo, HasAnyConnection: $hasAnyConnection, ShouldEnableProximity: $shouldEnableProximity",
         )
         if (hasVideo) {
             activityWakelockManager.acquireScreenWakeLock()
@@ -270,7 +280,9 @@ class PhoneConnectionServiceDispatcher(
      * If the connection is missing, it logs a warning and dispatches [CallLifecycleEvent.ConnectionNotFound].
      */
     private inline fun executeOnConnection(
-        metadata: CallMetadata, actionName: String, block: (PhoneConnection) -> Unit
+        metadata: CallMetadata,
+        actionName: String,
+        block: (PhoneConnection) -> Unit,
     ) {
         val connection = connectionManager.getConnection(metadata.callId)
         if (connection != null) {

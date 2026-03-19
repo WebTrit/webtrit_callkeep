@@ -35,7 +35,7 @@ class AudioManager(val context: Context) {
      */
     @Deprecated(
         message = "Avoid in self-managed VoIP. Use media engine mute instead.",
-        level = DeprecationLevel.WARNING
+        level = DeprecationLevel.WARNING,
     )
     fun setMicrophoneMute(isMicrophoneMute: Boolean) {
         audioManager.isMicrophoneMute = isMicrophoneMute
@@ -71,7 +71,8 @@ class AudioManager(val context: Context) {
 
     private fun getDefaultRingtone(): Ringtone {
         return RingtoneManager.getRingtone(
-            context, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+            context,
+            RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE),
         )
     }
 
@@ -131,5 +132,4 @@ class AudioManager(val context: Context) {
     fun stopRingback() {
         ringBack?.pause()
     }
-
 }
