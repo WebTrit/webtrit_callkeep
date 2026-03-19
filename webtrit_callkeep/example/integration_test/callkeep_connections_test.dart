@@ -288,7 +288,7 @@ void main() {
       await callkeep.reportNewIncomingCall(id1, _handle1, displayName: 'Frank');
       await Future.delayed(const Duration(milliseconds: 300));
 
-      final err2 = await callkeep.reportNewIncomingCall(
+      await callkeep.reportNewIncomingCall(
         id2,
         const CallkeepHandle.number('380003000001'),
         displayName: 'Grace',
