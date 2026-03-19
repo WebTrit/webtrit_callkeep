@@ -63,8 +63,10 @@ for TEST_FILE in "${TESTS[@]}"; do
   if [[ "$FIRST" == "true" ]]; then
     FIRST=false
   else
-    # Standard inter-file cleanup: force-stop + 3s for Telecom to settle.
-    cleanup_device 3
+    # Standard inter-file cleanup: force-stop + 5s for Telecom to settle.
+    # callkeep_call_scenarios_test runs many answer/end cycles; Android Telecom
+    # may need extra time to process all disconnect events before the next file.
+    cleanup_device 5
   fi
 
   echo ""
