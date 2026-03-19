@@ -46,7 +46,9 @@ class FlutterEngineHelper(
                     if (callbackInformation != null) {
                         val dartCallback =
                             DartCallback(
-                                context.assets, flutterLoader.findAppBundlePath(), callbackInformation,
+                                context.assets,
+                                flutterLoader.findAppBundlePath(),
+                                callbackInformation,
                             )
                         engine.dartExecutor.executeDartCallback(dartCallback)
 

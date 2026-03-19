@@ -45,13 +45,13 @@ APP_ID="com.example.example"
 # Android Telecom to finish processing the resulting disconnect events.
 cleanup_device() {
   local wait_secs="${1:-3}"
-  adb "${ADB_SERIAL_FLAG[@]}" shell am force-stop "$APP_ID" 2>/dev/null || true
+  adb "${ADB_SERIAL_FLAG[@]+"${ADB_SERIAL_FLAG[@]}"}" shell am force-stop "$APP_ID" 2>/dev/null || true
   sleep "$wait_secs"
 }
 
 run_test_file() {
   local test_file="$1"
-  flutter test "$test_file" "${DEVICE_FLAG[@]}"
+  flutter test "$test_file" "${DEVICE_FLAG[@]+"${DEVICE_FLAG[@]}"}"
 }
 
 PASS=0

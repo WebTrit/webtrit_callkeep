@@ -51,7 +51,9 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Triggers incoming calls, ends calls, ends all calls, and handles lifecycle events.
  */
 @Keep
-class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
+class SignalingIsolateService :
+    Service(),
+    PHostBackgroundSignalingIsolateApi {
     private var latestSignalingStatus: SignalingStatus? = null
     private var latestLifecycleActivityEvent: Lifecycle.Event = Lifecycle.Event.ON_DESTROY
 
@@ -447,14 +449,15 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
          * Using a single instance ensures acquire/release operate on the same object.
          */
         @Synchronized
-        fun getLock(context: Context): PowerManager.WakeLock {
-            return wakeLock ?: run {
+        fun getLock(context: Context): PowerManager.WakeLock =
+            wakeLock ?: run {
                 val mgr = context.applicationContext.getSystemService(Context.POWER_SERVICE) as PowerManager
-                mgr.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKE_LOCK_TAG).apply {
-                    setReferenceCounted(false)
-                }.also { wakeLock = it }
+                mgr
+                    .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKE_LOCK_TAG)
+                    .apply {
+                        setReferenceCounted(false)
+                    }.also { wakeLock = it }
             }
-        }
 
         /** Resets the cached wake lock. Intended for use in tests only. */
         @androidx.annotation.VisibleForTesting(otherwise = androidx.annotation.VisibleForTesting.PRIVATE)

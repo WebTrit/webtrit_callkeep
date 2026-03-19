@@ -16,7 +16,8 @@ import java.util.concurrent.TimeoutException
 
 class PermissionsApi(
     private val context: Context,
-) : PHostPermissionsApi, PluginRegistry.RequestPermissionsResultListener {
+) : PHostPermissionsApi,
+    PluginRegistry.RequestPermissionsResultListener {
     private var pendingPermissionCallback: ((Result<List<PPermissionResult>>) -> Unit)? = null
     private val handler = Handler(Looper.getMainLooper())
     private var timeoutRunnable: Runnable? = null

@@ -12,8 +12,8 @@ open class FailureMetadata(
     val message: String?,
     val outgoingFailureType: OutgoingFailureType = OutgoingFailureType.UNENTITLED,
 ) {
-    fun toBundle(): Bundle {
-        return Bundle().apply {
+    fun toBundle(): Bundle =
+        Bundle().apply {
             // Serialize optional message
             message?.let { putString(FAILURE_METADATA_MESSAGE, it) }
 
@@ -23,11 +23,8 @@ open class FailureMetadata(
             // Serialize failure type as ordinal (safe to restore later)
             putInt(FAILURE_OUTGOING_TYPE, outgoingFailureType.ordinal)
         }
-    }
 
-    fun getThrowable(): Throwable {
-        return Throwable(message ?: "Something happened")
-    }
+    fun getThrowable(): Throwable = Throwable(message ?: "Something happened")
 
     companion object {
         private const val FAILURE_METADATA_MESSAGE = "FAILURE_METADATA_MESSAGE"

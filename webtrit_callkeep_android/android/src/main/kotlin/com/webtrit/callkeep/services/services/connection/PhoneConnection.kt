@@ -287,7 +287,7 @@ class PhoneConnection internal constructor(
         dispatcher(CallMediaEvent.AudioDevicesUpdate, metadata.copy(audioDevices = devices))
 
         try {
-            /**
+            /*
              * Core Fix: Force EARPIECE on initialization for audio-only calls.
              * By forcing the switch blindly on the first load, we preemptively correct
              * any "sticky" speaker state without risking a crash.
@@ -301,7 +301,7 @@ class PhoneConnection internal constructor(
                 }
             }
         } catch (e: Exception) {
-            /**
+            /*
              * Defensive logging: Ensures the call remains active even if
              * the platform-specific routing request fails.
              */
@@ -455,8 +455,8 @@ class PhoneConnection internal constructor(
     /**
      * Helper to detect if a Bluetooth audio device is available/connected.
      */
-    private fun isBluetoothAvailable(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+    private fun isBluetoothAvailable(): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             // API 34+: Check if any endpoint is Bluetooth
             availableCallEndpoints.any { it.endpointType == CallEndpoint.TYPE_BLUETOOTH }
         } else {
@@ -464,7 +464,6 @@ class PhoneConnection internal constructor(
             val supportedMask = callAudioState?.supportedRouteMask ?: 0
             (supportedMask and CallAudioState.ROUTE_BLUETOOTH) != 0
         }
-    }
 
     /**
      * Updates call identity and visual parameters.
@@ -711,8 +710,9 @@ class PhoneConnection internal constructor(
      * Implementation of [OutcomeReceiver] for monitoring endpoint switches.
      */
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-    private inner class EndpointChangeReceiver(private val endpoint: CallEndpoint) :
-        OutcomeReceiver<Void, CallEndpointException> {
+    private inner class EndpointChangeReceiver(
+        private val endpoint: CallEndpoint,
+    ) : OutcomeReceiver<Void, CallEndpointException> {
         override fun onResult(p0: Void?) {
             logger.d("Endpoint successfully changed to: $endpoint")
             synchronized(this@PhoneConnection) {

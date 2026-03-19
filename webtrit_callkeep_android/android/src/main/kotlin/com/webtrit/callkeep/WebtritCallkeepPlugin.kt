@@ -30,7 +30,11 @@ import io.flutter.embedding.engine.plugins.service.ServicePluginBinding
 import io.flutter.plugin.common.BinaryMessenger
 
 /** WebtritCallkeepAndroidPlugin */
-class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, LifecycleEventObserver {
+class WebtritCallkeepPlugin :
+    FlutterPlugin,
+    ActivityAware,
+    ServiceAware,
+    LifecycleEventObserver {
     private var activityPluginBinding: ActivityPluginBinding? = null
     private var lifeCycle: Lifecycle? = null
 
@@ -224,7 +228,7 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
         )
         ActivityLifecycleBroadcaster.setValue(context, event)
 
-        /**
+        /*
          * This block is essential for the incoming call flow on the lock screen.
          *
          * It manages the `setShowWhenLocked` and `setTurnScreenOn` permissions
@@ -240,16 +244,16 @@ class WebtritCallkeepPlugin : FlutterPlugin, ActivityAware, ServiceAware, Lifecy
          * `ON_START` is our only reliable "checkpoint" that fires every
          * time the Activity becomes visible. This logic handles two scenarios:
          *
-         * 1. **(Activate)** If the Activity starts *during* an active call,
+         * 1. (Activate) If the Activity starts *during* an active call,
          * `hasActiveConnections` will be `true`, and we force
          * the Activity over the lock screen and turn the screen on.
          *
-         * 2. **(Clear)** If the Activity starts *after* a call has
+         * 2. (Clear) If the Activity starts *after* a call has
          * ended (or the user is just opening the app normally),
          * `hasActiveConnections` will be `false`. This guarantees
          * that we clear the flags.
          *
-         * We don't use `ON_STOP` for clearing because, **on some devices**,
+         * We don't use `ON_STOP` for clearing because, on some devices,
          * it's called almost immediately after `ON_START` on the lock screen,
          * which leads to a race condition (setting flags to `true` then
          * immediately to `false`). This `ON_START`-only approach also solves

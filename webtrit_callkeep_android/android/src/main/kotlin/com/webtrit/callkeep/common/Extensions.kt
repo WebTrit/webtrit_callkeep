@@ -31,45 +31,65 @@ import com.webtrit.callkeep.models.SignalingStatus
 
 inline fun <reified T : Parcelable> Intent.parcelable(key: String): T? =
     when {
-        SDK_INT >= 33 -> getParcelableExtra(key, T::class.java)
-        else ->
+        SDK_INT >= 33 -> {
+            getParcelableExtra(key, T::class.java)
+        }
+
+        else -> {
             @Suppress("DEPRECATION")
             getParcelableExtra(key)
                 as? T
+        }
     }
 
 inline fun <reified T : Parcelable> Bundle.serializable(key: String): T? =
     when {
-        SDK_INT >= 33 -> getParcelable(key, T::class.java)
-        else ->
+        SDK_INT >= 33 -> {
+            getParcelable(key, T::class.java)
+        }
+
+        else -> {
             @Suppress("DEPRECATION")
             getParcelable(key)
                 as? T
+        }
     }
 
 inline fun <reified T : java.io.Serializable> Bundle.serializableCompat(key: String): T? =
     when {
-        SDK_INT >= 33 -> getSerializable(key, T::class.java)
-        else ->
+        SDK_INT >= 33 -> {
+            getSerializable(key, T::class.java)
+        }
+
+        else -> {
             @Suppress("DEPRECATION")
             getSerializable(key)
                 as? T
+        }
     }
 
 inline fun <reified T : Parcelable> Intent.parcelableArrayList(key: String): ArrayList<T>? =
     when {
-        SDK_INT >= 33 -> getParcelableArrayListExtra(key, T::class.java)
-        else ->
+        SDK_INT >= 33 -> {
+            getParcelableArrayListExtra(key, T::class.java)
+        }
+
+        else -> {
             @Suppress("DEPRECATION")
             getParcelableArrayListExtra(key)
+        }
     }
 
 inline fun <reified T : Parcelable> Bundle.parcelableArrayList(key: String): ArrayList<T>? =
     when {
-        SDK_INT >= 33 -> getParcelableArrayList(key, T::class.java)
-        else ->
+        SDK_INT >= 33 -> {
+            getParcelableArrayList(key, T::class.java)
+        }
+
+        else -> {
             @Suppress("DEPRECATION")
             getParcelableArrayList(key)
+        }
     }
 
 fun Ringtone.setLoopingCompat(looping: Boolean) {
@@ -102,14 +122,15 @@ fun Context.sendInternalBroadcast(
     action: String,
     extras: Bundle? = null,
 ) {
-    Intent(action).apply {
-        setPackage(packageName)
-        extras?.let { putExtras(it) }
-    }.also { sendBroadcast(it) }
+    Intent(action)
+        .apply {
+            setPackage(packageName)
+            extras?.let { putExtras(it) }
+        }.also { sendBroadcast(it) }
 }
 
-fun Lifecycle.Event.toPCallkeepLifecycleType(): PCallkeepLifecycleEvent {
-    return when (this) {
+fun Lifecycle.Event.toPCallkeepLifecycleType(): PCallkeepLifecycleEvent =
+    when (this) {
         Lifecycle.Event.ON_CREATE -> PCallkeepLifecycleEvent.ON_CREATE
         Lifecycle.Event.ON_START -> PCallkeepLifecycleEvent.ON_START
         Lifecycle.Event.ON_RESUME -> PCallkeepLifecycleEvent.ON_RESUME
@@ -118,13 +139,11 @@ fun Lifecycle.Event.toPCallkeepLifecycleType(): PCallkeepLifecycleEvent {
         Lifecycle.Event.ON_DESTROY -> PCallkeepLifecycleEvent.ON_DESTROY
         Lifecycle.Event.ON_ANY -> PCallkeepLifecycleEvent.ON_ANY
     }
-}
 
-fun Lifecycle.Event.toBundle(): Bundle {
-    return Bundle().apply {
+fun Lifecycle.Event.toBundle(): Bundle =
+    Bundle().apply {
         putString("LifecycleEvent", this@toBundle.name)
     }
-}
 
 fun Lifecycle.Event.Companion.fromBundle(bundle: Bundle?): Lifecycle.Event? {
     val name = bundle?.getString("LifecycleEvent") ?: return null
@@ -152,25 +171,23 @@ fun Context.startForegroundServiceCompat(
     }
 }
 
-fun SignalingStatus.toPCallkeepSignalingStatus(): PCallkeepSignalingStatus {
-    return when (this) {
+fun SignalingStatus.toPCallkeepSignalingStatus(): PCallkeepSignalingStatus =
+    when (this) {
         SignalingStatus.DISCONNECTING -> PCallkeepSignalingStatus.DISCONNECTING
         SignalingStatus.DISCONNECT -> PCallkeepSignalingStatus.DISCONNECT
         SignalingStatus.CONNECTING -> PCallkeepSignalingStatus.CONNECTING
         SignalingStatus.CONNECT -> PCallkeepSignalingStatus.CONNECT
         SignalingStatus.FAILURE -> PCallkeepSignalingStatus.FAILURE
     }
-}
 
-fun PCallkeepSignalingStatus.toSignalingStatus(): SignalingStatus {
-    return when (this) {
+fun PCallkeepSignalingStatus.toSignalingStatus(): SignalingStatus =
+    when (this) {
         PCallkeepSignalingStatus.DISCONNECTING -> SignalingStatus.DISCONNECTING
         PCallkeepSignalingStatus.DISCONNECT -> SignalingStatus.DISCONNECT
         PCallkeepSignalingStatus.CONNECTING -> SignalingStatus.CONNECTING
         PCallkeepSignalingStatus.CONNECT -> SignalingStatus.CONNECT
         PCallkeepSignalingStatus.FAILURE -> SignalingStatus.FAILURE
     }
-}
 
 fun PDelegateBackgroundRegisterFlutterApi.syncPushIsolate(
     context: Context,
@@ -255,9 +272,7 @@ fun Activity.setTurnScreenOnCompat(enable: Boolean) {
  *
  * Reference: https://stackoverflow.com/questions/39480931/error-broadcast-intent-callback-result-cancelled-forintent-act-com-google-and
  */
-fun Activity.moveTaskToBackCompat(): Boolean {
-    return moveTaskToBack(true)
-}
+fun Activity.moveTaskToBackCompat(): Boolean = moveTaskToBack(true)
 
 /**
  * Checks if the device keyguard is currently locked.
@@ -270,21 +285,23 @@ fun Context.isDeviceLockedCompat(): Boolean {
 /**
  * Converts a raw Android permission string to the Pigeon enum [PCallkeepPermission].
  */
-fun String.toPCallkeepPermission(): PCallkeepPermission? {
-    return when (this) {
+fun String.toPCallkeepPermission(): PCallkeepPermission? =
+    when (this) {
         Manifest.permission.READ_PHONE_STATE -> PCallkeepPermission.READ_PHONE_STATE
         Manifest.permission.READ_PHONE_NUMBERS -> PCallkeepPermission.READ_PHONE_NUMBERS
         else -> null
     }
-}
 
 /**
  * Converts a Pigeon enum [PCallkeepPermission] to the Android Manifest string.
  * Returns null if the permission is not relevant for the current SDK level (e.g. READ_PHONE_NUMBERS on old Android).
  */
-fun PCallkeepPermission.toAndroidPermission(): String? {
-    return when (this) {
-        PCallkeepPermission.READ_PHONE_STATE -> Manifest.permission.READ_PHONE_STATE
+fun PCallkeepPermission.toAndroidPermission(): String? =
+    when (this) {
+        PCallkeepPermission.READ_PHONE_STATE -> {
+            Manifest.permission.READ_PHONE_STATE
+        }
+
         PCallkeepPermission.READ_PHONE_NUMBERS -> {
             if (SDK_INT >= Build.VERSION_CODES.O) {
                 Manifest.permission.READ_PHONE_NUMBERS
@@ -293,14 +310,11 @@ fun PCallkeepPermission.toAndroidPermission(): String? {
             }
         }
     }
-}
 
 /**
  * Converts a list of Pigeon permissions to a list of valid Android permission strings.
  */
-fun List<PCallkeepPermission>.toAndroidPermissions(): List<String> {
-    return this.mapNotNull { it.toAndroidPermission() }
-}
+fun List<PCallkeepPermission>.toAndroidPermissions(): List<String> = this.mapNotNull { it.toAndroidPermission() }
 
 /**
  * Creates a list of [PPermissionResult] based on the current grant status of the provided permissions.
@@ -310,7 +324,8 @@ fun List<String>.toPPermissionResults(context: Context): List<PPermissionResult>
         val pType = permString.toPCallkeepPermission() ?: return@mapNotNull null
         val isGranted =
             ContextCompat.checkSelfPermission(
-                context, permString,
+                context,
+                permString,
             ) == PackageManager.PERMISSION_GRANTED
 
         PPermissionResult(

@@ -21,15 +21,15 @@ interface IsolateSelectionStrategy {
  * If the signaling status is CONNECT or CONNECTING, it returns MAIN isolate type.
  * Otherwise, it returns BACKGROUND isolate type.
  */
-class SignalingStatusStrategy(private val signalingStatus: SignalingStatus?) :
-    IsolateSelectionStrategy {
-    override fun getIsolateType(): IsolateType {
-        return if (signalingStatus in listOf(SignalingStatus.CONNECT, SignalingStatus.CONNECTING)) {
+class SignalingStatusStrategy(
+    private val signalingStatus: SignalingStatus?,
+) : IsolateSelectionStrategy {
+    override fun getIsolateType(): IsolateType =
+        if (signalingStatus in listOf(SignalingStatus.CONNECT, SignalingStatus.CONNECTING)) {
             IsolateType.MAIN
         } else {
             IsolateType.BACKGROUND
         }
-    }
 }
 
 /**
@@ -59,10 +59,9 @@ class ActivityStateStrategy : IsolateSelectionStrategy {
 object IsolateSelector {
     private const val TAG = "IsolateSelector"
 
-    private fun getStrategy(): IsolateSelectionStrategy {
-        return SignalingStatusBroadcaster.currentValue?.let { SignalingStatusStrategy(it) }
+    private fun getStrategy(): IsolateSelectionStrategy =
+        SignalingStatusBroadcaster.currentValue?.let { SignalingStatusStrategy(it) }
             ?: ActivityStateStrategy()
-    }
 
     // Determines the isolate type based on the current strategy
     fun getIsolateType(): IsolateType {

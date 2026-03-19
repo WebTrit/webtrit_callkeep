@@ -131,8 +131,8 @@ object CallDiagnostics {
         return info
     }
 
-    private fun getPowerManagementInfo(context: Context): Map<String, Any?> {
-        return try {
+    private fun getPowerManagementInfo(context: Context): Map<String, Any?> =
+        try {
             val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
             val isIgnoringOptimizations =
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -148,7 +148,6 @@ object CallDiagnostics {
         } catch (e: Exception) {
             mapOf("powerManagementError" to e.message)
         }
-    }
 
     private fun getVendorSpecifics(context: Context): Map<String, Any?> {
         val manufacturer = Build.MANUFACTURER.lowercase(Locale.ROOT)
@@ -212,8 +211,8 @@ object CallDiagnostics {
         )
     }
 
-    private fun getFailedCallsLog(): List<Map<String, Any?>> {
-        return ForegroundService.failedCallsStore.getAll().map { info ->
+    private fun getFailedCallsLog(): List<Map<String, Any?>> =
+        ForegroundService.failedCallsStore.getAll().map { info ->
             mapOf(
                 "callId" to info.callId,
                 "source" to info.source.name,
@@ -221,19 +220,18 @@ object CallDiagnostics {
                 "timestamp" to info.timestamp,
             )
         }
-    }
 
     private fun canResolveIntent(
         context: Context,
         intent: Intent,
-    ): Boolean {
-        return context.packageManager.resolveActivity(
-            intent, PackageManager.MATCH_DEFAULT_ONLY,
+    ): Boolean =
+        context.packageManager.resolveActivity(
+            intent,
+            PackageManager.MATCH_DEFAULT_ONLY,
         ) != null
-    }
 
-    private fun getSystemProperty(key: String): String? {
-        return try {
+    private fun getSystemProperty(key: String): String? =
+        try {
             val clazz = Class.forName("android.os.SystemProperties")
             val getMethod = clazz.getMethod("get", String::class.java)
             val value = getMethod.invoke(null, key) as String
@@ -241,5 +239,4 @@ object CallDiagnostics {
         } catch (e: Exception) {
             null
         }
-    }
 }

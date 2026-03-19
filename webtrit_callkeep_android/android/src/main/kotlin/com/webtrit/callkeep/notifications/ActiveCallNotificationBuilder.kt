@@ -12,7 +12,7 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.services.services.active_call.ActiveCallService
 
-class ActiveCallNotificationBuilder() : NotificationBuilder() {
+class ActiveCallNotificationBuilder : NotificationBuilder() {
     private var callsMetaData = ArrayList<CallMetadata>()
 
     fun setCallsMetaData(callsMetaData: List<CallMetadata>) {
@@ -30,26 +30,28 @@ class ActiveCallNotificationBuilder() : NotificationBuilder() {
         val text = callsMetaData.joinToString { it.name }
 
         val hungUpAction: Notification.Action =
-            Notification.Action.Builder(
-                Icon.createWithResource(context, R.drawable.ic_call_hungup),
-                context.getString(R.string.hang_up_button_text),
-                getHungUpCallIntent(callsMetaData.firstOrNull()),
-            ).build()
+            Notification.Action
+                .Builder(
+                    Icon.createWithResource(context, R.drawable.ic_call_hungup),
+                    context.getString(R.string.hang_up_button_text),
+                    getHungUpCallIntent(callsMetaData.firstOrNull()),
+                ).build()
 
         val notificationBuilder =
-            Notification.Builder(
-                context,
-                NOTIFICATION_ACTIVE_CALL_CHANNEL_ID,
-            ).apply {
-                setSmallIcon(R.drawable.ic_notification)
-                setOngoing(true)
-                setContentTitle(title)
-                setContentText(text)
-                setAutoCancel(false)
-                setCategory(Notification.CATEGORY_SERVICE)
-                setFullScreenIntent(buildOpenAppIntent(context), true)
-                addAction(hungUpAction)
-            }
+            Notification
+                .Builder(
+                    context,
+                    NOTIFICATION_ACTIVE_CALL_CHANNEL_ID,
+                ).apply {
+                    setSmallIcon(R.drawable.ic_notification)
+                    setOngoing(true)
+                    setContentTitle(title)
+                    setContentText(text)
+                    setAutoCancel(false)
+                    setCategory(Notification.CATEGORY_SERVICE)
+                    setFullScreenIntent(buildOpenAppIntent(context), true)
+                    addAction(hungUpAction)
+                }
 
         val notification = notificationBuilder.build()
         notification.flags = notification.flags or NotificationCompat.FLAG_INSISTENT

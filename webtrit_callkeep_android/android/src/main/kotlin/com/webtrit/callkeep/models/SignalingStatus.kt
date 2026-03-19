@@ -13,14 +13,11 @@ enum class SignalingStatus {
     companion object {
         const val KEY = "signalingStatus"
 
-        fun fromBundle(bundle: Bundle?): SignalingStatus? {
-            return bundle?.getString(KEY)?.let {
+        fun fromBundle(bundle: Bundle?): SignalingStatus? =
+            bundle?.getString(KEY)?.let {
                 valueOf(it)
             }
-        }
     }
 
-    fun toBundle(): Bundle {
-        return Bundle().apply { putString(KEY, name) }
-    }
+    fun toBundle(): Bundle = Bundle().apply { putString(KEY, name) }
 }

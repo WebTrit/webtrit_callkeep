@@ -18,7 +18,7 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
 
-class IncomingCallNotificationBuilder() : NotificationBuilder() {
+class IncomingCallNotificationBuilder : NotificationBuilder() {
     private var callMetaData: CallMetadata? = null
 
     fun setCallMetaData(callMetaData: CallMetadata) {
@@ -44,27 +44,26 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
     private fun baseNotificationBuilder(
         title: String,
         text: String? = null,
-    ): Notification.Builder {
-        return Notification.Builder(context, INCOMING_CALL_NOTIFICATION_CHANNEL_ID).apply {
+    ): Notification.Builder =
+        Notification.Builder(context, INCOMING_CALL_NOTIFICATION_CHANNEL_ID).apply {
             setSmallIcon(R.drawable.ic_notification)
             setCategory(NotificationCompat.CATEGORY_CALL)
             setContentTitle(title)
             text?.let { setContentText(it) }
             setAutoCancel(true)
         }
-    }
 
     private fun createNotificationAction(
         iconRes: Int,
         textRes: Int,
         intent: PendingIntent,
-    ): Notification.Action {
-        return Notification.Action.Builder(
-            Icon.createWithResource(context, iconRes),
-            context.getString(textRes),
-            intent,
-        ).build()
-    }
+    ): Notification.Action =
+        Notification.Action
+            .Builder(
+                Icon.createWithResource(context, iconRes),
+                context.getString(textRes),
+                intent,
+            ).build()
 
     override fun build(): Notification {
         val meta =
@@ -91,9 +90,16 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
             }
 
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val person = Person.Builder().setName(meta.name).setImportant(true).build()
+            val person =
+                Person
+                    .Builder()
+                    .setName(meta.name)
+                    .setImportant(true)
+                    .build()
             val style = Notification.CallStyle.forIncomingCall(person, declineIntent, answerIntent)
-            builder.setStyle(style).build()
+            builder
+                .setStyle(style)
+                .build()
                 .apply { flags = flags or NotificationCompat.FLAG_INSISTENT }
         } else {
             builder.addAction(createNotificationAction(icDecline, declineButton, declineIntent))
@@ -112,12 +118,23 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
         val title = context.getString(R.string.incoming_call_title)
         val description = context.getString(R.string.incoming_call_description, meta.name)
 
-        return NotificationCompat.Builder(context, INCOMING_CALL_NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification).setCategory(NotificationCompat.CATEGORY_CALL)
-            .setContentTitle(title).setContentText(description).setOnlyAlertOnce(true)
-            .setSilent(true).setAutoCancel(false).setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW).setDefaults(0).setSound(null)
-            .setVibrate(null).setFullScreenIntent(null, false).build().apply {
+        return NotificationCompat
+            .Builder(context, INCOMING_CALL_NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setContentTitle(title)
+            .setContentText(description)
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .setAutoCancel(false)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setDefaults(0)
+            .setSound(null)
+            .setVibrate(null)
+            .setFullScreenIntent(null, false)
+            .build()
+            .apply {
                 flags = flags and Notification.FLAG_INSISTENT.inv()
             }
     }

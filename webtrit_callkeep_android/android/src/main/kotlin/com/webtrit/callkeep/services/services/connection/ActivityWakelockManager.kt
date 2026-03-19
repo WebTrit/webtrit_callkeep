@@ -5,7 +5,9 @@ import android.view.WindowManager
 import com.webtrit.callkeep.common.ActivityProvider
 import com.webtrit.callkeep.common.Log
 
-class ActivityWakelockManager(private val activityProvider: ActivityProvider) {
+class ActivityWakelockManager(
+    private val activityProvider: ActivityProvider,
+) {
     private val operationQueue = mutableListOf<(Activity) -> Unit>()
 
     // Reference to the listener for unsubscribing later

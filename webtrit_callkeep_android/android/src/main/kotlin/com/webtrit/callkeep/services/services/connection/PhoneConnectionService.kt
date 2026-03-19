@@ -106,16 +106,31 @@ class PhoneConnectionService : ConnectionService() {
                 // call-connection dispatcher. Using startService (instead of broadcasts) guarantees
                 // delivery even if the service is starting up: the intent is queued and processed
                 // after onCreate() completes, so these handlers are always reachable.
-                ServiceAction.TearDownConnections -> handleTearDownConnections()
-                ServiceAction.ReserveAnswer ->
+                ServiceAction.TearDownConnections -> {
+                    handleTearDownConnections()
+                }
+
+                ServiceAction.ReserveAnswer -> {
                     metadata?.callId?.let { handleReserveAnswer(it) }
                         ?: Log.w(TAG, "onStartCommand: ReserveAnswer missing callId")
-                ServiceAction.NotifyPending ->
+                }
+
+                ServiceAction.NotifyPending -> {
                     metadata?.callId?.let { handleNotifyPending(it) }
                         ?: Log.w(TAG, "onStartCommand: NotifyPending missing callId")
-                ServiceAction.CleanConnections -> handleCleanConnections()
-                ServiceAction.SyncAudioState -> handleSyncAudioState()
-                else -> phoneConnectionServiceDispatcher.dispatch(action, metadata)
+                }
+
+                ServiceAction.CleanConnections -> {
+                    handleCleanConnections()
+                }
+
+                ServiceAction.SyncAudioState -> {
+                    handleSyncAudioState()
+                }
+
+                else -> {
+                    phoneConnectionServiceDispatcher.dispatch(action, metadata)
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Exception $e with service action: ${intent.action},")

@@ -38,18 +38,21 @@ class ConnectionManager {
     fun checkAndReservePending(callId: String): PIncomingCallErrorEnum? {
         synchronized(connectionResourceLock) {
             return when {
-                pendingCallIds.contains(callId) ->
+                pendingCallIds.contains(callId) -> {
                     PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS
+                }
 
-                connections[callId]?.state == Connection.STATE_DISCONNECTED ->
+                connections[callId]?.state == Connection.STATE_DISCONNECTED -> {
                     PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED
+                }
 
-                connections.containsKey(callId) ->
+                connections.containsKey(callId) -> {
                     if (connections[callId]?.hasAnswered == true) {
                         PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED
                     } else {
                         PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS
                     }
+                }
 
                 else -> {
                     pendingCallIds.add(callId)
@@ -182,9 +185,7 @@ class ConnectionManager {
      * The normal answer flow uses [addConnectionAndConsumeAnswer] and
      * [reserveOrGetConnectionToAnswer] to eliminate the TOCTOU race.
      */
-    fun consumeAnswer(callId: String): Boolean {
-        return pendingAnswers.remove(callId)
-    }
+    fun consumeAnswer(callId: String): Boolean = pendingAnswers.remove(callId)
 
     /**
      * Atomically adds [connection] to the connections map and removes any pending answer
@@ -288,16 +289,15 @@ class ConnectionManager {
      * @param id the identifier of the connection to check.
      * @return `true` if the connection has been answered, `false` otherwise.
      */
-    fun isConnectionAnswered(id: String): Boolean {
-        return connections[id]?.hasAnswered == true
-    }
+    fun isConnectionAnswered(id: String): Boolean = connections[id]?.hasAnswered == true
 
     override fun toString(): String {
         synchronized(connectionResourceLock) {
             val connectionsInfo =
-                connections.map { (callId, connection) ->
-                    "Call ID: $callId, State: ${connection.state}"
-                }.joinToString(separator = "\n")
+                connections
+                    .map { (callId, connection) ->
+                        "Call ID: $callId, State: ${connection.state}"
+                    }.joinToString(separator = "\n")
 
             return """
                 ConnectionManager {

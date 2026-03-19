@@ -65,7 +65,9 @@ import java.util.concurrent.atomic.AtomicBoolean
  * - Registers and unregisters itself with [ConnectionServicePerformBroadcaster] for communication.
  */
 @Keep
-class ForegroundService : Service(), PHostApi {
+class ForegroundService :
+    Service(),
+    PHostApi {
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
 
     // Stored as fields so onDestroy() can cancel the timeout and unregister the receiver
@@ -99,20 +101,47 @@ class ForegroundService : Service(), PHostApi {
                 val action = intent?.action
                 logger.d("connectionServicePerformReceiver onReceive: $action")
                 when (action) {
-                    CallLifecycleEvent.DidPushIncomingCall.name ->
+                    CallLifecycleEvent.DidPushIncomingCall.name -> {
                         handleCSReportDidPushIncomingCall(
                             intent.extras,
                         )
+                    }
 
-                    CallLifecycleEvent.DeclineCall.name -> handleCSReportDeclineCall(intent.extras)
-                    CallLifecycleEvent.HungUp.name -> handleCSReportDeclineCall(intent.extras)
-                    CallLifecycleEvent.ConnectionNotFound.name -> handleCSReportDeclineCall(intent.extras)
-                    CallLifecycleEvent.AnswerCall.name -> handleCSReportAnswerCall(intent.extras)
-                    CallMediaEvent.AudioDeviceSet.name -> handleCSReportAudioDeviceSet(intent.extras)
-                    CallMediaEvent.AudioDevicesUpdate.name -> handleCsReportAudioDevicesUpdate(intent.extras)
-                    CallMediaEvent.AudioMuting.name -> handleCSReportAudioMuting(intent.extras)
-                    CallMediaEvent.ConnectionHolding.name -> handleCSReportConnectionHolding(intent.extras)
-                    CallMediaEvent.SentDTMF.name -> handleCSReportSentDTMF(intent.extras)
+                    CallLifecycleEvent.DeclineCall.name -> {
+                        handleCSReportDeclineCall(intent.extras)
+                    }
+
+                    CallLifecycleEvent.HungUp.name -> {
+                        handleCSReportDeclineCall(intent.extras)
+                    }
+
+                    CallLifecycleEvent.ConnectionNotFound.name -> {
+                        handleCSReportDeclineCall(intent.extras)
+                    }
+
+                    CallLifecycleEvent.AnswerCall.name -> {
+                        handleCSReportAnswerCall(intent.extras)
+                    }
+
+                    CallMediaEvent.AudioDeviceSet.name -> {
+                        handleCSReportAudioDeviceSet(intent.extras)
+                    }
+
+                    CallMediaEvent.AudioDevicesUpdate.name -> {
+                        handleCsReportAudioDevicesUpdate(intent.extras)
+                    }
+
+                    CallMediaEvent.AudioMuting.name -> {
+                        handleCSReportAudioMuting(intent.extras)
+                    }
+
+                    CallMediaEvent.ConnectionHolding.name -> {
+                        handleCSReportConnectionHolding(intent.extras)
+                    }
+
+                    CallMediaEvent.SentDTMF.name -> {
+                        handleCSReportSentDTMF(intent.extras)
+                    }
                 }
             }
         }
@@ -262,19 +291,25 @@ class ForegroundService : Service(), PHostApi {
                             ) {}
                             finish(Result.success(null))
                         }
+
                         CallLifecycleEvent.OutgoingFailure.name -> {
                             val failureMetaData = FailureMetadata.fromBundle(intent.extras ?: return)
                             if (failureMetaData.callMetadata?.callId != callId) return
                             logger.e("$logContext: CS reported failure: ${failureMetaData.outgoingFailureType}")
                             saveFailedOutgoingCall(
-                                metadata, OutgoingFailureSource.CS_CALLBACK, failureMetaData.getThrowable(),
+                                metadata,
+                                OutgoingFailureSource.CS_CALLBACK,
+                                failureMetaData.getThrowable(),
                             )
                             val result =
                                 when (failureMetaData.outgoingFailureType) {
-                                    OutgoingFailureType.UNENTITLED ->
+                                    OutgoingFailureType.UNENTITLED -> {
                                         Result.failure(failureMetaData.getThrowable())
-                                    OutgoingFailureType.EMERGENCY_NUMBER ->
+                                    }
+
+                                    OutgoingFailureType.EMERGENCY_NUMBER -> {
                                         Result.success(PCallRequestError(PCallRequestErrorEnum.EMERGENCY_NUMBER))
+                                    }
                                 }
                             finish(result)
                         }
@@ -353,11 +388,17 @@ class ForegroundService : Service(), PHostApi {
         // is never updated with answered/terminated transitions — so it cannot detect these states.
         val trackerError: PIncomingCallError? =
             when {
-                core.isTerminated(callId) ->
+                core.isTerminated(callId) -> {
                     PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED)
-                core.isAnswered(callId) ->
+                }
+
+                core.isAnswered(callId) -> {
                     PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED)
-                else -> null
+                }
+
+                else -> {
+                    null
+                }
             }
         if (trackerError != null) {
             logger.w("reportNewIncomingCall: rejecting callId=$callId, tracker state=${trackerError.value}")
@@ -591,6 +632,7 @@ class ForegroundService : Service(), PHostApi {
                 core.startAnswerCall(metadata)
                 callback.invoke(Result.success(null))
             }
+
             core.isPending(callId) -> {
                 // Telecom accepted the call but CS has not yet created the PhoneConnection.
                 // Reserve the answer in the core shadow and send a ReserveAnswer command to CS so
@@ -600,6 +642,7 @@ class ForegroundService : Service(), PHostApi {
                 core.sendReserveAnswer(callId)
                 callback.invoke(Result.success(null))
             }
+
             else -> {
                 logger.e("answerCall: no connection or pending entry for callId=$callId in core shadow or CS")
                 callback.invoke(Result.success(PCallRequestError(PCallRequestErrorEnum.INTERNAL)))
