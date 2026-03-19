@@ -2,8 +2,8 @@ package com.webtrit.callkeep.services.core
 
 import android.Manifest
 import androidx.annotation.RequiresPermission
-import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PCallkeepConnection
+import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.models.CallMetadata
 
@@ -25,19 +25,26 @@ import com.webtrit.callkeep.models.CallMetadata
  * **CS commands** — send actions to `:callkeep_core` (via `startService` or broadcast).
  */
 interface CallkeepCore {
-
     // -------------------------------------------------------------------------
     // State queries
     // -------------------------------------------------------------------------
 
     fun exists(callId: String): Boolean
+
     fun isPending(callId: String): Boolean
+
     fun isTerminated(callId: String): Boolean
+
     fun isAnswered(callId: String): Boolean
+
     fun getAll(): List<CallMetadata>
+
     fun getPendingCallIds(): Set<String>
+
     fun get(callId: String): CallMetadata?
+
     fun getState(callId: String): PCallkeepConnectionState?
+
     fun toPCallkeepConnection(callId: String): PCallkeepConnection?
 
     // -------------------------------------------------------------------------
@@ -46,14 +53,27 @@ interface CallkeepCore {
 
     /** Returns true if the callId was not already present (i.e. this call actually added it). */
     fun addPending(callId: String): Boolean
+
     fun removePending(callId: String)
-    fun promote(callId: String, metadata: CallMetadata, state: PCallkeepConnectionState)
+
+    fun promote(
+        callId: String,
+        metadata: CallMetadata,
+        state: PCallkeepConnectionState,
+    )
+
     fun markAnswered(callId: String)
-    fun markHeld(callId: String, onHold: Boolean)
+
+    fun markHeld(
+        callId: String,
+        onHold: Boolean,
+    )
+
     fun markTerminated(callId: String)
 
     /** Reserves a deferred answer in the main-process shadow. */
     fun reserveAnswer(callId: String)
+
     fun consumeAnswer(callId: String): Boolean
 
     /**
@@ -69,9 +89,13 @@ interface CallkeepCore {
     // -------------------------------------------------------------------------
 
     fun markDirectNotified(callId: String)
+
     fun consumeDirectNotified(callId: String): Boolean
+
     fun markEndCallDispatched(callId: String): Boolean
+
     fun markSignalingRegistered(callId: String)
+
     fun consumeSignalingRegistered(callId: String): Boolean
 
     // -------------------------------------------------------------------------
@@ -88,14 +112,23 @@ interface CallkeepCore {
     )
 
     fun startAnswerCall(metadata: CallMetadata)
+
     fun startDeclineCall(metadata: CallMetadata)
+
     fun startHungUpCall(metadata: CallMetadata)
+
     fun startEstablishCall(metadata: CallMetadata)
+
     fun startUpdateCall(metadata: CallMetadata)
+
     fun startSendDtmfCall(metadata: CallMetadata)
+
     fun startMutingCall(metadata: CallMetadata)
+
     fun startHoldingCall(metadata: CallMetadata)
+
     fun startSpeaker(metadata: CallMetadata)
+
     fun setAudioDevice(metadata: CallMetadata)
 
     /**

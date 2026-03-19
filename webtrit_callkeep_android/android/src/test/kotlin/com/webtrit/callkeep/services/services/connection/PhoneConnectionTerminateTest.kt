@@ -31,7 +31,6 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [Build.VERSION_CODES.UPSIDE_DOWN_CAKE])
 class PhoneConnectionTerminateTest {
-
     private val context: Context = RuntimeEnvironment.getApplication()
 
     // Captured dispatcher events — order matters for multi-call assertions.
@@ -157,12 +156,12 @@ class PhoneConnectionTerminateTest {
         val connection = createRingingConnection()
 
         connection.terminateWithCause(DisconnectCause(DisconnectCause.REMOTE)) // stores REMOTE
-        connection.terminateWithCause(DisconnectCause(DisconnectCause.LOCAL))  // else branch
+        connection.terminateWithCause(DisconnectCause(DisconnectCause.LOCAL)) // else branch
 
         assertEquals(
             "Both dispatches must use the original REMOTE cause",
             listOf(CallLifecycleEvent.DeclineCall, CallLifecycleEvent.DeclineCall),
-            dispatchedEvents
+            dispatchedEvents,
         )
     }
 
@@ -170,13 +169,13 @@ class PhoneConnectionTerminateTest {
     fun `stored LOCAL cause wins when second call arrives with REMOTE`() {
         val connection = createRingingConnection()
 
-        connection.terminateWithCause(DisconnectCause(DisconnectCause.LOCAL))  // stores LOCAL
+        connection.terminateWithCause(DisconnectCause(DisconnectCause.LOCAL)) // stores LOCAL
         connection.terminateWithCause(DisconnectCause(DisconnectCause.REMOTE)) // else branch
 
         assertEquals(
             "Both dispatches must use the original LOCAL cause",
             listOf(CallLifecycleEvent.HungUp, CallLifecycleEvent.HungUp),
-            dispatchedEvents
+            dispatchedEvents,
         )
     }
 

@@ -30,7 +30,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 @Config(sdk = [Build.VERSION_CODES.UPSIDE_DOWN_CAKE])
 @LooperMode(LooperMode.Mode.PAUSED)
 class EndCallConfirmationTest {
-
     private val ctx: Context = RuntimeEnvironment.getApplication()
     private val timeoutMs = 5_000L
 
@@ -39,7 +38,10 @@ class EndCallConfirmationTest {
         onFinish: () -> Unit,
     ): BroadcastReceiver {
         return object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: android.content.Intent?) {
+            override fun onReceive(
+                context: Context?,
+                intent: android.content.Intent?,
+            ) {
                 val id = intent?.extras?.getString(CallDataConst.CALL_ID) ?: return
                 if (id == callId) onFinish()
             }
@@ -53,7 +55,10 @@ class EndCallConfirmationTest {
         val receiver = buildReceiverAndFinish(callId) { resolved.set(true) }
 
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(CallLifecycleEvent.HungUp), ctx, receiver, exported = false,
+            listOf(CallLifecycleEvent.HungUp),
+            ctx,
+            receiver,
+            exported = false,
         )
 
         val extras = Bundle().apply { putString(CallDataConst.CALL_ID, callId) }
@@ -71,7 +76,9 @@ class EndCallConfirmationTest {
         val receiver = buildReceiverAndFinish(callId) { resolved.set(true) }
 
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(CallLifecycleEvent.HungUp, CallLifecycleEvent.DeclineCall), ctx, receiver,
+            listOf(CallLifecycleEvent.HungUp, CallLifecycleEvent.DeclineCall),
+            ctx,
+            receiver,
             exported = false,
         )
 
@@ -90,7 +97,10 @@ class EndCallConfirmationTest {
         val receiver = buildReceiverAndFinish(callId) { resolved.set(true) }
 
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(CallLifecycleEvent.HungUp), ctx, receiver, exported = false,
+            listOf(CallLifecycleEvent.HungUp),
+            ctx,
+            receiver,
+            exported = false,
         )
 
         val extras = Bundle().apply { putString(CallDataConst.CALL_ID, "other-call") }
@@ -109,7 +119,8 @@ class EndCallConfirmationTest {
         handler.postDelayed({ resolved.set(true) }, timeoutMs)
 
         Shadows.shadowOf(Looper.getMainLooper()).idleFor(
-            timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS
+            timeoutMs,
+            java.util.concurrent.TimeUnit.MILLISECONDS,
         )
 
         assertTrue(resolved.get())

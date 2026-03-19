@@ -14,9 +14,8 @@ interface IsolateInitializer {
 class FlutterIsolateHandler(
     private val context: Context,
     private val service: Service,
-    private val onStart: (() -> Unit)? = null
+    private val onStart: (() -> Unit)? = null,
 ) : IsolateInitializer {
-
     private var flutterEngineHelper: FlutterEngineHelper? = null
     private var wakeLock: PowerManager.WakeLock? = null
 
@@ -53,8 +52,8 @@ class FlutterIsolateHandler(
         if (wakeLock == null) {
             wakeLock =
                 (context.getSystemService(Context.POWER_SERVICE) as PowerManager).newWakeLock(
-                        PowerManager.PARTIAL_WAKE_LOCK, "com.webtrit.callkeep:Isolate.WakeLock"
-                    ).apply { setReferenceCounted(false) }
+                    PowerManager.PARTIAL_WAKE_LOCK, "com.webtrit.callkeep:Isolate.WakeLock",
+                ).apply { setReferenceCounted(false) }
         }
     }
 

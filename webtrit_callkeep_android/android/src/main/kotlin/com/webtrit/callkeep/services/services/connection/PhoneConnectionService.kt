@@ -55,14 +55,15 @@ class PhoneConnectionService : ConnectionService() {
 
         val activityWakelockManager = ActivityWakelockManager(ActivityHolder)
         val proximitySensorManager =
-            ProximitySensorManager(applicationContext, PhoneConnectionConsts());
+            ProximitySensorManager(applicationContext, PhoneConnectionConsts())
 
-        phoneConnectionServiceDispatcher = PhoneConnectionServiceDispatcher(
-            connectionManager,
-            ::performEventHandle,
-            activityWakelockManager,
-            proximitySensorManager,
-        )
+        phoneConnectionServiceDispatcher =
+            PhoneConnectionServiceDispatcher(
+                connectionManager,
+                ::performEventHandle,
+                activityWakelockManager,
+                proximitySensorManager,
+            )
     }
 
     /**
@@ -79,16 +80,24 @@ class PhoneConnectionService : ConnectionService() {
      * @param event The connection-related event to be handled.
      * @param data Optional call metadata associated with the event.
      */
-    fun performEventHandle(event: ConnectionEvent, data: CallMetadata? = null) {
+    fun performEventHandle(
+        event: ConnectionEvent,
+        data: CallMetadata? = null,
+    ) {
         Log.i(TAG, "performEventHandle: $event")
         dispatcher.dispatch(baseContext, event, data?.toBundle())
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val action = intent?.action?.let { ServiceAction.from(it) } ?: run {
-            Log.w(TAG, "onStartCommand: unknown or missing action '${intent?.action}', ignoring")
-            return START_NOT_STICKY
-        }
+    override fun onStartCommand(
+        intent: Intent?,
+        flags: Int,
+        startId: Int,
+    ): Int {
+        val action =
+            intent?.action?.let { ServiceAction.from(it) } ?: run {
+                Log.w(TAG, "onStartCommand: unknown or missing action '${intent?.action}', ignoring")
+                return START_NOT_STICKY
+            }
         val metadata = intent.extras?.let { CallMetadata.fromBundle(it) }
 
         try {
@@ -98,10 +107,12 @@ class PhoneConnectionService : ConnectionService() {
                 // delivery even if the service is starting up: the intent is queued and processed
                 // after onCreate() completes, so these handlers are always reachable.
                 ServiceAction.TearDownConnections -> handleTearDownConnections()
-                ServiceAction.ReserveAnswer -> metadata?.callId?.let { handleReserveAnswer(it) }
-                    ?: Log.w(TAG, "onStartCommand: ReserveAnswer missing callId")
-                ServiceAction.NotifyPending -> metadata?.callId?.let { handleNotifyPending(it) }
-                    ?: Log.w(TAG, "onStartCommand: NotifyPending missing callId")
+                ServiceAction.ReserveAnswer ->
+                    metadata?.callId?.let { handleReserveAnswer(it) }
+                        ?: Log.w(TAG, "onStartCommand: ReserveAnswer missing callId")
+                ServiceAction.NotifyPending ->
+                    metadata?.callId?.let { handleNotifyPending(it) }
+                        ?: Log.w(TAG, "onStartCommand: NotifyPending missing callId")
                 ServiceAction.CleanConnections -> handleCleanConnections()
                 ServiceAction.SyncAudioState -> handleSyncAudioState()
                 else -> phoneConnectionServiceDispatcher.dispatch(action, metadata)
@@ -121,7 +132,8 @@ class PhoneConnectionService : ConnectionService() {
      * @return The created PhoneConnection object for the outgoing call.
      */
     override fun onCreateOutgoingConnection(
-        connectionManagerPhoneAccount: PhoneAccountHandle, request: ConnectionRequest
+        connectionManagerPhoneAccount: PhoneAccountHandle,
+        request: ConnectionRequest,
     ): Connection {
         val metadata = CallMetadata.fromBundle(request.extras)
 
@@ -132,12 +144,17 @@ class PhoneConnectionService : ConnectionService() {
             return Connection.createFailedConnection(DisconnectCause(DisconnectCause.BUSY))
         }
 
-        val connection = PhoneConnection.createOutgoingPhoneConnection(
-            applicationContext, ::performEventHandle, metadata, ::disconnectConnection
-        )
+        val connection =
+            PhoneConnection.createOutgoingPhoneConnection(
+                applicationContext,
+                ::performEventHandle,
+                metadata,
+                ::disconnectConnection,
+            )
         connectionManager.addConnection(metadata.callId, connection)
         phoneConnectionServiceDispatcher.dispatchLifecycle(
-            ConnectionLifecycleAction.ConnectionCreated, metadata
+            ConnectionLifecycleAction.ConnectionCreated,
+            metadata,
         )
 
         return connection
@@ -152,7 +169,8 @@ class PhoneConnectionService : ConnectionService() {
      * @param request The connection request that failed.
      */
     override fun onCreateOutgoingConnectionFailed(
-        connectionManagerPhoneAccount: PhoneAccountHandle?, request: ConnectionRequest?
+        connectionManagerPhoneAccount: PhoneAccountHandle?,
+        request: ConnectionRequest?,
     ) {
         val callMetadata = CallMetadata.fromBundleOrNull(request?.extras ?: Bundle.EMPTY)
 
@@ -214,9 +232,13 @@ class PhoneConnectionService : ConnectionService() {
             return Connection.createFailedConnection(DisconnectCause(DisconnectCause.BUSY))
         }
 
-        val connection = PhoneConnection.createIncomingPhoneConnection(
-            applicationContext, ::performEventHandle, metadata, ::disconnectConnection
-        )
+        val connection =
+            PhoneConnection.createIncomingPhoneConnection(
+                applicationContext,
+                ::performEventHandle,
+                metadata,
+                ::disconnectConnection,
+            )
 
         // Remove from pendingCallIds first (independent of the answer-reservation check).
         // The call is no longer "pending" — it now has a live PhoneConnection object.
@@ -238,7 +260,8 @@ class PhoneConnectionService : ConnectionService() {
         }
 
         phoneConnectionServiceDispatcher.dispatchLifecycle(
-            ConnectionLifecycleAction.ConnectionCreated, metadata
+            ConnectionLifecycleAction.ConnectionCreated,
+            metadata,
         )
 
         return connection
@@ -253,7 +276,8 @@ class PhoneConnectionService : ConnectionService() {
      * @param request The connection request that failed.
      */
     override fun onCreateIncomingConnectionFailed(
-        connectionManagerPhoneAccount: PhoneAccountHandle?, request: ConnectionRequest?
+        connectionManagerPhoneAccount: PhoneAccountHandle?,
+        request: ConnectionRequest?,
     ) {
         val callMetadata = CallMetadata.fromBundleOrNull(request?.extras ?: Bundle.EMPTY)
         val callId = callMetadata?.callId
@@ -393,43 +417,73 @@ class PhoneConnectionService : ConnectionService() {
 
         var connectionManager: ConnectionManager = ConnectionManager()
 
-        fun startAnswerCall(context: Context, metadata: CallMetadata) {
+        fun startAnswerCall(
+            context: Context,
+            metadata: CallMetadata,
+        ) {
             communicate(context, ServiceAction.AnswerCall, metadata)
         }
 
-        fun startEstablishCall(context: Context, metadata: CallMetadata) {
+        fun startEstablishCall(
+            context: Context,
+            metadata: CallMetadata,
+        ) {
             communicate(context, ServiceAction.EstablishCall, metadata)
         }
 
-        fun startUpdateCall(context: Context, metadata: CallMetadata) {
+        fun startUpdateCall(
+            context: Context,
+            metadata: CallMetadata,
+        ) {
             communicate(context, ServiceAction.UpdateCall, metadata)
         }
 
-        fun startDeclineCall(context: Context, metadata: CallMetadata) {
+        fun startDeclineCall(
+            context: Context,
+            metadata: CallMetadata,
+        ) {
             communicate(context, ServiceAction.DeclineCall, metadata)
         }
 
-        fun startHungUpCall(context: Context, metadata: CallMetadata) {
+        fun startHungUpCall(
+            context: Context,
+            metadata: CallMetadata,
+        ) {
             communicate(context, ServiceAction.HungUpCall, metadata)
         }
 
-        fun startSendDtmfCall(context: Context, metadata: CallMetadata) {
+        fun startSendDtmfCall(
+            context: Context,
+            metadata: CallMetadata,
+        ) {
             communicate(context, ServiceAction.SendDTMF, metadata)
         }
 
-        fun startMutingCall(context: Context, metadata: CallMetadata) {
+        fun startMutingCall(
+            context: Context,
+            metadata: CallMetadata,
+        ) {
             communicate(context, ServiceAction.Muting, metadata)
         }
 
-        fun startHoldingCall(context: Context, metadata: CallMetadata) {
+        fun startHoldingCall(
+            context: Context,
+            metadata: CallMetadata,
+        ) {
             communicate(context, ServiceAction.Holding, metadata)
         }
 
-        fun startSpeaker(context: Context, metadata: CallMetadata) {
+        fun startSpeaker(
+            context: Context,
+            metadata: CallMetadata,
+        ) {
             communicate(context, ServiceAction.Speaker, metadata)
         }
 
-        fun setAudioDevice(context: Context, metadata: CallMetadata) {
+        fun setAudioDevice(
+            context: Context,
+            metadata: CallMetadata,
+        ) {
             communicate(context, ServiceAction.AudioDeviceSet, metadata)
         }
 
@@ -449,9 +503,10 @@ class PhoneConnectionService : ConnectionService() {
          * and reply with [CallCommandEvent.TearDownComplete].
          */
         fun sendTearDownConnections(context: Context) {
-            val intent = Intent(context, PhoneConnectionService::class.java).apply {
-                action = ServiceAction.TearDownConnections.action
-            }
+            val intent =
+                Intent(context, PhoneConnectionService::class.java).apply {
+                    action = ServiceAction.TearDownConnections.action
+                }
             runCatching { context.startService(intent) }
                 .onFailure { e -> Log.w(TAG, "sendTearDownConnections: startService failed: $e") }
         }
@@ -465,11 +520,15 @@ class PhoneConnectionService : ConnectionService() {
          * runs in the main-process JVM (a different [ConnectionManager] instance), so :callkeep_core
          * never sees those entries without this explicit IPC notification.
          */
-        fun sendNotifyPending(context: Context, callId: String) {
-            val intent = Intent(context, PhoneConnectionService::class.java).apply {
-                action = ServiceAction.NotifyPending.action
-                putExtras(CallMetadata(callId = callId).toBundle())
-            }
+        fun sendNotifyPending(
+            context: Context,
+            callId: String,
+        ) {
+            val intent =
+                Intent(context, PhoneConnectionService::class.java).apply {
+                    action = ServiceAction.NotifyPending.action
+                    putExtras(CallMetadata(callId = callId).toBundle())
+                }
             runCatching { context.startService(intent) }
                 .onFailure { e -> Log.w(TAG, "sendNotifyPending: startService failed for callId=$callId: $e") }
         }
@@ -481,11 +540,15 @@ class PhoneConnectionService : ConnectionService() {
          * starting up (the intent is queued to [onStartCommand] after [onCreate] completes), which
          * closes the race where a broadcast could be dropped before [commandReceiver] is registered.
          */
-        fun sendReserveAnswer(context: Context, callId: String) {
-            val intent = Intent(context, PhoneConnectionService::class.java).apply {
-                action = ServiceAction.ReserveAnswer.action
-                putExtras(CallMetadata(callId = callId).toBundle())
-            }
+        fun sendReserveAnswer(
+            context: Context,
+            callId: String,
+        ) {
+            val intent =
+                Intent(context, PhoneConnectionService::class.java).apply {
+                    action = ServiceAction.ReserveAnswer.action
+                    putExtras(CallMetadata(callId = callId).toBundle())
+                }
             runCatching { context.startService(intent) }
                 .onFailure { e -> Log.w(TAG, "sendReserveAnswer: startService failed for callId=$callId: $e") }
         }
@@ -498,9 +561,10 @@ class PhoneConnectionService : ConnectionService() {
          * registered without a permission are effectively exported.
          */
         fun sendCleanConnections(context: Context) {
-            val intent = Intent(context, PhoneConnectionService::class.java).apply {
-                action = ServiceAction.CleanConnections.action
-            }
+            val intent =
+                Intent(context, PhoneConnectionService::class.java).apply {
+                    action = ServiceAction.CleanConnections.action
+                }
             runCatching { context.startService(intent) }
                 .onFailure { e -> Log.w(TAG, "sendCleanConnections: startService failed: $e") }
         }
@@ -512,9 +576,10 @@ class PhoneConnectionService : ConnectionService() {
          * Used by [ForegroundService.onDelegateSet] to restore Flutter UI after hot restart.
          */
         fun sendSyncAudioState(context: Context) {
-            val intent = Intent(context, PhoneConnectionService::class.java).apply {
-                action = ServiceAction.SyncAudioState.action
-            }
+            val intent =
+                Intent(context, PhoneConnectionService::class.java).apply {
+                    action = ServiceAction.SyncAudioState.action
+                }
             runCatching { context.startService(intent) }
                 .onFailure { e -> Log.w(TAG, "sendSyncAudioState: startService failed: $e") }
         }
@@ -527,7 +592,10 @@ class PhoneConnectionService : ConnectionService() {
          * @param metadata The [CallMetadata] for the incoming call.
          */
         @RequiresPermission(Manifest.permission.CALL_PHONE)
-        fun startOutgoingCall(context: Context, metadata: CallMetadata) {
+        fun startOutgoingCall(
+            context: Context,
+            metadata: CallMetadata,
+        ) {
             Log.i(TAG, "onOutgoingCall, callId: ${metadata.callId}")
 
             val uri: Uri = Uri.fromParts(PhoneAccount.SCHEME_TEL, metadata.number, null)
@@ -536,14 +604,14 @@ class PhoneConnectionService : ConnectionService() {
             if (telephonyUtils.isEmergencyNumber(metadata.number)) {
                 Log.i(TAG, "onOutgoingCall, trying to call on emergency number: ${metadata.number}")
 
-                val failureMetadata = FailureMetadata(
-                    metadata,
-                    "Failed to establish outgoing connection: Emergency number",
-                    outgoingFailureType = OutgoingFailureType.EMERGENCY_NUMBER
-                )
+                val failureMetadata =
+                    FailureMetadata(
+                        metadata,
+                        "Failed to establish outgoing connection: Emergency number",
+                        outgoingFailureType = OutgoingFailureType.EMERGENCY_NUMBER,
+                    )
 
                 throw EmergencyNumberException(failureMetadata)
-
             } else {
                 // If there is already an active call not on hold, we terminate it and start a new one,
                 // otherwise, we would encounter an exception when placing the outgoing call.
@@ -567,7 +635,7 @@ class PhoneConnectionService : ConnectionService() {
             context: Context,
             metadata: CallMetadata,
             onSuccess: () -> Unit,
-            onError: (PIncomingCallError?) -> Unit
+            onError: (PIncomingCallError?) -> Unit,
         ) {
             Log.i(TAG, "startIncomingCall: callId=${metadata.callId}")
 
@@ -585,7 +653,11 @@ class PhoneConnectionService : ConnectionService() {
                     // addNewIncomingCall failed (e.g. SecurityException, IllegalArgumentException).
                     // Roll back the pending reservation so future reports for this callId are not
                     // permanently rejected with CALL_ID_ALREADY_EXISTS.
-                    Log.e(TAG, "startIncomingCall: addNewIncomingCall failed for callId=${metadata.callId}, rolling back pending", e)
+                    Log.e(
+                        TAG,
+                        "startIncomingCall: addNewIncomingCall failed for callId=${metadata.callId}, rolling back pending",
+                        e,
+                    )
                     connectionManager.removePending(metadata.callId)
                     onError(null)
                 }
@@ -595,7 +667,11 @@ class PhoneConnectionService : ConnectionService() {
             })
         }
 
-        private fun communicate(context: Context, action: ServiceAction, metadata: CallMetadata?) {
+        private fun communicate(
+            context: Context,
+            action: ServiceAction,
+            metadata: CallMetadata?,
+        ) {
             val intent = Intent(context, PhoneConnectionService::class.java)
             intent.action = action.action
             metadata?.toBundle()?.let { intent.putExtras(it) }

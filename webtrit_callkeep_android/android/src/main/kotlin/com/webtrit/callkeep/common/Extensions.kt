@@ -19,40 +19,58 @@ import android.view.WindowManager
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
+import com.webtrit.callkeep.PCallkeepIncomingCallData
 import com.webtrit.callkeep.PCallkeepLifecycleEvent
 import com.webtrit.callkeep.PCallkeepPermission
 import com.webtrit.callkeep.PCallkeepPushNotificationSyncStatus
 import com.webtrit.callkeep.PCallkeepSignalingStatus
-import com.webtrit.callkeep.PCallkeepIncomingCallData
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PPermissionResult
 import com.webtrit.callkeep.PSpecialPermissionStatusTypeEnum
 import com.webtrit.callkeep.models.SignalingStatus
 
-inline fun <reified T : Parcelable> Intent.parcelable(key: String): T? = when {
-    SDK_INT >= 33 -> getParcelableExtra(key, T::class.java)
-    else -> @Suppress("DEPRECATION") getParcelableExtra(key) as? T
-}
+inline fun <reified T : Parcelable> Intent.parcelable(key: String): T? =
+    when {
+        SDK_INT >= 33 -> getParcelableExtra(key, T::class.java)
+        else ->
+            @Suppress("DEPRECATION")
+            getParcelableExtra(key)
+                as? T
+    }
 
-inline fun <reified T : Parcelable> Bundle.serializable(key: String): T? = when {
-    SDK_INT >= 33 -> getParcelable(key, T::class.java)
-    else -> @Suppress("DEPRECATION") getParcelable(key) as? T
-}
+inline fun <reified T : Parcelable> Bundle.serializable(key: String): T? =
+    when {
+        SDK_INT >= 33 -> getParcelable(key, T::class.java)
+        else ->
+            @Suppress("DEPRECATION")
+            getParcelable(key)
+                as? T
+    }
 
-inline fun <reified T : java.io.Serializable> Bundle.serializableCompat(key: String): T? = when {
-    SDK_INT >= 33 -> getSerializable(key, T::class.java)
-    else -> @Suppress("DEPRECATION") getSerializable(key) as? T
-}
+inline fun <reified T : java.io.Serializable> Bundle.serializableCompat(key: String): T? =
+    when {
+        SDK_INT >= 33 -> getSerializable(key, T::class.java)
+        else ->
+            @Suppress("DEPRECATION")
+            getSerializable(key)
+                as? T
+    }
 
-inline fun <reified T : Parcelable> Intent.parcelableArrayList(key: String): ArrayList<T>? = when {
-    SDK_INT >= 33 -> getParcelableArrayListExtra(key, T::class.java)
-    else -> @Suppress("DEPRECATION") getParcelableArrayListExtra(key)
-}
+inline fun <reified T : Parcelable> Intent.parcelableArrayList(key: String): ArrayList<T>? =
+    when {
+        SDK_INT >= 33 -> getParcelableArrayListExtra(key, T::class.java)
+        else ->
+            @Suppress("DEPRECATION")
+            getParcelableArrayListExtra(key)
+    }
 
-inline fun <reified T : Parcelable> Bundle.parcelableArrayList(key: String): ArrayList<T>? = when {
-    SDK_INT >= 33 -> getParcelableArrayList(key, T::class.java)
-    else -> @Suppress("DEPRECATION") getParcelableArrayList(key)
-}
+inline fun <reified T : Parcelable> Bundle.parcelableArrayList(key: String): ArrayList<T>? =
+    when {
+        SDK_INT >= 33 -> getParcelableArrayList(key, T::class.java)
+        else ->
+            @Suppress("DEPRECATION")
+            getParcelableArrayList(key)
+    }
 
 fun Ringtone.setLoopingCompat(looping: Boolean) {
     if (SDK_INT >= Build.VERSION_CODES.P) {
@@ -80,7 +98,10 @@ fun Context.registerReceiverCompat(
  * @param action The action string for the broadcast intent.
  * @param extras Optional extras to include in the broadcast intent.
  */
-fun Context.sendInternalBroadcast(action: String, extras: Bundle? = null) {
+fun Context.sendInternalBroadcast(
+    action: String,
+    extras: Bundle? = null,
+) {
     Intent(action).apply {
         setPackage(packageName)
         extras?.let { putExtras(it) }
@@ -118,11 +139,11 @@ fun Context.startForegroundServiceCompat(
     service: android.app.Service,
     notificationId: Int,
     notification: Notification,
-    foregroundServiceType: Int? = null
+    foregroundServiceType: Int? = null,
 ) {
     Log.d(
         "Extensions",
-        "startForegroundServiceCompat: SDK_INT: $SDK_INT, foregroundServiceType: $foregroundServiceType"
+        "startForegroundServiceCompat: SDK_INT: $SDK_INT, foregroundServiceType: $foregroundServiceType",
     )
     if (SDK_INT >= Build.VERSION_CODES.Q && foregroundServiceType != null) {
         ServiceCompat.startForeground(service, notificationId, notification, foregroundServiceType)
@@ -152,30 +173,38 @@ fun PCallkeepSignalingStatus.toSignalingStatus(): SignalingStatus {
 }
 
 fun PDelegateBackgroundRegisterFlutterApi.syncPushIsolate(
-    context: Context, callData: PCallkeepIncomingCallData?, callback: (Result<Unit>) -> Unit
+    context: Context,
+    callData: PCallkeepIncomingCallData?,
+    callback: (Result<Unit>) -> Unit,
 ) {
     isolateEvent(context, PCallkeepPushNotificationSyncStatus.SYNCHRONIZE_CALL_STATUS, callData, callback)
 }
 
 fun PDelegateBackgroundRegisterFlutterApi.releasePushIsolate(
-    context: Context, callData: PCallkeepIncomingCallData?, callback: (Result<Unit>) -> Unit
+    context: Context,
+    callData: PCallkeepIncomingCallData?,
+    callback: (Result<Unit>) -> Unit,
 ) {
     isolateEvent(context, PCallkeepPushNotificationSyncStatus.RELEASE_RESOURCES, callData, callback)
 }
 
 private fun PDelegateBackgroundRegisterFlutterApi.isolateEvent(
-    context: Context, event: PCallkeepPushNotificationSyncStatus, callData: PCallkeepIncomingCallData?, callback: (Result<Unit>) -> Unit
+    context: Context,
+    event: PCallkeepPushNotificationSyncStatus,
+    callData: PCallkeepIncomingCallData?,
+    callback: (Result<Unit>) -> Unit,
 ) {
     this.onNotificationSync(
         StorageDelegate.IncomingCallService.getOnNotificationSync(context),
         event,
         callData,
-        callback = callback
+        callback = callback,
     )
 }
 
 inline fun Result<Unit>.handle(
-    successAction: () -> Unit, failureAction: (Throwable) -> Unit
+    successAction: () -> Unit,
+    failureAction: (Throwable) -> Unit,
 ) {
     onSuccess { successAction() }
     onFailure { failureAction(it) }
@@ -188,7 +217,8 @@ fun Activity.setShowWhenLockedCompat(enable: Boolean) {
     if (SDK_INT >= Build.VERSION_CODES.O_MR1) {
         setShowWhenLocked(enable)
     } else {
-        @Suppress("DEPRECATION") if (enable) {
+        @Suppress("DEPRECATION")
+        if (enable) {
             window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
         } else {
             window.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
@@ -203,7 +233,8 @@ fun Activity.setTurnScreenOnCompat(enable: Boolean) {
     if (SDK_INT >= Build.VERSION_CODES.O_MR1) {
         setTurnScreenOn(enable)
     } else {
-        @Suppress("DEPRECATION") if (enable) {
+        @Suppress("DEPRECATION")
+        if (enable) {
             window.addFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
         } else {
             window.clearFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
@@ -277,13 +308,14 @@ fun List<PCallkeepPermission>.toAndroidPermissions(): List<String> {
 fun List<String>.toPPermissionResults(context: Context): List<PPermissionResult> {
     return this.mapNotNull { permString ->
         val pType = permString.toPCallkeepPermission() ?: return@mapNotNull null
-        val isGranted = ContextCompat.checkSelfPermission(
-            context, permString
-        ) == PackageManager.PERMISSION_GRANTED
+        val isGranted =
+            ContextCompat.checkSelfPermission(
+                context, permString,
+            ) == PackageManager.PERMISSION_GRANTED
 
         PPermissionResult(
             permission = pType,
-            status = if (isGranted) PSpecialPermissionStatusTypeEnum.GRANTED else PSpecialPermissionStatusTypeEnum.DENIED
+            status = if (isGranted) PSpecialPermissionStatusTypeEnum.GRANTED else PSpecialPermissionStatusTypeEnum.DENIED,
         )
     }
 }

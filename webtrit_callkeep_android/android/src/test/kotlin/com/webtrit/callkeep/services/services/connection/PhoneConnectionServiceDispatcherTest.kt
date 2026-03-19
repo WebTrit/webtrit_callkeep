@@ -2,7 +2,6 @@ package com.webtrit.callkeep.services.services.connection
 
 import android.content.Context
 import android.os.Build
-import android.telecom.DisconnectCause
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
@@ -39,7 +38,6 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [Build.VERSION_CODES.UPSIDE_DOWN_CAKE])
 class PhoneConnectionServiceDispatcherTest {
-
     private val context: Context = RuntimeEnvironment.getApplication()
 
     private val capturedEvents = mutableListOf<ConnectionEvent>()
@@ -56,12 +54,13 @@ class PhoneConnectionServiceDispatcherTest {
         ContextHolder.init(context)
         capturedEvents.clear()
         connectionManager = ConnectionManager()
-        dispatcher = PhoneConnectionServiceDispatcher(
-            connectionManager,
-            captureDispatcher,
-            wakelockManager,
-            proximitySensorManager,
-        )
+        dispatcher =
+            PhoneConnectionServiceDispatcher(
+                connectionManager,
+                captureDispatcher,
+                wakelockManager,
+                proximitySensorManager,
+            )
     }
 
     private fun createRingingConnection(callId: String = "call-1"): PhoneConnection =

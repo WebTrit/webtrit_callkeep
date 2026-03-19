@@ -49,28 +49,29 @@ data class CallMetadata(
     val number: String get() = handle?.number ?: "Undefined"
     val name: String get() = displayName?.takeIf { it.isNotEmpty() } ?: number
 
-    fun toBundle(): Bundle = Bundle().apply {
-        putString(CallDataConst.CALL_ID, callId)
-        hasVideo?.let { putBoolean(CallDataConst.HAS_VIDEO, it) }
-        hasSpeaker?.let { putBoolean(CallDataConst.HAS_SPEAKER, it) }
-        speakerOnVideo?.let { putBoolean(CALL_METADATA_EXTRA_SPEAKER_ON_VIDEO, it) }
-        proximityEnabled?.let { putBoolean(CallDataConst.PROXIMITY_ENABLED, it) }
-        hasMute?.let { putBoolean(CallDataConst.HAS_MUTE, it) }
-        hasHold?.let { putBoolean(CallDataConst.HAS_HOLD, it) }
+    fun toBundle(): Bundle =
+        Bundle().apply {
+            putString(CallDataConst.CALL_ID, callId)
+            hasVideo?.let { putBoolean(CallDataConst.HAS_VIDEO, it) }
+            hasSpeaker?.let { putBoolean(CallDataConst.HAS_SPEAKER, it) }
+            speakerOnVideo?.let { putBoolean(CALL_METADATA_EXTRA_SPEAKER_ON_VIDEO, it) }
+            proximityEnabled?.let { putBoolean(CallDataConst.PROXIMITY_ENABLED, it) }
+            hasMute?.let { putBoolean(CallDataConst.HAS_MUTE, it) }
+            hasHold?.let { putBoolean(CallDataConst.HAS_HOLD, it) }
 
-        audioDevice?.let { putBundle(CallDataConst.AUDIO_DEVICE, it.toBundle()) }
-        // Mandatory use of ArrayList<Bundle> to prevent ClassNotFoundException in the system process when unmarshalling Telecom extras.
-        val deviceBundles = ArrayList(audioDevices.map { it.toBundle() })
-        putParcelableArrayList(CallDataConst.AUDIO_DEVICES, deviceBundles)
+            audioDevice?.let { putBundle(CallDataConst.AUDIO_DEVICE, it.toBundle()) }
+            // Mandatory use of ArrayList<Bundle> to prevent ClassNotFoundException in the system process when unmarshalling Telecom extras.
+            val deviceBundles = ArrayList(audioDevices.map { it.toBundle() })
+            putParcelableArrayList(CallDataConst.AUDIO_DEVICES, deviceBundles)
 
-        ringtonePath?.let { putString(CALL_RINGTONE_PATH, it) }
-        displayName?.let { putString(CallDataConst.DISPLAY_NAME, it) }
-        handle?.let { putBundle(CallDataConst.NUMBER, it.toBundle()) }
+            ringtonePath?.let { putString(CALL_RINGTONE_PATH, it) }
+            displayName?.let { putString(CallDataConst.DISPLAY_NAME, it) }
+            handle?.let { putBundle(CallDataConst.NUMBER, it.toBundle()) }
 
-        dualToneMultiFrequency?.let { putChar(CallDataConst.DTMF, it) }
-        createdTime?.let { putLong(CALL_METADATA_CREATED_TIME, it) }
-        acceptedTime?.let { putLong(CALL_METADATA_ACCEPTED_TIME, it) }
-    }
+            dualToneMultiFrequency?.let { putChar(CallDataConst.DTMF, it) }
+            createdTime?.let { putLong(CALL_METADATA_CREATED_TIME, it) }
+            acceptedTime?.let { putLong(CALL_METADATA_ACCEPTED_TIME, it) }
+        }
 
     /**
      * Updates the current metadata with values from [other].
@@ -104,7 +105,7 @@ data class CallMetadata(
             dualToneMultiFrequency = other.dualToneMultiFrequency ?: dualToneMultiFrequency,
             ringtonePath = other.ringtonePath ?: ringtonePath,
             createdTime = other.createdTime ?: createdTime,
-            acceptedTime = other.acceptedTime ?: acceptedTime
+            acceptedTime = other.acceptedTime ?: acceptedTime,
         )
     }
 
@@ -115,8 +116,9 @@ data class CallMetadata(
         private const val CALL_METADATA_EXTRA_SPEAKER_ON_VIDEO = "EXTRA_SPEAKER_ON_VIDEO"
         private const val DEFAULT_CHAR_VALUE = '\u0000'
 
-        fun fromBundle(bundle: Bundle): CallMetadata = fromBundleOrNull(bundle)
-            ?: throw IllegalArgumentException("Missing required callId property in Bundle")
+        fun fromBundle(bundle: Bundle): CallMetadata =
+            fromBundleOrNull(bundle)
+                ?: throw IllegalArgumentException("Missing required callId property in Bundle")
 
         fun fromBundleOrNull(bundle: Bundle): CallMetadata? {
             val callId = bundle.getString(CallDataConst.CALL_ID) ?: return null
@@ -128,17 +130,19 @@ data class CallMetadata(
                 hasVideo = bundle.getBooleanOrNull(CallDataConst.HAS_VIDEO),
                 hasSpeaker = bundle.getBooleanOrNull(CallDataConst.HAS_SPEAKER),
                 speakerOnVideo = bundle.getBooleanOrNull(CALL_METADATA_EXTRA_SPEAKER_ON_VIDEO),
-                audioDevice = bundle.getBundle(CallDataConst.AUDIO_DEVICE)
-                    ?.let { AudioDevice.fromBundle(it) },
+                audioDevice =
+                    bundle.getBundle(CallDataConst.AUDIO_DEVICE)
+                        ?.let { AudioDevice.fromBundle(it) },
                 audioDevices = bundle.extractAudioDevices(),
                 proximityEnabled = bundle.getBooleanOrNull(CallDataConst.PROXIMITY_ENABLED),
                 hasMute = bundle.getBooleanOrNull(CallDataConst.HAS_MUTE),
                 hasHold = bundle.getBooleanOrNull(CallDataConst.HAS_HOLD),
-                dualToneMultiFrequency = bundle.getCharOrNull(CallDataConst.DTMF)
-                    .takeIf { it != DEFAULT_CHAR_VALUE },
+                dualToneMultiFrequency =
+                    bundle.getCharOrNull(CallDataConst.DTMF)
+                        .takeIf { it != DEFAULT_CHAR_VALUE },
                 ringtonePath = bundle.getStringOrNull(CALL_RINGTONE_PATH),
                 createdTime = bundle.getLongOrNull(CALL_METADATA_CREATED_TIME),
-                acceptedTime = bundle.getLongOrNull(CALL_METADATA_ACCEPTED_TIME)
+                acceptedTime = bundle.getLongOrNull(CALL_METADATA_ACCEPTED_TIME),
             )
         }
 

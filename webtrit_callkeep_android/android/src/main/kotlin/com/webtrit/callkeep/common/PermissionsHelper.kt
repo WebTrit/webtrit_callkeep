@@ -21,16 +21,18 @@ class PermissionsHelper(private val context: Context) {
     }
 
     fun launchFullScreenIntentSettings() {
-        val intent = Intent("android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENT").apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
+        val intent =
+            Intent("android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENT").apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
         context.startActivity(intent)
     }
 
     fun launchSettings() {
-        val intent = Intent(android.provider.Settings.ACTION_SETTINGS).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
+        val intent =
+            Intent(android.provider.Settings.ACTION_SETTINGS).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
         context.startActivity(intent)
     }
 

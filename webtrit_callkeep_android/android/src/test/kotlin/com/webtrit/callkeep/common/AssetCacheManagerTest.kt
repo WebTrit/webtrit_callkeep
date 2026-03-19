@@ -17,7 +17,6 @@ import java.io.File
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [Build.VERSION_CODES.UPSIDE_DOWN_CAKE])
 class AssetCacheManagerTest {
-
     private lateinit var ctx: Context
 
     @Before

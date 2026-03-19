@@ -1,6 +1,5 @@
 package com.webtrit.callkeep.services.services.connection
 
-import java.util.concurrent.Executors
 import android.content.Context
 import android.os.Build
 import android.os.Handler
@@ -27,6 +26,7 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
 import com.webtrit.callkeep.services.services.connection.models.PerformDispatchHandle
+import java.util.concurrent.Executors
 
 /**
  * Manages an individual phone connection, handling state transitions and audio routing.
@@ -353,14 +353,17 @@ class PhoneConnection internal constructor(
                 return
             }
 
-            val endpoint = availableCallEndpoints.firstOrNull {
-                it.identifier == ParcelUuid.fromString(deviceId)
-            }
+            val endpoint =
+                availableCallEndpoints.firstOrNull {
+                    it.identifier == ParcelUuid.fromString(deviceId)
+                }
 
             if (endpoint != null) {
                 performEndpointChange(endpoint)
             } else {
-                logger.e("No suitable call endpoint found for the current audio state. Requested device: $device, callId: $callId")
+                logger.e(
+                    "No suitable call endpoint found for the current audio state. Requested device: $device, callId: $callId",
+                )
             }
         } else {
             setAudioRoute(mapDeviceTypeToRoute(device.type))
@@ -398,7 +401,9 @@ class PhoneConnection internal constructor(
      * Checks requirements: Video enabled, not ringing, and NO Bluetooth connected.
      */
     private fun enforceVideoSpeakerLogic() {
-        logger.d("enforceVideoSpeakerLogic: CHECKING... [hasVideo=$hasVideo, state=$state, isSpeakerOnVideoEnabled=$isSpeakerOnVideoEnabled, isHasSpeaker=$isHasSpeaker]")
+        logger.d(
+            "enforceVideoSpeakerLogic: CHECKING... [hasVideo=$hasVideo, state=$state, isSpeakerOnVideoEnabled=$isSpeakerOnVideoEnabled, isHasSpeaker=$isHasSpeaker]",
+        )
 
         // Exit immediately if this behavior is disabled in metadata
         if (!isSpeakerOnVideoEnabled) {
@@ -408,7 +413,9 @@ class PhoneConnection internal constructor(
 
         // Must be video, must not be just ringing (incoming)
         if (!hasVideo || state == STATE_RINGING) {
-            logger.d("enforceVideoSpeakerLogic: SKIP -> Condition failed: hasVideo=$hasVideo (needs true) OR state=$state (needs != STATE_RINGING/2)")
+            logger.d(
+                "enforceVideoSpeakerLogic: SKIP -> Condition failed: hasVideo=$hasVideo (needs true) OR state=$state (needs != STATE_RINGING/2)",
+            )
             return
         }
 
@@ -463,7 +470,9 @@ class PhoneConnection internal constructor(
      * Updates call identity and visual parameters.
      */
     fun updateData(requestCallMetadata: CallMetadata) {
-        logger.d("updateData called with: hasVideo=${requestCallMetadata.hasVideo}, speakerOnVideo=${requestCallMetadata.speakerOnVideo}")
+        logger.d(
+            "updateData called with: hasVideo=${requestCallMetadata.hasVideo}, speakerOnVideo=${requestCallMetadata.speakerOnVideo}",
+        )
 
         val previousHasVideo = metadata.hasVideo
 
@@ -568,7 +577,9 @@ class PhoneConnection internal constructor(
             pendingEndpointRequest = endpoint
         }
         requestCallEndpointChange(
-            endpoint, audioEndpointChangeExecutor, EndpointChangeReceiver(endpoint)
+            endpoint,
+            audioEndpointChangeExecutor,
+            EndpointChangeReceiver(endpoint),
         )
     }
 
@@ -576,52 +587,60 @@ class PhoneConnection internal constructor(
      * Converts a [CallEndpoint] into a domain [AudioDevice] model.
      */
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-    private fun mapEndpointToAudioDevice(endpoint: CallEndpoint) = AudioDevice(
-        type = when (endpoint.endpointType) {
-            CallEndpoint.TYPE_EARPIECE -> AudioDeviceType.EARPIECE
-            CallEndpoint.TYPE_SPEAKER -> AudioDeviceType.SPEAKER
-            CallEndpoint.TYPE_BLUETOOTH -> AudioDeviceType.BLUETOOTH
-            CallEndpoint.TYPE_WIRED_HEADSET -> AudioDeviceType.WIRED_HEADSET
-            CallEndpoint.TYPE_STREAMING -> AudioDeviceType.STREAMING
-            else -> AudioDeviceType.UNKNOWN
-        }, name = endpoint.endpointName.toString(), id = endpoint.identifier.toString()
-    )
+    private fun mapEndpointToAudioDevice(endpoint: CallEndpoint) =
+        AudioDevice(
+            type =
+                when (endpoint.endpointType) {
+                    CallEndpoint.TYPE_EARPIECE -> AudioDeviceType.EARPIECE
+                    CallEndpoint.TYPE_SPEAKER -> AudioDeviceType.SPEAKER
+                    CallEndpoint.TYPE_BLUETOOTH -> AudioDeviceType.BLUETOOTH
+                    CallEndpoint.TYPE_WIRED_HEADSET -> AudioDeviceType.WIRED_HEADSET
+                    CallEndpoint.TYPE_STREAMING -> AudioDeviceType.STREAMING
+                    else -> AudioDeviceType.UNKNOWN
+                },
+            name = endpoint.endpointName.toString(),
+            id = endpoint.identifier.toString(),
+        )
 
     /**
      * Converts a [CallAudioState] route into a domain [AudioDevice] model.
      */
-    private fun mapRouteToAudioDevice(route: Int) = AudioDevice(
-        type = when (route) {
-            CallAudioState.ROUTE_EARPIECE -> AudioDeviceType.EARPIECE
-            CallAudioState.ROUTE_SPEAKER -> AudioDeviceType.SPEAKER
-            CallAudioState.ROUTE_BLUETOOTH -> AudioDeviceType.BLUETOOTH
-            CallAudioState.ROUTE_WIRED_HEADSET -> AudioDeviceType.WIRED_HEADSET
-            CallAudioState.ROUTE_STREAMING -> AudioDeviceType.STREAMING
-            else -> AudioDeviceType.UNKNOWN
-        }
-    )
+    private fun mapRouteToAudioDevice(route: Int) =
+        AudioDevice(
+            type =
+                when (route) {
+                    CallAudioState.ROUTE_EARPIECE -> AudioDeviceType.EARPIECE
+                    CallAudioState.ROUTE_SPEAKER -> AudioDeviceType.SPEAKER
+                    CallAudioState.ROUTE_BLUETOOTH -> AudioDeviceType.BLUETOOTH
+                    CallAudioState.ROUTE_WIRED_HEADSET -> AudioDeviceType.WIRED_HEADSET
+                    CallAudioState.ROUTE_STREAMING -> AudioDeviceType.STREAMING
+                    else -> AudioDeviceType.UNKNOWN
+                },
+        )
 
     /**
      * Parses the supported route mask into a list of [AudioDevice] models.
      */
-    private fun mapSupportedRoutes(mask: Int) = listOfNotNull(
-        if (mask and CallAudioState.ROUTE_EARPIECE != 0) AudioDevice(AudioDeviceType.EARPIECE) else null,
-        if (mask and CallAudioState.ROUTE_SPEAKER != 0) AudioDevice(AudioDeviceType.SPEAKER) else null,
-        if (mask and CallAudioState.ROUTE_BLUETOOTH != 0) AudioDevice(AudioDeviceType.BLUETOOTH) else null,
-        if (mask and CallAudioState.ROUTE_WIRED_HEADSET != 0) AudioDevice(AudioDeviceType.WIRED_HEADSET) else null,
-        if (mask and CallAudioState.ROUTE_STREAMING != 0) AudioDevice(AudioDeviceType.STREAMING) else null
-    )
+    private fun mapSupportedRoutes(mask: Int) =
+        listOfNotNull(
+            if (mask and CallAudioState.ROUTE_EARPIECE != 0) AudioDevice(AudioDeviceType.EARPIECE) else null,
+            if (mask and CallAudioState.ROUTE_SPEAKER != 0) AudioDevice(AudioDeviceType.SPEAKER) else null,
+            if (mask and CallAudioState.ROUTE_BLUETOOTH != 0) AudioDevice(AudioDeviceType.BLUETOOTH) else null,
+            if (mask and CallAudioState.ROUTE_WIRED_HEADSET != 0) AudioDevice(AudioDeviceType.WIRED_HEADSET) else null,
+            if (mask and CallAudioState.ROUTE_STREAMING != 0) AudioDevice(AudioDeviceType.STREAMING) else null,
+        )
 
     /**
      * Maps domain device types back to Telecom route integers.
      */
-    private fun mapDeviceTypeToRoute(type: AudioDeviceType) = when (type) {
-        AudioDeviceType.EARPIECE -> CallAudioState.ROUTE_EARPIECE
-        AudioDeviceType.SPEAKER -> CallAudioState.ROUTE_SPEAKER
-        AudioDeviceType.BLUETOOTH -> CallAudioState.ROUTE_BLUETOOTH
-        AudioDeviceType.WIRED_HEADSET -> CallAudioState.ROUTE_WIRED_HEADSET
-        else -> CallAudioState.ROUTE_WIRED_OR_EARPIECE
-    }
+    private fun mapDeviceTypeToRoute(type: AudioDeviceType) =
+        when (type) {
+            AudioDeviceType.EARPIECE -> CallAudioState.ROUTE_EARPIECE
+            AudioDeviceType.SPEAKER -> CallAudioState.ROUTE_SPEAKER
+            AudioDeviceType.BLUETOOTH -> CallAudioState.ROUTE_BLUETOOTH
+            AudioDeviceType.WIRED_HEADSET -> CallAudioState.ROUTE_WIRED_HEADSET
+            else -> CallAudioState.ROUTE_WIRED_OR_EARPIECE
+        }
 
     /**
      * Locates the best matching endpoint for a requested speaker state.
@@ -660,8 +679,11 @@ class PhoneConnection internal constructor(
      * All other causes (local hang-up, rejection, timeout, etc.) map to [CallLifecycleEvent.HungUp].
      */
     private fun eventForDisconnectCause(cause: DisconnectCause?): CallLifecycleEvent =
-        if (cause?.code == DisconnectCause.REMOTE) CallLifecycleEvent.DeclineCall
-        else CallLifecycleEvent.HungUp
+        if (cause?.code == DisconnectCause.REMOTE) {
+            CallLifecycleEvent.DeclineCall
+        } else {
+            CallLifecycleEvent.HungUp
+        }
 
     /**
      * Terminates the connection with the given [disconnectCause].
@@ -691,7 +713,6 @@ class PhoneConnection internal constructor(
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     private inner class EndpointChangeReceiver(private val endpoint: CallEndpoint) :
         OutcomeReceiver<Void, CallEndpointException> {
-
         override fun onResult(p0: Void?) {
             logger.d("Endpoint successfully changed to: $endpoint")
             synchronized(this@PhoneConnection) {
@@ -734,7 +755,7 @@ class PhoneConnection internal constructor(
             dispatcher = dispatcher,
             metadata = metadata,
             onDisconnectCallback = onDisconnect,
-            timeout = ConnectionTimeout.createIncomingConnectionTimeout()
+            timeout = ConnectionTimeout.createIncomingConnectionTimeout(),
         ).apply {
             setInitialized()
             setRinging()
@@ -753,7 +774,7 @@ class PhoneConnection internal constructor(
             dispatcher = dispatcher,
             metadata = metadata,
             onDisconnectCallback = onDisconnect,
-            timeout = ConnectionTimeout.createOutgoingConnectionTimeout()
+            timeout = ConnectionTimeout.createOutgoingConnectionTimeout(),
         ).apply {
             setDialing()
             setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
@@ -810,13 +831,11 @@ class ConnectionTimeout(
         /**
          * Creates a timeout configuration for outgoing dialing.
          */
-        fun createOutgoingConnectionTimeout() =
-            ConnectionTimeout(TIMEOUT_DURATION_MS, DEFAULT_OUTGOING_STATES)
+        fun createOutgoingConnectionTimeout() = ConnectionTimeout(TIMEOUT_DURATION_MS, DEFAULT_OUTGOING_STATES)
 
         /**
          * Creates a timeout configuration for incoming ringing.
          */
-        fun createIncomingConnectionTimeout() =
-            ConnectionTimeout(TIMEOUT_DURATION_MS, DEFAULT_INCOMING_STATES)
+        fun createIncomingConnectionTimeout() = ConnectionTimeout(TIMEOUT_DURATION_MS, DEFAULT_INCOMING_STATES)
     }
 }

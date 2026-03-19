@@ -5,10 +5,12 @@ import android.util.Log
 import com.webtrit.callkeep.common.StorageDelegate
 
 class SmsReceptionConfigBootstrapApi(
-    private val context: Context
+    private val context: Context,
 ) : PHostSmsReceptionConfigApi {
     override fun initializeSmsReception(
-        messagePrefix: String, regexPattern: String, callback: (Result<Unit>) -> Unit
+        messagePrefix: String,
+        regexPattern: String,
+        callback: (Result<Unit>) -> Unit,
     ) {
         Log.i(TAG, "initializeSmsReception: prefix = $messagePrefix, regex = $regexPattern")
         try {

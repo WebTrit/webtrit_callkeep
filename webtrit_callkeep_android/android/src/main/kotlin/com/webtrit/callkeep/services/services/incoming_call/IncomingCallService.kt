@@ -14,8 +14,8 @@ import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.models.toPCallkeepIncomingCallData
 import com.webtrit.callkeep.models.NotificationAction
+import com.webtrit.callkeep.models.toPCallkeepIncomingCallData
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
@@ -29,36 +29,43 @@ class IncomingCallService : Service() {
     private val incomingCallNotificationBuilder by lazy { IncomingCallNotificationBuilder() }
 
     private val timeoutHandler = Handler(Looper.getMainLooper())
-    private val stopTimeoutRunnable = Runnable {
-        Log.w(TAG, "Service stop timeout ($SERVICE_TIMEOUT_MS ms) reached. Stopping forcefully.")
-        stopSelf()
-    }
+    private val stopTimeoutRunnable =
+        Runnable {
+            Log.w(TAG, "Service stop timeout ($SERVICE_TIMEOUT_MS ms) reached. Stopping forcefully.")
+            stopSelf()
+        }
 
     private lateinit var incomingCallHandler: IncomingCallHandler
     private lateinit var isolateHandler: FlutterIsolateHandler
     private lateinit var callLifecycleHandler: CallLifecycleHandler
+
     fun getCallLifecycleHandler(): CallLifecycleHandler = callLifecycleHandler
 
-    private val connectionService = listOf(
-        CallLifecycleEvent.AnswerCall,
-    )
+    private val connectionService =
+        listOf(
+            CallLifecycleEvent.AnswerCall,
+        )
 
-    private val connectionServicePerformReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            val metadata = intent?.extras?.let(CallMetadata::fromBundleOrNull)
+    private val connectionServicePerformReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                context: Context?,
+                intent: Intent?,
+            ) {
+                val metadata = intent?.extras?.let(CallMetadata::fromBundleOrNull)
 
-            when (intent?.action) {
-                // Listen connection service actions (and try to notify isolate if it background)
-                CallLifecycleEvent.AnswerCall.name -> performAnswerCall(metadata!!)
-                // DeclineCall and HungUp are handled via IC_RELEASE_WITH_DECLINE intent
-                // (triggered from PhoneConnection.onDisconnect → cancelIncomingNotification).
-                // Handling them here as well would cause a double performEndCall: once from
-                // handleRelease and once from this receiver, racing to tear down the WebSocket
-                // before the SIP BYE is sent. The IC_RELEASE_WITH_DECLINE path is the single
-                // authoritative source for decline teardown.
+                when (intent?.action) {
+                    // Listen connection service actions (and try to notify isolate if it background)
+                    CallLifecycleEvent.AnswerCall.name -> performAnswerCall(metadata!!)
+                    // DeclineCall and HungUp are handled via IC_RELEASE_WITH_DECLINE intent
+                    // (triggered from PhoneConnection.onDisconnect → cancelIncomingNotification).
+                    // Handling them here as well would cause a double performEndCall: once from
+                    // handleRelease and once from this receiver, racing to tear down the WebSocket
+                    // before the SIP BYE is sent. The IC_RELEASE_WITH_DECLINE path is the single
+                    // authoritative source for decline teardown.
+                }
             }
         }
-    }
 
     override fun onCreate() {
         super.onCreate()
@@ -69,28 +76,37 @@ class IncomingCallService : Service() {
 
         // Register the service to receive connection service perform events
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            connectionService, this, connectionServicePerformReceiver
+            connectionService,
+            this,
+            connectionServicePerformReceiver,
         )
 
-        isolateHandler = FlutterIsolateHandler(this@IncomingCallService, this@IncomingCallService) {
-            callLifecycleHandler.flutterApi?.syncPushIsolate(callLifecycleHandler.currentCallData, onSuccess = {}, onFailure = {})
-        }
+        isolateHandler =
+            FlutterIsolateHandler(this@IncomingCallService, this@IncomingCallService) {
+                callLifecycleHandler.flutterApi?.syncPushIsolate(callLifecycleHandler.currentCallData, onSuccess = {}, onFailure = {})
+            }
 
-        incomingCallHandler = IncomingCallHandler(
-            service = this,
-            notificationBuilder = incomingCallNotificationBuilder,
-            isolateLaunchPolicy = DefaultIsolateLaunchPolicy(this),
-            isolateInitializer = isolateHandler,
-        )
+        incomingCallHandler =
+            IncomingCallHandler(
+                service = this,
+                notificationBuilder = incomingCallNotificationBuilder,
+                isolateLaunchPolicy = DefaultIsolateLaunchPolicy(this),
+                isolateInitializer = isolateHandler,
+            )
 
-        callLifecycleHandler = CallLifecycleHandler(
-            connectionController = DefaultCallConnectionController(baseContext),
-            stopService = { stopSelf() },
-            isolateHandler = isolateHandler,
-        )
+        callLifecycleHandler =
+            CallLifecycleHandler(
+                connectionController = DefaultCallConnectionController(baseContext),
+                stopService = { stopSelf() },
+                isolateHandler = isolateHandler,
+            )
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    override fun onStartCommand(
+        intent: Intent?,
+        flags: Int,
+        startId: Int,
+    ): Int {
         val metadata = intent?.extras?.let(CallMetadata::fromBundleOrNull)
         val action = intent?.action
 
@@ -124,7 +140,8 @@ class IncomingCallService : Service() {
         setRunning(false)
         // Unregister the service from receiving connection service perform events
         ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(
-            this, connectionServicePerformReceiver
+            this,
+            connectionServicePerformReceiver,
         )
 
         stopForeground(STOP_FOREGROUND_REMOVE)
@@ -134,7 +151,7 @@ class IncomingCallService : Service() {
 
     fun establishFlutterCommunication(
         serviceApi: PDelegateBackgroundServiceFlutterApi,
-        registerApi: PDelegateBackgroundRegisterFlutterApi
+        registerApi: PDelegateBackgroundRegisterFlutterApi,
     ) {
         callLifecycleHandler.apply {
             flutterApi =
@@ -216,12 +233,17 @@ class IncomingCallService : Service() {
             isRunning = running
         }
 
-        fun start(context: Context, metadata: CallMetadata) {
+        fun start(
+            context: Context,
+            metadata: CallMetadata,
+        ) {
             Log.d(TAG, "Starting IncomingCallService with metadata: $metadata")
-            context.startForegroundService(Intent(context, IncomingCallService::class.java).apply {
-                this.action = PushNotificationServiceEnums.IC_INITIALIZE.name
-                metadata.toBundle().let(::putExtras)
-            })
+            context.startForegroundService(
+                Intent(context, IncomingCallService::class.java).apply {
+                    this.action = PushNotificationServiceEnums.IC_INITIALIZE.name
+                    metadata.toBundle().let(::putExtras)
+                },
+            )
         }
 
         // Method is invoked when the connection is disconnected and the incoming call can be released.
@@ -230,7 +252,10 @@ class IncomingCallService : Service() {
         // Instead, we initiate communication with the Flutter side and delay stopping the service to ensure a graceful shutdown.
         // During this time, the notification is replaced with a special "release" notification
         // using IncomingCallNotificationBuilder.buildReleaseNotification to inform the user that the call is being finalized.
-        fun release(context: Context, type: IncomingCallRelease) {
+        fun release(
+            context: Context,
+            type: IncomingCallRelease,
+        ) {
             // Do NOT guard on isRunning here. isRunning is a static field set only in the
             // main-process JVM. After the :callkeep_core process split, PhoneConnection
             // (which runs in :callkeep_core) calls this method; in that JVM isRunning is
@@ -245,7 +270,7 @@ class IncomingCallService : Service() {
             runCatching {
                 ContextCompat.startForegroundService(
                     context,
-                    Intent(context, IncomingCallService::class.java).apply { this.action = type.name }
+                    Intent(context, IncomingCallService::class.java).apply { this.action = type.name },
                 )
                 Log.d(TAG, "Release action $type initiated.")
             }.onFailure { e ->
@@ -256,9 +281,10 @@ class IncomingCallService : Service() {
 }
 
 enum class IncomingCallRelease {
-    IC_RELEASE_WITH_ANSWER, IC_RELEASE_WITH_DECLINE;
+    IC_RELEASE_WITH_ANSWER,
+    IC_RELEASE_WITH_DECLINE,
 }
 
 enum class PushNotificationServiceEnums {
-    IC_INITIALIZE;
+    IC_INITIALIZE,
 }

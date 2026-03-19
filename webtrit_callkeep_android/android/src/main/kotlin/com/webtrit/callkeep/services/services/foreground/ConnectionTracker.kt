@@ -13,7 +13,6 @@ import com.webtrit.callkeep.models.CallMetadata
  * touching any caller.
  */
 interface ConnectionTracker {
-
     // -------------------------------------------------------------------------
     // Write operations
     // -------------------------------------------------------------------------
@@ -27,13 +26,20 @@ interface ConnectionTracker {
     /**
      * Promote a pending call to a fully registered connection once the PhoneConnection exists.
      */
-    fun promote(callId: String, metadata: CallMetadata, state: PCallkeepConnectionState)
+    fun promote(
+        callId: String,
+        metadata: CallMetadata,
+        state: PCallkeepConnectionState,
+    )
 
     /** Mark [callId] as answered and advance its state to STATE_ACTIVE. */
     fun markAnswered(callId: String)
 
     /** Update the hold state for [callId] (STATE_HOLDING / STATE_ACTIVE). */
-    fun markHeld(callId: String, onHold: Boolean)
+    fun markHeld(
+        callId: String,
+        onHold: Boolean,
+    )
 
     /** Mark [callId] as terminated, removing it from the active connections map. */
     fun markTerminated(callId: String)

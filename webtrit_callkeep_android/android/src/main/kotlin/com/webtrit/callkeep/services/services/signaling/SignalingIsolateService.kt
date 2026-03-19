@@ -6,7 +6,6 @@ import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Build.VERSION.SDK_INT
@@ -28,7 +27,6 @@ import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.PermissionsHelper
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.fromBundle
-import com.webtrit.callkeep.common.registerReceiverCompat
 import com.webtrit.callkeep.common.startForegroundServiceCompat
 import com.webtrit.callkeep.common.toPCallkeepLifecycleType
 import com.webtrit.callkeep.common.toPCallkeepSignalingStatus
@@ -42,9 +40,9 @@ import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
 import com.webtrit.callkeep.services.core.CallkeepCore
+import com.webtrit.callkeep.services.services.signaling.workers.SignalingServiceBootWorker
 import java.util.Collections
 import java.util.concurrent.atomic.AtomicBoolean
-import com.webtrit.callkeep.services.services.signaling.workers.SignalingServiceBootWorker
 
 /**
  * A foreground service that manages the call state and Flutter background isolate.
@@ -74,20 +72,27 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
             _isolateCalkeepFlutterApi = value
         }
 
-    private val signalingStatusReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            latestSignalingStatus = SignalingStatus.fromBundle(intent?.extras)
-            synchronizeSignalingIsolate(latestLifecycleActivityEvent, latestSignalingStatus)
-
+    private val signalingStatusReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                context: Context?,
+                intent: Intent?,
+            ) {
+                latestSignalingStatus = SignalingStatus.fromBundle(intent?.extras)
+                synchronizeSignalingIsolate(latestLifecycleActivityEvent, latestSignalingStatus)
+            }
         }
-    }
 
-    private val lifecycleEventReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            latestLifecycleActivityEvent = Lifecycle.Event.fromBundle(intent?.extras) ?: return
-            synchronizeSignalingIsolate(latestLifecycleActivityEvent, latestSignalingStatus)
+    private val lifecycleEventReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                context: Context?,
+                intent: Intent?,
+            ) {
+                latestLifecycleActivityEvent = Lifecycle.Event.fromBundle(intent?.extras) ?: return
+                synchronizeSignalingIsolate(latestLifecycleActivityEvent, latestSignalingStatus)
+            }
         }
-    }
 
     override fun onCreate() {
         super.onCreate()
@@ -148,13 +153,13 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         Log.d(TAG, "Starting foreground service")
         notificationBuilder.setTitle(
             StorageDelegate.SignalingService.getNotificationTitle(
-                applicationContext
-            )
+                applicationContext,
+            ),
         )
         notificationBuilder.setContent(
             StorageDelegate.SignalingService.getNotificationDescription(
-                applicationContext
-            )
+                applicationContext,
+            ),
         )
         val notification = notificationBuilder.build()
 
@@ -163,7 +168,7 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
                 this,
                 ForegroundCallNotificationBuilder.NOTIFICATION_ID,
                 notification,
-                if (SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL else null
+                if (SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL else null,
             )
         } else {
             stopSelf()
@@ -189,7 +194,11 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         return activeNotifications.any { it.id == ForegroundCallNotificationBuilder.NOTIFICATION_ID }
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    override fun onStartCommand(
+        intent: Intent?,
+        flags: Int,
+        startId: Int,
+    ): Int {
         Log.d(TAG, "SignalingIsolateService onStartCommand: $intent")
 
         val action = intent?.action
@@ -236,16 +245,19 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
     @Suppress("DEPRECATION")
     private fun synchronizeSignalingIsolate(
-        activityLifecycle: Lifecycle.Event, status: SignalingStatus?
+        activityLifecycle: Lifecycle.Event,
+        status: SignalingStatus?,
     ) {
         val wakeUpHandler = StorageDelegate.SignalingService.getOnSyncHandler(baseContext)
 
         Log.d(TAG, "SignalingIsolateService synchronizeSignalingIsolate wakeUpHandler: $wakeUpHandler status: $status")
         _isolateSignalingFlutterApi?.onWakeUpBackgroundHandler(
-            wakeUpHandler, PCallkeepServiceStatus(
+            wakeUpHandler,
+            PCallkeepServiceStatus(
                 activityLifecycle.toPCallkeepLifecycleType(),
-                mainSignalingStatus = status?.toPCallkeepSignalingStatus()
-            ), null
+                mainSignalingStatus = status?.toPCallkeepSignalingStatus(),
+            ),
+            null,
         ) { response -> }
     }
 
@@ -254,23 +266,25 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         handle: PHandle,
         displayName: String?,
         hasVideo: Boolean,
-        callback: (Result<Unit>) -> Unit
+        callback: (Result<Unit>) -> Unit,
     ) {
         val ringtonePath = StorageDelegate.Sound.getRingtonePath(baseContext)
 
-        val metadata = CallMetadata(
-            callId = callId,
-            handle = handle.toCallHandle(),
-            displayName = displayName,
-            hasVideo = hasVideo,
-            ringtonePath = ringtonePath,
-            createdTime = System.currentTimeMillis()
-        )
+        val metadata =
+            CallMetadata(
+                callId = callId,
+                handle = handle.toCallHandle(),
+                displayName = displayName,
+                hasVideo = hasVideo,
+                ringtonePath = ringtonePath,
+                createdTime = System.currentTimeMillis(),
+            )
 
         CallkeepCore.instance.startIncomingCall(
             metadata = metadata,
             onSuccess = { callback(Result.success(Unit)) },
-            onError = { error -> callback(Result.failure(Exception("Incoming call failed with error: $error"))) })
+            onError = { error -> callback(Result.failure(Exception("Incoming call failed with error: $error"))) },
+        )
     }
 
     /**
@@ -291,7 +305,10 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
      * @param callId  Identifier of the call to terminate.
      * @param callback Pigeon-generated callback; receives [Result.success] on completion.
      */
-    override fun endCall(callId: String, callback: (Result<Unit>) -> Unit) {
+    override fun endCall(
+        callId: String,
+        callback: (Result<Unit>) -> Unit,
+    ) {
         val handler = Handler(Looper.getMainLooper())
         val resolved = AtomicBoolean(false)
         lateinit var receiver: BroadcastReceiver
@@ -299,19 +316,30 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         fun finish() {
             if (!resolved.compareAndSet(false, true)) return
             handler.removeCallbacksAndMessages(null)
-            try { ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, receiver) } catch (_: IllegalArgumentException) {}
+            try {
+                ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, receiver)
+            } catch (
+                _: IllegalArgumentException,
+            ) {
+            }
             callback(Result.success(Unit))
         }
 
-        receiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                val id = intent?.extras?.getString(CallDataConst.CALL_ID) ?: return
-                if (id == callId) finish()
+        receiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(
+                    context: Context?,
+                    intent: Intent?,
+                ) {
+                    val id = intent?.extras?.getString(CallDataConst.CALL_ID) ?: return
+                    if (id == callId) finish()
+                }
             }
-        }
 
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(CallLifecycleEvent.HungUp, CallLifecycleEvent.DeclineCall), baseContext, receiver,
+            listOf(CallLifecycleEvent.HungUp, CallLifecycleEvent.DeclineCall),
+            baseContext,
+            receiver,
             exported = false,
         )
 
@@ -367,19 +395,30 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         fun finish() {
             if (!resolved.compareAndSet(false, true)) return
             handler.removeCallbacksAndMessages(null)
-            try { ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, receiver) } catch (_: IllegalArgumentException) {}
+            try {
+                ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, receiver)
+            } catch (
+                _: IllegalArgumentException,
+            ) {
+            }
             callback(Result.success(Unit))
         }
 
-        receiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                val id = intent?.extras?.getString(CallDataConst.CALL_ID) ?: return
-                if (pendingIds.remove(id) && pendingIds.isEmpty()) finish()
+        receiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(
+                    context: Context?,
+                    intent: Intent?,
+                ) {
+                    val id = intent?.extras?.getString(CallDataConst.CALL_ID) ?: return
+                    if (pendingIds.remove(id) && pendingIds.isEmpty()) finish()
+                }
             }
-        }
 
         ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(CallLifecycleEvent.HungUp, CallLifecycleEvent.DeclineCall), baseContext, receiver,
+            listOf(CallLifecycleEvent.HungUp, CallLifecycleEvent.DeclineCall),
+            baseContext,
+            receiver,
             exported = false,
         )
 
@@ -446,12 +485,13 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
             context.stopService(Intent(context, SignalingIsolateService::class.java))
         }
-
     }
 }
 
 enum class ForegroundCallServiceEnums {
-    ANSWER, DECLINE;
+    ANSWER,
+    DECLINE,
+    ;
 
     val action: String
         get() = "callkeep_$name"

@@ -6,10 +6,12 @@ import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.services.services.signaling.SignalingIsolateService
 
 class BackgroundSignalingIsolateBootstrapApi(
-    private val context: Context
+    private val context: Context,
 ) : PHostBackgroundSignalingIsolateBootstrapApi {
     override fun initializeSignalingServiceCallback(
-        callbackDispatcher: Long, onSync: Long, callback: (Result<Unit>) -> Unit
+        callbackDispatcher: Long,
+        onSync: Long,
+        callback: (Result<Unit>) -> Unit,
     ) {
         StorageDelegate.SignalingService.setCallbackDispatcher(context, callbackDispatcher)
         StorageDelegate.SignalingService.setOnSyncHandler(context, onSync)
@@ -20,11 +22,12 @@ class BackgroundSignalingIsolateBootstrapApi(
     override fun configureSignalingService(
         androidNotificationName: String?,
         androidNotificationDescription: String?,
-        callback: (Result<Unit>) -> Unit
+        callback: (Result<Unit>) -> Unit,
     ) {
         StorageDelegate.SignalingService.setNotificationTitle(context, androidNotificationName)
         StorageDelegate.SignalingService.setNotificationDescription(
-            context, androidNotificationDescription
+            context,
+            androidNotificationDescription,
         )
 
         callback(Result.success(Unit))

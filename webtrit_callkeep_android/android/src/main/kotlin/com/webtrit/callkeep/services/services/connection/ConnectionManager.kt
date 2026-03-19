@@ -128,9 +128,10 @@ class ConnectionManager {
     /**
      * Get all connections.
      */
-    fun getConnections(): List<PhoneConnection> = synchronized(connectionResourceLock) {
-        connections.values.filter { it.state != Connection.STATE_DISCONNECTED }
-    }
+    fun getConnections(): List<PhoneConnection> =
+        synchronized(connectionResourceLock) {
+            connections.values.filter { it.state != Connection.STATE_DISCONNECTED }
+        }
 
     /**
      * Check if a connection already exists.
@@ -196,7 +197,10 @@ class ConnectionManager {
      * to read/write the [connections] + [pendingAnswers] pair, so one always sees a
      * consistent snapshot of both collections.
      */
-    fun addConnectionAndConsumeAnswer(callId: String, connection: PhoneConnection): Boolean {
+    fun addConnectionAndConsumeAnswer(
+        callId: String,
+        connection: PhoneConnection,
+    ): Boolean {
         synchronized(connectionResourceLock) {
             if (!connections.containsKey(callId)) {
                 connections[callId] = connection
@@ -290,29 +294,35 @@ class ConnectionManager {
 
     override fun toString(): String {
         synchronized(connectionResourceLock) {
-            val connectionsInfo = connections.map { (callId, connection) ->
-                "Call ID: $callId, State: ${connection.state}"
-            }.joinToString(separator = "\n")
-
+            val connectionsInfo =
+                connections.map { (callId, connection) ->
+                    "Call ID: $callId, State: ${connection.state}"
+                }.joinToString(separator = "\n")
 
             return """
-            ConnectionManager {
-                Active Connections:
-                $connectionsInfo
-            }
-        """.trimIndent()
+                ConnectionManager {
+                    Active Connections:
+                    $connectionsInfo
+                }
+                """.trimIndent()
         }
     }
 
     companion object {
         fun validateConnectionAddition(
-            metadata: CallMetadata, onSuccess: () -> Unit, onError: (PIncomingCallError) -> Unit
+            metadata: CallMetadata,
+            onSuccess: () -> Unit,
+            onError: (PIncomingCallError) -> Unit,
         ) {
-            val errorEnum = PhoneConnectionService.connectionManager
-                .checkAndReservePending(metadata.callId)
+            val errorEnum =
+                PhoneConnectionService.connectionManager
+                    .checkAndReservePending(metadata.callId)
 
-            if (errorEnum == null) onSuccess()
-            else onError(PIncomingCallError(errorEnum))
+            if (errorEnum == null) {
+                onSuccess()
+            } else {
+                onError(PIncomingCallError(errorEnum))
+            }
         }
     }
 }

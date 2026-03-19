@@ -7,7 +7,8 @@ import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
 import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
 
 enum class IsolateType {
-    MAIN, BACKGROUND
+    MAIN,
+    BACKGROUND,
 }
 
 interface IsolateSelectionStrategy {
@@ -73,7 +74,8 @@ object IsolateSelector {
 
     // Executes the action based on the current isolate type
     inline fun executeBasedOnIsolate(
-        mainAction: () -> Unit, backgroundAction: () -> Unit
+        mainAction: () -> Unit,
+        backgroundAction: () -> Unit,
     ) {
         when (getIsolateType()) {
             IsolateType.MAIN -> mainAction()

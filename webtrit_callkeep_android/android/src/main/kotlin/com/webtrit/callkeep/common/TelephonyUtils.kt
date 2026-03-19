@@ -14,7 +14,6 @@ import android.telephony.TelephonyManager
 import androidx.annotation.RequiresPermission
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
-import com.webtrit.callkeep.services.services.foreground.ForegroundService
 
 class TelephonyUtils(private val context: Context) {
     fun isEmergencyNumber(number: String): Boolean {
@@ -33,7 +32,10 @@ class TelephonyUtils(private val context: Context) {
     }
 
     @RequiresPermission(Manifest.permission.CALL_PHONE)
-    fun placeOutgoingCall(uri: Uri, metadata: CallMetadata) {
+    fun placeOutgoingCall(
+        uri: Uri,
+        metadata: CallMetadata,
+    ) {
         val extras = buildOutgoingCallExtras(metadata)
         logger.i("placeCall: uri: '$uri', extras: '$extras'")
         getTelecomManager().placeCall(uri, extras)
@@ -41,7 +43,8 @@ class TelephonyUtils(private val context: Context) {
 
     fun addNewIncomingCall(metadata: CallMetadata) {
         getTelecomManager().addNewIncomingCall(
-            getPhoneAccountHandle(), buildIncomingCallExtras(metadata)
+            getPhoneAccountHandle(),
+            buildIncomingCallExtras(metadata),
         )
     }
 
@@ -92,6 +95,5 @@ class TelephonyUtils(private val context: Context) {
         private const val TAG = "TelephonyUtils"
 
         private val logger = Log(TAG)
-
     }
 }

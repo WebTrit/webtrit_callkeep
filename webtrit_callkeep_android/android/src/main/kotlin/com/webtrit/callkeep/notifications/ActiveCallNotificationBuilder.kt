@@ -20,32 +20,36 @@ class ActiveCallNotificationBuilder() : NotificationBuilder() {
     }
 
     override fun build(): Notification {
-        val title = if (callsMetaData.size > 1) {
-            context.getString(R.string.push_notification_active_calls_channel_title)
-        } else {
-            context.getString(R.string.push_notification_active_call_channel_title)
-        }
+        val title =
+            if (callsMetaData.size > 1) {
+                context.getString(R.string.push_notification_active_calls_channel_title)
+            } else {
+                context.getString(R.string.push_notification_active_call_channel_title)
+            }
 
         val text = callsMetaData.joinToString { it.name }
 
-        val hungUpAction: Notification.Action = Notification.Action.Builder(
-            Icon.createWithResource(context, R.drawable.ic_call_hungup),
-            context.getString(R.string.hang_up_button_text),
-            getHungUpCallIntent(callsMetaData.firstOrNull())
-        ).build()
+        val hungUpAction: Notification.Action =
+            Notification.Action.Builder(
+                Icon.createWithResource(context, R.drawable.ic_call_hungup),
+                context.getString(R.string.hang_up_button_text),
+                getHungUpCallIntent(callsMetaData.firstOrNull()),
+            ).build()
 
-        val notificationBuilder = Notification.Builder(
-            context, NOTIFICATION_ACTIVE_CALL_CHANNEL_ID
-        ).apply {
-            setSmallIcon(R.drawable.ic_notification)
-            setOngoing(true)
-            setContentTitle(title)
-            setContentText(text)
-            setAutoCancel(false)
-            setCategory(Notification.CATEGORY_SERVICE)
-            setFullScreenIntent(buildOpenAppIntent(context), true)
-            addAction(hungUpAction)
-        }
+        val notificationBuilder =
+            Notification.Builder(
+                context,
+                NOTIFICATION_ACTIVE_CALL_CHANNEL_ID,
+            ).apply {
+                setSmallIcon(R.drawable.ic_notification)
+                setOngoing(true)
+                setContentTitle(title)
+                setContentText(text)
+                setAutoCancel(false)
+                setCategory(Notification.CATEGORY_SERVICE)
+                setFullScreenIntent(buildOpenAppIntent(context), true)
+                addAction(hungUpAction)
+            }
 
         val notification = notificationBuilder.build()
         notification.flags = notification.flags or NotificationCompat.FLAG_INSISTENT
@@ -53,15 +57,16 @@ class ActiveCallNotificationBuilder() : NotificationBuilder() {
     }
 
     private fun getHungUpCallIntent(callMetaData: CallMetadata?): PendingIntent {
-        val hangUpIntent = Intent(context, ActiveCallService::class.java).apply {
-            action = NotificationAction.Decline.action
-            callMetaData?.toBundle()?.let { putExtras(it) }
-        }
+        val hangUpIntent =
+            Intent(context, ActiveCallService::class.java).apply {
+                action = NotificationAction.Decline.action
+                callMetaData?.toBundle()?.let { putExtras(it) }
+            }
         return PendingIntent.getService(
             context,
             0,
             hangUpIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
     }
 

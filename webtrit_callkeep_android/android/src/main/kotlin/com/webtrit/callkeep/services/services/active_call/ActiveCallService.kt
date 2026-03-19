@@ -24,7 +24,11 @@ class ActiveCallService : Service() {
         ContextHolder.init(applicationContext)
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    override fun onStartCommand(
+        intent: Intent?,
+        flags: Int,
+        startId: Int,
+    ): Int {
         // Handle the hangup action from the notification
         if (NotificationAction.Decline.action == intent?.action) {
             hungUpCall()
@@ -51,9 +55,10 @@ class ActiveCallService : Service() {
         return START_STICKY
     }
 
-    private fun hungUpCall() = callsMetadata.firstOrNull()?.let {
-        PhoneConnectionService.startHungUpCall(baseContext, it)
-    } ?: PhoneConnectionService.tearDown(baseContext)
+    private fun hungUpCall() =
+        callsMetadata.firstOrNull()?.let {
+            PhoneConnectionService.startHungUpCall(baseContext, it)
+        } ?: PhoneConnectionService.tearDown(baseContext)
 
     private fun getForegroundServiceTypes(callsMetadata: List<CallMetadata>): Int? {
         return when {

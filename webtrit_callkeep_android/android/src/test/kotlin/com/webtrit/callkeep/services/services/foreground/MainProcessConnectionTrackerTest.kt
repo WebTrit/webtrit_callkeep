@@ -23,7 +23,6 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [Build.VERSION_CODES.UPSIDE_DOWN_CAKE])
 class MainProcessConnectionTrackerTest {
-
     private lateinit var tracker: MainProcessConnectionTracker
 
     private fun metadata(callId: String = "call-1") = CallMetadata(callId = callId)
@@ -414,7 +413,7 @@ class MainProcessConnectionTrackerTest {
 
         tracker.addPending(id)
         assertTrue(tracker.isPending(id))
-        assertFalse(tracker.exists(id))  // not yet promoted, so not in connections
+        assertFalse(tracker.exists(id)) // not yet promoted, so not in connections
 
         tracker.promote(id, meta, PCallkeepConnectionState.STATE_RINGING)
         assertFalse(tracker.isPending(id))

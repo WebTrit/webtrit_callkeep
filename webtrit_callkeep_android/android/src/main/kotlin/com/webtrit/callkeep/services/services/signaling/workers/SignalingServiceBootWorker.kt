@@ -17,7 +17,8 @@ class SignalingServiceBootWorker(context: Context, workerParams: WorkerParameter
     override fun doWork(): Result {
         return try {
             ContextCompat.startForegroundService(
-                applicationContext, Intent(applicationContext, SignalingIsolateService::class.java)
+                applicationContext,
+                Intent(applicationContext, SignalingIsolateService::class.java),
             )
             Result.success()
         } catch (e: Exception) {
@@ -31,13 +32,19 @@ class SignalingServiceBootWorker(context: Context, workerParams: WorkerParameter
         private const val ACTION_RESTART_FOREGROUND_SERVICE =
             "id.flutter.webtrit.foreground_call_service.ACTION_RESTART_FOREGROUND_SERVICE"
 
-        fun enqueue(context: Context, delayInMillis: Long = 15000) {
-            val workRequest = OneTimeWorkRequestBuilder<SignalingServiceBootWorker>().addTag(
-                ACTION_RESTART_FOREGROUND_SERVICE
-            ).setInitialDelay(delayInMillis, TimeUnit.MILLISECONDS).build()
+        fun enqueue(
+            context: Context,
+            delayInMillis: Long = 15000,
+        ) {
+            val workRequest =
+                OneTimeWorkRequestBuilder<SignalingServiceBootWorker>().addTag(
+                    ACTION_RESTART_FOREGROUND_SERVICE,
+                ).setInitialDelay(delayInMillis, TimeUnit.MILLISECONDS).build()
 
             WorkManager.getInstance(context).enqueueUniqueWork(
-                ACTION_RESTART_FOREGROUND_SERVICE, ExistingWorkPolicy.REPLACE, workRequest
+                ACTION_RESTART_FOREGROUND_SERVICE,
+                ExistingWorkPolicy.REPLACE,
+                workRequest,
             )
         }
 

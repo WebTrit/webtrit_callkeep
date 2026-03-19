@@ -25,7 +25,6 @@ import java.util.concurrent.ConcurrentHashMap
  * change — all callers of this tracker remain unchanged.
  */
 class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
-
     // callId -> metadata for all known, non-terminated calls
     private val connections = ConcurrentHashMap<String, CallMetadata>()
 
@@ -97,7 +96,11 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
      * @param state the initial Telecom state reported for this call.
      *   Use [PCallkeepConnectionState.STATE_RINGING] for incoming, [PCallkeepConnectionState.STATE_DIALING] for outgoing.
      */
-    override fun promote(callId: String, metadata: CallMetadata, state: PCallkeepConnectionState) {
+    override fun promote(
+        callId: String,
+        metadata: CallMetadata,
+        state: PCallkeepConnectionState,
+    ) {
         // Reset stale lifecycle sets in case addPending was not called first (push-path),
         // or in case this callId was reused without going through addPending.
         terminatedCallIds.remove(callId)
@@ -123,12 +126,16 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
      * This keeps [getConnections] in sync with the Telecom hold state so that callers never
      * see a stale ACTIVE state for a held call.
      */
-    override fun markHeld(callId: String, onHold: Boolean) {
-        connectionStates[callId] = if (onHold) {
-            PCallkeepConnectionState.STATE_HOLDING
-        } else {
-            PCallkeepConnectionState.STATE_ACTIVE
-        }
+    override fun markHeld(
+        callId: String,
+        onHold: Boolean,
+    ) {
+        connectionStates[callId] =
+            if (onHold) {
+                PCallkeepConnectionState.STATE_HOLDING
+            } else {
+                PCallkeepConnectionState.STATE_ACTIVE
+            }
     }
 
     /**
@@ -180,10 +187,11 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
     override fun toPCallkeepConnection(callId: String): PCallkeepConnection? {
         val metadata = connections[callId] ?: return null
         val state = connectionStates[callId] ?: PCallkeepConnectionState.STATE_NEW
-        val disconnectCause = PCallkeepDisconnectCause(
-            type = PCallkeepDisconnectCauseType.UNKNOWN,
-            reason = "Unknown reason",
-        )
+        val disconnectCause =
+            PCallkeepDisconnectCause(
+                type = PCallkeepDisconnectCauseType.UNKNOWN,
+                reason = "Unknown reason",
+            )
         return PCallkeepConnection(callId = metadata.callId, state = state, disconnectCause = disconnectCause)
     }
 
@@ -259,18 +267,15 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         directNotifiedCallIds.add(callId)
     }
 
-    override fun consumeDirectNotified(callId: String): Boolean =
-        directNotifiedCallIds.remove(callId)
+    override fun consumeDirectNotified(callId: String): Boolean = directNotifiedCallIds.remove(callId)
 
-    override fun markEndCallDispatched(callId: String): Boolean =
-        endCallDispatchedCallIds.add(callId)
+    override fun markEndCallDispatched(callId: String): Boolean = endCallDispatchedCallIds.add(callId)
 
     override fun markSignalingRegistered(callId: String) {
         signalingRegisteredCallIds.add(callId)
     }
 
-    override fun consumeSignalingRegistered(callId: String): Boolean =
-        signalingRegisteredCallIds.remove(callId)
+    override fun consumeSignalingRegistered(callId: String): Boolean = signalingRegisteredCallIds.remove(callId)
 
     companion object {
         /**

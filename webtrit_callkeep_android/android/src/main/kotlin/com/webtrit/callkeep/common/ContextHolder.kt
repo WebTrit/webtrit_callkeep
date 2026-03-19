@@ -15,8 +15,9 @@ object ContextHolder {
      * Provides the application context safely.
      */
     val context: Context
-        get() = applicationContext
-            ?: throw IllegalStateException("ContextHolder is not initialized. Call init() first.")
+        get() =
+            applicationContext
+                ?: throw IllegalStateException("ContextHolder is not initialized. Call init() first.")
 
     /**
      * Initializes ContextHolder with the given application context.

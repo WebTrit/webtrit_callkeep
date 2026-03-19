@@ -48,7 +48,10 @@ class ActivityWakelockManager(private val activityProvider: ActivityProvider) {
      * @param operationName Description of the operation for logging purposes.
      * @param operation The action to perform on the Activity.
      */
-    private fun executeOrQueue(operationName: String, operation: (Activity) -> Unit) {
+    private fun executeOrQueue(
+        operationName: String,
+        operation: (Activity) -> Unit,
+    ) {
         val currentActivity = activityProvider.getActivity()
 
         if (currentActivity != null) {
@@ -57,7 +60,9 @@ class ActivityWakelockManager(private val activityProvider: ActivityProvider) {
             operation(currentActivity)
         } else {
             operationQueue.add(operation)
-            logger.d("Activity unavailable. Operation [$operationName] queued. Pending operations count: ${operationQueue.size}")
+            logger.d(
+                "Activity unavailable. Operation [$operationName] queued. Pending operations count: ${operationQueue.size}",
+            )
         }
     }
 
@@ -67,7 +72,9 @@ class ActivityWakelockManager(private val activityProvider: ActivityProvider) {
     private fun executePendingOperations(activity: Activity) {
         if (operationQueue.isEmpty()) return
 
-        logger.d("Flushing operation queue. Executing ${operationQueue.size} pending operations on ${activity.componentName.shortClassName}")
+        logger.d(
+            "Flushing operation queue. Executing ${operationQueue.size} pending operations on ${activity.componentName.shortClassName}",
+        )
 
         val iterator = operationQueue.iterator()
         while (iterator.hasNext()) {
@@ -77,7 +84,7 @@ class ActivityWakelockManager(private val activityProvider: ActivityProvider) {
             } catch (e: Exception) {
                 logger.e(
                     "Failed to execute pending operation on ${activity.componentName.shortClassName}",
-                    e
+                    e,
                 )
             }
             iterator.remove()

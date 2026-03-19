@@ -28,16 +28,23 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
     private fun createCallActionIntent(action: String): PendingIntent {
         requireNotNull(callMetaData) { "Call metadata must be set before creating the intent." }
 
-        val intent = Intent(context, IncomingCallService::class.java).apply {
-            this.action = action
-            putExtras(callMetaData!!.toBundle())
-        }
+        val intent =
+            Intent(context, IncomingCallService::class.java).apply {
+                this.action = action
+                putExtras(callMetaData!!.toBundle())
+            }
         return PendingIntent.getService(
-            context, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
     }
 
-    private fun baseNotificationBuilder(title: String, text: String? = null): Notification.Builder {
+    private fun baseNotificationBuilder(
+        title: String,
+        text: String? = null,
+    ): Notification.Builder {
         return Notification.Builder(context, INCOMING_CALL_NOTIFICATION_CHANNEL_ID).apply {
             setSmallIcon(R.drawable.ic_notification)
             setCategory(NotificationCompat.CATEGORY_CALL)
@@ -48,10 +55,14 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
     }
 
     private fun createNotificationAction(
-        iconRes: Int, textRes: Int, intent: PendingIntent
+        iconRes: Int,
+        textRes: Int,
+        intent: PendingIntent,
     ): Notification.Action {
         return Notification.Action.Builder(
-            Icon.createWithResource(context, iconRes), context.getString(textRes), intent
+            Icon.createWithResource(context, iconRes),
+            context.getString(textRes),
+            intent,
         ).build()
     }
 
@@ -71,12 +82,13 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
         val answerButton = R.string.answer_call_button_text
         val declineButton = R.string.decline_button_text
 
-        val builder = baseNotificationBuilder(title, description).apply {
-            setOngoing(true)
-            if (StorageDelegate.IncomingCall.isFullScreen(context)) {
-                setFullScreenIntent(buildOpenAppIntent(context), true)
+        val builder =
+            baseNotificationBuilder(title, description).apply {
+                setOngoing(true)
+                if (StorageDelegate.IncomingCall.isFullScreen(context)) {
+                    setFullScreenIntent(buildOpenAppIntent(context), true)
+                }
             }
-        }
 
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val person = Person.Builder().setName(meta.name).setImportant(true).build()
@@ -111,14 +123,14 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
     }
 
     fun buildReleaseNotification(): Notification {
-        val builder = baseNotificationBuilder(
-            title = context.getString(R.string.incoming_call_declined_title),
-            text = context.getString(R.string.incoming_call_declined_text, callMetaData?.name)
-        ).apply {
-            setFullScreenIntent(null, false)
-            setTimeoutAfter(5_000)
-
-        }
+        val builder =
+            baseNotificationBuilder(
+                title = context.getString(R.string.incoming_call_declined_title),
+                text = context.getString(R.string.incoming_call_declined_text, callMetaData?.name),
+            ).apply {
+                setFullScreenIntent(null, false)
+                setTimeoutAfter(5_000)
+            }
         return builder.build().apply {
             flags = flags or NotificationCompat.FLAG_INSISTENT
         }
