@@ -9,7 +9,6 @@ import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import androidx.annotation.Keep
-import androidx.core.content.ContextCompat
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.common.ContextHolder
@@ -265,19 +264,27 @@ class IncomingCallService : Service() {
             // always false, so the guard would silently drop every cancel request and leave
             // the incoming-call notification frozen after answer/decline.
             //
-            // Sending the intent unconditionally is safe:
-            //  - If IncomingCallService IS running (main process) it receives the release action.
-            //  - If it is NOT running, startService either fails silently (background start
-            //    restrictions on API 26+) or starts the service briefly; handleRelease returns
-            //    early because lastMetadata is null, and the 2-second stopSelf timeout fires.
+            // startService() is intentional here, NOT startForegroundService().
+            //
+            // IC_RELEASE is only meaningful when IncomingCallService is already running
+            // as a foreground service (started by IC_INITIALIZE). While that service is
+            // alive the process is not treated as background by Android, so plain
+            // startService() is allowed and delivers the action to onStartCommand().
+            //
+            // If IncomingCallService is NOT running we must not start it via
+            // startForegroundService(): the release code path never calls startForeground(),
+            // so Android would kill the app after the 5-second deadline with
+            // ForegroundServiceDidNotStartInTimeException.
+            // startService() instead fails with a caught IllegalStateException (background-
+            // start restriction) which is the correct no-op: the notification is already
+            // gone because the service was never running.
             runCatching {
-                ContextCompat.startForegroundService(
-                    context,
+                context.startService(
                     Intent(context, IncomingCallService::class.java).apply { this.action = type.name },
                 )
                 Log.d(TAG, "Release action $type initiated.")
             }.onFailure { e ->
-                Log.w(TAG, "Release action $type: startForegroundService failed: $e")
+                Log.w(TAG, "Release action $type: startService failed: $e")
             }
         }
     }
