@@ -10,7 +10,9 @@ import android.util.Log as AndroidLog
 /**
  * A logging utility that can be instantiated with a specific tag or used statically.
  */
-class Log(private val tag: String) {
+class Log(
+    private val tag: String,
+) {
     /**
      * Logs an error message using the instance tag.
      */

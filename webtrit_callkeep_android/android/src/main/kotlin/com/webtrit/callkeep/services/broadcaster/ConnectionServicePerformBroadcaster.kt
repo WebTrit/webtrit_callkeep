@@ -81,15 +81,12 @@ object ConnectionServicePerformBroadcaster {
         context: Context,
         receiver: BroadcastReceiver,
         exported: Boolean = true,
-    ): IntentFilter {
-        return createIntentFilter(events).also { filter ->
+    ): IntentFilter =
+        createIntentFilter(events).also { filter ->
             context.registerReceiverCompat(receiver, filter, exported)
         }
-    }
 
-    private fun createIntentFilter(events: List<ConnectionEvent>): IntentFilter {
-        return IntentFilter().apply { events.forEach { addAction(it.name) } }
-    }
+    private fun createIntentFilter(events: List<ConnectionEvent>): IntentFilter = IntentFilter().apply { events.forEach { addAction(it.name) } }
 
     fun unregisterConnectionPerformReceiver(
         context: Context,

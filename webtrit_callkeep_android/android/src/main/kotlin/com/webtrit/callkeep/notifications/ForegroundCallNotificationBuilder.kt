@@ -8,7 +8,7 @@ import com.webtrit.callkeep.common.ContextHolder.context
 import com.webtrit.callkeep.managers.NotificationChannelManager.FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID
 import com.webtrit.callkeep.services.services.signaling.SignalingIsolateService
 
-class ForegroundCallNotificationBuilder() : NotificationBuilder() {
+class ForegroundCallNotificationBuilder : NotificationBuilder() {
     private var title = ""
     private var content = ""
 

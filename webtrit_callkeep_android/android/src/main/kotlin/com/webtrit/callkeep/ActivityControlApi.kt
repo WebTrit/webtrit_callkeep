@@ -13,7 +13,9 @@ import com.webtrit.callkeep.common.setTurnScreenOnCompat
  *
  * @param activity The current foreground Activity.
  */
-class ActivityControlApi(private val activity: Activity) : PHostActivityControlApi {
+class ActivityControlApi(
+    private val activity: Activity,
+) : PHostActivityControlApi {
     companion object {
         private const val TAG = "ActivityControlApi"
         private val logger = Log(TAG)

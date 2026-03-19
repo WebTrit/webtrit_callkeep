@@ -11,7 +11,9 @@ import com.webtrit.callkeep.common.AssetCacheManager
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.setLoopingCompat
 
-class AudioManager(val context: Context) {
+class AudioManager(
+    val context: Context,
+) {
     private val audioManager =
         requireNotNull(context.getSystemService(Context.AUDIO_SERVICE) as AudioManager)
     private var ringtone: Ringtone? = null
@@ -46,18 +48,14 @@ class AudioManager(val context: Context) {
      *
      * @return True if a wired headset is connected, false otherwise.
      */
-    fun isWiredHeadsetConnected(): Boolean {
-        return isInputDeviceConnected(AudioDeviceInfo.TYPE_WIRED_HEADSET)
-    }
+    fun isWiredHeadsetConnected(): Boolean = isInputDeviceConnected(AudioDeviceInfo.TYPE_WIRED_HEADSET)
 
     /**
      * Check if a Bluetooth headset is connected.
      *
      * @return True if a Bluetooth headset is connected, false otherwise.
      */
-    fun isBluetoothConnected(): Boolean {
-        return isInputDeviceConnected(AudioDeviceInfo.TYPE_BLUETOOTH_SCO)
-    }
+    fun isBluetoothConnected(): Boolean = isInputDeviceConnected(AudioDeviceInfo.TYPE_BLUETOOTH_SCO)
 
     /**
      * Start playing the ringtone.
@@ -69,15 +67,14 @@ class AudioManager(val context: Context) {
         ringtone?.play()
     }
 
-    private fun getDefaultRingtone(): Ringtone {
-        return RingtoneManager.getRingtone(
+    private fun getDefaultRingtone(): Ringtone =
+        RingtoneManager.getRingtone(
             context,
             RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE),
         )
-    }
 
-    private fun getRingtone(asset: String): Ringtone {
-        return try {
+    private fun getRingtone(asset: String): Ringtone =
+        try {
             val path = AssetCacheManager.getAsset(asset)
             Log.i("AudioService", "Used asset: $path")
             RingtoneManager.getRingtone(context, path)
@@ -85,7 +82,6 @@ class AudioManager(val context: Context) {
             Log.e("AudioService", "$e")
             getDefaultRingtone()
         }
-    }
 
     /**
      * Stop playing the ringtone.
@@ -108,7 +104,9 @@ class AudioManager(val context: Context) {
     private fun createRingback(asset: String): MediaPlayer {
         val path = AssetCacheManager.getAsset(asset)
         val attributes =
-            AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING)
+            AudioAttributes
+                .Builder()
+                .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING)
                 .build()
         val session = audioManager.generateAudioSessionId()
         return MediaPlayer.create(context, path, null, attributes, session).apply {

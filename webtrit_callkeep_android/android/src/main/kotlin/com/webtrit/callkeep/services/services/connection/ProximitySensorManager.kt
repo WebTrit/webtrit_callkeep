@@ -78,11 +78,13 @@ class PhoneSensorListener {
                 val manager =
                     context.getSystemService(ConnectionService.POWER_SERVICE) as PowerManager
                 proximityWakelock =
-                    manager.newWakeLock(
-                        PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK, "callkeep-voip",
-                    ).apply {
-                        setReferenceCounted(false)
-                    }
+                    manager
+                        .newWakeLock(
+                            PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK,
+                            "callkeep-voip",
+                        ).apply {
+                            setReferenceCounted(false)
+                        }
             }
 
             val wakelock = proximityWakelock ?: return

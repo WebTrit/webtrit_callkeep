@@ -13,8 +13,7 @@ import com.webtrit.callkeep.R
 object StorageDelegate {
     private const val COMMON_PREFERENCES = "COMMON_PREFERENCES"
 
-    private fun sharedPreferences(context: Context) =
-        context.applicationContext.getSharedPreferences(COMMON_PREFERENCES, Context.MODE_PRIVATE)
+    private fun sharedPreferences(context: Context) = context.applicationContext.getSharedPreferences(COMMON_PREFERENCES, Context.MODE_PRIVATE)
 
     object Sound {
         private const val RINGTONE_PATH = "RINGTONE_PATH_KEY"
@@ -25,7 +24,8 @@ object StorageDelegate {
             context: Context,
             path: String?,
         ) {
-            sharedPreferences(context).edit()
+            sharedPreferences(context)
+                .edit()
                 .also { if (path != null) it.putString(RINGTONE_PATH, path) else it.remove(RINGTONE_PATH) }
                 .apply()
         }
@@ -37,7 +37,8 @@ object StorageDelegate {
             context: Context,
             path: String?,
         ) {
-            sharedPreferences(context).edit()
+            sharedPreferences(context)
+                .edit()
                 .also { if (path != null) it.putString(RINGBACK_PATH, path) else it.remove(RINGBACK_PATH) }
                 .apply()
         }
@@ -69,13 +70,13 @@ object StorageDelegate {
             context: Context,
             value: Boolean,
         ) {
-            sharedPreferences(context).edit()
+            sharedPreferences(context)
+                .edit()
                 .putBoolean(LAUNCH_BACKGROUND_ISOLATE_EVEN_IF_APP_IS_OPEN, value)
                 .apply()
         }
 
-        fun isLaunchBackgroundIsolateEvenIfAppIsOpen(context: Context): Boolean =
-            sharedPreferences(context).getBoolean(LAUNCH_BACKGROUND_ISOLATE_EVEN_IF_APP_IS_OPEN, false)
+        fun isLaunchBackgroundIsolateEvenIfAppIsOpen(context: Context): Boolean = sharedPreferences(context).getBoolean(LAUNCH_BACKGROUND_ISOLATE_EVEN_IF_APP_IS_OPEN, false)
 
         fun setOnNotificationSync(
             context: Context,
@@ -93,8 +94,7 @@ object StorageDelegate {
             sharedPreferences(context).edit().putLong(INCOMING_CALL_HANDLER, value).apply()
         }
 
-        fun getCallbackDispatcher(context: Context): Long =
-            sharedPreferences(context).getLong(INCOMING_CALL_HANDLER, -1)
+        fun getCallbackDispatcher(context: Context): Long = sharedPreferences(context).getLong(INCOMING_CALL_HANDLER, -1)
     }
 
     object SignalingService {
@@ -113,8 +113,7 @@ object StorageDelegate {
             sharedPreferences(context).edit().putBoolean(SIGNALING_SERVICE_ENABLED, value).apply()
         }
 
-        fun isSignalingServiceEnabled(context: Context): Boolean =
-            sharedPreferences(context).getBoolean(SIGNALING_SERVICE_ENABLED, false)
+        fun isSignalingServiceEnabled(context: Context): Boolean = sharedPreferences(context).getBoolean(SIGNALING_SERVICE_ENABLED, false)
 
         fun setNotificationTitle(
             context: Context,
@@ -127,7 +126,8 @@ object StorageDelegate {
             context: Context,
             value: String?,
         ) {
-            sharedPreferences(context).edit()
+            sharedPreferences(context)
+                .edit()
                 .putString(SS_NOTIFICATION_DESCRIPTION_KEY, value)
                 .apply()
         }

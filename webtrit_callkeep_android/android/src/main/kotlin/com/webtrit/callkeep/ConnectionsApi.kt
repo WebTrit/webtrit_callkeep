@@ -5,7 +5,7 @@ import com.webtrit.callkeep.common.toSignalingStatus
 import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
 import com.webtrit.callkeep.services.core.CallkeepCore
 
-class ConnectionsApi() : PHostConnectionsApi {
+class ConnectionsApi : PHostConnectionsApi {
     private val core: CallkeepCore = CallkeepCore.instance
 
     override fun getConnection(
@@ -18,7 +18,8 @@ class ConnectionsApi() : PHostConnectionsApi {
 
     override fun getConnections(callback: (Result<List<PCallkeepConnection>>) -> Unit) {
         val connections =
-            core.getAll()
+            core
+                .getAll()
                 .mapNotNull { core.toPCallkeepConnection(it.callId) }
         callback.invoke(Result.success(connections))
     }

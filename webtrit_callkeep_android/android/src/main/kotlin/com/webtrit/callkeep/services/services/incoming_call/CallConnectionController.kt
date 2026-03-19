@@ -14,7 +14,9 @@ interface CallConnectionController {
     fun tearDown()
 }
 
-class DefaultCallConnectionController(private val context: Context) : CallConnectionController {
+class DefaultCallConnectionController(
+    private val context: Context,
+) : CallConnectionController {
     override fun answer(metadata: CallMetadata) {
         PhoneConnectionService.startAnswerCall(context, metadata)
     }

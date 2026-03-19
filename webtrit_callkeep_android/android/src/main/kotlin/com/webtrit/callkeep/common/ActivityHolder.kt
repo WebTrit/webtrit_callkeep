@@ -21,9 +21,7 @@ object ActivityHolder : ActivityProvider {
 
     private const val TAG = "ActivityHolder"
 
-    override fun getActivity(): Activity? {
-        return activity
-    }
+    override fun getActivity(): Activity? = activity
 
     fun setActivity(newActivity: Activity?) {
         if (activity != newActivity) {

@@ -55,16 +55,27 @@ class PhoneConnectionServiceDispatcher(
 
         when (action) {
             ServiceAction.AnswerCall -> metadata?.let { handleAnswerCall(it) }
+
             ServiceAction.DeclineCall -> metadata?.let { handleDeclineCall(it) }
+
             ServiceAction.HungUpCall -> metadata?.let { handleHungUpCall(it) }
+
             ServiceAction.EstablishCall -> metadata?.let { handleEstablishCall(it) }
+
             ServiceAction.Muting -> metadata?.let { handleMute(it) }
+
             ServiceAction.Holding -> metadata?.let { handleHold(it) }
+
             ServiceAction.UpdateCall -> metadata?.let { handleUpdateCall(it) }
+
             ServiceAction.SendDTMF -> metadata?.let { handleSendDTMF(it) }
+
             ServiceAction.Speaker -> metadata?.let { handleSpeaker(it) }
+
             ServiceAction.AudioDeviceSet -> metadata?.let { handleAudioDeviceSet(it) }
+
             ServiceAction.TearDown -> handleTearDown()
+
             // IPC command actions are handled directly in PhoneConnectionService.onStartCommand
             // before reaching the dispatcher, so they should never arrive here.
             ServiceAction.TearDownConnections,
@@ -85,13 +96,19 @@ class PhoneConnectionServiceDispatcher(
     ) {
         logger.d("Dispatching LifecycleAction: $action")
         when (action) {
-            ConnectionLifecycleAction.ConnectionCreated ->
+            ConnectionLifecycleAction.ConnectionCreated -> {
                 metadata?.let {
                     handleConnectionCreated(it)
                 }
+            }
 
-            ConnectionLifecycleAction.ConnectionChanged -> handleConnectionChanged()
-            ConnectionLifecycleAction.ServiceDestroyed -> handleServiceDestroyed()
+            ConnectionLifecycleAction.ConnectionChanged -> {
+                handleConnectionChanged()
+            }
+
+            ConnectionLifecycleAction.ServiceDestroyed -> {
+                handleServiceDestroyed()
+            }
         }
     }
 

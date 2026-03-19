@@ -7,7 +7,7 @@ import com.webtrit.callkeep.services.services.active_call.ActiveCallService
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallRelease
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
 
-class NotificationManager() {
+class NotificationManager {
     fun showIncomingCallNotification(callMetaData: CallMetadata) {
         IncomingCallService.start(context, callMetaData)
     }

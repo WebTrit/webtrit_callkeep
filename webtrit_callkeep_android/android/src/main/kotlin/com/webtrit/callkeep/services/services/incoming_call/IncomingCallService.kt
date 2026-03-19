@@ -121,11 +121,14 @@ class IncomingCallService : Service() {
         return when (action) {
             // Listen foreground service actions
             PushNotificationServiceEnums.IC_INITIALIZE.name -> handleLaunch(metadata!!)
+
             IncomingCallRelease.IC_RELEASE_WITH_DECLINE.name -> handleRelease(answered = false)
+
             IncomingCallRelease.IC_RELEASE_WITH_ANSWER.name -> handleRelease(answered = true)
 
             // Listen push notification actions (Only notify connection service)
             NotificationAction.Answer.action -> reportAnswerToConnectionService(metadata!!)
+
             NotificationAction.Decline.action -> reportHungUpToConnectionService(metadata!!)
 
             else -> handleUnknownAction(action)

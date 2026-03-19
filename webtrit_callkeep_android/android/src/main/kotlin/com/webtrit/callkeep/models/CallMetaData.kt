@@ -131,14 +131,16 @@ data class CallMetadata(
                 hasSpeaker = bundle.getBooleanOrNull(CallDataConst.HAS_SPEAKER),
                 speakerOnVideo = bundle.getBooleanOrNull(CALL_METADATA_EXTRA_SPEAKER_ON_VIDEO),
                 audioDevice =
-                    bundle.getBundle(CallDataConst.AUDIO_DEVICE)
+                    bundle
+                        .getBundle(CallDataConst.AUDIO_DEVICE)
                         ?.let { AudioDevice.fromBundle(it) },
                 audioDevices = bundle.extractAudioDevices(),
                 proximityEnabled = bundle.getBooleanOrNull(CallDataConst.PROXIMITY_ENABLED),
                 hasMute = bundle.getBooleanOrNull(CallDataConst.HAS_MUTE),
                 hasHold = bundle.getBooleanOrNull(CallDataConst.HAS_HOLD),
                 dualToneMultiFrequency =
-                    bundle.getCharOrNull(CallDataConst.DTMF)
+                    bundle
+                        .getCharOrNull(CallDataConst.DTMF)
                         .takeIf { it != DEFAULT_CHAR_VALUE },
                 ringtonePath = bundle.getStringOrNull(CALL_RINGTONE_PATH),
                 createdTime = bundle.getLongOrNull(CALL_METADATA_CREATED_TIME),

@@ -12,13 +12,9 @@ import com.webtrit.callkeep.PHandle
 import com.webtrit.callkeep.PHandleTypeEnum
 import com.webtrit.callkeep.services.services.connection.PhoneConnection
 
-fun PHandle.toCallHandle(): CallHandle {
-    return CallHandle(value)
-}
+fun PHandle.toCallHandle(): CallHandle = CallHandle(value)
 
-fun CallHandle.toPHandle(): PHandle {
-    return PHandle(value = number, type = PHandleTypeEnum.NUMBER)
-}
+fun CallHandle.toPHandle(): PHandle = PHandle(value = number, type = PHandleTypeEnum.NUMBER)
 
 fun PhoneConnection.toPConnection(): PCallkeepConnection? {
     val disconnectCause = disconnectCause ?: DisconnectCause(DisconnectCause.UNKNOWN)
@@ -39,8 +35,8 @@ fun PhoneConnection.toPConnection(): PCallkeepConnection? {
     return PCallkeepConnection(callId, callkeepStatus, callkeepDisconnectCause)
 }
 
-fun PAudioDevice.toAudioDevice(): AudioDevice {
-    return AudioDevice(
+fun PAudioDevice.toAudioDevice(): AudioDevice =
+    AudioDevice(
         type =
             when (this.type) {
                 PAudioDeviceType.EARPIECE -> AudioDeviceType.EARPIECE
@@ -53,10 +49,9 @@ fun PAudioDevice.toAudioDevice(): AudioDevice {
         name = this.name,
         id = this.id,
     )
-}
 
-fun AudioDevice.toPAudioDevice(): PAudioDevice {
-    return PAudioDevice(
+fun AudioDevice.toPAudioDevice(): PAudioDevice =
+    PAudioDevice(
         type =
             when (this.type) {
                 AudioDeviceType.EARPIECE -> PAudioDeviceType.EARPIECE
@@ -69,13 +64,11 @@ fun AudioDevice.toPAudioDevice(): PAudioDevice {
         name = this.name,
         id = this.id,
     )
-}
 
-fun CallMetadata.toPCallkeepIncomingCallData(): PCallkeepIncomingCallData {
-    return PCallkeepIncomingCallData(
+fun CallMetadata.toPCallkeepIncomingCallData(): PCallkeepIncomingCallData =
+    PCallkeepIncomingCallData(
         callId = callId,
         handle = handle?.toPHandle(),
         displayName = displayName,
         hasVideo = hasVideo ?: false,
     )
-}

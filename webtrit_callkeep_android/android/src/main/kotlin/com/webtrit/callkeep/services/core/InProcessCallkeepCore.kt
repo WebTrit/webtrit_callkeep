@@ -123,8 +123,7 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
 
     override fun startHungUpCall(metadata: CallMetadata) = PhoneConnectionService.startHungUpCall(context, metadata)
 
-    override fun startEstablishCall(metadata: CallMetadata) =
-        PhoneConnectionService.startEstablishCall(context, metadata)
+    override fun startEstablishCall(metadata: CallMetadata) = PhoneConnectionService.startEstablishCall(context, metadata)
 
     override fun startUpdateCall(metadata: CallMetadata) = PhoneConnectionService.startUpdateCall(context, metadata)
 

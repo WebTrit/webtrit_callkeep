@@ -37,7 +37,9 @@ class ActiveCallService : Service() {
         }
 
         callsMetadata =
-            intent?.parcelableArrayList<Bundle>("metadata")?.map { CallMetadata.fromBundle(it) }
+            intent
+                ?.parcelableArrayList<Bundle>("metadata")
+                ?.map { CallMetadata.fromBundle(it) }
                 ?.toMutableList() ?: mutableListOf()
 
         activeCallNotificationBuilder.setCallsMetaData(callsMetadata)
@@ -60,8 +62,8 @@ class ActiveCallService : Service() {
             PhoneConnectionService.startHungUpCall(baseContext, it)
         } ?: PhoneConnectionService.tearDown(baseContext)
 
-    private fun getForegroundServiceTypes(callsMetadata: List<CallMetadata>): Int? {
-        return when {
+    private fun getForegroundServiceTypes(callsMetadata: List<CallMetadata>): Int? =
+        when {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
                 val hasVideo = callsMetadata.any { it.hasVideo ?: false }
                 val hasCameraPermission = PermissionsHelper(this).hasCameraPermission()
@@ -83,10 +85,14 @@ class ActiveCallService : Service() {
                 types
             }
 
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
-            else -> null
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
+            }
+
+            else -> {
+                null
+            }
         }
-    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 }

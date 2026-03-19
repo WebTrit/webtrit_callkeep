@@ -116,7 +116,8 @@ object NotificationChannelManager {
                 setShowBadge(showBadge)
                 if (customSound) setSound(null, null)
             }
-        NotificationManagerCompat.from(context)
+        NotificationManagerCompat
+            .from(context)
             .createNotificationChannel(notificationChannel)
     }
 }

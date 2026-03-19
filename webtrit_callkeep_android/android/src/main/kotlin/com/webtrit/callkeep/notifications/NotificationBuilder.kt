@@ -8,7 +8,7 @@ import android.net.Uri
 import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.Platform
 
-abstract class NotificationBuilder() {
+abstract class NotificationBuilder {
     protected fun buildOpenAppIntent(
         context: Context,
         uri: Uri = Uri.EMPTY,

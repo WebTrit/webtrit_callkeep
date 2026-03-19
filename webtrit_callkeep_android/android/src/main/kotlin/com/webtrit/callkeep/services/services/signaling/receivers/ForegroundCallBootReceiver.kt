@@ -66,7 +66,8 @@ class ForegroundCallBootReceiver : BroadcastReceiver() {
      */
     private fun enqueueSignalingWorker(context: Context) {
         val workRequest =
-            OneTimeWorkRequestBuilder<SignalingStartWorker>().setInitialDelay(2, TimeUnit.SECONDS)
+            OneTimeWorkRequestBuilder<SignalingStartWorker>()
+                .setInitialDelay(2, TimeUnit.SECONDS)
                 .build()
 
         WorkManager.getInstance(context).enqueueUniqueWork(
@@ -93,8 +94,8 @@ class SignalingStartWorker(
     context: Context,
     params: WorkerParameters,
 ) : CoroutineWorker(context, params) {
-    override suspend fun doWork(): Result {
-        return try {
+    override suspend fun doWork(): Result =
+        try {
             val serviceIntent = Intent(applicationContext, SignalingIsolateService::class.java)
             ContextCompat.startForegroundService(applicationContext, serviceIntent)
             Result.success()
@@ -102,7 +103,6 @@ class SignalingStartWorker(
             Log.e(TAG, "Failed to start SignalingIsolateService:  ${e.message}")
             Result.failure()
         }
-    }
 
     companion object {
         private const val TAG = "SignalingStartWorker"

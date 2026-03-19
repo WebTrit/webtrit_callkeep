@@ -12,10 +12,12 @@ import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.services.services.signaling.SignalingIsolateService
 import java.util.concurrent.TimeUnit
 
-class SignalingServiceBootWorker(context: Context, workerParams: WorkerParameters) :
-    Worker(context, workerParams) {
-    override fun doWork(): Result {
-        return try {
+class SignalingServiceBootWorker(
+    context: Context,
+    workerParams: WorkerParameters,
+) : Worker(context, workerParams) {
+    override fun doWork(): Result =
+        try {
             ContextCompat.startForegroundService(
                 applicationContext,
                 Intent(applicationContext, SignalingIsolateService::class.java),
@@ -25,7 +27,6 @@ class SignalingServiceBootWorker(context: Context, workerParams: WorkerParameter
             Log.e(TAG, "Failed to start service: $e")
             Result.retry()
         }
-    }
 
     companion object {
         private const val TAG = "ForegroundCallWorker"
@@ -37,9 +38,11 @@ class SignalingServiceBootWorker(context: Context, workerParams: WorkerParameter
             delayInMillis: Long = 15000,
         ) {
             val workRequest =
-                OneTimeWorkRequestBuilder<SignalingServiceBootWorker>().addTag(
-                    ACTION_RESTART_FOREGROUND_SERVICE,
-                ).setInitialDelay(delayInMillis, TimeUnit.MILLISECONDS).build()
+                OneTimeWorkRequestBuilder<SignalingServiceBootWorker>()
+                    .addTag(
+                        ACTION_RESTART_FOREGROUND_SERVICE,
+                    ).setInitialDelay(delayInMillis, TimeUnit.MILLISECONDS)
+                    .build()
 
             WorkManager.getInstance(context).enqueueUniqueWork(
                 ACTION_RESTART_FOREGROUND_SERVICE,

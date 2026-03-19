@@ -15,7 +15,9 @@ import androidx.annotation.RequiresPermission
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 
-class TelephonyUtils(private val context: Context) {
+class TelephonyUtils(
+    private val context: Context,
+) {
     fun isEmergencyNumber(number: String): Boolean {
         val telephonyManager =
             context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
@@ -27,9 +29,7 @@ class TelephonyUtils(private val context: Context) {
         }
     }
 
-    fun getTelecomManager(): TelecomManager {
-        return context.getSystemService(Context.TELECOM_SERVICE) as TelecomManager
-    }
+    fun getTelecomManager(): TelecomManager = context.getSystemService(Context.TELECOM_SERVICE) as TelecomManager
 
     @RequiresPermission(Manifest.permission.CALL_PHONE)
     fun placeOutgoingCall(
@@ -72,24 +72,20 @@ class TelephonyUtils(private val context: Context) {
         }
     }
 
-    private fun getConnectionServiceId(): String {
-        return context.packageName + ".connectionService"
-    }
+    private fun getConnectionServiceId(): String = context.packageName + ".connectionService"
 
-    fun buildIncomingCallExtras(metadata: CallMetadata): Bundle {
-        return Bundle().apply {
+    fun buildIncomingCallExtras(metadata: CallMetadata): Bundle =
+        Bundle().apply {
             putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, getPhoneAccountHandle())
             putBoolean(TelecomManager.METADATA_IN_CALL_SERVICE_RINGING, true)
             putAll(metadata.toBundle())
         }
-    }
 
-    fun buildOutgoingCallExtras(metadata: CallMetadata): Bundle {
-        return Bundle().apply {
+    fun buildOutgoingCallExtras(metadata: CallMetadata): Bundle =
+        Bundle().apply {
             putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, getPhoneAccountHandle())
             putParcelable(TelecomManager.EXTRA_OUTGOING_CALL_EXTRAS, metadata.toBundle())
         }
-    }
 
     companion object {
         private const val TAG = "TelephonyUtils"
