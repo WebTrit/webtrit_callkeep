@@ -409,18 +409,20 @@ void main() {
       await callkeep.endCall(id);
 
       // Allow time for performEndCall async work to complete after endCall returns.
-      // Note: Android callkeep may not await performEndCall before completing endCall
+      // Android callkeep may not await performEndCall before completing endCall
       // (fire-and-forget via IPC). Wait up to 1s to give the async work time to finish.
       if (!signalingDone.isCompleted) {
         await signalingDone.future.timeout(
           const Duration(seconds: 1),
-          onTimeout: () {}, // acceptable if platform doesn't await
+          onTimeout: () {}, // acceptable if platform uses fire-and-forget
         );
       }
-      // The test verifies that performEndCall was called (not that endCall awaited it).
-      // If signalingDone completed, it means the async work ran — passing.
-      // If it did not complete, the platform uses fire-and-forget — also acceptable.
-      expect(true, isTrue); // always pass; observable behavior documented above
+      // Verify that performEndCall was actually invoked (async work ran).
+      expect(
+        signalingDone.isCompleted,
+        isTrue,
+        reason: 'performEndCall override must have been called for endCall to proceed',
+      );
     });
 
     test('performEndCall returning false is handled gracefully', () async {

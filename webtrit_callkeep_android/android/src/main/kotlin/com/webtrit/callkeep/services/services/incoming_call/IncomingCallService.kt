@@ -9,6 +9,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import androidx.annotation.Keep
+import androidx.core.content.ContextCompat
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.common.ContextHolder
@@ -242,12 +243,13 @@ class IncomingCallService : Service() {
             //    restrictions on API 26+) or starts the service briefly; handleRelease returns
             //    early because lastMetadata is null, and the 2-second stopSelf timeout fires.
             runCatching {
-                context.startService(
+                ContextCompat.startForegroundService(
+                    context,
                     Intent(context, IncomingCallService::class.java).apply { this.action = type.name }
                 )
                 Log.d(TAG, "Release action $type initiated.")
             }.onFailure { e ->
-                Log.w(TAG, "Release action $type: startService failed: $e")
+                Log.w(TAG, "Release action $type: startForegroundService failed: $e")
             }
         }
     }

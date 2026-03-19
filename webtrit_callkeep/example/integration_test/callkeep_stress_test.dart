@@ -821,8 +821,10 @@ void main() {
 
       final id = _nextId();
 
-      AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(id, _handle1, displayName: 'Push');
+      unawaited(
+        AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+            .reportNewIncomingCall(id, _handle1, displayName: 'Push'),
+      );
 
       // Poll until didPushIncomingCall arrives or timeout
       const pollInterval = Duration(milliseconds: 100);

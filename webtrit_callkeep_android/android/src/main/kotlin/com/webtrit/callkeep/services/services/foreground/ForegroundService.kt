@@ -119,7 +119,7 @@ class ForegroundService : Service(), PHostApi {
         logger.d("onCreate")
         // Register only the events that connectionServicePerformReceiver actually handles.
         // OngoingCall/OutgoingFailure go to per-call receivers in startCall().
-        // IncomingFailure/ConnectionNotFound are not handled here and are excluded to avoid noise.
+        // IncomingFailure is not handled here and is excluded to avoid noise.
         val globalEvents: List<ConnectionEvent> = listOf(
             CallLifecycleEvent.DidPushIncomingCall,
             CallLifecycleEvent.DeclineCall,
