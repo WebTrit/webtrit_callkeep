@@ -14,6 +14,7 @@ import android.telecom.PhoneAccountHandle
 import androidx.annotation.RequiresPermission
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.common.ActivityHolder
+import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.TelephonyUtils
 import com.webtrit.callkeep.models.CallMetadata
@@ -45,6 +46,9 @@ class PhoneConnectionService : ConnectionService() {
 
     override fun onCreate() {
         super.onCreate()
+        // Initialize ContextHolder for the :callkeep_core process. Each OS process has its own
+        // JVM, so ContextHolder.init() called in the main process has no effect here.
+        ContextHolder.init(applicationContext)
         // Set the service state to true when the system starts the service.
         isRunning = true
         telephonyUtils = TelephonyUtils(applicationContext)
@@ -96,6 +100,8 @@ class PhoneConnectionService : ConnectionService() {
                 ServiceAction.TearDownConnections -> handleTearDownConnections()
                 ServiceAction.ReserveAnswer -> metadata?.callId?.let { handleReserveAnswer(it) }
                     ?: Log.w(TAG, "onStartCommand: ReserveAnswer missing callId")
+                ServiceAction.NotifyPending -> metadata?.callId?.let { handleNotifyPending(it) }
+                    ?: Log.w(TAG, "onStartCommand: NotifyPending missing callId")
                 ServiceAction.CleanConnections -> handleCleanConnections()
                 ServiceAction.SyncAudioState -> handleSyncAudioState()
                 else -> phoneConnectionServiceDispatcher.dispatch(action, metadata)
@@ -177,10 +183,11 @@ class PhoneConnectionService : ConnectionService() {
         val metadata = CallMetadata.fromBundle(request.extras)
 
         // Reject connections for call IDs that are no longer pending.
-        // This guards against stale Telecom callbacks that arrive after a tearDown
-        // cleared the pending set (e.g., Telecom delivers onCreateIncomingConnection
-        // after cleanConnections() ran). Without this check, a zombie connection would
-        // be created that can never be torn down by the current session.
+        // This guards against stale Telecom callbacks that arrive after a tearDown cleared the
+        // pending set. In the :callkeep_core process, pendingCallIds is populated via
+        // NotifyPending IPC (sent by PhoneConnectionService.startIncomingCall in the main process
+        // before addNewIncomingCall is called) rather than by checkAndReservePending (which runs
+        // in the main-process JVM and affects a different ConnectionManager instance).
         if (!connectionManager.isPending(metadata.callId)) {
             Log.w(TAG, "onCreateIncomingConnection: callId=${metadata.callId} not pending, rejecting")
             return Connection.createFailedConnection(DisconnectCause(DisconnectCause.LOCAL))
@@ -210,7 +217,8 @@ class PhoneConnectionService : ConnectionService() {
         val connection = PhoneConnection.createIncomingPhoneConnection(
             applicationContext, ::performEventHandle, metadata, ::disconnectConnection
         )
-        connectionManager.addConnection(metadata.callId, connection)
+
+        // Remove from pendingCallIds first (independent of the answer-reservation check).
         // The call is no longer "pending" — it now has a live PhoneConnection object.
         // Removing it from pendingCallIds ensures that a subsequent reportNewIncomingCall
         // for the same callId (e.g. main process CallBloc arriving ~6 s after the push
@@ -219,11 +227,12 @@ class PhoneConnectionService : ConnectionService() {
         // CALL_ID_ALREADY_EXISTS_AND_ANSWERED instead of CALL_ID_ALREADY_EXISTS.
         connectionManager.removePending(metadata.callId)
 
-        // Apply a deferred answer if answerCall() was called before this connection was created.
-        // This closes the async gap between reportNewIncomingCall() (which returns as soon as
-        // addNewIncomingCall() is sent to Telecom) and onCreateIncomingConnection (which fires
-        // asynchronously on the binder thread).
-        if (connectionManager.consumeAnswer(metadata.callId)) {
+        // Atomically register the connection and consume any deferred answer reserved by
+        // handleReserveAnswer. Using a single lock operation prevents the race where
+        // handleReserveAnswer checks getConnection (null) then onCreateIncomingConnection
+        // adds the connection + consumeAnswer (false) then handleReserveAnswer reserves —
+        // leaving the answer permanently stuck in pendingAnswers with no consumer.
+        if (connectionManager.addConnectionAndConsumeAnswer(metadata.callId, connection)) {
             Log.i(TAG, "onCreateIncomingConnection: applying deferred answer for callId=${metadata.callId}")
             connection.onAnswer()
         }
@@ -232,9 +241,6 @@ class PhoneConnectionService : ConnectionService() {
             ConnectionLifecycleAction.ConnectionCreated, metadata
         )
 
-        startService(Intent(applicationContext, ForegroundService::class.java).apply {
-            action = "test"
-        })
         return connection
     }
 
@@ -257,6 +263,8 @@ class PhoneConnectionService : ConnectionService() {
         // incoming call was already ringing). If it was not pending, this is a stale Telecom
         // callback from a previous session (guarded by isPending in onCreateIncomingConnection)
         // and should be silently dropped.
+        // Note: pendingCallIds in :callkeep_core is now populated via NotifyPending IPC, so this
+        // check correctly distinguishes legitimate failures from stale callbacks.
         val wasPending = callId != null && connectionManager.isPending(callId)
         callId?.let { connectionManager.removePending(it) }
 
@@ -298,7 +306,33 @@ class PhoneConnectionService : ConnectionService() {
 
     private fun handleReserveAnswer(callId: String) {
         Log.i(TAG, "handleReserveAnswer: callId=$callId")
-        connectionManager.reserveAnswer(callId)
+        // reserveOrGetConnectionToAnswer is atomic: it either returns the existing connection
+        // for immediate answering, or reserves the deferred answer in pendingAnswers under
+        // the same lock that addConnectionAndConsumeAnswer uses. This eliminates the race
+        // where getConnection returns null, onCreateIncomingConnection adds the connection
+        // and consumeAnswer returns false, then reserveAnswer adds to pendingAnswers
+        // permanently (no consumer will ever drain it).
+        val connection = connectionManager.reserveOrGetConnectionToAnswer(callId)
+        if (connection != null) {
+            Log.i(TAG, "handleReserveAnswer: connection exists, answering immediately for callId=$callId")
+            connection.onAnswer()
+        } else {
+            Log.d(TAG, "handleReserveAnswer: no connection yet, deferred answer reserved for callId=$callId")
+        }
+    }
+
+    /**
+     * Registers [callId] as pending in :callkeep_core's [ConnectionManager].
+     *
+     * Called via a [ServiceAction.NotifyPending] startService intent sent by the main process
+     * just before [TelephonyUtils.addNewIncomingCall] is called. This ensures that
+     * [onCreateIncomingConnection]'s isPending gate accepts the incoming connection even though
+     * [ConnectionManager.checkAndReservePending] ran in the main-process JVM (a separate
+     * [ConnectionManager] instance).
+     */
+    private fun handleNotifyPending(callId: String) {
+        Log.i(TAG, "handleNotifyPending: callId=$callId")
+        connectionManager.addPendingForIncomingCall(callId)
     }
 
     private fun handleCleanConnections() {
@@ -423,6 +457,24 @@ class PhoneConnectionService : ConnectionService() {
         }
 
         /**
+         * Sends a [ServiceAction.NotifyPending] command with [callId] to this service via [startService].
+         *
+         * Must be called from the main process before [TelephonyUtils.addNewIncomingCall] so that
+         * :callkeep_core's [ConnectionManager.pendingCallIds] is populated before Telecom triggers
+         * [onCreateIncomingConnection]. This bridges the dual-process gap: [checkAndReservePending]
+         * runs in the main-process JVM (a different [ConnectionManager] instance), so :callkeep_core
+         * never sees those entries without this explicit IPC notification.
+         */
+        fun sendNotifyPending(context: Context, callId: String) {
+            val intent = Intent(context, PhoneConnectionService::class.java).apply {
+                action = ServiceAction.NotifyPending.action
+                putExtras(CallMetadata(callId = callId).toBundle())
+            }
+            runCatching { context.startService(intent) }
+                .onFailure { e -> Log.w(TAG, "sendNotifyPending: startService failed for callId=$callId: $e") }
+        }
+
+        /**
          * Sends a [ServiceAction.ReserveAnswer] command with [callId] to this service via [startService].
          *
          * Using an explicit [startService] intent guarantees delivery even if the service is still
@@ -521,6 +573,12 @@ class PhoneConnectionService : ConnectionService() {
 
             ConnectionManager.validateConnectionAddition(metadata = metadata, onSuccess = {
                 try {
+                    // Notify :callkeep_core's ConnectionManager about the pending callId before
+                    // calling addNewIncomingCall. This ensures that onCreateIncomingConnection's
+                    // isPending gate accepts the connection: checkAndReservePending ran in the
+                    // main-process JVM (a different ConnectionManager instance), so we must
+                    // explicitly tell :callkeep_core via IPC.
+                    sendNotifyPending(context, metadata.callId)
                     TelephonyUtils(context).addNewIncomingCall(metadata)
                     onSuccess()
                 } catch (e: Exception) {

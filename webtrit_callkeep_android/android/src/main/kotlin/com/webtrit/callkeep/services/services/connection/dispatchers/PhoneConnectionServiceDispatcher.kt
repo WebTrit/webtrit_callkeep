@@ -65,6 +65,7 @@ class PhoneConnectionServiceDispatcher(
             // before reaching the dispatcher, so they should never arrive here.
             ServiceAction.TearDownConnections,
             ServiceAction.ReserveAnswer,
+            ServiceAction.NotifyPending,
             ServiceAction.CleanConnections,
             ServiceAction.SyncAudioState -> logger.w("dispatch: unexpected IPC command action: $action")
         }

@@ -64,6 +64,21 @@ class ConnectionManager {
     }
 
     /**
+     * Adds [callId] to [pendingCallIds] in response to a [ServiceAction.NotifyPending] IPC
+     * intent from the main process.
+     *
+     * In the dual-process architecture, [checkAndReservePending] runs in the main-process JVM
+     * and populates the main process's [ConnectionManager] instance. The :callkeep_core process
+     * has its own instance whose [pendingCallIds] is never touched by the main process.
+     * This method bridges the gap: the main process sends a [ServiceAction.NotifyPending] intent
+     * just before [TelephonyUtils.addNewIncomingCall], and [PhoneConnectionService.handleNotifyPending]
+     * calls this method, ensuring [isPending] returns true when [onCreateIncomingConnection] fires.
+     */
+    fun addPendingForIncomingCall(callId: String) {
+        pendingCallIds.add(callId)
+    }
+
+    /**
      * Returns true if the call ID has been reserved as pending
      * (i.e., addNewIncomingCall was sent to Telecom but onCreateIncomingConnection
      * has not yet fired, or the call was registered and still awaiting full creation).
@@ -148,6 +163,11 @@ class ConnectionManager {
      * Records that answerCall was requested for [callId] before its PhoneConnection
      * was created (i.e., before onCreateIncomingConnection fired). The deferred answer
      * is consumed and applied inside onCreateIncomingConnection.
+     *
+     * Prefer [reserveOrGetConnectionToAnswer] over calling this method directly — it is
+     * atomic and eliminates the TOCTOU race with [addConnectionAndConsumeAnswer].
+     * This method is kept for cleanup paths that need to drain [pendingAnswers]
+     * without holding the connection creation lock (e.g., tearDown, ConnectionNotFound).
      */
     fun reserveAnswer(callId: String) {
         pendingAnswers.add(callId)
@@ -156,9 +176,60 @@ class ConnectionManager {
     /**
      * Consumes and returns whether a deferred answer was reserved for [callId].
      * Returns true and removes the reservation if one exists; returns false otherwise.
+     *
+     * For cleanup paths only (tearDown, connection-not-found, duplicate-connection rejection).
+     * The normal answer flow uses [addConnectionAndConsumeAnswer] and
+     * [reserveOrGetConnectionToAnswer] to eliminate the TOCTOU race.
      */
     fun consumeAnswer(callId: String): Boolean {
         return pendingAnswers.remove(callId)
+    }
+
+    /**
+     * Atomically adds [connection] to the connections map and removes any pending answer
+     * reservation for [callId] in one synchronized block.
+     *
+     * Returns true if a deferred answer was pending (and was consumed); false otherwise.
+     *
+     * This closes the race between [handleReserveAnswer] (main thread) and
+     * [onCreateIncomingConnection] (binder thread): both must hold [connectionResourceLock]
+     * to read/write the [connections] + [pendingAnswers] pair, so one always sees a
+     * consistent snapshot of both collections.
+     */
+    fun addConnectionAndConsumeAnswer(callId: String, connection: PhoneConnection): Boolean {
+        synchronized(connectionResourceLock) {
+            if (!connections.containsKey(callId)) {
+                connections[callId] = connection
+            }
+            return pendingAnswers.remove(callId)
+        }
+    }
+
+    /**
+     * Atomically either returns the existing [PhoneConnection] for immediate answering,
+     * or reserves a deferred answer for [callId] when no connection exists yet.
+     *
+     * - If a connection exists and has not been answered, returns it so the caller can
+     *   invoke [PhoneConnection.onAnswer] directly.
+     * - If no connection exists, adds [callId] to [pendingAnswers] and returns null.
+     *   [onCreateIncomingConnection] will consume the reservation via
+     *   [addConnectionAndConsumeAnswer] when it fires.
+     * - If a connection exists but was already answered, returns null without re-reserving.
+     *
+     * This is the counterpart to [addConnectionAndConsumeAnswer]: both are synchronized
+     * on [connectionResourceLock], eliminating the TOCTOU gap between checking for a
+     * connection and reserving the deferred answer.
+     */
+    fun reserveOrGetConnectionToAnswer(callId: String): PhoneConnection? {
+        synchronized(connectionResourceLock) {
+            val connection = connections[callId]
+            return if (connection != null && !connection.hasAnswered) {
+                connection
+            } else {
+                if (connection == null) pendingAnswers.add(callId)
+                null
+            }
+        }
     }
 
     /**
