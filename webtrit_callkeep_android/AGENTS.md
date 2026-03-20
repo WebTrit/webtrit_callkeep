@@ -2,6 +2,10 @@
 
 Android platform implementation. Two layers: Dart (Flutter side) and Kotlin (native side).
 
+> Detailed per-component architecture documentation lives in **[docs/](docs/)**.
+> Start with **[docs/architecture.md](docs/architecture.md)**.
+> Before modifying any Kotlin component, read the corresponding doc in `docs/`.
+
 ---
 
 ## Package structure
@@ -139,6 +143,14 @@ Two mutually exclusive modes — choose one per app:
 | `getConnection` / `getConnections` / `cleanConnections` | Connection state queries |
 | `updateActivitySignalingStatus` | Push signaling status to Telecom |
 | `playRingbackSound` / `stopRingbackSound` | Audio control |
+
+---
+
+## Integration tests
+
+The public API is covered by integration tests in
+`../webtrit_callkeep/example/integration_test/`. See the **Integration tests** section in
+[README.md](README.md) for the full list of test files and what each covers.
 
 ---
 
