@@ -20,9 +20,9 @@ Called once when the Flutter engine attaches:
 - Initializes `AssetCacheManager` (copies ringtones from the Flutter asset bundle to device
   storage so services can access them without a Flutter engine).
 - Registers bootstrap APIs for background isolates:
-    - `BackgroundSignalingIsolateBootstrapApi` (signaling WebSocket service)
-    - `BackgroundPushNotificationIsolateBootstrapApi` (push-triggered incoming call service)
-    - `SmsReceptionConfigBootstrapApi` (optional SMS fallback)
+  - `BackgroundSignalingIsolateBootstrapApi` (signaling WebSocket service)
+  - `BackgroundPushNotificationIsolateBootstrapApi` (push-triggered incoming call service)
+  - `SmsReceptionConfigBootstrapApi` (optional SMS fallback)
 - Registers `PHostDiagnosticsApi`, `PHostPermissionsApi`, `PHostActivityControlApi`,
   `PHostConnectionsApi`, `PHostSoundApi`.
 
@@ -51,7 +51,7 @@ Responds to `Lifecycle.Event.ON_START`:
 
 ## ForegroundService Binding
 
-```
+```text
 bindForegroundService()
     └── context.bindService(ForegroundService, serviceConnection, BIND_AUTO_CREATE)
 

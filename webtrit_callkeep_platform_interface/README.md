@@ -20,10 +20,10 @@ This package exists so that:
 
 ## Package structure
 
-```
+```text
 lib/src/
 ├── webtrit_callkeep_platform_interface.dart  # WebtritCallkeepPlatform abstract class
-├── models/                  # All shared data types
+├── models/
 │   ├── callkeep_options.dart
 │   ├── callkeep_handle.dart
 │   ├── callkeep_connection.dart
@@ -41,14 +41,14 @@ lib/src/
 │   ├── callkeep_signaling_status.dart
 │   ├── callkeep_push_notification_status_sync.dart
 │   └── callkeep_log_type.dart
-├── delegate/                # Delegate interfaces
+├── delegate/
 │   ├── callkeep_delegate.dart                 # Main call event callbacks
 │   ├── callkeep_push_registry_delegate.dart   # iOS PushKit VoIP token/push (iOS only)
 │   ├── callkeep_android_service_delegate.dart # Background isolate callbacks (Android only)
 │   └── callkeep_logs_delegate.dart            # Native log forwarding
-├── helpers/                 # Utility helpers
-├── annotation/              # Internal annotations
-└── consts/                  # Shared constants
+├── helpers/
+├── annotation/
+└── consts/
 ```
 
 ---
@@ -57,8 +57,6 @@ lib/src/
 
 ### `CallkeepHandle`
 
-Wraps a phone number or SIP URI:
-
 ```dart
 CallkeepHandle.number('+15551234567')
 CallkeepHandle.sip('user@example.com')
@@ -66,10 +64,8 @@ CallkeepHandle.sip('user@example.com')
 
 ### `CallkeepDelegate`
 
-Implement this to receive call lifecycle events from the platform:
-
 | Callback | When it fires |
-|---|---|
+| --- | --- |
 | `didPushIncomingCall` | Platform registered the incoming call (or reports an error) |
 | `performAnswerCall` | User answered from system UI |
 | `performEndCall` | User ended from system UI or system terminated the call |
@@ -83,12 +79,11 @@ Implement this to receive call lifecycle events from the platform:
 | `didDeactivateAudioSession` | System deactivated the audio session |
 | `didReset` | System reset all call state |
 
-`perform*` methods return `Future<bool>`. Return `false` to signal failure — the platform will
-terminate the call.
+`perform*` methods return `Future<bool>`. Return `false` to signal failure — the platform
+terminates the call.
 
 ### `CallkeepEndCallReason`
 
-Reason passed to `reportEndCall`:
 `failed`, `remoteEnded`, `unanswered`, `answeredElsewhere`, `declinedElsewhere`, `missed`
 
 ### `CallkeepConnection`
@@ -99,8 +94,6 @@ Snapshot of a single call's state (Android only). Contains `callId`, `state`
 ---
 
 ## Implementing a new platform
-
-Extend `WebtritCallkeepPlatform` and register your implementation:
 
 ```dart
 class WebtritCallkeepCustom extends WebtritCallkeepPlatform {
@@ -116,7 +109,7 @@ class WebtritCallkeepCustom extends WebtritCallkeepPlatform {
 ## Related packages
 
 | Package | Description |
-|---|---|
+| --- | --- |
 | [`webtrit_callkeep`](../webtrit_callkeep/README.md) | Public API aggregator |
 | [`webtrit_callkeep_android`](../webtrit_callkeep_android/README.md) | Android implementation |
 | [`webtrit_callkeep_ios`](../webtrit_callkeep_ios/README.md) | iOS implementation |

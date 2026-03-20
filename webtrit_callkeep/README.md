@@ -10,7 +10,7 @@ For the full plugin overview, setup guide, and API reference see the
 
 ## Package structure
 
-```
+```text
 webtrit_callkeep/
 ├── lib/src/
 │   ├── callkeep.dart                          # Callkeep — setUp, tearDown, call control
@@ -136,7 +136,7 @@ flutter test integration_test/<test_file>.dart
 ## Related packages
 
 | Package | Description |
-|---|---|
-| [`webtrit_callkeep_platform_interface`](../webtrit_callkeep_platform_interface/README.md) | Shared Dart interface and models |
+| --- | --- |
+| [`webtrit_callkeep_platform_interface`](../webtrit_callkeep_platform_interface/README.md) | Shared interface and models |
 | [`webtrit_callkeep_android`](../webtrit_callkeep_android/README.md) | Android implementation |
 | [`webtrit_callkeep_ios`](../webtrit_callkeep_ios/README.md) | iOS implementation |

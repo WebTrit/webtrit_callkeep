@@ -39,9 +39,9 @@ Used for **event notifications** that the receiver handles asynchronously.
 - Sender calls `context.sendBroadcast(intent.setPackage(packageName))`.
 - Receiver registers with `registerReceiverCompat`.
 - Events flow in **both directions**:
-    - `:callkeep_core` → main: call lifecycle events (`AnswerCall`, `HungUp`, `DidPushIncomingCall`,
+  - `:callkeep_core` → main: call lifecycle events (`AnswerCall`, `HungUp`, `DidPushIncomingCall`,
       media events, etc.)
-    - main → `:callkeep_core`: ack events (`TearDownComplete`)
+  - main → `:callkeep_core`: ack events (`TearDownComplete`)
 
 See [ipc-broadcasting.md](ipc-broadcasting.md) for the full event catalogue.
 

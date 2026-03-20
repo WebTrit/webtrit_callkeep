@@ -22,6 +22,17 @@ if [[ "$FILE_PATH" != *.md ]]; then
   exit 0
 fi
 
+# Resolve markdownlint-cli2: prefer PATH, fall back to known nvm location
+MDLINT=""
 if command -v markdownlint-cli2 &>/dev/null; then
-  markdownlint-cli2 --fix "$FILE_PATH" 2>/dev/null || true
+  MDLINT="markdownlint-cli2"
+elif [[ -x "$HOME/.nvm/versions/node/v24.1.0/bin/markdownlint-cli2" ]]; then
+  MDLINT="$HOME/.nvm/versions/node/v24.1.0/bin/markdownlint-cli2"
+else
+  # Try any nvm node version
+  MDLINT=$(find "$HOME/.nvm/versions/node" -name "markdownlint-cli2" -type f 2>/dev/null | head -1 || true)
+fi
+
+if [[ -n "$MDLINT" ]]; then
+  "$MDLINT" --fix "$FILE_PATH" 2>/dev/null || true
 fi

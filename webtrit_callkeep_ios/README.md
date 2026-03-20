@@ -8,7 +8,7 @@ PushKit to deliver native call UI and background VoIP push handling.
 ## How it works
 
 | App state | Incoming call UI |
-|---|---|
+| --- | --- |
 | Foreground | Flutter-based incoming call screen |
 | Background / locked | System CallKit UI |
 | Terminated | PushKit wakes the app; CallKit UI shown after app initializes |
@@ -23,7 +23,7 @@ CallKit / PushKit.
 
 ## Package structure
 
-```
+```text
 webtrit_callkeep_ios/
 ├── lib/src/
 │   ├── webtrit_callkeep_ios.dart     # WebtritCallkeepIOS — registers as platform instance
@@ -40,13 +40,13 @@ webtrit_callkeep_ios/
 ## Delegates
 
 | Delegate | Registration | Purpose |
-|---|---|---|
-| `CallkeepDelegate` | `Callkeep().setDelegate(...)` | Call lifecycle events (answer, end, mute, hold, etc.) |
-| `PushRegistryDelegate` | `Callkeep().setPushRegistryDelegate(...)` | PushKit VoIP token updates and incoming push payloads |
+| --- | --- | --- |
+| `CallkeepDelegate` | `Callkeep().setDelegate(...)` | Call lifecycle events |
+| `PushRegistryDelegate` | `Callkeep().setPushRegistryDelegate(...)` | PushKit VoIP token and incoming push payloads |
 | `CallkeepLogsDelegate` | `Callkeep().setLogsDelegate(...)` | Forward native logs to Dart |
 
 `PushRegistryDelegate` must be set before the app enters the background if VoIP pushes are
-expected. Failing to do so will cause missed pushes.
+expected. Failing to do so causes missed pushes.
 
 ---
 
@@ -72,8 +72,6 @@ Without these, `reportNewIncomingCall` silently fails when the app is background
 
 ## Code generation
 
-Pigeon generates type-safe Swift/Dart bindings from a single source file.
-
 ```bash
 # From this directory
 flutter pub run pigeon --input pigeons/callkeep.messages.dart
@@ -87,7 +85,6 @@ Never manually edit `lib/src/common/callkeep.pigeon.dart` or Pigeon-generated Sw
 ## Build & lint
 
 ```bash
-# From this directory
 flutter pub get
 flutter analyze lib test
 dart format --line-length 80 --set-exit-if-changed lib test
@@ -98,7 +95,7 @@ dart format --line-length 80 --set-exit-if-changed lib test
 ## Key invariants
 
 - No persistent background services — all background handling goes through CallKit/PushKit.
-- `PushRegistryDelegate` is separate from `CallkeepDelegate`; do not conflate them.
+- `PushRegistryDelegate` is separate from `CallkeepDelegate`.
 - Never block the main thread in Swift delegate callbacks.
 - Minimum deployment target: iOS 11.
 
@@ -107,7 +104,7 @@ dart format --line-length 80 --set-exit-if-changed lib test
 ## Related packages
 
 | Package | Description |
-|---|---|
+| --- | --- |
 | [`webtrit_callkeep`](../webtrit_callkeep/README.md) | Public API aggregator |
-| [`webtrit_callkeep_platform_interface`](../webtrit_callkeep_platform_interface/README.md) | Shared interface and models |
+| [`webtrit_callkeep_platform_interface`](../webtrit_callkeep_platform_interface/README.md) | Shared interface |
 | [`webtrit_callkeep_android`](../webtrit_callkeep_android/README.md) | Android implementation |
