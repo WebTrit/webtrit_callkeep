@@ -26,6 +26,14 @@ class ConnectionManager {
     // and the binder-thread onCreateIncomingConnection callback.
     private val pendingAnswers: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
+    // Call IDs that were in pendingCallIds when cleanConnections() was last called.
+    // Any subsequent onCreateIncomingConnection for these IDs is a stale Telecom callback
+    // arriving after a tearDown and should be rejected to prevent zombie connections.
+    // Populated by cleanConnections() and drained by addPendingForIncomingCall() (when
+    // the same callId is legitimately re-reported in a new session, which is impossible
+    // for UUID call IDs but handled for correctness).
+    private val forcedTerminatedCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
     /**
      * Atomically validates that a call ID can be added and reserves it as pending.
      *
@@ -76,10 +84,24 @@ class ConnectionManager {
      * This method bridges the gap: the main process sends a [ServiceAction.NotifyPending] intent
      * just before [TelephonyUtils.addNewIncomingCall], and [PhoneConnectionService.handleNotifyPending]
      * calls this method, ensuring [isPending] returns true when [onCreateIncomingConnection] fires.
+     *
+     * Also removes [callId] from [forcedTerminatedCallIds] in the (theoretically impossible for
+     * UUID callIds) case where a new session re-uses the same ID.
      */
     fun addPendingForIncomingCall(callId: String) {
+        forcedTerminatedCallIds.remove(callId)
         pendingCallIds.add(callId)
     }
+
+    /**
+     * Returns true if [callId] was in [pendingCallIds] when [cleanConnections] was last called.
+     *
+     * Used by [onCreateIncomingConnection] to reject stale Telecom callbacks that arrive after
+     * a tearDown cleared the pending set. Without this guard, a call that was sent to Telecom
+     * via [addNewIncomingCall] but not yet delivered via [onCreateIncomingConnection] before
+     * tearDown would create a zombie [PhoneConnection] in the next session.
+     */
+    fun isForcedTerminated(callId: String): Boolean = forcedTerminatedCallIds.contains(callId)
 
     /**
      * Returns true if the call ID has been reserved as pending
@@ -277,6 +299,11 @@ class ConnectionManager {
         synchronized(connectionResourceLock) {
             connections.values.forEach { it.destroy() }
             connections.clear()
+            // Snapshot current pendingCallIds into forcedTerminated before clearing.
+            // Telecom may still fire onCreateIncomingConnection for these IDs after this
+            // tearDown; isForcedTerminated() lets that guard reject them as zombie calls.
+            forcedTerminatedCallIds.clear()
+            forcedTerminatedCallIds.addAll(pendingCallIds)
             pendingCallIds.clear()
             terminatedCallIds.clear()
             pendingAnswers.clear()

@@ -136,6 +136,31 @@ Future<T> _waitFor<T>(Future<T> future, {String label = 'callback'}) {
   );
 }
 
+Future<CallkeepConnection?> _waitForConnection(
+  String callId, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(deadline)) {
+    final conn = await CallkeepConnections().getConnection(callId);
+    if (conn != null) return conn;
+    await Future.delayed(const Duration(milliseconds: 100));
+  }
+  return null;
+}
+
+Future<void> _waitForConnectionGone(
+  String callId, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(deadline)) {
+    final conn = await CallkeepConnections().getConnection(callId);
+    if (conn == null) return;
+    await Future.delayed(const Duration(milliseconds: 100));
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -151,15 +176,7 @@ void main() {
     globalTearDownNeeded = true;
     callkeep = Callkeep();
     delegate = _RecordingDelegate();
-    for (var attempt = 0; attempt < 10; attempt++) {
-      try {
-        await callkeep.setUp(_options);
-        break;
-      } catch (_) {
-        if (attempt == 9) rethrow;
-        await Future.delayed(const Duration(milliseconds: 300));
-      }
-    }
+    await callkeep.setUp(_options);
     callkeep.setDelegate(delegate);
   });
 
@@ -761,7 +778,10 @@ void main() {
       await callkeep.setHeld(id1, onHold: true);
       await _waitFor(holdLatch.future, label: 'performSetHeld id1');
 
-      // Now answer id2.
+      // Now answer id2. Wait for the Telecom connection to exist in
+      // :callkeep_core before calling answerCall — the connection is created
+      // asynchronously and answerCall fails silently if called too early.
+      await _waitForConnection(id2);
       final answer2Latch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
         if (cid == id2 && !answer2Latch.isCompleted) answer2Latch.complete();
@@ -967,7 +987,7 @@ void main() {
       await _waitFor(answerLatch.future, label: 'performAnswerCall');
 
       await callkeep.reportEndCall(id, 'Ellis', CallkeepEndCallReason.remoteEnded);
-      await Future.delayed(const Duration(milliseconds: 400));
+      await _waitForConnectionGone(id);
 
       // Must not throw
       await expectLater(callkeep.endCall(id), completes);
@@ -985,7 +1005,7 @@ void main() {
       await _waitFor(answerLatch.future, label: 'performAnswerCall');
 
       await callkeep.reportEndCall(id, 'Flora', CallkeepEndCallReason.remoteEnded);
-      await Future.delayed(const Duration(milliseconds: 400));
+      await _waitForConnectionGone(id);
 
       await expectLater(callkeep.setHeld(id, onHold: true), completes);
     });
@@ -1002,7 +1022,7 @@ void main() {
       await _waitFor(answerLatch.future, label: 'performAnswerCall');
 
       await callkeep.reportEndCall(id, 'Glen', CallkeepEndCallReason.remoteEnded);
-      await Future.delayed(const Duration(milliseconds: 400));
+      await _waitForConnectionGone(id);
 
       await expectLater(callkeep.setMuted(id, muted: true), completes);
     });

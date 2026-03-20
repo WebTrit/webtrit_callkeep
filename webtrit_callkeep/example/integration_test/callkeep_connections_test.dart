@@ -97,7 +97,7 @@ class _RecordingDelegate implements CallkeepDelegate {
 }
 
 // ---------------------------------------------------------------------------
-// Helper: await a delegate callback with timeout
+// Helpers
 // ---------------------------------------------------------------------------
 
 Future<T> _waitFor<T>(Future<T> future, {String label = 'callback'}) {
@@ -105,6 +105,54 @@ Future<T> _waitFor<T>(Future<T> future, {String label = 'callback'}) {
     const Duration(seconds: 10),
     onTimeout: () => throw TimeoutException('$label did not fire within timeout'),
   );
+}
+
+// Poll getConnection until it returns a non-null result or the timeout
+// expires. A simple Future.delayed is not reliable because
+// onCreateIncomingConnection fires asynchronously in the :callkeep_core
+// process and its latency varies with device load.
+Future<CallkeepConnection?> _waitForConnection(
+  String callId, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(deadline)) {
+    final conn = await CallkeepConnections().getConnection(callId);
+    if (conn != null) return conn;
+    await Future.delayed(const Duration(milliseconds: 100));
+  }
+  return null;
+}
+
+// Poll getConnection until it returns the expected state or the timeout
+// expires. State transitions in :callkeep_core (e.g. hold) are async, so
+// reading the state immediately after issuing the command is not reliable.
+Future<CallkeepConnection?> _waitForConnectionState(
+  String callId,
+  CallkeepConnectionState state, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(deadline)) {
+    final conn = await CallkeepConnections().getConnection(callId);
+    if (conn?.state == state) return conn;
+    await Future.delayed(const Duration(milliseconds: 100));
+  }
+  return null;
+}
+
+// Poll getConnections until the list contains callId or the timeout expires.
+Future<bool> _waitForConnectionInList(
+  String callId, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(deadline)) {
+    final list = await CallkeepConnections().getConnections();
+    if (list.any((c) => c.callId == callId)) return true;
+    await Future.delayed(const Duration(milliseconds: 100));
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -122,15 +170,7 @@ void main() {
     globalTearDownNeeded = true;
     callkeep = Callkeep();
     delegate = _RecordingDelegate();
-    for (var attempt = 0; attempt < 10; attempt++) {
-      try {
-        await callkeep.setUp(_options);
-        break;
-      } catch (_) {
-        if (attempt == 9) rethrow;
-        await Future.delayed(const Duration(milliseconds: 300));
-      }
-    }
+    await callkeep.setUp(_options);
     callkeep.setDelegate(delegate);
   });
 
@@ -165,9 +205,8 @@ void main() {
       }
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Alice');
-      await Future.delayed(const Duration(milliseconds: 300));
 
-      final conn = await CallkeepConnections().getConnection(id);
+      final conn = await _waitForConnection(id);
       expect(conn, isNotNull);
       expect(conn!.callId, id);
       expect(conn.state, CallkeepConnectionState.stateRinging);
@@ -187,9 +226,8 @@ void main() {
       };
       await callkeep.answerCall(id);
       await _waitFor(answerLatch.future, label: 'performAnswerCall');
-      await Future.delayed(const Duration(milliseconds: 300));
 
-      final conn = await CallkeepConnections().getConnection(id);
+      final conn = await _waitForConnectionState(id, CallkeepConnectionState.stateActive);
       expect(conn, isNotNull);
       expect(conn!.state, CallkeepConnectionState.stateActive);
     });
@@ -210,9 +248,8 @@ void main() {
       await _waitFor(answerLatch.future, label: 'performAnswerCall');
 
       await callkeep.setHeld(id, onHold: true);
-      await Future.delayed(const Duration(milliseconds: 300));
 
-      final conn = await CallkeepConnections().getConnection(id);
+      final conn = await _waitForConnectionState(id, CallkeepConnectionState.stateHolding);
       expect(conn, isNotNull);
       expect(conn!.state, CallkeepConnectionState.stateHolding);
     });
@@ -231,7 +268,6 @@ void main() {
       };
       await callkeep.endCall(id);
       await _waitFor(endLatch.future, label: 'performEndCall');
-      await Future.delayed(const Duration(milliseconds: 300));
 
       final conn = await CallkeepConnections().getConnection(id);
       // After endCall, connection is either removed (null) or in disconnected state
@@ -272,10 +308,9 @@ void main() {
       }
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Eve');
-      await Future.delayed(const Duration(milliseconds: 300));
 
-      final connections = await CallkeepConnections().getConnections();
-      expect(connections.any((c) => c.callId == id), isTrue);
+      final found = await _waitForConnectionInList(id);
+      expect(found, isTrue);
     });
 
     test('getConnections includes both connections for two concurrent calls', () async {
@@ -286,14 +321,13 @@ void main() {
       final id1 = _nextId();
       final id2 = _nextId();
       await callkeep.reportNewIncomingCall(id1, _handle1, displayName: 'Frank');
-      await Future.delayed(const Duration(milliseconds: 300));
+      await _waitForConnectionInList(id1);
 
       await callkeep.reportNewIncomingCall(
         id2,
         const CallkeepHandle.number('380003000001'),
         displayName: 'Grace',
       );
-      await Future.delayed(const Duration(milliseconds: 300));
 
       final connections = await CallkeepConnections().getConnections();
       // id1 must always be present
@@ -325,10 +359,9 @@ void main() {
       }
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Hank');
-      await Future.delayed(const Duration(milliseconds: 300));
+      await _waitForConnection(id);
 
       await CallkeepConnections().cleanConnections();
-      await Future.delayed(const Duration(milliseconds: 300));
 
       // After cleanConnections, connection should be gone or disconnected
       final conn = await CallkeepConnections().getConnection(id);

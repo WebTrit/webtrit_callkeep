@@ -74,6 +74,35 @@ class _NoOpDelegate implements CallkeepDelegate {
 }
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+Future<CallkeepConnection?> _waitForConnection(
+  String callId, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(deadline)) {
+    final conn = await CallkeepConnections().getConnection(callId);
+    if (conn != null) return conn;
+    await Future.delayed(const Duration(milliseconds: 100));
+  }
+  return null;
+}
+
+Future<void> _waitForConnectionGone(
+  String callId, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(deadline)) {
+    final conn = await CallkeepConnections().getConnection(callId);
+    if (conn == null) return;
+    await Future.delayed(const Duration(milliseconds: 100));
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -86,16 +115,8 @@ void main() {
   setUp(() async {
     globalTearDownNeeded = true;
     callkeep = Callkeep();
+    await callkeep.setUp(_options);
     callkeep.setDelegate(_NoOpDelegate());
-    for (var attempt = 0; attempt < 10; attempt++) {
-      try {
-        await callkeep.setUp(_options);
-        break;
-      } catch (_) {
-        if (attempt == 9) rethrow;
-        await Future.delayed(const Duration(milliseconds: 300));
-      }
-    }
   });
 
   tearDown(() async {
@@ -153,12 +174,19 @@ void main() {
       for (final reason in CallkeepEndCallReason.values) {
         final id = _nextId();
         await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Test');
+        // Wait for the call to be promoted to the tracker (DidPushIncomingCall
+        // broadcast received) before ending it. This ensures the connection
+        // exists in Telecom before reportEndCall is called.
+        await _waitForConnection(id);
         await expectLater(
           callkeep.reportEndCall(id, 'Test', reason),
           completes,
         );
-        // Brief pause between iterations to allow native cleanup
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Wait for Telecom to fully process the disconnect (observable via the
+        // tracker's connection map being cleared) before the next
+        // addNewIncomingCall. This replaces a fixed 500ms hack with a proper
+        // observable signal.
+        await _waitForConnectionGone(id);
       }
     });
   });

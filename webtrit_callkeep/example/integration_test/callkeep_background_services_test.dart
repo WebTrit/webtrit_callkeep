@@ -140,6 +140,19 @@ Future<T> _waitFor<T>(Future<T> future, {String label = 'callback'}) {
   );
 }
 
+Future<CallkeepConnection?> _waitForConnection(
+  String callId, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(deadline)) {
+    final conn = await CallkeepConnections().getConnection(callId);
+    if (conn != null) return conn;
+    await Future.delayed(const Duration(milliseconds: 100));
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -161,15 +174,7 @@ void main() {
       // to SharedPreferences.
       AndroidCallkeepServices.backgroundSignalingBootstrapService.initializeCallback(_noOpSignalingServiceCallback);
     }
-    for (var attempt = 0; attempt < 10; attempt++) {
-      try {
-        await callkeep.setUp(_options);
-        break;
-      } catch (_) {
-        if (attempt == 9) rethrow;
-        await Future.delayed(const Duration(milliseconds: 300));
-      }
-    }
+    await callkeep.setUp(_options);
     callkeep.setDelegate(delegate);
   });
 
@@ -211,11 +216,8 @@ void main() {
 
       final id = _nextId();
 
-      AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+      await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
           .reportNewIncomingCall(id, _handle1, displayName: 'Alice');
-
-      // Give the push path time to register the connection with Telecom.
-      await Future.delayed(const Duration(milliseconds: 400));
 
       final err = await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Alice');
 
@@ -234,10 +236,8 @@ void main() {
 
       final id = _nextId();
 
-      AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+      await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
           .reportNewIncomingCall(id, _handle1, displayName: 'Bob');
-
-      await Future.delayed(const Duration(milliseconds: 400));
 
       final err = await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
           .reportNewIncomingCall(id, _handle1, displayName: 'Bob');
@@ -291,9 +291,8 @@ void main() {
 
       final id = _nextId();
 
-      AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+      await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
           .reportNewIncomingCall(id, _handle1, displayName: 'Dave');
-      await Future.delayed(const Duration(milliseconds: 400));
 
       final latch = Completer<String>();
       delegate.onPerformEndCall = (cid) {
@@ -332,12 +331,14 @@ void main() {
       final id1 = _nextId();
       final id2 = _nextId();
 
-      AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+      await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
           .reportNewIncomingCall(id1, _handle1, displayName: 'Eve');
-      await Future.delayed(const Duration(milliseconds: 200));
-      AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+      // Wait for id1 to be promoted (DidPushIncomingCall received) before
+      // adding id2. This ensures Telecom sees id1 in RINGING state first.
+      await _waitForConnection(id1);
+      await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
           .reportNewIncomingCall(id2, _handle2, displayName: 'Frank');
-      await Future.delayed(const Duration(milliseconds: 400));
+      await _waitForConnection(id2);
 
       final endedIds = <String>[];
       final allDone = Completer<void>();
@@ -377,7 +378,11 @@ void main() {
 
       await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
           .reportNewIncomingCall(id, _handle1, displayName: 'Grace');
-      await Future.delayed(const Duration(milliseconds: 300));
+      // Wait for the call to be promoted before answering. answerCall() works
+      // via the deferred-answer path when the call is still pending, but
+      // _waitForConnection guarantees the PhoneConnection exists so the answer
+      // goes through the direct path (no race with onCreateIncomingConnection).
+      await _waitForConnection(id);
 
       // Answer from the main process (simulates push isolate answering the call)
       final answerLatch = Completer<String>();
@@ -414,9 +419,8 @@ void main() {
 
       final id = _nextId();
 
-      AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+      await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
           .reportNewIncomingCall(id, _handle1, displayName: 'Hank');
-      await Future.delayed(const Duration(milliseconds: 400));
 
       final endLatch = Completer<void>();
       delegate.onPerformEndCall = (cid) {
@@ -461,9 +465,8 @@ void main() {
       globalTearDownNeeded = false;
       final id = _nextId();
 
-      AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+      await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
           .reportNewIncomingCall(id, _handle1, displayName: 'Irene');
-      await Future.delayed(const Duration(milliseconds: 400));
 
       final latch = Completer<void>();
       delegate.onPerformEndCall = (cid) {

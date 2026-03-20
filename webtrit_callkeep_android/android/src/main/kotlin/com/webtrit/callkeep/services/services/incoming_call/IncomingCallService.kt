@@ -1,17 +1,23 @@
 package com.webtrit.callkeep.services.services.incoming_call
 
+import android.app.Notification
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import androidx.annotation.Keep
+import androidx.core.app.NotificationCompat
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
+import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.ContextHolder
+import com.webtrit.callkeep.common.startForegroundServiceCompat
+import com.webtrit.callkeep.managers.NotificationChannelManager
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.models.toPCallkeepIncomingCallData
@@ -70,6 +76,27 @@ class IncomingCallService : Service() {
         super.onCreate()
         setRunning(true)
         ContextHolder.init(applicationContext)
+
+        // Satisfy Android's 5-second startForeground() requirement immediately.
+        // onStartCommand() may be delayed if the main thread is busy (e.g. platform-channel IPC
+        // during Flutter cold-start) or if IC_RELEASE arrives before IC_INITIALIZE. Calling
+        // startForeground() here — in onCreate() — prevents ForegroundServiceDidNotStartInTimeException
+        // regardless of which action onStartCommand() processes first.
+        // When IC_INITIALIZE later arrives, incomingCallHandler.handle() calls startForeground()
+        // again with the full incoming-call notification, which simply replaces this placeholder.
+        val placeholder =
+            Notification
+                .Builder(this, NotificationChannelManager.INCOMING_CALL_NOTIFICATION_CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setOngoing(true)
+                .build()
+        startForegroundServiceCompat(
+            this,
+            IncomingCallNotificationBuilder.NOTIFICATION_ID,
+            placeholder,
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL,
+        )
 
         Log.d(TAG, "IncomingCallService created")
 
@@ -181,7 +208,12 @@ class IncomingCallService : Service() {
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
         callLifecycleHandler.currentCallData = metadata.toPCallkeepIncomingCallData()
         incomingCallHandler.handle(metadata)
-        return START_STICKY
+        // START_NOT_STICKY: if the OS kills this service after the incoming call is set up,
+        // do not restart it. A restart would deliver a null intent — the current onStartCommand
+        // handler has no fallback for that path and Android would kill the process with
+        // ForegroundServiceDidNotStartInTimeException (startForeground never called within 5s).
+        // The call context is lost either way, so restarting adds no value.
+        return START_NOT_STICKY
     }
 
     // Handles the RELEASE action and cancels the timeout

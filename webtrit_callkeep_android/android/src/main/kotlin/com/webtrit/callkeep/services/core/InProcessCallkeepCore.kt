@@ -147,6 +147,8 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
 
     override fun sendSyncAudioState() = PhoneConnectionService.sendSyncAudioState(context)
 
+    override fun sendSyncConnectionState() = PhoneConnectionService.sendSyncConnectionState(context)
+
     companion object {
         val instance: CallkeepCore = InProcessCallkeepCore()
     }
