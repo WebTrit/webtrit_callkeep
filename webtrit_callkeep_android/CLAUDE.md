@@ -2,18 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-See **[AGENTS.md](AGENTS.md)** for commands, architecture detail, Pigeon workflow, and Android-specific rules.
-
-## Architecture documentation
-
-Detailed per-component docs live in **[docs/](docs/)**. Start with
-**[docs/architecture.md](docs/architecture.md)** for the overview and component index. Key docs:
-
-- [docs/dual-process.md](docs/dual-process.md) — process boundaries, IPC design, critical rules
-- [docs/call-flows.md](docs/call-flows.md) — incoming, outgoing, teardown flows step by step
-- [docs/foreground-service.md](docs/foreground-service.md) — `ForegroundService` internals
-- [docs/callkeep-core.md](docs/callkeep-core.md) — `CallkeepCore` facade (use this, not `connectionManager` directly)
-- [docs/ipc-broadcasting.md](docs/ipc-broadcasting.md) — full cross-process event catalogue
+@AGENTS.md
+@docs/architecture.md
+@docs/dual-process.md
+@docs/callkeep-core.md
+@docs/call-flows.md
 
 ## Role of this package
 
