@@ -1,504 +1,328 @@
-# Webtrit CallKeep
+# webtrit_callkeep
 
-**Webtrit CallKeep** is a Flutter plugin that integrates native calling UI on iOS (CallKit) and Android (
-ConnectionService). It allows your VoIP/WebRTC app to display incoming/outgoing calls using the device’s system UI —
-even when your app is in the background or terminated.
+A Flutter plugin that integrates the device's native call infrastructure into VoIP and WebRTC
+applications. Instead of building a custom call UI from scratch, the app delegates call
+presentation and control to the OS — the same experience users get with regular phone calls.
 
-> **Note**: CallKit is banned in the China App Store. For distribution in China, consider using an alternative mechanism
-> such as standard local notifications with sound.
+**iOS** uses CallKit and PushKit. The system lock-screen incoming-call UI appears even when the
+app is terminated. PushKit wakes the app on an incoming VoIP push before the user sees anything,
+giving the app time to establish media before accepting.
 
----
+**Android** uses the Telecom `ConnectionService` API running in a dedicated `:callkeep_core`
+process. This process stays alive independently of the main app, so calls survive app
+backgrounding and process death. Incoming calls are presented via Flutter UI backed by Android
+foreground services, and outgoing calls integrate with the system dialer, Bluetooth headsets, and
+audio routing.
 
-## ✅ Features
-
-- **Incoming Call UI**\
-  – On iOS, the system CallKit UI is shown when the app is locked or in the background. When the app is in the
-  foreground, a Flutter-based incoming call screen is used instead.\
-  – On Android, all incoming calls are displayed using a Flutter UI combined with the standard push notification
-  interface — native ConnectionService UI is not used.
-
-- **Background Handling**\
-  – On iOS, background incoming calls are handled via CallKit and PushKit.\
-  – On Android, background call handling is supported either via persistent signaling services or triggered by push
-  notifications (e.g., FCM).
-
-- **Incoming & Outgoing Calls**\
-  – Full support for both call directions
-
-- **Call Controls**\
-  – Answer, decline, mute, hold, and dial pad (DTMF), with delegate event handling
+Both platforms expose a unified Dart API: report calls, control audio, and receive delegate
+callbacks — without writing platform-specific code in your app.
 
 ---
 
-## 📱 Platform Support
+## Package structure
 
-| Platform | Minimum |
-|----------|---------|
-| Android  | SDK 26+ |
-| iOS      | iOS 11+ |
+This is a federated plugin. Each package has its own README and `docs/` directory.
+
+| Package | Description |
+| --- | --- |
+| [`webtrit_callkeep`](webtrit_callkeep/README.md) | Public API — aggregates the platform implementations |
+| [`webtrit_callkeep_platform_interface`](webtrit_callkeep_platform_interface/README.md) | Shared Dart interface and models |
+| [`webtrit_callkeep_android`](webtrit_callkeep_android/README.md) | Android implementation (Telecom + foreground services) |
+| [`webtrit_callkeep_ios`](webtrit_callkeep_ios/README.md) | iOS implementation (CallKit + PushKit) |
 
 ---
 
-## 🔧 Installation
+## Platform support
 
-Add the plugin in your `pubspec.yaml`:
+| Platform | Minimum version |
+| --- | --- |
+| Android | API 26 (Android 8.0) |
+| iOS | iOS 11 |
+
+---
+
+## Installation
 
 ```yaml
 dependencies:
-  webtrit_callkeep: ^latest_version
+  webtrit_callkeep: ^<version>
 ```
 
 ---
 
-## 🚀 Quick Start
+## Quick start
 
-### Initialization (Main Isolate)
+### 1. Initialize
+
+Call `setUp` once after your app is ready (main isolate only).
 
 ```dart
-await _callkeep.setUp(
+await callkeep.setUp(
   CallkeepOptions(
     ios: CallkeepIOSOptions(
-      localizedName: context.read<PackageInfo>().appName,
-      ringtoneSound: Assets.ringtones.incomingCall1,
-      ringbackSound: Assets.ringtones.outgoingCall1,
-      iconTemplateImageAssetName: Assets.callkeep.iosIconTemplateImage.path,
-      maximumCallGroups: 13,
-      maximumCallsPerCallGroup: 13,
-      supportedHandleTypes: const {CallkeepHandleType.number},
+      localizedName: 'My App',
+      ringtoneSound: 'assets/ringtones/incoming.caf',
+      iconTemplateImageAssetName: 'assets/callkeep_icon.png',
+      maximumCallGroups: 1,
+      maximumCallsPerCallGroup: 1,
+      supportedHandleTypes: {CallkeepHandleType.number},
     ),
     android: CallkeepAndroidOptions(
-      ringtoneSound: Assets.ringtones.incomingCall1,
-      ringbackSound: Assets.ringtones.outgoingCall1,
+      ringtoneSound: 'assets/ringtones/incoming.mp3',
+      ringbackSound: 'assets/ringtones/outgoing.mp3',
     ),
   ),
 );
 ```
 
-### Setting Delegates
-
-The plugin allows you to register delegate classes to handle call-related events.
+### 2. Set delegate
 
 ```dart
-Callkeep().setDelegate(MyCallkeepDelegate());
-Callkeep().setPushRegistryDelegate(MyPushRegistryDelegate()); // iOS only
+callkeep.setDelegate(MyCallkeepDelegate());
+
+// iOS only — handle PushKit VoIP tokens and push payloads
+callkeep.setPushRegistryDelegate(MyPushRegistryDelegate());
 ```
 
-- `setDelegate(...)`: Listen to call events (incoming, answered, ended, etc.) entirely on the Flutter side.
-- `setPushRegistryDelegate(...)`: Handle PushKit VoIP push events on iOS only.
-
----
-
-### Receiving Incoming Call
+### 3. Report an incoming call
 
 ```dart
-await Callkeep().reportNewIncomingCall(
+await callkeep.reportNewIncomingCall(
   callId,
-  CallkeepHandle.number('+123456789'),
-  displayName: 'Caller Name',
+  CallkeepHandle.number('+15551234567'),
+  displayName: 'John Doe',
   hasVideo: false,
 );
 ```
 
-### Starting Outgoing Call
+### 4. Start an outgoing call
 
 ```dart
-await Callkeep().startCall(
-  'outgoing-id',
-  CallkeepHandle.number('+987654321'),
-  displayNameOrContactIdentifier: 'Jane Doe',
-  hasVideo: true,
-);
-```
-
-## 📩 SMS-triggered Incoming Call (Regex-based)
-
-Webtrit CallKeep supports triggering an incoming call via specially formatted SMS messages. This is useful for
-white-label apps that need to handle calls even when push notifications are unavailable.
-
-### When to Use
-
-- When push delivery is unreliable (e.g., in background-restricted environments)
-- When SMS can serve as a fallback mechanism to notify of incoming calls
-
-### How It Works
-
-- he SMS is parsed on the Android side using a regular expression (regex) provided from Flutter. The message must begin
-  with a strict prefix '<#> WEBTRIT:', which is used to filter only trusted SMS messages originating from your backend.
-  This prefix is essential for security and must be retained to help pass Play Store review for sensitive SMS
-  permissions.
-- If the regex matches a predefined structure and captures all required fields, the call is triggered via
-  `PhoneConnectionService`
-
-### Android Permissions Required
-
-- `RECEIVE_SMS`
-- `BROADCAST_SMS` (used for `SmsReceiver`)
-- Additional runtime permissions for SMS reception may be needed
-
-> ⚠️ **Important**: SMS access is considered a sensitive permission in the Play Store. You must justify its use and
-> clearly describe the flow (i.e., receiving formatted SMS to trigger VoIP calls). The regex must only match SMS from
-> your
-> backend service.
-
-### Regex Requirements
-
-You must define a valid ICU-compatible regex that extracts 4 fields in the expected order:
-
-1. `callId`
-2. `handle`
-3. `displayName` (URL-encoded if needed)
-4. `hasVideo` (`true` or `false`)
-
-Regex pattern and full requirements are described in this document:
-
-👉 **[Regex Requirements for SMS Triggering](docs/sms_trigger_regex_requirements.md)**
-
-### Sample ADB SMS Command
-
-```bash
-adb emu sms send 5554 '<#> CALLHOME: {"type":"incoming","handle":"380971112233","callID":"abc123","displayName":"John%20Doe","hasVideo":true} Do not share.'
-```
-
----
-
-## 🔄 Event Communication Between Flutter and Platform
-
-Webtrit CallKeep provides a robust two-way communication system between the Flutter layer and native platforms (iOS and
-Android), inspired by the CallKit design on iOS.
-
----
-
-### 📤 Events Sent from Flutter to Platform
-
-The following methods are used to **notify the native platform** about call actions or state changes. These are
-typically used to **trigger UI** (e.g., incoming screen), report call status, or request platform-level operations.
-
-| Method                              | Description                                                                         |
-|-------------------------------------|-------------------------------------------------------------------------------------|
-| `reportNewIncomingCall(...)`        | Triggers the native UI to display an incoming call.                                 |
-| `reportConnectingOutgoingCall(...)` | Reports that an outgoing call is connecting.                                        |
-| `reportConnectedOutgoingCall(...)`  | Reports that an outgoing call is connected.                                         |
-| `reportUpdateCall(...)`             | Sends updated call metadata such as display name, video, or proximity sensor usage. |
-| `reportEndCall(...)`                | Notifies the platform that a call has ended with a reason.                          |
-| `startCall(...)`                    | Starts an outgoing call via native UI.                                              |
-| `answerCall(...)`                   | Answers a call from Flutter code.                                                   |
-| `endCall(...)`                      | Ends the call from Flutter.                                                         |
-| `setHeld(...)`                      | Puts the call on hold or resumes it.                                                |
-| `setMuted(...)`                     | Mutes or unmutes the call.                                                          |
-| `sendDTMF(...)`                     | Sends a DTMF tone.                                                                  |
-| `setSpeaker(...)`                   | Enables or disables speaker mode.                                                   |
-
----
-
-### 📥 `perform*` Events Received from Platform
-
-These methods are called from the **native platform back to Flutter** when a user interacts with the system’s call UI (
-e.g., answering a call from lock screen) or when system-level events occur (e.g., audio session activation).
-
-Implement these by providing a `CallkeepDelegate` via `Callkeep().setDelegate(...)`.
-
-| Method                         | Triggered When...                                                          |
-|--------------------------------|----------------------------------------------------------------------------|
-| `continueStartCallIntent(...)` | System confirms outgoing call intent (e.g., from Siri or Call UI).         |
-| `didPushIncomingCall(...)`     | System has received and processed an incoming call.                        |
-| `performStartCall(...)`        | User initiates an outgoing call from native UI.                            |
-| `performAnswerCall(...)`       | User answers the call from native UI.                                      |
-| `performEndCall(...)`          | User ends the call from system UI.                                         |
-| `performSetHeld(...)`          | User toggles hold/resume from system UI.                                   |
-| `performSetMuted(...)`         | User toggles mute from system UI.                                          |
-| `performSendDTMF(...)`         | User sends DTMF digits from the native dial pad.                           |
-| `performSetSpeaker(...)`       | User enables/disables speaker from system UI.                              |
-| `didActivateAudioSession()`    | System has activated the audio session (important for audio routing).      |
-| `didDeactivateAudioSession()`  | System has deactivated the audio session.                                  |
-| `didReset()`                   | System resets the call state, often due to errors or forceful termination. |
-
-> 🧐 **Note**: `perform*` methods usually require you to respond asynchronously (e.g., via signaling servers) and return
-> a `bool` indicating success or failure. Failing to respond may result in incorrect UI behavior or system timeouts.
-
-### Example: `startCall` ➝ `performStartCall`
-
-Below is a simplified lifecycle flow illustrating how an outgoing call is initiated and processed using
-`Callkeep.startCall` followed by a native event triggering `performStartCall`:
-
-```dart
-// Triggered by your Flutter app logic
-final callId = WebtritSignalingClient.generateCallId();
-final handle = CallkeepHandle.number('+123456789');
 await callkeep.startCall(
   callId,
-  handle,
-  displayNameOrContactIdentifier: 'John Doe',
+  CallkeepHandle.number('+15559876543'),
+  displayNameOrContactIdentifier: 'Jane Doe',
   hasVideo: false,
 );
 ```
 
-This will attempt to establish a new connection and validate it. If the connection is successfully created and valid,
-the system will invoke `performStartCall` to proceed with the call setup.
-
-If the connection is valid, the system will call the following delegate method:
+### 5. Tear down
 
 ```dart
-@override
-Future<bool> performStartCall(
-  String callId,
-  CallkeepHandle handle,
-  String? displayNameOrContactIdentifier,
-  bool video,
-) async {
-  // Establish media connection and signaling offer
-  final stream = await navigator.mediaDevices.getUserMedia({'audio': true});
-  final peerConnection = await createPeerConnection({...});
-  final offer = await peerConnection.createOffer();
-
-  await _signalingClient.send(OutgoingCallRequest(
-    callId: callId,
-    number: handle.normalizedValue(),
-    jsep: offer.toMap(),
-  ));
-
-  await peerConnection.setLocalDescription(offer);
-  return true;
-}
+await callkeep.tearDown();
 ```
-
-You are expected to:
-
-1. Initialize media stream
-2. Create WebRTC offer
-3. Send offer to your signaling server
-4. Set local description on the peer connection
-
-If everything succeeds, return `true`. If anything fails, return `false` and CallKeep will automatically terminate the
-native call screen.
 
 ---
 
-You can add similar flows for `answerCall`, `endCall`, etc.
+## API reference
 
-## ⚙️ Android Background Modes
+### Flutter -> Platform
 
-Webtrit CallKeep offers two modes to handle background call signaling in Android. Use the one that suits your scenario.
+Use these methods to notify the platform about call state changes.
 
-> 🔎 **Note**: Some Android classes use the `@Keep` annotation to prevent code shrinking and obfuscation. Ensure
-> ProGuard/R8 rules preserve these classes.
+| Method | Description |
+| --- | --- |
+| `setUp(options)` | Register phone account, initialize notification channels |
+| `tearDown()` | Hang up all calls and release resources |
+| `reportNewIncomingCall(callId, handle, ...)` | Register an incoming call with the platform |
+| `reportConnectingOutgoingCall(callId, handle, ...)` | Mark outgoing call as connecting |
+| `reportConnectedOutgoingCall(callId, handle, ...)` | Mark outgoing call as connected |
+| `reportUpdateCall(callId, ...)` | Update call metadata (display name, video, etc.) |
+| `reportEndCall(callId, reason)` | Notify platform the call ended |
+| `startCall(callId, handle, ...)` | Initiate an outgoing call |
+| `answerCall(callId)` | Answer a call programmatically |
+| `endCall(callId)` | End a call |
+| `setHeld(callId, onHold)` | Put call on hold or resume |
+| `setMuted(callId, muted)` | Mute or unmute |
+| `setSpeaker(callId, on)` | Toggle speaker |
+| `sendDTMF(callId, digit)` | Send a DTMF tone |
+
+### Platform -> Flutter (`CallkeepDelegate`)
+
+Implement `CallkeepDelegate` and pass it to `setDelegate` to receive platform events.
+
+| Method | When it fires |
+| --- | --- |
+| `didPushIncomingCall(callId, handle, ..., error)` | Platform has registered the incoming call (or reports an error) |
+| `performAnswerCall(callId)` | User answered from system UI |
+| `performEndCall(callId)` | User ended from system UI or system terminated the call |
+| `performStartCall(callId, handle, ...)` | User initiated outgoing call from system UI (e.g. Siri) |
+| `continueStartCallIntent(callId, handle, ...)` | System confirmed outgoing call intent |
+| `performSetHeld(callId, onHold)` | User toggled hold from system UI |
+| `performSetMuted(callId, muted)` | User toggled mute from system UI |
+| `performSendDTMF(callId, digit)` | User sent DTMF from system dial pad |
+| `performSetSpeaker(callId, on)` | User toggled speaker from system UI |
+| `didActivateAudioSession()` | System activated the audio session |
+| `didDeactivateAudioSession()` | System deactivated the audio session |
+| `didReset()` | System reset all call state |
+
+`perform*` methods return `Future<bool>`. Return `false` to signal failure — the platform will
+terminate the call.
 
 ---
 
-### ♻️ 1. Push Notification Isolate (One-time)
+## Android background modes
 
-Ideal for apps that **do not maintain a persistent connection** and instead rely on push notifications to trigger call
-events.
+Android requires a running service to handle calls when the app is backgrounded. Two mutually
+exclusive modes are supported; choose one per app.
 
-#### Setup
+### Push notification isolate (one-shot)
 
-Configure the push notification isolate with the following code (Optional):
-
-```dart
-AndroidCallkeepServices.backgroundPushNotificationBootstrapService.configurePushNotificationSignalingService(launchBackgroundIsolateEvenIfAppIsOpen: false);
-```
-
-Initialize the push notification isolate callback.
-This callback will be triggered when
-`AndroidCallkeepServices.backgroundPushNotificationBootstrapService.reportNewIncomingCall` is called, for example, from
-an FCM isolate.
+A short-lived Flutter isolate spawned when an FCM (or other) push arrives. Exits after the call
+ends.
 
 ```dart
-AndroidCallkeepServices.backgroundPushNotificationBootstrapService.initializeCallback(onPushNotificationSyncCallback););
-```
+// Register the isolate entry-point once (main isolate, before background activity):
+await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+    .initializeCallback(onPushNotificationCallback);
 
-#### Triggering Incoming Call from FCM or Another Isolate
-
-You can notify the plugin of a new incoming call from within a background handler (e.g., FCM):
-
-```dart
+// From your FCM background handler:
 @pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  AndroidCallkeepServices.backgroundPushNotificationBootstrapService.reportNewIncomingCall(
-    appNotification.call.id,
-    CallkeepHandle.number(appNotification.call.handle),
-    displayName: appNotification.call.displayName,
-    hasVideo: appNotification.call.hasVideo,
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+      .reportNewIncomingCall(
+    callId,
+    CallkeepHandle.number(handle),
+    displayName: displayName,
+    hasVideo: hasVideo,
   );
 }
-```
 
-#### Initialize push notification callback
-
-To manage resources and synchronize signaling from push notifications, implement a background callback like this:
-
-```dart
+// The isolate callback:
 @pragma('vm:entry-point')
-Future<void> onPushNotificationCallback(CallkeepPushNotificationSyncStatus status, CallkeepIncomingCallMetadata? metadata) async {
-  await _initializeDependencies();
-
+Future<void> onPushNotificationCallback(
+  CallkeepPushNotificationSyncStatus status,
+  CallkeepIncomingCallMetadata? metadata,
+) async {
+  await initializeDependencies();
   switch (status) {
     case CallkeepPushNotificationSyncStatus.synchronizeCallStatus:
-      await _backgroundCallEventManager?.onStart();
-      break;
+      await backgroundCallManager.onStart();
     case CallkeepPushNotificationSyncStatus.releaseResources:
-      await _backgroundCallEventManager?.close();
-      break;
+      await backgroundCallManager.close();
   }
 }
 ```
 
-Inside this isolate, when a connection is established, we can communicate with the native part using
-`BackgroundPushNotificationServicee`. This service provides methods for `endBackgroundCall`, and
-`endAllBackgroundCalls`. Additionally, you can set a delegate using `setBackgroundServiceDelegate` to listen for events
-such as `performServiceAnswerCall`, `performServiceEndCall`, and `endCallReceived`.
+### Signaling isolate (persistent)
+
+A long-running Flutter isolate that maintains a permanent signaling connection (e.g. WebSocket).
+Survives app background and device reboot (restarted by `ForegroundCallBootReceiver`).
 
 ```dart
-class SignalingForegroundIsolateManager implements CallkeepBackgroundServiceDelegate {
-  @override
-  void performServiceAnswerCall(String callId) async {
-    if (!(await _signalingManager.hasNetworkConnection())) {
-      throw Exception('No connection');
-    }
-    // Proceed with answering
-  }
+// Configure (optional — sets the foreground service notification text):
+await AndroidCallkeepServices.backgroundSignalingBootstrapService.setUp(
+  androidNotificationName: 'My App Calls',
+  androidNotificationDescription: 'Required to receive incoming calls',
+);
 
-  @override
-  void performServiceEndCall(String callId) async {
-    await _signalingManager.declineCall(callId);
-  }
+// Register the isolate entry-point:
+await AndroidCallkeepServices.backgroundSignalingBootstrapService
+    .initializeCallback(onSignalingCallback);
 
-  void anwserCall(String callId) {
-    BackgroundPushNotificationServicee.answerCall(callId);
-  }
-}
-```
-
-This ensures your app can rehydrate or tear down background services based on the nature of the push event.
-
----
-
-### 🔌 2. Background Signaling Isolate (Persistent)
-
-Used for always-on signaling, even in the background.
-
-#### Signaling Setup
-
-Configure the signaling isolate and set up the notification details for the foreground service(Optional).
-
-```dart
-AndroidCallkeepServices.backgroundSignalingBootstrapService.setUp(androidNotificationName: "WebTrit Inbound Calls",androidNotificationDescription: "This is required to receive incoming calls",);
-```
-
-Initialize the isolate callback for background signaling. This callback will be triggered when the status of the main
-isolate changes, the app lifecycle changes, or the isolate starts:
-
-```dart
-AndroidCallkeepServices.backgroundSignalingBootstrapService.initializeCallback(onSignalingSyncCallback);
-```
-
-#### Start and stop the foreground signaling service from the main isolate
-
-```dart
+// Start / stop from the main isolate:
 await AndroidCallkeepServices.backgroundSignalingBootstrapService.startService();
 await AndroidCallkeepServices.backgroundSignalingBootstrapService.stopService();
-```
 
-#### Initialize signaling callback
-
-Register the callback that will be triggered to manage the signaling connection.
-This can be done using the `CallkeepLifecycleEvent` from `CallkeepServiceStatus`, which contains parameters such as the
-current activity status (e.g., opened or closed) and the `CallkeepSignalingStatus` from `CallkeepServiceStatus`,
-indicating the current signaling status if provided by the main isolate; otherwise, it will be null.
-
-```dart
+// The isolate callback:
 @pragma('vm:entry-point')
-Future<void> onSignalingSyncCallback(CallkeepServiceStatus status, CallkeepIncomingCallMetadata? metadata) async {
-  await _initializeDependencies();
-
-  await _signalingForegroundIsolateManager?.sync(status);
-  
-  return;
+Future<void> onSignalingCallback(
+  CallkeepServiceStatus status,
+  CallkeepIncomingCallMetadata? metadata,
+) async {
+  await initializeDependencies();
+  await signalingManager.sync(status);
 }
-
 ```
 
-Inside this isolate, when a connection is established, we can communicate with the native part using
-`BackgroundSignalingService`. This service provides methods for `incomingCall`, `endBackgroundCall`, and
-`endAllBackgroundCalls`. Additionally, you can set a delegate using `setBackgroundServiceDelegate` to listen for events
-such as `performServiceAnswerCall`, `performServiceEndCall`, and `endCallReceived`.
+Inside either isolate, use `CallkeepBackgroundServiceDelegate` to receive answer/end events, and
+`BackgroundSignalingService` / `BackgroundPushNotificationService` to report call outcomes back to
+the platform.
+
+---
+
+## Android: SMS-triggered incoming call
+
+Android only. Allows triggering an incoming call from a specially formatted SMS — useful when push
+delivery is unreliable.
+
+**Required permissions**: `RECEIVE_SMS`, `BROADCAST_SMS`
+
+The SMS must start with the prefix `<#> WEBTRIT:` (hard-coded security filter, do not change).
+The rest of the message is parsed by a caller-supplied ICU-compatible regex that captures 4 groups
+in order: `callId`, `handle`, `displayName`, `hasVideo`.
 
 ```dart
-class SignalingForegroundIsolateManager implements CallkeepBackgroundServiceDelegate {
-  @override
-  void performServiceAnswerCall(String callId) async {
-    if (!(await _signalingManager.hasNetworkConnection())) {
-      throw Exception('No connection');
-    }
-    // Proceed with answering
-  }
+await callkeep.initializeSmsReception(
+  messagePrefix: '<#> WEBTRIT:',
+  regexPattern: r'your-regex-here',
+);
+```
 
-  @override
-  void performServiceEndCall(String callId) async {
-    await _signalingManager.declineCall(callId);
-  }
-  
-  void anwserCall(String callId) {
-    BackgroundSignalingService.answerCall(callId);
-  }
-}
+Full regex specification: [`docs/sms_trigger_regex_requirements.md`](docs/sms_trigger_regex_requirements.md)
+
+> SMS access is a sensitive Play Store permission. You must justify its use and ensure the regex
+> only matches messages from your own backend.
+
+---
+
+## Required permissions
+
+### Android (`AndroidManifest.xml`)
+
+```xml
+<uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
+<!-- Optional: SMS fallback -->
+<uses-permission android:name="android.permission.RECEIVE_SMS" />
+<uses-permission android:name="android.permission.BROADCAST_SMS" />
+```
+
+### iOS (`Info.plist` / Xcode capabilities)
+
+- Enable **Push Notifications** capability
+- Enable **Background Modes -> Voice over IP**
+
+---
+
+## Integration tests
+
+The public API is covered by integration tests in
+[`webtrit_callkeep/example/integration_test/`](webtrit_callkeep/example/integration_test/).
+
+Tests cover: lifecycle, incoming/outgoing call scenarios, state machine (hold, mute, DTMF),
+foreground service timing, background service paths (push + signaling), connection queries,
+delegate edge cases, and stress/concurrency scenarios.
+
+```bash
+cd webtrit_callkeep/example
+flutter test integration_test/<test_file>.dart
 ```
 
 ---
 
-## 📜 Required Permissions
+## Example app
 
-Ensure the following permissions are declared:
-
-### Android
-
-- `android.permission.FOREGROUND_SERVICE`
-- `android.permission.MANAGE_OWN_CALLS`
-- `android.permission.BIND_TELECOM_CONNECTION_SERVICE`
-
-### iOS
-
-- Enable **Push Notifications**
-- Enable **Background Modes → Voice over IP**
+[`webtrit_phone`](https://github.com/WebTrit/webtrit_phone) is a reference Flutter VoIP app that
+demonstrates real-world usage of this plugin including signaling, media, background call handling,
+and full foreground/background workflows.
 
 ---
 
-## 🧪 Example Project
+## Resources
 
-To see **Webtrit CallKeep** in action, check out the official open framework demo app:
-
-### 🔗 [`webtrit_phone`](https://github.com/WebTrit/webtrit_phone)
-
-This is a reference implementation of a Flutter-based VoIP/WebRTC app that uses **Webtrit CallKeep** to handle incoming
-and outgoing calls with native UI support on both Android and iOS.
-
-The project demonstrates:
-
-- Integration with signaling and media layers
-- Usage of `CallkeepDelegate` and background isolates
-- Real-world call handling scenarios including mute, hold, and DTMF
-- Full support for foreground and background call workflows
-
-Feel free to explore it, fork it, and use it as a starting point for your own app!
-
----
-
-## 📃 More Resources
-
-- [CallKit Documentation (Apple)](https://developer.apple.com/documentation/callkit)
+- [CallKit documentation (Apple)](https://developer.apple.com/documentation/callkit)
 - [ConnectionService API (Android)](https://developer.android.com/reference/android/telecom/ConnectionService)
-
----
-
-## 🧑‍💻 Authors
-
-Maintained by the [Webtrit](https://webtrit.com/) team.
+- [Android architecture docs](webtrit_callkeep_android/docs/architecture.md)
 
 ---
 
 ## Contributing
 
-We welcome contributions from the community! Please follow our contribution guidelines when submitting pull requests.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for branch naming, commit message format, and PR
+conventions.
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+[MIT](LICENSE)
