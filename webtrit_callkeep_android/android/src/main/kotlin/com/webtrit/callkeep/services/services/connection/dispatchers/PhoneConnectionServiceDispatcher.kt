@@ -83,6 +83,7 @@ class PhoneConnectionServiceDispatcher(
             ServiceAction.NotifyPending,
             ServiceAction.CleanConnections,
             ServiceAction.SyncAudioState,
+            ServiceAction.SyncConnectionState,
             -> logger.w("dispatch: unexpected IPC command action: $action")
         }
     }

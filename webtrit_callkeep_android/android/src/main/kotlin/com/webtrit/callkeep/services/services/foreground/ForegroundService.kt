@@ -173,6 +173,12 @@ class ForegroundService :
             connectionServicePerformReceiver,
         )
         isRunning = true
+        // Ask :callkeep_core to re-fire AnswerCall for every connection that was already
+        // answered before this service started (cold-start race: the user answers via the
+        // notification button before the main process/Flutter opens). The re-fired broadcast
+        // populates connectionStates so that the CALL_ID_ALREADY_EXISTS handler in
+        // reportNewIncomingCall can correctly identify the call as STATE_ACTIVE.
+        core.sendSyncConnectionState()
     }
 
     override fun setUp(
@@ -180,14 +186,31 @@ class ForegroundService :
         callback: (Result<Unit>) -> Unit,
     ) {
         logger.i("setUp")
+        registerPhoneAccountWithRetry(options, callback, attempt = 0)
+    }
+
+    private fun registerPhoneAccountWithRetry(
+        options: POptions,
+        callback: (Result<Unit>) -> Unit,
+        attempt: Int,
+    ) {
+        val maxAttempts = 5
+        val retryDelayMs = 500L
 
         try {
             TelephonyUtils(baseContext).registerPhoneAccount()
         } catch (e: Exception) {
-            logger.e("setUp: registerPhoneAccount failed", e)
+            if (attempt < maxAttempts - 1) {
+                logger.w("setUp: registerPhoneAccount failed (attempt ${attempt + 1}/$maxAttempts), retrying in ${retryDelayMs}ms: ${e.message}")
+                mainHandler.postDelayed({ registerPhoneAccountWithRetry(options, callback, attempt + 1) }, retryDelayMs)
+                return
+            }
+            logger.e("setUp: registerPhoneAccount failed after $maxAttempts attempts", e)
             callback(Result.failure(e))
             return
         }
+
+        logger.i("setUp: registerPhoneAccount succeeded${if (attempt > 0) " on attempt ${attempt + 1}" else ""}")
 
         runCatching {
             // Registers all necessary notification channels for the application.
@@ -380,32 +403,10 @@ class ForegroundService :
     ) {
         logger.i("reportNewIncomingCall: callId=$callId, handle=$handle")
 
-        // Query tracker state BEFORE addPending, which resets lifecycle flags (answeredCallIds,
-        // terminatedCallIds). MainProcessConnectionTracker is the authoritative view of call state
-        // in the main process, updated via broadcasts from :callkeep_core. In contrast,
-        // checkAndReservePending (inside startIncomingCall) only checks
-        // PhoneConnectionService.connectionManager, which is isolated from :callkeep_core and
-        // is never updated with answered/terminated transitions — so it cannot detect these states.
-        val trackerError: PIncomingCallError? =
-            when {
-                core.isTerminated(callId) -> {
-                    PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED)
-                }
-
-                core.isAnswered(callId) -> {
-                    PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED)
-                }
-
-                else -> {
-                    null
-                }
-            }
-        if (trackerError != null) {
-            logger.w("reportNewIncomingCall: rejecting callId=$callId, tracker state=${trackerError.value}")
-            callback(Result.success(trackerError))
-            return
-        }
-
+        // Build metadata before the early check so we can promote the call into the core shadow
+        // tracker even when the call is already answered (cold-start race: SyncConnectionState
+        // fires handleCSReportAnswerCall during onCreate, marking the call answered before
+        // reportNewIncomingCall arrives from the signaling layer).
         val ringtonePath = StorageDelegate.Sound.getRingtonePath(baseContext)
 
         val metadata =
@@ -417,12 +418,72 @@ class ForegroundService :
                 ringtonePath = ringtonePath,
             )
 
+        // Query tracker state BEFORE addPending, which resets lifecycle flags (answeredCallIds,
+        // terminatedCallIds). MainProcessConnectionTracker is the authoritative view of call state
+        // in the main process, updated via broadcasts from :callkeep_core. In contrast,
+        // checkAndReservePending (inside startIncomingCall) only checks
+        // PhoneConnectionService.connectionManager, which is isolated from :callkeep_core and
+        // is never updated with answered/terminated transitions — so it cannot detect these states.
+        //
+        // exists() is also checked here to short-circuit duplicate detection without a Telecom
+        // round-trip. When DidPushIncomingCall has already been delivered and promoted the call,
+        // the second reportNewIncomingCall must return CALL_ID_ALREADY_EXISTS immediately rather
+        // than going to Telecom, which would otherwise trigger the CALL_ID_ALREADY_EXISTS adoption
+        // path and return null (masking the duplicate from Flutter).
+        val trackerError: PIncomingCallError? =
+            when {
+                core.isTerminated(callId) -> {
+                    PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED)
+                }
+
+                core.isAnswered(callId) -> {
+                    PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED)
+                }
+
+                core.exists(callId) -> {
+                    PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS)
+                }
+
+                else -> {
+                    null
+                }
+            }
+        if (trackerError != null) {
+            if (trackerError.value == PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED) {
+                // Cold-start race: the call was already answered in Telecom (via the notification
+                // button) before reportNewIncomingCall arrived from the signaling layer.
+                // Promote the call into the core shadow so endCall() can locate it for the
+                // duration of the active call.
+                // Fire performAnswerCall directly — the Telecom connection is already ACTIVE,
+                // so we bypass the callkeep.answerCall() -> IPC -> AnswerCall broadcast round-trip.
+                // __onCallPerformEventAnswered will start WebRTC using the offer from
+                // __onCallSignalingEventIncoming, which is emitted to the bloc state just after
+                // this callback returns but before _CallPerformEvent.answered is processed.
+                core.promote(callId, metadata, PCallkeepConnectionState.STATE_ACTIVE)
+                core.markAnswered(callId)
+                core.markSignalingRegistered(callId)
+                flutterDelegateApi?.performAnswerCall(callId) {}
+                logger.i("reportNewIncomingCall: adopted already-answered call callId=$callId, fired performAnswerCall")
+            } else {
+                logger.w("reportNewIncomingCall: rejecting callId=$callId, tracker state=${trackerError.value}")
+            }
+            callback(Result.success(trackerError))
+            return
+        }
+
         // Register as pending before sending to Telecom so that answerCall() / endCall()
         // issued before DidPushIncomingCall fires can locate the call via core.isPending().
-        // addPending returns true only if this invocation actually inserted the entry, so the
-        // rollback in onError does not remove a concurrent genuine pending registration for the
-        // same callId (e.g. a second reportNewIncomingCall racing against the first).
+        // addPending returns true only if this invocation actually inserted the entry.
+        // If it returns false the callId is already pending from a concurrent first invocation —
+        // reject the duplicate immediately rather than letting both proceed to Telecom (which
+        // would cause the second to be silently adopted via the CALL_ID_ALREADY_EXISTS onError
+        // path and return null, masking the duplicate from Flutter).
         val addedPending = core.addPending(callId)
+        if (!addedPending) {
+            logger.w("reportNewIncomingCall: callId=$callId already pending, rejecting concurrent duplicate")
+            callback(Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS)))
+            return
+        }
 
         core.startIncomingCall(
             metadata = metadata,
@@ -436,12 +497,70 @@ class ForegroundService :
                 callback(Result.success(null))
             },
             onError = { error ->
-                logger.e("reportNewIncomingCall: startIncomingCall failed callId=$callId, error=$error")
-                // Roll back the pending entry only if this invocation added it. This avoids
-                // removing a genuine pending entry registered by a concurrent first invocation
-                // when a duplicate call's error arrives.
-                if (addedPending) core.removePending(callId)
-                callback(Result.success(error))
+                when (error?.value) {
+                    PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS -> {
+                        // The callId is still in the main-process ConnectionManager.pendingCallIds
+                        // from the original registration by the background isolate, so
+                        // checkAndReservePending returns CALL_ID_ALREADY_EXISTS regardless of
+                        // whether the call was answered. Use the tracker's last known connection
+                        // state — which is NOT reset by core.addPending — to distinguish between
+                        // a call that is still ringing and one that was already answered via the
+                        // notification Answer button while the main process had no UI running.
+                        //
+                        // connectionStates[callId] is set to STATE_ACTIVE by markAnswered() when
+                        // the AnswerCall broadcast arrives (fired from :callkeep_core after
+                        // onAnswer()), and is preserved across the addPending() call above.
+                        val existingState = core.getState(callId)
+                        if (existingState == PCallkeepConnectionState.STATE_ACTIVE) {
+                            // Call answered before the main app started its UI. Adopt as active
+                            // and notify Flutter so it skips the incoming screen entirely.
+                            logger.i("reportNewIncomingCall: adopting already-answered call callId=$callId (CALL_ID_ALREADY_EXISTS + STATE_ACTIVE)")
+                            core.promote(callId, metadata, PCallkeepConnectionState.STATE_ACTIVE)
+                            core.markAnswered(callId)
+                            core.markSignalingRegistered(callId)
+                            flutterDelegateApi?.performAnswerCall(callId) {}
+                            callback(Result.success(null))
+                        } else {
+                            // Call still ringing in Telecom but not yet promoted in the tracker
+                            // (narrow race: Telecom created the PhoneConnection before the
+                            // DidPushIncomingCall broadcast was delivered to this process).
+                            // Promote into the tracker so answerCall() / endCall() can locate it,
+                            // then return CALL_ID_ALREADY_EXISTS so Flutter treats this as a
+                            // duplicate rather than a new registration — the call was already
+                            // reported to Flutter by the push path's didPushIncomingCall callback.
+                            logger.i("reportNewIncomingCall: ringing call already in Telecom callId=$callId, promoting and returning callIdAlreadyExists")
+                            core.promote(callId, metadata, PCallkeepConnectionState.STATE_RINGING)
+                            core.markSignalingRegistered(callId)
+                            callback(
+                                Result.success(
+                                    PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS),
+                                ),
+                            )
+                        }
+                    }
+
+                    PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED -> {
+                        // The call was already answered (e.g. via the notification Answer button)
+                        // while the main process was not running. Adopt it as an active call and
+                        // notify Flutter so it can transition its state machine from incoming to
+                        // active without waiting for an AnswerCall broadcast that will not arrive.
+                        logger.i("reportNewIncomingCall: adopting already-answered call callId=$callId")
+                        core.promote(callId, metadata, PCallkeepConnectionState.STATE_ACTIVE)
+                        core.markAnswered(callId)
+                        core.markSignalingRegistered(callId)
+                        flutterDelegateApi?.performAnswerCall(callId) {}
+                        callback(Result.success(null))
+                    }
+
+                    else -> {
+                        logger.e("reportNewIncomingCall: startIncomingCall failed callId=$callId, error=$error")
+                        // Roll back the pending entry only if this invocation added it. This avoids
+                        // removing a genuine pending entry registered by a concurrent first invocation
+                        // when a duplicate call's error arrives.
+                        if (addedPending) core.removePending(callId)
+                        callback(Result.success(error))
+                    }
+                }
             },
         )
     }
