@@ -150,6 +150,23 @@ Future<CallkeepConnection?> _waitForConnection(
   return null;
 }
 
+// Poll until a Telecom connection for callId reaches the desired state (or
+// timeout). Used to guard against the race where Telecom's CallsManager has
+// not yet processed setActive() when the next reportNewIncomingCall arrives.
+Future<void> _waitForConnectionState(
+  String callId,
+  CallkeepConnectionState targetState, {
+  Duration timeout = const Duration(seconds: 10),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(deadline)) {
+    final conn = await CallkeepConnections().getConnection(callId);
+    if (conn != null && conn.state == targetState) return;
+    await Future.delayed(const Duration(milliseconds: 100));
+  }
+  throw TimeoutException('$callId did not reach $targetState within timeout');
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -403,6 +420,12 @@ void main() {
       await callkeep.answerCall(id1);
       await _waitFor(answer1Latch.future, label: 'performAnswerCall id1');
 
+      // Wait for id1's Telecom connection to reach ACTIVE before reporting id2.
+      // Telecom refuses a second incoming self-managed call while the first is
+      // still RINGING in its CallsManager. performAnswerCall fires before
+      // Telecom processes setActive(), so we poll here to close that race.
+      await _waitForConnectionState(id1, CallkeepConnectionState.stateActive);
+
       // Report id2
       await callkeep.reportNewIncomingCall(id2, _handle2, displayName: 'Frank');
 
@@ -461,6 +484,12 @@ void main() {
       };
       await callkeep.answerCall(id1);
       await _waitFor(answer1Latch.future, label: 'performAnswerCall id1');
+
+      // Wait for id1's Telecom connection to reach ACTIVE before reporting id2.
+      // Telecom refuses a second incoming self-managed call while the first is
+      // still RINGING in its CallsManager. performAnswerCall fires before
+      // Telecom processes setActive(), so we poll here to close that race.
+      await _waitForConnectionState(id1, CallkeepConnectionState.stateActive);
 
       await callkeep.reportNewIncomingCall(id2, _handle2, displayName: 'Hank');
       await _waitForConnection(id2);
