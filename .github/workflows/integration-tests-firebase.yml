@@ -62,7 +62,7 @@ jobs:
             --type instrumentation \
             --app webtrit_callkeep/example/build/app/outputs/apk/debug/app-debug.apk \
             --test webtrit_callkeep/example/build/app/outputs/apk/androidTest/debug/app-debug-androidTest.apk \
-            --device model=oriole,version=33,locale=en,orientation=portrait \
+            --device model=redfin,version=30,locale=en,orientation=portrait \
             --timeout 10m \
             --results-bucket webtrit-app-ci-test-results \
             --results-dir ${{ github.run_id }} \
