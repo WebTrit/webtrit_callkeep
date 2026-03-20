@@ -74,18 +74,18 @@ Android only. Requires `RECEIVE_SMS` + `BROADCAST_SMS` permissions.
 The public API is covered by integration tests located in
 [`../webtrit_callkeep/example/integration_test/`](../webtrit_callkeep/example/integration_test/).
 
-| Test file | What it covers |
-|---|---|
-| `callkeep_lifecycle_test.dart` | `setUp` / `tearDown` state machine, `isSetUp`, `statusStream` transitions |
-| `callkeep_call_scenarios_test.dart` | Incoming call answer, decline, hang-up, hold/unhold, mute/unmute, DTMF |
-| `callkeep_state_machine_test.dart` | Full answer-hold-mute-unmute-unhold-end sequence, two-call hold swap |
-| `callkeep_foreground_service_test.dart` | Main-process signaling path: answer/end timing, deduplication, cold-start adoption |
-| `callkeep_background_services_test.dart` | Push notification isolate and signaling isolate paths, cross-path deduplication |
-| `callkeep_connections_test.dart` | `getConnection`, `getConnections`, `cleanConnections`, `updateActivitySignalingStatus` |
-| `callkeep_delegate_edge_cases_test.dart` | `setDelegate(null)` mid-call, delegate swap, `didPushIncomingCall`, audio session callbacks |
-| `callkeep_client_scenarios_test.dart` | `answerCall` idempotency, ringback sound, async `performEndCall` contract, signaling race |
-| `callkeep_reportendcall_reasons_test.dart` | All `CallkeepEndCallReason` values via `reportEndCall` |
-| `callkeep_stress_test.dart` | Concurrent duplicate reports, rapid tearDown, spam scenarios |
+| Test file                                  | What it covers                                                                              |
+|--------------------------------------------|---------------------------------------------------------------------------------------------|
+| `callkeep_lifecycle_test.dart`             | `setUp` / `tearDown` state machine, `isSetUp`, `statusStream` transitions                   |
+| `callkeep_call_scenarios_test.dart`        | Incoming call answer, decline, hang-up, hold/unhold, mute/unmute, DTMF                      |
+| `callkeep_state_machine_test.dart`         | Full answer-hold-mute-unmute-unhold-end sequence, two-call hold swap                        |
+| `callkeep_foreground_service_test.dart`    | Main-process signaling path: answer/end timing, deduplication, cold-start adoption          |
+| `callkeep_background_services_test.dart`   | Push notification isolate and signaling isolate paths, cross-path deduplication             |
+| `callkeep_connections_test.dart`           | `getConnection`, `getConnections`, `cleanConnections`, `updateActivitySignalingStatus`      |
+| `callkeep_delegate_edge_cases_test.dart`   | `setDelegate(null)` mid-call, delegate swap, `didPushIncomingCall`, audio session callbacks |
+| `callkeep_client_scenarios_test.dart`      | `answerCall` idempotency, ringback sound, async `performEndCall` contract, signaling race   |
+| `callkeep_reportendcall_reasons_test.dart` | All `CallkeepEndCallReason` values via `reportEndCall`                                      |
+| `callkeep_stress_test.dart`                | Concurrent duplicate reports, rapid tearDown, spam scenarios                                |
 
 Run on a connected device or emulator from the example app directory:
 
