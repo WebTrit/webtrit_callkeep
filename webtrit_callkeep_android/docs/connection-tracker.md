@@ -2,9 +2,8 @@
 
 **Files**:
 
-- `kotlin/com/webtrit/callkeep/services/services/foreground/ConnectionTracker.kt` (interface)
-- `kotlin/com/webtrit/callkeep/services/services/foreground/MainProcessConnectionTracker.kt` (
-  implementation, companion object on `ForegroundService`)
+- `kotlin/com/webtrit/callkeep/services/core/ConnectionTracker.kt` (interface)
+- `kotlin/com/webtrit/callkeep/services/core/MainProcessConnectionTracker.kt` (implementation)
 
 ## Responsibility
 
