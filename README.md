@@ -1,15 +1,24 @@
 # webtrit_callkeep
 
-A Flutter plugin for native VoIP call UI on iOS and Android.
+A Flutter plugin that integrates the device's native call infrastructure into VoIP and WebRTC
+applications. Instead of building a custom call UI from scratch, the app delegates call
+presentation and control to the OS — the same experience users get with regular phone calls.
 
-- **iOS** — integrates with CallKit and PushKit to show the system incoming-call screen and handle
-  background VoIP pushes.
-- **Android** — integrates with Android Telecom (`ConnectionService`) and Flutter foreground
-  services to handle incoming and outgoing calls, including while the app is backgrounded or
-  terminated.
+**iOS** uses CallKit and PushKit. The system lock-screen incoming-call UI appears even when the
+app is terminated. PushKit wakes the app on an incoming VoIP push before the user sees anything,
+giving the app time to establish media before accepting.
 
-> **Note**: CallKit is unavailable in the China App Store. For distribution in China use standard
-> local notifications as a fallback.
+**Android** uses the Telecom `ConnectionService` API running in a dedicated `:callkeep_core`
+process. This process stays alive independently of the main app, so calls survive app
+backgrounding and process death. Incoming calls are presented via Flutter UI backed by Android
+foreground services, and outgoing calls integrate with the system dialer, Bluetooth headsets, and
+audio routing.
+
+Both platforms expose a unified Dart API: report calls, control audio, and receive delegate
+callbacks — without writing platform-specific code in your app.
+
+> CallKit is unavailable in the China App Store. For distribution in China use standard local
+> notifications as a fallback.
 
 ---
 
