@@ -165,6 +165,15 @@ interface CallkeepCore {
      */
     fun sendSyncAudioState()
 
+    /**
+     * Sends [ServiceAction.SyncConnectionState] to [PhoneConnectionService].
+     * The service re-fires [CallLifecycleEvent.AnswerCall] for every connection whose
+     * [PhoneConnection.hasAnswered] flag is true. Called from [ForegroundService.onCreate] so
+     * that connections answered before the main process started are reflected in
+     * [MainProcessConnectionTracker.connectionStates].
+     */
+    fun sendSyncConnectionState()
+
     companion object {
         /**
          * Process-wide singleton. Swap the implementation here to change IPC strategy
