@@ -73,9 +73,9 @@ Spawned when an FCM push notification (or SMS trigger) announces an incoming cal
 ### Lifecycle
 
 - Started via:
-    - `BackgroundPushNotificationIsolateBootstrapApi.reportNewIncomingCall()` (from Dart or a
+  - `BackgroundPushNotificationIsolateBootstrapApi.reportNewIncomingCall()` (from Dart or a
       background message handler).
-    - `NotificationManager.showIncomingCallNotification()` (from FCM handler code).
+  - `NotificationManager.showIncomingCallNotification()` (from FCM handler code).
 - `onCreate()` — calls `startForeground()` with a placeholder notification immediately to avoid
   Android's 10-second ANR window for foreground service start.
 - `onStartCommand()` — replaces placeholder with the actual incoming-call notification; delegates

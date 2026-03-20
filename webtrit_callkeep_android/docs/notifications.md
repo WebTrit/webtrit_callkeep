@@ -72,7 +72,7 @@ corresponding `NotificationAction` extra. The service routes these to `CallLifec
 
 Builds the persistent notification shown during an active call.
 
-### Notification Properties
+### Notification Properties (active call)
 
 - **Style**: `CallStyle.forOngoingCall(person, endCallIntent)` (API 31+).
 - **Actions**: End call button; optionally mute and hold buttons depending on `CallMetadata` flags

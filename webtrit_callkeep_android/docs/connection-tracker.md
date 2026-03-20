@@ -39,7 +39,7 @@ Three additional sets prevent duplicate Dart notifications for the same call:
 
 ## State Transitions
 
-```
+```text
 addPending(callId)
     pendingCallIds += callId
 

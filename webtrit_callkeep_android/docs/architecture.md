@@ -24,7 +24,7 @@ services, broadcast-based IPC, and a Pigeon bridge to the Flutter layer.
 
 ## High-Level Diagram
 
-```
+```text
 ┌──────────────────────────────────────────────────────────────────┐
 │  main process                                                    │
 │                                                                  │

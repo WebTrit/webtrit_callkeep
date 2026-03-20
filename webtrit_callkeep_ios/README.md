@@ -8,7 +8,7 @@ PushKit to deliver native call UI and background VoIP push handling.
 ## How it works
 
 | App state | Incoming call UI |
-|---|---|
+| --- | --- |
 | Foreground | Flutter-based incoming call screen |
 | Background / locked | System CallKit UI |
 | Terminated | PushKit wakes the app; CallKit UI shown after app initializes |
@@ -23,7 +23,7 @@ CallKit / PushKit.
 
 ## Package structure
 
-```
+```text
 webtrit_callkeep_ios/
 ├── lib/src/
 │   ├── webtrit_callkeep_ios.dart     # WebtritCallkeepIOS — registers as platform instance
@@ -40,7 +40,7 @@ webtrit_callkeep_ios/
 ## Delegates
 
 | Delegate | Registration | Purpose |
-|---|---|---|
+| --- | --- | --- |
 | `CallkeepDelegate` | `Callkeep().setDelegate(...)` | Call lifecycle events |
 | `PushRegistryDelegate` | `Callkeep().setPushRegistryDelegate(...)` | PushKit VoIP token and incoming push payloads |
 | `CallkeepLogsDelegate` | `Callkeep().setLogsDelegate(...)` | Forward native logs to Dart |
@@ -104,7 +104,7 @@ dart format --line-length 80 --set-exit-if-changed lib test
 ## Related packages
 
 | Package | Description |
-|---|---|
+| --- | --- |
 | [`webtrit_callkeep`](../webtrit_callkeep/README.md) | Public API aggregator |
-| [`webtrit_callkeep_platform_interface`](../webtrit_callkeep_platform_interface/README.md) | Shared interface and models |
+| [`webtrit_callkeep_platform_interface`](../webtrit_callkeep_platform_interface/README.md) | Shared interface |
 | [`webtrit_callkeep_android`](../webtrit_callkeep_android/README.md) | Android implementation |

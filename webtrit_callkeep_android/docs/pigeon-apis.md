@@ -6,7 +6,7 @@
 
 **Regeneration**:
 
-```
+```dart
 flutter pub run pigeon --input pigeons/callkeep.messages.dart
 ```
 

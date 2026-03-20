@@ -20,7 +20,7 @@ This package exists so that:
 
 ## Package structure
 
-```
+```text
 lib/src/
 ├── webtrit_callkeep_platform_interface.dart  # WebtritCallkeepPlatform abstract class
 ├── models/
@@ -65,7 +65,7 @@ CallkeepHandle.sip('user@example.com')
 ### `CallkeepDelegate`
 
 | Callback | When it fires |
-|---|---|
+| --- | --- |
 | `didPushIncomingCall` | Platform registered the incoming call (or reports an error) |
 | `performAnswerCall` | User answered from system UI |
 | `performEndCall` | User ended from system UI or system terminated the call |
@@ -109,7 +109,7 @@ class WebtritCallkeepCustom extends WebtritCallkeepPlatform {
 ## Related packages
 
 | Package | Description |
-|---|---|
+| --- | --- |
 | [`webtrit_callkeep`](../webtrit_callkeep/README.md) | Public API aggregator |
 | [`webtrit_callkeep_android`](../webtrit_callkeep_android/README.md) | Android implementation |
 | [`webtrit_callkeep_ios`](../webtrit_callkeep_ios/README.md) | iOS implementation |

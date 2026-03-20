@@ -8,7 +8,7 @@ End-to-end walkthroughs of the three main call scenarios.
 
 Triggered by an FCM message or a direct Dart call to `reportNewIncomingCall`.
 
-```
+```text
 1.  FCM / Dart
         |
         v
@@ -40,7 +40,7 @@ Triggered by an FCM message or a direct Dart call to `reportNewIncomingCall`.
 
 **Answer path (user taps answer in notification or UI):**
 
-```
+```text
 9.  Dart calls PHostApi.answerCall(callId)
         |
         v
@@ -73,7 +73,7 @@ immediately — continuing from step 11 above.
 Triggered by the persistent `SignalingIsolateService` when the signaling WebSocket receives an
 incoming call event.
 
-```
+```text
 1.  Server --> WebSocket --> SignalingIsolateService (background Flutter isolate)
         |
         v
@@ -95,7 +95,7 @@ incoming call event.
 
 Triggered when the user initiates a call from the app UI.
 
-```
+```text
 1.  Dart calls PHostApi.startCall(callId, meta)
         |
         v
@@ -139,7 +139,7 @@ Triggered when the user initiates a call from the app UI.
 
 Triggered by Dart calling `tearDown()` — used on logout or app reset.
 
-```
+```text
 1.  Dart calls PHostApi.tearDown()
         |
         v
@@ -178,7 +178,7 @@ Triggered by Dart calling `tearDown()` — used on logout or app reset.
 When Flutter hot-restarts (development only) the main process Flutter engine is re-attached, but
 `:callkeep_core` retains live `PhoneConnection` objects.
 
-```
+```text
 1.  Flutter hot-restart
         |
         v

@@ -10,7 +10,7 @@ app package name) so no third-party app can receive or inject events.
 
 All broadcasts use a single action string:
 
-```
+```text
 com.webtrit.callkeep.CONNECTION_SERVICE_PERFORM
 ```
 
@@ -58,7 +58,7 @@ Note: Most main -> `:callkeep_core` commands are `startService` intents, not bro
 
 ## Broadcast Transport
 
-```
+```text
 Sender:
     val intent = Intent(ACTION_CONNECTION_SERVICE_PERFORM)
         .setPackage(context.packageName)

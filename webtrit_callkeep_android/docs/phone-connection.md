@@ -92,13 +92,13 @@ companion object {
     fun createIncomingPhoneConnection(context, callId, metadata): PhoneConnection
     fun createOutgoingPhoneConnection(context, callId, metadata): PhoneConnection
 }
-```
+```text
 
 Incoming connections start in `STATE_RINGING`; outgoing connections start in `STATE_DIALING`.
 
 ## Lifecycle Summary
 
-```
+```text
 Incoming: INITIALIZING -> RINGING -> (onAnswer) ACTIVE -> (onDisconnect) DISCONNECTED
                                   -> (onReject)  DISCONNECTED
 Outgoing: DIALING -> (setActive) ACTIVE -> (onDisconnect) DISCONNECTED
