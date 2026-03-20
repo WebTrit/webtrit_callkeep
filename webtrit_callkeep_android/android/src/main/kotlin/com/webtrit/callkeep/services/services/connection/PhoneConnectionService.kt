@@ -128,6 +128,10 @@ class PhoneConnectionService : ConnectionService() {
                     handleSyncAudioState()
                 }
 
+                ServiceAction.SyncConnectionState -> {
+                    handleSyncConnectionState()
+                }
+
                 else -> {
                     phoneConnectionServiceDispatcher.dispatch(action, metadata)
                 }
@@ -215,15 +219,28 @@ class PhoneConnectionService : ConnectionService() {
     ): Connection {
         val metadata = CallMetadata.fromBundle(request.extras)
 
-        // Reject connections for call IDs that are no longer pending.
-        // This guards against stale Telecom callbacks that arrive after a tearDown cleared the
-        // pending set. In the :callkeep_core process, pendingCallIds is populated via
-        // NotifyPending IPC (sent by PhoneConnectionService.startIncomingCall in the main process
-        // before addNewIncomingCall is called) rather than by checkAndReservePending (which runs
-        // in the main-process JVM and affects a different ConnectionManager instance).
+        // Guard against stale Telecom callbacks that arrive after a tearDown.
+        //
+        // Both onCreateIncomingConnection (posted to this service's main-thread handler by the
+        // Telecom binder stub) and handleNotifyPending (posted via startService -> onStartCommand)
+        // run on the same main thread, but their relative arrival order is non-deterministic:
+        // Telecom's dispatch path through TelecomManager is independent of ActivityManager's
+        // startService delivery, so onCreateIncomingConnection can fire before isPending is true.
+        //
+        // Strategy:
+        //   - isPending == true  : normal path, NotifyPending arrived first (common case).
+        //   - isPending == false AND isForcedTerminated : stale post-tearDown callback — reject.
+        //   - isPending == false AND NOT isForcedTerminated : NotifyPending IPC delayed (race
+        //     window) — register as pending now so the rest of the flow sees consistent state.
         if (!connectionManager.isPending(metadata.callId)) {
-            Log.w(TAG, "onCreateIncomingConnection: callId=${metadata.callId} not pending, rejecting")
-            return Connection.createFailedConnection(DisconnectCause(DisconnectCause.LOCAL))
+            if (connectionManager.isForcedTerminated(metadata.callId)) {
+                Log.w(TAG, "onCreateIncomingConnection: callId=${metadata.callId} force-terminated by tearDown, rejecting stale callback")
+                return Connection.createFailedConnection(DisconnectCause(DisconnectCause.LOCAL))
+            }
+            // NotifyPending IPC has not arrived yet — register as pending now.
+            // handleNotifyPending will call addPendingForIncomingCall later (idempotent).
+            Log.d(TAG, "onCreateIncomingConnection: callId=${metadata.callId} not pending yet, accepting (NotifyPending race window)")
+            connectionManager.addPendingForIncomingCall(metadata.callId)
         }
 
         // Check if a connection with the same ID already exists.
@@ -270,8 +287,19 @@ class PhoneConnectionService : ConnectionService() {
         // adds the connection + consumeAnswer (false) then handleReserveAnswer reserves —
         // leaving the answer permanently stuck in pendingAnswers with no consumer.
         if (connectionManager.addConnectionAndConsumeAnswer(metadata.callId, connection)) {
-            Log.i(TAG, "onCreateIncomingConnection: applying deferred answer for callId=${metadata.callId}")
-            connection.onAnswer()
+            // Schedule onAnswer() for the next main-thread loop iteration, AFTER
+            // onCreateIncomingConnection returns to Telecom. Calling setActive() inside
+            // onCreateIncomingConnection races with Telecom's own handleCreateConnectionComplete:
+            // Telecom resets the call to RINGING after the callback returns, so our setActive()
+            // (sent before the return) is overwritten. By posting to the handler we guarantee
+            // Telecom has finished its setup before we send setActive(), so a subsequent
+            // addNewIncomingCall for a second call sees the first call as ACTIVE (not RINGING)
+            // and does not cancel it with DISCONNECTED/CANCELED.
+            Log.i(TAG, "onCreateIncomingConnection: scheduling deferred answer after Telecom setup for callId=${metadata.callId}")
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                Log.i(TAG, "onCreateIncomingConnection: applying deferred answer for callId=${metadata.callId}")
+                connection.onAnswer()
+            }
         }
 
         phoneConnectionServiceDispatcher.dispatchLifecycle(
@@ -382,6 +410,15 @@ class PhoneConnectionService : ConnectionService() {
     private fun handleSyncAudioState() {
         Log.i(TAG, "handleSyncAudioState: re-emitting audio state for all active connections")
         connectionManager.getConnections().forEach { it.forceUpdateAudioState() }
+    }
+
+    private fun handleSyncConnectionState() {
+        Log.i(TAG, "handleSyncConnectionState: re-emitting lifecycle state for answered connections")
+        connectionManager.getConnections().forEach { connection ->
+            if (connection.hasAnswered) {
+                performEventHandle(CallLifecycleEvent.AnswerCall, CallMetadata(callId = connection.callId))
+            }
+        }
     }
 
     override fun onDestroy() {
@@ -597,6 +634,22 @@ class PhoneConnectionService : ConnectionService() {
                 }
             runCatching { context.startService(intent) }
                 .onFailure { e -> Log.w(TAG, "sendSyncAudioState: startService failed: $e") }
+        }
+
+        /**
+         * Sends [ServiceAction.SyncConnectionState] to [PhoneConnectionService].
+         * The service will re-fire [CallLifecycleEvent.AnswerCall] for every connection whose
+         * [PhoneConnection.hasAnswered] flag is true. This lets the main process
+         * ([ForegroundService]) populate [MainProcessConnectionTracker.connectionStates] even
+         * when it starts after the AnswerCall broadcast was originally emitted (cold-start race).
+         */
+        fun sendSyncConnectionState(context: Context) {
+            val intent =
+                Intent(context, PhoneConnectionService::class.java).apply {
+                    action = ServiceAction.SyncConnectionState.action
+                }
+            runCatching { context.startService(intent) }
+                .onFailure { e -> Log.w(TAG, "sendSyncConnectionState: startService failed: $e") }
         }
 
         /**
