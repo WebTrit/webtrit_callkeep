@@ -295,10 +295,43 @@ Tests cover: lifecycle, incoming/outgoing call scenarios, state machine (hold, m
 foreground service timing, background service paths (push + signaling), connection queries,
 delegate edge cases, and stress/concurrency scenarios.
 
+Android emulators cannot run these tests reliably. The `ConnectionService` API, foreground service
+lifecycle, and dual-process (`main` + `:callkeep_core`) teardown require real hardware behaviour
+that emulators do not reproduce. Tests are designed to run on physical devices only.
+
+### Run locally
+
+Use the helper script, which runs each test file in isolation and waits for both app processes and
+Telecom to drain between files:
+
 ```bash
 cd webtrit_callkeep/example
-flutter test integration_test/<test_file>.dart
+./run_integration_tests.sh                 # auto-detect connected device
+./run_integration_tests.sh -d <device-id>  # explicit device
 ```
+
+To run a single file:
+
+```bash
+cd webtrit_callkeep/example
+flutter test integration_test/<test_file>.dart -d <device-id>
+```
+
+### Run on Firebase Test Lab (CI)
+
+The workflow `.github/workflows/integration-tests-firebase.yml` runs the full suite on real
+hardware via Firebase Test Lab. It triggers automatically on pull requests to `develop` and `main`,
+and can also be started manually from the Actions tab (`workflow_dispatch`).
+
+**Required secrets** (configure in GitHub repo settings):
+
+| Secret | Description |
+| --- | --- |
+| `FIREBASE_SERVICE_ACCOUNT` | JSON key for the GCP service account that has Firebase Test Lab permissions |
+| `FIREBASE_PROJECT_ID` | GCP project ID linked to your Firebase project |
+
+Full results (logcat, video, screenshots) are available in the Firebase console after each run.
+The built APKs are also uploaded as GitHub Actions artifacts for 14 days.
 
 ---
 
