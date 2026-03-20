@@ -28,10 +28,10 @@ This is a federated plugin. Each package has its own README and `docs/` director
 
 | Package | Description |
 |---|---|
-| [`webtrit_callkeep`](webtrit_callkeep/) | Public API — aggregates the platform implementations |
-| [`webtrit_callkeep_platform_interface`](webtrit_callkeep_platform_interface/) | Shared Dart interface and models |
-| [`webtrit_callkeep_android`](webtrit_callkeep_android/) | Android implementation (Telecom + foreground services) |
-| [`webtrit_callkeep_ios`](webtrit_callkeep_ios/) | iOS implementation (CallKit + PushKit) |
+| [`webtrit_callkeep`](webtrit_callkeep/README.md) | Public API — aggregates the platform implementations |
+| [`webtrit_callkeep_platform_interface`](webtrit_callkeep_platform_interface/README.md) | Shared Dart interface and models |
+| [`webtrit_callkeep_android`](webtrit_callkeep_android/README.md) | Android implementation (Telecom + foreground services) |
+| [`webtrit_callkeep_ios`](webtrit_callkeep_ios/README.md) | iOS implementation (CallKit + PushKit) |
 
 ---
 
