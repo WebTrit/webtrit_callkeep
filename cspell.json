@@ -32,6 +32,14 @@
     "freezed",
     "bloctest",
     "unhold",
-    "unmute"
+    "unmute",
+    "Parcelable",
+    "Parcelables",
+    "unparcel",
+    "backgrounded",
+    "Wakelock",
+    "QUICKBOOT",
+    "POWERON",
+    "reportendcall"
   ]
 }
