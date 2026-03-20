@@ -1,4 +1,4 @@
-package com.webtrit.callkeep.services.services.foreground
+package com.webtrit.callkeep.services.core
 
 import android.os.Build
 import com.webtrit.callkeep.PCallkeepConnectionState

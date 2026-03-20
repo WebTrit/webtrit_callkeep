@@ -8,8 +8,6 @@ import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
-import com.webtrit.callkeep.services.services.foreground.ConnectionTracker
-import com.webtrit.callkeep.services.services.foreground.MainProcessConnectionTracker
 
 /**
  * In-process implementation of [CallkeepCore].
