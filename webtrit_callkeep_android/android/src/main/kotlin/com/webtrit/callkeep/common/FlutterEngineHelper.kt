@@ -12,7 +12,6 @@ class FlutterEngineHelper(
     private val callbackHandle: Long,
     private val service: android.app.Service,
 ) {
-
     var backgroundEngine: FlutterEngine? = null
         private set
 
@@ -39,24 +38,28 @@ class FlutterEngineHelper(
             }
             flutterLoader.ensureInitializationComplete(context.applicationContext, null)
 
-            backgroundEngine = FlutterEngine(context.applicationContext).also { engine ->
-                val callbackInformation =
-                    FlutterCallbackInformation.lookupCallbackInformation(callbackHandle)
+            backgroundEngine =
+                FlutterEngine(context.applicationContext).also { engine ->
+                    val callbackInformation =
+                        FlutterCallbackInformation.lookupCallbackInformation(callbackHandle)
 
-                if (callbackInformation != null) {
-                    val dartCallback = DartCallback(
-                        context.assets, flutterLoader.findAppBundlePath(), callbackInformation
-                    )
-                    engine.dartExecutor.executeDartCallback(dartCallback)
+                    if (callbackInformation != null) {
+                        val dartCallback =
+                            DartCallback(
+                                context.assets,
+                                flutterLoader.findAppBundlePath(),
+                                callbackInformation,
+                            )
+                        engine.dartExecutor.executeDartCallback(dartCallback)
 
-                    engine.serviceControlSurface.attachToService(service, null, true)
-                    isEngineAttached = true
+                        engine.serviceControlSurface.attachToService(service, null, true)
+                        isEngineAttached = true
 
-                    Log.d(TAG, "FlutterEngine initialized and attached successfully")
-                } else {
-                    Log.e(TAG, "Invalid callback handle: $callbackHandle")
+                        Log.d(TAG, "FlutterEngine initialized and attached successfully")
+                    } else {
+                        Log.e(TAG, "Invalid callback handle: $callbackHandle")
+                    }
                 }
-            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize FlutterEngine", e)
         }

@@ -8,7 +8,7 @@ import com.webtrit.callkeep.common.ContextHolder.context
 import com.webtrit.callkeep.managers.NotificationChannelManager.FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID
 import com.webtrit.callkeep.services.services.signaling.SignalingIsolateService
 
-class ForegroundCallNotificationBuilder() : NotificationBuilder() {
+class ForegroundCallNotificationBuilder : NotificationBuilder() {
     private var title = ""
     private var content = ""
 
@@ -23,12 +23,17 @@ class ForegroundCallNotificationBuilder() : NotificationBuilder() {
     override fun build(): Notification {
         if (title.isEmpty() || content.isEmpty()) throw IllegalStateException("Title and content must be set")
 
-        val intent = Intent(context, SignalingIsolateService::class.java).apply {
-            action = ACTION_RESTORE_NOTIFICATION
-        }
-        val deleteIntent = PendingIntent.getService(
-            context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        val intent =
+            Intent(context, SignalingIsolateService::class.java).apply {
+                action = ACTION_RESTORE_NOTIFICATION
+            }
+        val deleteIntent =
+            PendingIntent.getService(
+                context,
+                0,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
 
         val notificationBuilder =
             Notification.Builder(context, FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID).apply {

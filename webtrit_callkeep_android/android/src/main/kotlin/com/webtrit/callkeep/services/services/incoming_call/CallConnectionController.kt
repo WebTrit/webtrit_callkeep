@@ -6,12 +6,17 @@ import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 
 interface CallConnectionController {
     fun answer(metadata: CallMetadata)
+
     fun decline(metadata: CallMetadata)
+
     fun hangUp(metadata: CallMetadata)
+
     fun tearDown()
 }
 
-class DefaultCallConnectionController(private val context: Context) : CallConnectionController {
+class DefaultCallConnectionController(
+    private val context: Context,
+) : CallConnectionController {
     override fun answer(metadata: CallMetadata) {
         PhoneConnectionService.startAnswerCall(context, metadata)
     }

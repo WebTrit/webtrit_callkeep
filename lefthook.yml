@@ -5,6 +5,11 @@ pre-commit:
       exclude: '(\.g\.dart|\.pigeon\.dart|\.freezed\.dart|\.gr\.dart)$'
       run: dart format --line-length 120 {staged_files}
       stage_fixed: true
+    kt-format:
+      glob: '**/*.kt'
+      exclude: 'Generated\.kt$'
+      run: ktlint --format {staged_files}
+      stage_fixed: true
 
 commit-msg:
   commands:

@@ -28,7 +28,10 @@ import java.util.concurrent.TimeUnit
  * - The receiver responds to system boot events and package replacement events.
  */
 class ForegroundCallBootReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
+    override fun onReceive(
+        context: Context,
+        intent: Intent,
+    ) {
         val action = intent.action.orEmpty()
 
         // Skip startup if signaling service is disabled by user or replaced with push notifications
@@ -37,17 +40,17 @@ class ForegroundCallBootReceiver : BroadcastReceiver() {
             return
         }
 
-        if (action !in listOf(
+        if (action !in
+            listOf(
                 Intent.ACTION_MY_PACKAGE_REPLACED,
                 Intent.ACTION_BOOT_COMPLETED,
                 Intent.ACTION_LOCKED_BOOT_COMPLETED,
-                ACTION_QUICKBOOT_POWERON
+                ACTION_QUICKBOOT_POWERON,
             )
         ) {
             Log.w(TAG, "Unhandled broadcast action: $action")
             return
         }
-
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             Log.w(TAG, "PhoneCall-type FGS not allowed to start from BOOT_COMPLETED on Android 14+")
@@ -62,13 +65,15 @@ class ForegroundCallBootReceiver : BroadcastReceiver() {
      * A slight delay is added to ensure the system is ready.
      */
     private fun enqueueSignalingWorker(context: Context) {
-
         val workRequest =
-            OneTimeWorkRequestBuilder<SignalingStartWorker>().setInitialDelay(2, TimeUnit.SECONDS)
+            OneTimeWorkRequestBuilder<SignalingStartWorker>()
+                .setInitialDelay(2, TimeUnit.SECONDS)
                 .build()
 
         WorkManager.getInstance(context).enqueueUniqueWork(
-            WORK_NAME, ExistingWorkPolicy.REPLACE, workRequest
+            WORK_NAME,
+            ExistingWorkPolicy.REPLACE,
+            workRequest,
         )
     }
 
@@ -86,11 +91,11 @@ class ForegroundCallBootReceiver : BroadcastReceiver() {
  * This ensures the service is launched reliably without conflicting with boot-time restrictions.
  */
 class SignalingStartWorker(
-    context: Context, params: WorkerParameters
+    context: Context,
+    params: WorkerParameters,
 ) : CoroutineWorker(context, params) {
-
-    override suspend fun doWork(): Result {
-        return try {
+    override suspend fun doWork(): Result =
+        try {
             val serviceIntent = Intent(applicationContext, SignalingIsolateService::class.java)
             ContextCompat.startForegroundService(applicationContext, serviceIntent)
             Result.success()
@@ -98,7 +103,6 @@ class SignalingStartWorker(
             Log.e(TAG, "Failed to start SignalingIsolateService:  ${e.message}")
             Result.failure()
         }
-    }
 
     companion object {
         private const val TAG = "SignalingStartWorker"

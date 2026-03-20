@@ -1,10 +1,17 @@
 # webtrit_callkeep_web
 
-The web implementation of `webtrit_callkeep`.
+Web stub implementation of [`webtrit_callkeep`](../webtrit_callkeep/README.md).
 
-## Code generation
+This package is a no-op placeholder that satisfies the federated plugin requirement for Web.
+No native call UI or background call handling is implemented. All API methods return silently or
+throw `UnimplementedError`.
 
-To regenerate the Pigeon message files, run:
+---
 
-```bash
-flutter pub run pigeon --input pigeons/callkeep.messages.dart
+## Related packages
+
+| Package | Description |
+|---|---|
+| [`webtrit_callkeep`](../webtrit_callkeep/README.md) | Public API aggregator |
+| [`webtrit_callkeep_android`](../webtrit_callkeep_android/README.md) | Android implementation |
+| [`webtrit_callkeep_ios`](../webtrit_callkeep_ios/README.md) | iOS implementation |

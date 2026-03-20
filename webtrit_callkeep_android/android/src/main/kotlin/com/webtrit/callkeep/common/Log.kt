@@ -2,21 +2,24 @@ package com.webtrit.callkeep.common
 
 import android.os.Handler
 import android.os.Looper
-import android.util.Log as AndroidLog
 import com.webtrit.callkeep.PDelegateLogsFlutterApi
 import com.webtrit.callkeep.PLogTypeEnum
 import java.util.concurrent.CopyOnWriteArrayList
+import android.util.Log as AndroidLog
 
 /**
  * A logging utility that can be instantiated with a specific tag or used statically.
  */
-class Log(private val tag: String) {
-
+class Log(
+    private val tag: String,
+) {
     /**
      * Logs an error message using the instance tag.
      */
-    fun e(message: String, throwable: Throwable? = null) =
-        log(PLogTypeEnum.ERROR, tag, "$message\n$throwable")
+    fun e(
+        message: String,
+        throwable: Throwable? = null,
+    ) = log(PLogTypeEnum.ERROR, tag, "$message\n$throwable")
 
     /**
      * Logs a debug message using the instance tag.
@@ -36,8 +39,10 @@ class Log(private val tag: String) {
     /**
      * Logs a warning message using the instance tag.
      */
-    fun w(message: String, throwable: Throwable? = null) =
-        log(PLogTypeEnum.WARN, tag, "$message\n$throwable")
+    fun w(
+        message: String,
+        throwable: Throwable? = null,
+    ) = log(PLogTypeEnum.WARN, tag, "$message\n$throwable")
 
     companion object {
         /**
@@ -75,7 +80,10 @@ class Log(private val tag: String) {
          * Internal dispatcher for log messages.
          */
         private fun log(
-            type: PLogTypeEnum, tag: String, message: String, throwable: Throwable? = null
+            type: PLogTypeEnum,
+            tag: String,
+            message: String,
+            throwable: Throwable? = null,
         ) {
             val prefixedTag = "$GLOBAL_PREFIX$tag"
             if (isolateDelegates.isEmpty()) {
@@ -89,7 +97,10 @@ class Log(private val tag: String) {
          * Logs to the standard Android system log with proper throwable handling.
          */
         private fun performSystemLog(
-            type: PLogTypeEnum, tag: String, message: String, throwable: Throwable?
+            type: PLogTypeEnum,
+            tag: String,
+            message: String,
+            throwable: Throwable?,
         ) {
             when (type) {
                 PLogTypeEnum.DEBUG -> AndroidLog.d(tag, message, throwable)
@@ -104,20 +115,27 @@ class Log(private val tag: String) {
          * Dispatches log events to the main thread for delegate consumption.
          */
         private fun dispatchToDelegate(
-            type: PLogTypeEnum, tag: String, message: String, throwable: Throwable?
+            type: PLogTypeEnum,
+            tag: String,
+            message: String,
+            throwable: Throwable?,
         ) = mainHandler.post { notifyFirstDelegate(type, tag, message, throwable) }
 
         /**
          * Notifies the primary registered isolate delegate.
          */
         private fun notifyFirstDelegate(
-            type: PLogTypeEnum, tag: String, message: String, throwable: Throwable?
+            type: PLogTypeEnum,
+            tag: String,
+            message: String,
+            throwable: Throwable?,
         ) {
-            val fullMessage = if (throwable != null) {
-                "$message\n${AndroidLog.getStackTraceString(throwable)}"
-            } else {
-                message
-            }
+            val fullMessage =
+                if (throwable != null) {
+                    "$message\n${AndroidLog.getStackTraceString(throwable)}"
+                } else {
+                    message
+                }
             isolateDelegates.firstOrNull()?.onLog(type, tag, fullMessage) {}
         }
 
@@ -125,26 +143,38 @@ class Log(private val tag: String) {
          * Logs an error message. (Static version)
          */
         @JvmStatic
-        fun e(tag: String, message: String, throwable: Throwable? = null) =
-            log(PLogTypeEnum.ERROR, tag, "$message\n$throwable")
+        fun e(
+            tag: String,
+            message: String,
+            throwable: Throwable? = null,
+        ) = log(PLogTypeEnum.ERROR, tag, "$message\n$throwable")
 
         /**
          * Logs a debug message. (Static version)
          */
         @JvmStatic
-        fun d(tag: String, message: String) = log(PLogTypeEnum.DEBUG, tag, message)
+        fun d(
+            tag: String,
+            message: String,
+        ) = log(PLogTypeEnum.DEBUG, tag, message)
 
         /**
          * Logs an informational message. (Static version)
          */
         @JvmStatic
-        fun i(tag: String, message: String) = log(PLogTypeEnum.INFO, tag, message)
+        fun i(
+            tag: String,
+            message: String,
+        ) = log(PLogTypeEnum.INFO, tag, message)
 
         /**
          * Logs a warning message. (Static version)
          */
         @JvmStatic
-        fun w(tag: String, message: String, throwable: Throwable? = null) =
-            log(PLogTypeEnum.WARN, tag, "$message\n$throwable")
+        fun w(
+            tag: String,
+            message: String,
+            throwable: Throwable? = null,
+        ) = log(PLogTypeEnum.WARN, tag, "$message\n$throwable")
     }
 }

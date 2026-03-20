@@ -2,34 +2,42 @@ package com.webtrit.callkeep
 
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.toSignalingStatus
-import com.webtrit.callkeep.models.toPConnection
 import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
-import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
+import com.webtrit.callkeep.services.core.CallkeepCore
 
-class ConnectionsApi() : PHostConnectionsApi {
+class ConnectionsApi : PHostConnectionsApi {
+    private val core: CallkeepCore = CallkeepCore.instance
+
     override fun getConnection(
-        callId: String, callback: (Result<PCallkeepConnection?>) -> Unit
+        callId: String,
+        callback: (Result<PCallkeepConnection?>) -> Unit,
     ) {
-        val connection = PhoneConnectionService.connectionManager.getConnection(callId)
-        callback.invoke(Result.success(connection?.toPConnection()))
+        val connection = core.toPCallkeepConnection(callId)
+        callback.invoke(Result.success(connection))
     }
 
     override fun getConnections(callback: (Result<List<PCallkeepConnection>>) -> Unit) {
-        val connections = PhoneConnectionService.connectionManager.getConnections()
-        callback.invoke(Result.success(connections.mapNotNull { it.toPConnection() }))
+        val connections =
+            core
+                .getAll()
+                .mapNotNull { core.toPCallkeepConnection(it.callId) }
+        callback.invoke(Result.success(connections))
     }
 
     override fun updateActivitySignalingStatus(
-        status: PCallkeepSignalingStatus, callback: (Result<Unit>) -> Unit
+        status: PCallkeepSignalingStatus,
+        callback: (Result<Unit>) -> Unit,
     ) {
         SignalingStatusBroadcaster.setValue(ContextHolder.context, status.toSignalingStatus())
         callback(Result.success(Unit))
     }
 
-    override fun cleanConnections(
-        callback: (Result<Unit>) -> Unit
-    ) {
-        PhoneConnectionService.connectionManager.cleanConnections()
+    override fun cleanConnections(callback: (Result<Unit>) -> Unit) {
+        // Clear the shadow state and send CleanConnections command to :callkeep_core.
+        // PhoneConnectionService handles it by calling connectionManager.cleanConnections()
+        // on its own heap, which is safe cross-process after the split.
+        core.clear()
+        core.sendCleanConnections()
         callback(Result.success(Unit))
     }
 }

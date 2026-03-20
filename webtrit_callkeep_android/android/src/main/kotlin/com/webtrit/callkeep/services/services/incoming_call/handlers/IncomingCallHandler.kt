@@ -3,6 +3,7 @@ package com.webtrit.callkeep.services.services.incoming_call.handlers
 import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.Service
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationManagerCompat
@@ -26,9 +27,8 @@ class IncomingCallHandler(
     private val service: Service,
     private val notificationBuilder: IncomingCallNotificationBuilder,
     private val isolateLaunchPolicy: IsolateLaunchPolicy,
-    private val isolateInitializer: IsolateInitializer
+    private val isolateInitializer: IsolateInitializer,
 ) {
-
     private var lastMetadata: CallMetadata? = null
     private val notifier by lazy { NotificationManagerCompat.from(service) }
 
@@ -39,7 +39,7 @@ class IncomingCallHandler(
     fun handle(metadata: CallMetadata) {
         Log.d(
             TAG,
-            "Handling incoming call: id=${metadata.callId}, handle=${metadata.handle}, " + "name=${metadata.displayName}, video=${metadata.hasVideo}"
+            "Handling incoming call: id=${metadata.callId}, handle=${metadata.handle}, " + "name=${metadata.displayName}, video=${metadata.hasVideo}",
         )
         lastMetadata = metadata
         showNotification(metadata)
@@ -53,8 +53,15 @@ class IncomingCallHandler(
      */
     @SuppressLint("MissingPermission")
     fun releaseIncomingCallNotification(answered: Boolean) {
-        if (answered) muteIncomingCallNotification()
-        else notificationBuilder.updateToReleaseIncomingCallNotification()
+        if (lastMetadata == null) {
+            Log.w(TAG, "releaseIncomingCallNotification: no metadata (service not initialized), skipping")
+            return
+        }
+        if (answered) {
+            muteIncomingCallNotification()
+        } else {
+            notificationBuilder.updateToReleaseIncomingCallNotification()
+        }
     }
 
     /**
@@ -70,9 +77,14 @@ class IncomingCallHandler(
 
     private fun showNotification(metadata: CallMetadata) {
         // Build a high-priority incoming call notification and elevate the Service to foreground.
+        // foregroundServiceType must be passed explicitly: on API 34+ startForeground() without
+        // a type throws InvalidForegroundServiceTypeException when the manifest declares one.
         val notification = notificationBuilder.apply { setCallMetaData(metadata) }.build()
         service.startForegroundServiceCompat(
-            service, IncomingCallNotificationBuilder.NOTIFICATION_ID, notification
+            service,
+            IncomingCallNotificationBuilder.NOTIFICATION_ID,
+            notification,
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL,
         )
     }
 
@@ -84,7 +96,8 @@ class IncomingCallHandler(
             isolateInitializer.start()
         } else {
             Log.d(
-                TAG, "Skipped launching isolate.initializer=$isolateInitializer"
+                TAG,
+                "Skipped launching isolate.initializer=$isolateInitializer",
             )
         }
     }
@@ -97,7 +110,7 @@ class IncomingCallHandler(
             service.startForeground(
                 IncomingCallNotificationBuilder.NOTIFICATION_ID,
                 notification,
-                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL,
             )
         } else {
             service.startForeground(IncomingCallNotificationBuilder.NOTIFICATION_ID, notification)
@@ -112,7 +125,8 @@ class IncomingCallHandler(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             service.stopForeground(Service.STOP_FOREGROUND_DETACH)
         } else {
-            @Suppress("DEPRECATION") service.stopForeground(false)
+            @Suppress("DEPRECATION")
+            service.stopForeground(false)
         }
     }
 
