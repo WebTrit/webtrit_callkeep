@@ -168,7 +168,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('setDelegate(null) mid-call (Android only)', () {
-    test('setDelegate(null) during active call does not crash', () async {
+    testWidgets('setDelegate(null) during active call does not crash', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -194,7 +194,7 @@ void main() {
       await callkeep.tearDown();
     });
 
-    test('setDelegate(null) then restore routes callbacks to restored delegate', () async {
+    testWidgets('setDelegate(null) then restore routes callbacks to restored delegate', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -225,7 +225,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('delegate swap mid-call (Android only)', () {
-    test('swapping to new delegate routes only new delegate receives events', () async {
+    testWidgets('swapping to new delegate routes only new delegate receives events', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -265,7 +265,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('didPushIncomingCall callback (Android only)', () {
-    test('fires with null error on successful push-path registration', () async {
+    testWidgets('fires with null error on successful push-path registration', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -284,7 +284,7 @@ void main() {
       expect(err, isNull);
     });
 
-    test('fires with callIdAlreadyExists on duplicate registration', () async {
+    testWidgets('fires with callIdAlreadyExists on duplicate registration', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -315,7 +315,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('audio session delegate callbacks (Android only)', () {
-    test('didActivateAudioSession fires after answerCall', () async {
+    testWidgets('didActivateAudioSession fires after answerCall', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -347,7 +347,7 @@ void main() {
       }
     });
 
-    test('didDeactivateAudioSession fires after call ends', () async {
+    testWidgets('didDeactivateAudioSession fires after call ends', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;

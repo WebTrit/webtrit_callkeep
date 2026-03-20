@@ -202,7 +202,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('incoming call answered', () {
-    test('answerCall fires performAnswerCall with the correct callId', () async {
+    testWidgets('answerCall fires performAnswerCall with the correct callId', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Alice');
 
@@ -217,7 +217,7 @@ void main() {
       expect(answered, id);
     });
 
-    test('video incoming call: answerCall fires performAnswerCall', () async {
+    testWidgets('video incoming call: answerCall fires performAnswerCall', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Bob', hasVideo: true);
 
@@ -244,7 +244,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('incoming call declined before answer', () {
-    test('endCall on ringing call fires performEndCall', () async {
+    testWidgets('endCall on ringing call fires performEndCall', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Charlie');
 
@@ -260,7 +260,7 @@ void main() {
       expect(delegate.answerCallIds, isEmpty);
     });
 
-    test('endCall fires performEndCall and not performAnswerCall', () async {
+    testWidgets('endCall fires performEndCall and not performAnswerCall', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Dave');
 
@@ -286,7 +286,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('incoming call answered then hung up', () {
-    test('answer then endCall fires performEndCall after performAnswerCall', () async {
+    testWidgets('answer then endCall fires performEndCall after performAnswerCall', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Eve');
 
@@ -322,7 +322,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('remote end (reportEndCall)', () {
-    test('reportEndCall after answer completes without error', () async {
+    testWidgets('reportEndCall after answer completes without error', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Frank');
 
@@ -337,7 +337,7 @@ void main() {
       await callkeep.reportEndCall(id, 'Frank', CallkeepEndCallReason.remoteEnded);
     });
 
-    test('reportEndCall with unanswered reason completes without error', () async {
+    testWidgets('reportEndCall with unanswered reason completes without error', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Grace');
 
@@ -356,7 +356,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('call hold / unhold', () {
-    test('setHeld true fires performSetHeld(onHold: true)', () async {
+    testWidgets('setHeld true fires performSetHeld(onHold: true)', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Hank');
 
@@ -379,7 +379,7 @@ void main() {
       expect(event.onHold, isTrue);
     });
 
-    test('setHeld false fires performSetHeld(onHold: false)', () async {
+    testWidgets('setHeld false fires performSetHeld(onHold: false)', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Irene');
 
@@ -412,7 +412,7 @@ void main() {
       expect(event.onHold, isFalse);
     });
 
-    test('hold/unhold sequence preserves correct call id', () async {
+    testWidgets('hold/unhold sequence preserves correct call id', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Jack');
 
@@ -450,7 +450,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('mute / unmute', () {
-    test('setMuted true fires performSetMuted(muted: true)', () async {
+    testWidgets('setMuted true fires performSetMuted(muted: true)', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Kate');
 
@@ -478,7 +478,7 @@ void main() {
       expect(event.muted, isTrue);
     });
 
-    test('setMuted false fires performSetMuted(muted: false)', () async {
+    testWidgets('setMuted false fires performSetMuted(muted: false)', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Leo');
 
@@ -510,7 +510,7 @@ void main() {
       expect(event.muted, isFalse);
     });
 
-    test('mute does not fire performSetMuted for a different call', () async {
+    testWidgets('mute does not fire performSetMuted for a different call', (WidgetTester _) async {
       // Tests call isolation: muting call A must not trigger performSetMuted
       // for call B. Uses a single answered call to avoid Telecom concurrency
       // limits that prevent reliably answering two calls simultaneously.
@@ -550,7 +550,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('DTMF tones', () {
-    test('sendDTMF fires performSendDTMF with the correct key', () async {
+    testWidgets('sendDTMF fires performSendDTMF with the correct key', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Olivia');
 
@@ -573,7 +573,7 @@ void main() {
       expect(event.key, '5');
     });
 
-    test('multiple DTMF digits are each delivered in order', () async {
+    testWidgets('multiple DTMF digits are each delivered in order', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Paul');
 
@@ -611,7 +611,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('audio device selection (Android only)', () {
-    test('setAudioDevice completes without error on an answered call', () async {
+    testWidgets('setAudioDevice completes without error on an answered call', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -655,7 +655,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('outgoing call lifecycle (Android only)', () {
-    test('startCall fires performStartCall', () async {
+    testWidgets('startCall fires performStartCall', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -675,7 +675,8 @@ void main() {
       expect(started, id);
     });
 
-    test('startCall → reportConnectingOutgoingCall → reportConnectedOutgoingCall completes', () async {
+    testWidgets('startCall → reportConnectingOutgoingCall → reportConnectedOutgoingCall completes',
+        (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -706,7 +707,7 @@ void main() {
       await callkeep.tearDown();
     });
 
-    test('outgoing call endCall before answer fires performEndCall', () async {
+    testWidgets('outgoing call endCall before answer fires performEndCall', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -749,7 +750,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('two simultaneous calls - hold one, answer another', () {
-    test('explicit hold of first call fires performSetHeld before answering second', () async {
+    testWidgets('explicit hold of first call fires performSetHeld before answering second', (WidgetTester _) async {
       // Android Telecom does not guarantee automatic hold when a second call
       // is answered — behavior is device-specific. This test uses an explicit
       // setHeld to validate the hold/answer sequence that CallBloc applies:
@@ -793,7 +794,7 @@ void main() {
       expect(delegate.answerCallIds.contains(id2), isTrue);
     });
 
-    test('both calls are ended independently', () async {
+    testWidgets('both calls are ended independently', (WidgetTester _) async {
       final id1 = _nextId();
       final id2 = _nextId();
 
@@ -826,7 +827,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('reportUpdateCall (display name update)', () {
-    test('reportUpdateCall succeeds on an active incoming call', () async {
+    testWidgets('reportUpdateCall succeeds on an active incoming call', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Unknown');
 
@@ -834,7 +835,7 @@ void main() {
       await callkeep.reportUpdateCall(id, displayName: 'Yara Smith');
     });
 
-    test('reportUpdateCall with same name does not throw', () async {
+    testWidgets('reportUpdateCall with same name does not throw', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Zack');
       await callkeep.reportUpdateCall(id, displayName: 'Zack');
@@ -850,7 +851,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('tearDown with active calls (signaling disconnect scenario)', () {
-    test('tearDown fires performEndCall for an unanswered incoming call', () async {
+    testWidgets('tearDown fires performEndCall for an unanswered incoming call', (WidgetTester _) async {
       globalTearDownNeeded = false;
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Anna');
@@ -866,7 +867,7 @@ void main() {
       expect(delegate.endCallIds.where((c) => c == id).length, 1);
     });
 
-    test('tearDown fires performEndCall for an answered call', () async {
+    testWidgets('tearDown fires performEndCall for an answered call', (WidgetTester _) async {
       globalTearDownNeeded = false;
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Bruno');
@@ -908,7 +909,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('operations on unknown or already-ended callId', () {
-    test('endCall on nonexistent id does not throw', () async {
+    testWidgets('endCall on nonexistent id does not throw', (WidgetTester _) async {
       // Android returns null for endCall on a never-registered callId.
       // The key invariant: no exception must be thrown.
       await expectLater(
@@ -917,12 +918,12 @@ void main() {
       );
     });
 
-    test('answerCall on nonexistent id returns an error', () async {
+    testWidgets('answerCall on nonexistent id returns an error', (WidgetTester _) async {
       final err = await callkeep.answerCall('nonexistent-${_nextId()}');
       expect(err, isNotNull);
     });
 
-    test('setHeld on nonexistent id does not throw', () async {
+    testWidgets('setHeld on nonexistent id does not throw', (WidgetTester _) async {
       // Android returns null for setHeld on a never-registered callId.
       await expectLater(
         callkeep.setHeld('nonexistent-${_nextId()}', onHold: true),
@@ -930,7 +931,7 @@ void main() {
       );
     });
 
-    test('setMuted on nonexistent id does not throw', () async {
+    testWidgets('setMuted on nonexistent id does not throw', (WidgetTester _) async {
       // Android returns null for setMuted on a never-registered callId.
       await expectLater(
         callkeep.setMuted('nonexistent-${_nextId()}', muted: true),
@@ -938,7 +939,7 @@ void main() {
       );
     });
 
-    test('endCall after call already ended returns an error', () async {
+    testWidgets('endCall after call already ended returns an error', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Clara');
 
@@ -953,7 +954,7 @@ void main() {
       expect(secondErr, isNotNull);
     });
 
-    test('answerCall on a call already ended via endCall returns error', () async {
+    testWidgets('answerCall on a call already ended via endCall returns error', (WidgetTester _) async {
       // Mirrors CallBloc defensive check: state.retrieveActiveCall returns null
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Dora');
@@ -975,7 +976,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('operations after reportEndCall', () {
-    test('endCall after reportEndCall(remoteEnded) completes safely', () async {
+    testWidgets('endCall after reportEndCall(remoteEnded) completes safely', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Ellis');
 
@@ -993,7 +994,7 @@ void main() {
       await expectLater(callkeep.endCall(id), completes);
     });
 
-    test('setHeld after reportEndCall(remoteEnded) completes safely', () async {
+    testWidgets('setHeld after reportEndCall(remoteEnded) completes safely', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Flora');
 
@@ -1010,7 +1011,7 @@ void main() {
       await expectLater(callkeep.setHeld(id, onHold: true), completes);
     });
 
-    test('setMuted after reportEndCall(remoteEnded) completes safely', () async {
+    testWidgets('setMuted after reportEndCall(remoteEnded) completes safely', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Glen');
 
@@ -1033,7 +1034,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('DTMF extended keys', () {
-    test("DTMF key '0' fires performSendDTMF with '0'", () async {
+    testWidgets("DTMF key '0' fires performSendDTMF with '0'", (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Helen');
 
@@ -1054,7 +1055,7 @@ void main() {
       expect(key, '0');
     });
 
-    test("DTMF key '*' fires performSendDTMF with '*'", () async {
+    testWidgets("DTMF key '*' fires performSendDTMF with '*'", (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Ivan');
 
@@ -1075,7 +1076,7 @@ void main() {
       expect(key, '*');
     });
 
-    test("DTMF key '#' fires performSendDTMF with '#'", () async {
+    testWidgets("DTMF key '#' fires performSendDTMF with '#'", (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Jane');
 
@@ -1096,7 +1097,7 @@ void main() {
       expect(key, '#');
     });
 
-    test('DTMF keys A, B, C, D are each delivered in order', () async {
+    testWidgets('DTMF keys A, B, C, D are each delivered in order', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Karl');
 
@@ -1131,13 +1132,14 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('reportNewIncomingCall with no displayName', () {
-    test('reportNewIncomingCall with displayName omitted does not return error', () async {
+    testWidgets('reportNewIncomingCall with displayName omitted does not return error', (WidgetTester _) async {
       final id = _nextId();
       final err = await callkeep.reportNewIncomingCall(id, _handle1);
       expect(err, isNull);
     });
 
-    test('reportNewIncomingCall with displayName null and hasVideo true does not return error', () async {
+    testWidgets('reportNewIncomingCall with displayName null and hasVideo true does not return error',
+        (WidgetTester _) async {
       final id = _nextId();
       final err = await callkeep.reportNewIncomingCall(id, _handle1, hasVideo: true);
       expect(err, isNull);
@@ -1149,13 +1151,13 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('reportUpdateCall with handle and flags', () {
-    test('reportUpdateCall with hasVideo=true completes', () async {
+    testWidgets('reportUpdateCall with hasVideo=true completes', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Lena');
       await expectLater(callkeep.reportUpdateCall(id, hasVideo: true), completes);
     });
 
-    test('reportUpdateCall with handle change completes', () async {
+    testWidgets('reportUpdateCall with handle change completes', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Mike');
       await expectLater(
@@ -1164,13 +1166,13 @@ void main() {
       );
     });
 
-    test('reportUpdateCall with proximityEnabled=true completes', () async {
+    testWidgets('reportUpdateCall with proximityEnabled=true completes', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Nora');
       await expectLater(callkeep.reportUpdateCall(id, proximityEnabled: true), completes);
     });
 
-    test('reportUpdateCall with all fields set at once completes', () async {
+    testWidgets('reportUpdateCall with all fields set at once completes', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Oscar');
       await expectLater(
@@ -1191,7 +1193,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('outgoing call extended (Android only)', () {
-    test('startCall with hasVideo=true fires performStartCall', () async {
+    testWidgets('startCall with hasVideo=true fires performStartCall', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -1219,7 +1221,7 @@ void main() {
       await callkeep.tearDown();
     });
 
-    test('startCall with proximityEnabled=true completes', () async {
+    testWidgets('startCall with proximityEnabled=true completes', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -1248,7 +1250,7 @@ void main() {
       await callkeep.tearDown();
     });
 
-    test('full outgoing sequence: start + connect + hold + DTMF + unhold + end', () async {
+    testWidgets('full outgoing sequence: start + connect + hold + DTMF + unhold + end', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -1306,7 +1308,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('handle type diversity (Android only)', () {
-    test('reportNewIncomingCall with CallkeepHandle.generic reports without error', () async {
+    testWidgets('reportNewIncomingCall with CallkeepHandle.generic reports without error', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -1320,7 +1322,7 @@ void main() {
       expect(err, isNull);
     });
 
-    test('reportNewIncomingCall with CallkeepHandle.email reports without error', () async {
+    testWidgets('reportNewIncomingCall with CallkeepHandle.email reports without error', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -1334,7 +1336,7 @@ void main() {
       expect(err, isNull);
     });
 
-    test('startCall with CallkeepHandle.generic fires performStartCall', () async {
+    testWidgets('startCall with CallkeepHandle.generic fires performStartCall', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;

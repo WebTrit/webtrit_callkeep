@@ -166,7 +166,7 @@ void main() {
   // =========================================================================
 
   group('main-process signaling path — answerCall timing (Android only)', () {
-    test('answerCall immediately after reportNewIncomingCall fires performAnswerCall', () async {
+    testWidgets('answerCall immediately after reportNewIncomingCall fires performAnswerCall', (WidgetTester _) async {
       // This is the primary regression test for the broadcast-lag bug.
       // No delay between reportNewIncomingCall and answerCall — exercises the
       // window where tracker.isPending(callId) is true but the CS already has
@@ -192,7 +192,7 @@ void main() {
       expect(answered, id);
     });
 
-    test('answerCall after broadcast settles also fires performAnswerCall', () async {
+    testWidgets('answerCall after broadcast settles also fires performAnswerCall', (WidgetTester _) async {
       // Verifies the normal (non-race) path still works after the fix.
       // A short delay gives the DidPushIncomingCall broadcast time to arrive
       // so tracker.exists() is true when answerCall() is called.
@@ -216,7 +216,7 @@ void main() {
       expect(answered, id);
     });
 
-    test('answerCall fires performAnswerCall exactly once', () async {
+    testWidgets('answerCall fires performAnswerCall exactly once', (WidgetTester _) async {
       // Guards against double-answer: the tracker or deferred-answer path must
       // not cause performAnswerCall to fire twice for a single answerCall().
       if (!Platform.isAndroid) {
@@ -245,7 +245,7 @@ void main() {
       );
     });
 
-    test('video call: answerCall immediately fires performAnswerCall', () async {
+    testWidgets('video call: answerCall immediately fires performAnswerCall', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -275,7 +275,7 @@ void main() {
   // =========================================================================
 
   group('main-process signaling path — endCall (Android only)', () {
-    test('endCall immediately after reportNewIncomingCall fires performEndCall', () async {
+    testWidgets('endCall immediately after reportNewIncomingCall fires performEndCall', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -296,7 +296,7 @@ void main() {
       expect(delegate.answerCallIds, isEmpty);
     });
 
-    test('endCall fires performEndCall exactly once', () async {
+    testWidgets('endCall fires performEndCall exactly once', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -322,7 +322,7 @@ void main() {
       );
     });
 
-    test('answer then endCall fires performEndCall once (not for answered call twice)', () async {
+    testWidgets('answer then endCall fires performEndCall once (not for answered call twice)', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -361,7 +361,7 @@ void main() {
   // =========================================================================
 
   group('main-process signaling path — tearDown (Android only)', () {
-    test('tearDown fires performEndCall for an unanswered main-process call', () async {
+    testWidgets('tearDown fires performEndCall for an unanswered main-process call', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -386,7 +386,7 @@ void main() {
       );
     });
 
-    test('tearDown fires performEndCall exactly once for an answered call', () async {
+    testWidgets('tearDown fires performEndCall exactly once for an answered call', (WidgetTester _) async {
       // Regression: with the stale-pending bug, tearDown fired performEndCall
       // twice — once from tracker.getAll() and once from
       // drainUnconnectedPendingCallIds() when the call was still in pendingCallIds.
@@ -423,7 +423,7 @@ void main() {
       );
     });
 
-    test('tearDown fires performEndCall for every active main-process call', () async {
+    testWidgets('tearDown fires performEndCall for every active main-process call', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -460,7 +460,7 @@ void main() {
   // =========================================================================
 
   group('main-process signaling path — deduplication (Android only)', () {
-    test('duplicate reportNewIncomingCall returns callIdAlreadyExists', () async {
+    testWidgets('duplicate reportNewIncomingCall returns callIdAlreadyExists', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -478,7 +478,7 @@ void main() {
       );
     });
 
-    test('answered call re-report returns callIdAlreadyExistsAndAnswered', () async {
+    testWidgets('answered call re-report returns callIdAlreadyExistsAndAnswered', (WidgetTester _) async {
       // Regression: before the removePending fix, the stale pendingCallIds entry
       // from the rejected re-report caused tearDown to fire performEndCall twice.
       if (!Platform.isAndroid) {
@@ -504,7 +504,7 @@ void main() {
       );
     });
 
-    test('re-report after reject does not cause double performEndCall on tearDown', () async {
+    testWidgets('re-report after reject does not cause double performEndCall on tearDown', (WidgetTester _) async {
       // Verifies that removePending() is called when CS rejects the re-report,
       // so tearDown does not see the callId in both getAll() and
       // drainUnconnectedPendingCallIds() and fire performEndCall twice.
@@ -566,7 +566,7 @@ void main() {
   // =========================================================================
 
   group('cold-start adoption — already-answered re-report (Android only)', () {
-    test('re-report of already-answered call fires performAnswerCall', () async {
+    testWidgets('re-report of already-answered call fires performAnswerCall', (WidgetTester _) async {
       // Regression: the ALREADY_ANSWERED early-exit returned without firing
       // performAnswerCall, so WebRTC never started after cold-start adoption.
       if (!Platform.isAndroid) {
@@ -600,7 +600,7 @@ void main() {
       expect(delegate.answerCallIds.where((c) => c == id).length, greaterThanOrEqualTo(2));
     });
 
-    test('endCall succeeds after cold-start adoption', () async {
+    testWidgets('endCall succeeds after cold-start adoption', (WidgetTester _) async {
       // Regression: promote() was never called in the ALREADY_ANSWERED branch,
       // so core.exists(callId) was false and endCall() logged
       // "no connection or pending entry" without firing performEndCall.
@@ -634,7 +634,7 @@ void main() {
       expect(ended, id);
     });
 
-    test('tearDown fires performEndCall exactly once after cold-start adoption', () async {
+    testWidgets('tearDown fires performEndCall exactly once after cold-start adoption', (WidgetTester _) async {
       // After cold-start adoption, tearDown must find the call via getAll()
       // (promote() was called) and fire performEndCall exactly once.
       // drainUnconnectedPendingCallIds() must not also include it (promote()

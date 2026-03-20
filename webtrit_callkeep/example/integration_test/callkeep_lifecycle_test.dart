@@ -50,12 +50,12 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('isSetUp state machine', () {
-    test('isSetUp returns true after setUp', () async {
+    testWidgets('isSetUp returns true after setUp', (WidgetTester _) async {
       final result = await callkeep.isSetUp();
       expect(result, isTrue);
     });
 
-    test('isSetUp returns false after tearDown', () async {
+    testWidgets('isSetUp returns false after tearDown', (WidgetTester _) async {
       // Android: ForegroundService persists after tearDown, so isSetUp() may
       // remain true. Only assert on iOS where tearDown fully stops CallKit.
       if (!kIsWeb && Platform.isAndroid) {
@@ -68,7 +68,7 @@ void main() {
       expect(result, isFalse);
     });
 
-    test('isSetUp returns false after re-tearDown in second cycle', () async {
+    testWidgets('isSetUp returns false after re-tearDown in second cycle', (WidgetTester _) async {
       // Android: same as above — ForegroundService keeps isSetUp true.
       if (!kIsWeb && Platform.isAndroid) {
         markTestSkipped('Android ForegroundService persists; isSetUp always true');
@@ -91,7 +91,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('statusStream transitions', () {
-    test('setUp emits configuring then active', () async {
+    testWidgets('setUp emits configuring then active', (WidgetTester _) async {
       // Must subscribe BEFORE tearDown/setUp cycle to capture events
       globalTearDownNeeded = false;
       await callkeep.tearDown();
@@ -113,7 +113,7 @@ void main() {
       );
     });
 
-    test('tearDown emits terminating then uninitialized', () async {
+    testWidgets('tearDown emits terminating then uninitialized', (WidgetTester _) async {
       globalTearDownNeeded = false;
 
       final events = <CallkeepStatus>[];
@@ -131,7 +131,8 @@ void main() {
       );
     });
 
-    test('full setUp+tearDown cycle emits [configuring, active, terminating, uninitialized] in order', () async {
+    testWidgets('full setUp+tearDown cycle emits [configuring, active, terminating, uninitialized] in order',
+        (WidgetTester _) async {
       globalTearDownNeeded = false;
       await callkeep.tearDown();
       await Future.delayed(const Duration(milliseconds: 50));
@@ -170,17 +171,17 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('currentStatus sync getter', () {
-    test('currentStatus is active after setUp', () async {
+    testWidgets('currentStatus is active after setUp', (WidgetTester _) async {
       expect(callkeep.currentStatus, CallkeepStatus.active);
     });
 
-    test('currentStatus is uninitialized after tearDown', () async {
+    testWidgets('currentStatus is uninitialized after tearDown', (WidgetTester _) async {
       globalTearDownNeeded = false;
       await callkeep.tearDown();
       expect(callkeep.currentStatus, CallkeepStatus.uninitialized);
     });
 
-    test('currentStatus is uninitialized after re-tearDown in second cycle', () async {
+    testWidgets('currentStatus is uninitialized after re-tearDown in second cycle', (WidgetTester _) async {
       globalTearDownNeeded = false;
       await callkeep.tearDown();
       await callkeep.setUp(_options);
@@ -195,7 +196,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('multiple setUp/tearDown cycles', () {
-    test('tearDown then setUp restores active status', () async {
+    testWidgets('tearDown then setUp restores active status', (WidgetTester _) async {
       globalTearDownNeeded = false;
       await callkeep.tearDown();
       expect(callkeep.currentStatus, CallkeepStatus.uninitialized);
@@ -205,7 +206,7 @@ void main() {
       await callkeep.tearDown();
     });
 
-    test('two cycles without error', () async {
+    testWidgets('two cycles without error', (WidgetTester _) async {
       globalTearDownNeeded = false;
 
       // Cycle 1
@@ -219,7 +220,7 @@ void main() {
       await callkeep.tearDown();
     });
 
-    test('isSetUp returns true after each re-setUp', () async {
+    testWidgets('isSetUp returns true after each re-setUp', (WidgetTester _) async {
       globalTearDownNeeded = false;
 
       await callkeep.tearDown();

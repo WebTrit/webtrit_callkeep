@@ -178,11 +178,11 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('setUp / tearDown lifecycle', () {
-    test('isSetUp returns true after setUp', () async {
+    testWidgets('isSetUp returns true after setUp', (WidgetTester _) async {
       expect(await callkeep.isSetUp(), isTrue);
     });
 
-    test('tearDown then re-setUp works', () async {
+    testWidgets('tearDown then re-setUp works', (WidgetTester _) async {
       globalTearDownNeeded = false;
       await callkeep.tearDown();
       await callkeep.setUp(_options);
@@ -195,7 +195,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('reportNewIncomingCall - deduplication', () {
-    test('fresh call ID succeeds', () async {
+    testWidgets('fresh call ID succeeds', (WidgetTester _) async {
       final id = _nextId();
 
       final err = await callkeep.reportNewIncomingCall(
@@ -206,7 +206,7 @@ void main() {
       expect(err, isNull);
     });
 
-    test('second report with same ID returns callIdAlreadyExists', () async {
+    testWidgets('second report with same ID returns callIdAlreadyExists', (WidgetTester _) async {
       final id = _nextId();
 
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
@@ -219,7 +219,7 @@ void main() {
       expect(err, CallkeepIncomingCallError.callIdAlreadyExists);
     });
 
-    test('spam 4x same ID - only first succeeds', () async {
+    testWidgets('spam 4x same ID - only first succeeds', (WidgetTester _) async {
       final id = _nextId();
       final results = <CallkeepIncomingCallError?>[];
 
@@ -235,7 +235,7 @@ void main() {
       }
     });
 
-    test('two different call IDs both succeed', () async {
+    testWidgets('two different call IDs both succeed', (WidgetTester _) async {
       final id1 = _nextId();
       final id2 = _nextId();
 
@@ -260,7 +260,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('call lifecycle', () {
-    test('answerCall triggers performAnswerCall callback', () async {
+    testWidgets('answerCall triggers performAnswerCall callback', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
 
@@ -276,7 +276,7 @@ void main() {
       expect(answeredId, id);
     });
 
-    test('endCall on incoming call triggers performEndCall callback', () async {
+    testWidgets('endCall on incoming call triggers performEndCall callback', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
 
@@ -292,7 +292,7 @@ void main() {
       expect(endedId, id);
     });
 
-    test('endCall after answerCall triggers performEndCall', () async {
+    testWidgets('endCall after answerCall triggers performEndCall', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
 
@@ -312,7 +312,7 @@ void main() {
       expect(endedId, id);
     });
 
-    test('endCall twice - second call returns error, delegate fires once', () async {
+    testWidgets('endCall twice - second call returns error, delegate fires once', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
 
@@ -333,7 +333,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('stress - rapid succession', () {
-    test('report two calls then end both - each performEndCall fires once', () async {
+    testWidgets('report two calls then end both - each performEndCall fires once', (WidgetTester _) async {
       final id1 = _nextId();
       final id2 = _nextId();
 
@@ -361,7 +361,7 @@ void main() {
       expect(endedIds.length, 2);
     });
 
-    test('spam same ID concurrently - exactly one succeeds', () async {
+    testWidgets('spam same ID concurrently - exactly one succeeds', (WidgetTester _) async {
       final id = _nextId();
       final futures = List.generate(
         4,
@@ -373,7 +373,7 @@ void main() {
       expect(successes, 1, reason: 'exactly one concurrent report must succeed');
     });
 
-    test('tearDown while calls are active triggers performEndCall for each', () async {
+    testWidgets('tearDown while calls are active triggers performEndCall for each', (WidgetTester _) async {
       globalTearDownNeeded = false; // we call tearDown() ourselves below
       final id1 = _nextId();
       final id2 = _nextId();
@@ -424,7 +424,7 @@ void main() {
     /// (WebSocket teardown). The observable effect from Flutter is that
     /// performEndCall fires; the absence of performAnswerCall confirms the
     /// correct (decline, not answer) callback sequence ran.
-    test('decline unanswered call fires performEndCall, not performAnswerCall', () async {
+    testWidgets('decline unanswered call fires performEndCall, not performAnswerCall', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -474,7 +474,7 @@ void main() {
     /// With the old code, the immediate decline could close the WebSocket
     /// before the BYE was sent. The fix serialises the teardown so BYE
     /// always precedes WebSocket close.
-    test('immediate decline (no delay) still fires performEndCall', () async {
+    testWidgets('immediate decline (no delay) still fires performEndCall', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -506,7 +506,7 @@ void main() {
     /// with the same ID must return callIdAlreadyTerminated, confirming that
     /// the full cleanup path (performEndCall → release → releaseResources)
     /// completed and the ConnectionManager's terminated set was updated.
-    test('after decline, re-reporting same ID returns callIdAlreadyTerminated', () async {
+    testWidgets('after decline, re-reporting same ID returns callIdAlreadyTerminated', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -562,7 +562,8 @@ void main() {
     /// `callIdAlreadyExists`.  The answered variant tells Flutter that the call
     /// is already active so it can show the in-call UI instead of treating it
     /// as a generic duplicate error.
-    test('answered call - second reportNewIncomingCall returns callIdAlreadyExistsAndAnswered', () async {
+    testWidgets('answered call - second reportNewIncomingCall returns callIdAlreadyExistsAndAnswered',
+        (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -617,7 +618,7 @@ void main() {
     /// Uses a single call to avoid Telecom state accumulation issues that can
     /// cause a second concurrent call to not be fully registered by tearDown time.
     /// The multi-call tearDown property is covered by the stress group test.
-    test('tearDown fires performEndCall for an active call', () async {
+    testWidgets('tearDown fires performEndCall for an active call', (WidgetTester _) async {
       globalTearDownNeeded = false; // we call tearDown() ourselves below
       final id = _nextId();
 
@@ -638,14 +639,14 @@ void main() {
       expect(delegate.endCallIds.where((e) => e == id).length, 1);
     });
 
-    test('tearDown with no active calls does not fire performEndCall', () async {
+    testWidgets('tearDown with no active calls does not fire performEndCall', (WidgetTester _) async {
       globalTearDownNeeded = false; // we call tearDown() ourselves below
       await callkeep.tearDown();
 
       expect(delegate.endCallIds, isEmpty);
     });
 
-    test('tearDown fires performEndCall exactly once per call', () async {
+    testWidgets('tearDown fires performEndCall exactly once per call', (WidgetTester _) async {
       globalTearDownNeeded = false; // we call tearDown() ourselves below
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
@@ -672,7 +673,7 @@ void main() {
     /// The 5-second timeout in SignalingIsolateService.endCall guarantees that
     /// the Future always resolves even if the broadcast confirmation never
     /// arrives (e.g. callkeep_core process killed). Verify no indefinite hang.
-    test('endCall future always resolves within timeout', () async {
+    testWidgets('endCall future always resolves within timeout', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
 
@@ -687,7 +688,7 @@ void main() {
     /// the test suite that can cause a second concurrent call to not register
     /// fully before tearDown. The count == 1 property still validates the
     /// "count equals active calls" invariant.
-    test('tearDown callback count equals number of active calls', () async {
+    testWidgets('tearDown callback count equals number of active calls', (WidgetTester _) async {
       globalTearDownNeeded = false; // we call tearDown() ourselves below
       final id = _nextId();
 
@@ -718,7 +719,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('stress - push + direct (Android only)', () {
-    test('push then direct same ID - direct returns callIdAlreadyExists', () async {
+    testWidgets('push then direct same ID - direct returns callIdAlreadyExists', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -741,7 +742,7 @@ void main() {
       expect(err, CallkeepIncomingCallError.callIdAlreadyExists);
     });
 
-    test('mixed push + direct spam 3x same ID - system stays stable', () async {
+    testWidgets('mixed push + direct spam 3x same ID - system stays stable', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -790,7 +791,7 @@ void main() {
     // After reportNewIncomingCall (signaling path), the DidPushIncomingCall
     // broadcast from :callkeep_core must NOT reach Flutter as didPushIncomingCall.
     // If it did, CallBloc would add a second ActiveCall for the same callId.
-    test('reportNewIncomingCall via signaling does not fire didPushIncomingCall', () async {
+    testWidgets('reportNewIncomingCall via signaling does not fire didPushIncomingCall', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -814,7 +815,7 @@ void main() {
     });
 
     // Push path must still fire didPushIncomingCall (unchanged behaviour).
-    test('push-path reportNewIncomingCall still fires didPushIncomingCall', () async {
+    testWidgets('push-path reportNewIncomingCall still fires didPushIncomingCall', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -849,7 +850,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('performAudioDevicesUpdate callback (Android only)', () {
-    test('performAudioDevicesUpdate fires with non-empty devices after answerCall', () async {
+    testWidgets('performAudioDevicesUpdate fires with non-empty devices after answerCall', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;

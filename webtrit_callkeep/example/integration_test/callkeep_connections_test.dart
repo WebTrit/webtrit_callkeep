@@ -189,7 +189,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('CallkeepConnections.getConnection (Android only)', () {
-    test('getConnection returns null for nonexistent callId', () async {
+    testWidgets('getConnection returns null for nonexistent callId', (WidgetTester _) async {
       if (kIsWeb || !Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -198,7 +198,7 @@ void main() {
       expect(conn, isNull);
     });
 
-    test('getConnection returns stateRinging after reportNewIncomingCall', () async {
+    testWidgets('getConnection returns stateRinging after reportNewIncomingCall', (WidgetTester _) async {
       if (kIsWeb || !Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -212,7 +212,7 @@ void main() {
       expect(conn.state, CallkeepConnectionState.stateRinging);
     });
 
-    test('getConnection returns stateActive after answerCall', () async {
+    testWidgets('getConnection returns stateActive after answerCall', (WidgetTester _) async {
       if (kIsWeb || !Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -232,7 +232,7 @@ void main() {
       expect(conn!.state, CallkeepConnectionState.stateActive);
     });
 
-    test('getConnection returns stateHolding after setHeld(true)', () async {
+    testWidgets('getConnection returns stateHolding after setHeld(true)', (WidgetTester _) async {
       if (kIsWeb || !Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -254,7 +254,7 @@ void main() {
       expect(conn!.state, CallkeepConnectionState.stateHolding);
     });
 
-    test('getConnection returns null or stateDisconnected after endCall', () async {
+    testWidgets('getConnection returns null or stateDisconnected after endCall', (WidgetTester _) async {
       if (kIsWeb || !Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -275,7 +275,7 @@ void main() {
       expect(isGone, isTrue);
     });
 
-    test('getConnection returns null on non-Android (no-op path)', () async {
+    testWidgets('getConnection returns null on non-Android (no-op path)', (WidgetTester _) async {
       if (!kIsWeb && Platform.isAndroid) {
         markTestSkipped('Non-Android only');
         return;
@@ -290,7 +290,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('CallkeepConnections.getConnections (Android only)', () {
-    test('getConnections has no entry for a nonexistent callId before any call', () async {
+    testWidgets('getConnections has no entry for a nonexistent callId before any call', (WidgetTester _) async {
       if (kIsWeb || !Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -301,7 +301,7 @@ void main() {
       expect(connections, isA<List<CallkeepConnection>>());
     });
 
-    test('getConnections includes connection after reportNewIncomingCall', () async {
+    testWidgets('getConnections includes connection after reportNewIncomingCall', (WidgetTester _) async {
       if (kIsWeb || !Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -313,7 +313,7 @@ void main() {
       expect(found, isTrue);
     });
 
-    test('getConnections includes both connections for two concurrent calls', () async {
+    testWidgets('getConnections includes both connections for two concurrent calls', (WidgetTester _) async {
       if (kIsWeb || !Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -344,7 +344,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('CallkeepConnections.cleanConnections (Android only)', () {
-    test('cleanConnections completes without error on empty state', () async {
+    testWidgets('cleanConnections completes without error on empty state', (WidgetTester _) async {
       if (kIsWeb || !Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -352,7 +352,7 @@ void main() {
       await expectLater(CallkeepConnections().cleanConnections(), completes);
     });
 
-    test('cleanConnections removes all active connections', () async {
+    testWidgets('cleanConnections removes all active connections', (WidgetTester _) async {
       if (kIsWeb || !Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -375,7 +375,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('CallkeepConnections.updateActivitySignalingStatus (Android only)', () {
-    test('updateActivitySignalingStatus completes for each enum value', () async {
+    testWidgets('updateActivitySignalingStatus completes for each enum value', (WidgetTester _) async {
       if (kIsWeb || !Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -388,7 +388,7 @@ void main() {
       }
     });
 
-    test('updateActivitySignalingStatus after tearDown does not throw', () async {
+    testWidgets('updateActivitySignalingStatus after tearDown does not throw', (WidgetTester _) async {
       if (kIsWeb || !Platform.isAndroid) {
         markTestSkipped('Android only');
         return;

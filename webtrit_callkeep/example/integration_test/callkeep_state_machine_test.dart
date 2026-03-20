@@ -184,7 +184,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('full state machine: answer -> hold -> mute -> unmute -> unhold -> end', () {
-    test('all 6 steps verified with individual latches', () async {
+    testWidgets('all 6 steps verified with individual latches', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Alice');
 
@@ -256,7 +256,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('mute while on hold (Android only)', () {
-    test('setMuted(true) while held fires performSetMuted(true)', () async {
+    testWidgets('setMuted(true) while held fires performSetMuted(true)', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -293,7 +293,7 @@ void main() {
       expect(event.muted, isTrue);
     });
 
-    test('setMuted(false) while held fires performSetMuted(false)', () async {
+    testWidgets('setMuted(false) while held fires performSetMuted(false)', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -344,7 +344,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('DTMF while on hold (Android only)', () {
-    test("sendDTMF('5') while held fires performSendDTMF", () async {
+    testWidgets("sendDTMF('5') while held fires performSendDTMF", (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -385,7 +385,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('two-call hold swap (Android only)', () {
-    test('hold call1, answer call2, unhold call1 produces correct holdEvents', () async {
+    testWidgets('hold call1, answer call2, unhold call1 produces correct holdEvents', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -445,7 +445,7 @@ void main() {
       expect(delegate.answerCallIds.contains(id2), isTrue);
     });
 
-    test('DTMF on call2 while call1 is held routes only to call2', () async {
+    testWidgets('DTMF on call2 while call1 is held routes only to call2', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -501,7 +501,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('nested controls: mute then hold (Android only)', () {
-    test('mute then hold then end fires each callback exactly once', () async {
+    testWidgets('mute then hold then end fires each callback exactly once', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;

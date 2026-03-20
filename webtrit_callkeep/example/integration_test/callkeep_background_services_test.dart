@@ -208,7 +208,7 @@ void main() {
     //          CallBloc._onCallPushEventIncoming vs _onCallSignalingEventIncoming
     // -----------------------------------------------------------------------
 
-    test('push-path report then main-process report returns callIdAlreadyExists', () async {
+    testWidgets('push-path report then main-process report returns callIdAlreadyExists', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -228,7 +228,7 @@ void main() {
       );
     });
 
-    test('push-path duplicate report returns callIdAlreadyExists', () async {
+    testWidgets('push-path duplicate report returns callIdAlreadyExists', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -249,7 +249,7 @@ void main() {
       );
     });
 
-    test('concurrent push-path spam — exactly one succeeds', () async {
+    testWidgets('concurrent push-path spam — exactly one succeeds', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -283,7 +283,7 @@ void main() {
     // Matches: IsolateManager._onHangupCall → endCallOnService(callId)
     // -----------------------------------------------------------------------
 
-    test('push-path call endCall fires performEndCall on main delegate', () async {
+    testWidgets('push-path call endCall fires performEndCall on main delegate', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -322,7 +322,7 @@ void main() {
     // IncomingCallService (push isolate), which is only started by FCM.
     // We use callkeep.endCall() per call instead to end Telecom connections
     // and verify performEndCall fires for each one.
-    test('push-path endCalls fires performEndCall for every active call', () async {
+    testWidgets('push-path endCalls fires performEndCall for every active call', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -368,7 +368,8 @@ void main() {
     //          CallBloc._onCallPushEventIncoming error handling
     // -----------------------------------------------------------------------
 
-    test('push-path call answered → main-process report returns callIdAlreadyExistsAndAnswered', () async {
+    testWidgets('push-path call answered → main-process report returns callIdAlreadyExistsAndAnswered',
+        (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -411,7 +412,8 @@ void main() {
     // Matches: IsolateManager close() → endCallsOnService() → releaseResources
     // -----------------------------------------------------------------------
 
-    test('after push service ends a call, re-reporting same id returns callIdAlreadyTerminated', () async {
+    testWidgets('after push service ends a call, re-reporting same id returns callIdAlreadyTerminated',
+        (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -456,7 +458,7 @@ void main() {
     // Matches: CallBloc.close() → callkeep.tearDown()
     // -----------------------------------------------------------------------
 
-    test('callkeep tearDown fires performEndCall for push-path active call', () async {
+    testWidgets('callkeep tearDown fires performEndCall for push-path active call', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -512,7 +514,7 @@ void main() {
     //          BackgroundSignalingService.incomingCall
     // -----------------------------------------------------------------------
 
-    test('signaling service incomingCall creates a call recognised by main process', () async {
+    testWidgets('signaling service incomingCall creates a call recognised by main process', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -536,7 +538,7 @@ void main() {
       );
     });
 
-    test('signaling service incomingCall duplicate returns callIdAlreadyExists', () async {
+    testWidgets('signaling service incomingCall duplicate returns callIdAlreadyExists', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -561,7 +563,7 @@ void main() {
     //          BackgroundSignalingService.endCall
     // -----------------------------------------------------------------------
 
-    test('signaling service endCall fires performEndCall on main delegate', () async {
+    testWidgets('signaling service endCall fires performEndCall on main delegate', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -583,7 +585,7 @@ void main() {
       expect(ended, id);
     });
 
-    test('signaling service endCall fires performEndCall exactly once', () async {
+    testWidgets('signaling service endCall fires performEndCall exactly once', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -621,7 +623,7 @@ void main() {
     //          IsolateManager._onUnregistered    → endCallsOnService()
     // -----------------------------------------------------------------------
 
-    test('signaling service endCalls fires performEndCall for every active call', () async {
+    testWidgets('signaling service endCalls fires performEndCall for every active call', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -650,7 +652,7 @@ void main() {
       expect(endedIds, containsAll([id1, id2]));
     });
 
-    test('signaling service endCalls with no active calls does not fire performEndCall', () async {
+    testWidgets('signaling service endCalls with no active calls does not fire performEndCall', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -673,7 +675,8 @@ void main() {
     // Matches: SignalingForegroundIsolateManager + CallBloc resume flow
     // -----------------------------------------------------------------------
 
-    test('signaling-service call answered → main-process report returns callIdAlreadyExistsAndAnswered', () async {
+    testWidgets('signaling-service call answered → main-process report returns callIdAlreadyExistsAndAnswered',
+        (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -710,7 +713,7 @@ void main() {
     //          → IsolateManager.close() → endCallsOnService()
     // -----------------------------------------------------------------------
 
-    test('callkeep tearDown fires performEndCall for signaling-service active call', () async {
+    testWidgets('callkeep tearDown fires performEndCall for signaling-service active call', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -761,7 +764,7 @@ void main() {
     // (typically in main.dart). Service must start without error.
     // -----------------------------------------------------------------------
 
-    test('setUp then startService completes without error', () async {
+    testWidgets('setUp then startService completes without error', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -778,7 +781,7 @@ void main() {
       );
     });
 
-    test('startService is idempotent — calling twice does not throw', () async {
+    testWidgets('startService is idempotent — calling twice does not throw', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -791,7 +794,7 @@ void main() {
       );
     });
 
-    test('stopService completes without error', () async {
+    testWidgets('stopService completes without error', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -805,7 +808,7 @@ void main() {
       );
     });
 
-    test('stopService without prior startService does not throw', () async {
+    testWidgets('stopService without prior startService does not throw', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -819,7 +822,7 @@ void main() {
       );
     });
 
-    test('start → stop → start cycle completes without error', () async {
+    testWidgets('start → stop → start cycle completes without error', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -855,7 +858,8 @@ void main() {
     // registration must succeed; the second must be rejected as duplicate.
     // -----------------------------------------------------------------------
 
-    test('push then signaling service for same callId — signaling report returns callIdAlreadyExists', () async {
+    testWidgets('push then signaling service for same callId — signaling report returns callIdAlreadyExists',
+        (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -871,7 +875,8 @@ void main() {
       expect(err, CallkeepIncomingCallError.callIdAlreadyExists);
     });
 
-    test('signaling then push service for same callId — push report returns callIdAlreadyExists', () async {
+    testWidgets('signaling then push service for same callId — push report returns callIdAlreadyExists',
+        (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -900,7 +905,7 @@ void main() {
     // signaling service call.
     // -----------------------------------------------------------------------
 
-    test('push service endCall does not affect a separate signaling service call', () async {
+    testWidgets('push service endCall does not affect a separate signaling service call', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;

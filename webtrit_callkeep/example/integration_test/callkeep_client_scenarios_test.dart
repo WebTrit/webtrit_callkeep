@@ -169,7 +169,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('answerCall idempotency (Android only)', () {
-    test('answerCall twice fires performAnswerCall exactly once', () async {
+    testWidgets('answerCall twice fires performAnswerCall exactly once', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -198,7 +198,7 @@ void main() {
       );
     });
 
-    test('answerCall on a call already ended via endCall returns error', () async {
+    testWidgets('answerCall on a call already ended via endCall returns error', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -223,7 +223,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('endCall returns unknownCallUuid after reportEndCall (Android only)', () {
-    test('endCall after reportEndCall(remoteEnded) returns unknownCallUuid or null', () async {
+    testWidgets('endCall after reportEndCall(remoteEnded) returns unknownCallUuid or null', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -262,7 +262,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('WebtritCallkeepSound ringback (Android only)', () {
-    test('playRingbackSound completes without error', () async {
+    testWidgets('playRingbackSound completes without error', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -270,7 +270,7 @@ void main() {
       await expectLater(WebtritCallkeepSound().playRingbackSound(), completes);
     });
 
-    test('stopRingbackSound completes without error', () async {
+    testWidgets('stopRingbackSound completes without error', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -279,7 +279,7 @@ void main() {
       await expectLater(WebtritCallkeepSound().stopRingbackSound(), completes);
     });
 
-    test('stopRingbackSound when not playing is safe', () async {
+    testWidgets('stopRingbackSound when not playing is safe', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -293,7 +293,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('performAnswerCall returning false is handled gracefully (Android only)', () {
-    test('performAnswerCall returning false does not crash callkeep', () async {
+    testWidgets('performAnswerCall returning false does not crash callkeep', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -318,7 +318,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('updateActivitySignalingStatus rapid transitions (Android only)', () {
-    test('rapid updateActivitySignalingStatus calls do not crash', () async {
+    testWidgets('rapid updateActivitySignalingStatus calls do not crash', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -344,7 +344,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('setDelegate(null) in close() pattern (Android only)', () {
-    test('tearDown after setDelegate(null) does not crash or fire stale callbacks', () async {
+    testWidgets('tearDown after setDelegate(null) does not crash or fire stale callbacks', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -375,7 +375,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('performEndCall async contract (Android only)', () {
-    test('performEndCall async work is awaited before native connection cleanup', () async {
+    testWidgets('performEndCall async work is awaited before native connection cleanup', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -417,7 +417,7 @@ void main() {
       );
     });
 
-    test('performEndCall returning false is handled gracefully', () async {
+    testWidgets('performEndCall returning false is handled gracefully', (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;
@@ -443,7 +443,8 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('performEndCall during signaling connect race (Android only)', () {
-    test('endCall fires performEndCall even when called immediately after reportNewIncomingCall', () async {
+    testWidgets('endCall fires performEndCall even when called immediately after reportNewIncomingCall',
+        (WidgetTester _) async {
       if (!Platform.isAndroid) {
         markTestSkipped('Android only');
         return;

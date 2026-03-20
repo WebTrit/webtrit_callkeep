@@ -134,7 +134,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('reportEndCall - all reasons', () {
-    test('reportEndCall with failed on ringing call completes', () async {
+    testWidgets('reportEndCall with failed on ringing call completes', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Alice');
       await expectLater(
@@ -143,7 +143,7 @@ void main() {
       );
     });
 
-    test('reportEndCall with answeredElsewhere on ringing call completes', () async {
+    testWidgets('reportEndCall with answeredElsewhere on ringing call completes', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Bob');
       await expectLater(
@@ -152,7 +152,7 @@ void main() {
       );
     });
 
-    test('reportEndCall with declinedElsewhere on ringing call completes', () async {
+    testWidgets('reportEndCall with declinedElsewhere on ringing call completes', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Carol');
       await expectLater(
@@ -161,7 +161,7 @@ void main() {
       );
     });
 
-    test('reportEndCall with missed on ringing call completes', () async {
+    testWidgets('reportEndCall with missed on ringing call completes', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Dan');
       await expectLater(
@@ -170,7 +170,7 @@ void main() {
       );
     });
 
-    test('all six CallkeepEndCallReason values in a loop complete without exception', () async {
+    testWidgets('all six CallkeepEndCallReason values in a loop complete without exception', (WidgetTester _) async {
       for (final reason in CallkeepEndCallReason.values) {
         final id = _nextId();
         await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Test');
