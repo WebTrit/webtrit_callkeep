@@ -482,6 +482,39 @@ Feel free to explore it, fork it, and use it as a starting point for your own ap
 
 ---
 
+## Integration Tests (Android)
+
+Integration tests live in
+[`webtrit_callkeep/example/integration_test/`](webtrit_callkeep/example/integration_test/)
+and cover lifecycle, call scenarios, state machine, foreground service timing, background service
+paths, and stress/concurrency scenarios.
+
+Android emulators cannot run these tests reliably — `ConnectionService`, foreground service
+lifecycle, and dual-process (`main` + `:callkeep_core`) teardown require real hardware behaviour.
+
+### Run locally
+
+```bash
+cd webtrit_callkeep/example
+./run_integration_tests.sh                 # auto-detect connected device
+./run_integration_tests.sh -d <device-id>  # explicit device
+```
+
+### Run on Firebase Test Lab (CI)
+
+The workflow `.github/workflows/integration-tests-firebase.yml` runs the full suite on real
+hardware. It triggers on PRs to `develop`/`main` (same-repo only) and can be started manually
+from the Actions tab via `workflow_dispatch`.
+
+Required secrets (configure in GitHub repo settings):
+
+| Secret | Description |
+| --- | --- |
+| `FIREBASE_SERVICE_ACCOUNT` | JSON key for a GCP service account with Firebase Test Lab permissions |
+| `FIREBASE_PROJECT_ID` | GCP project ID linked to your Firebase project |
+
+---
+
 ## 📃 More Resources
 
 - [CallKit Documentation (Apple)](https://developer.apple.com/documentation/callkit)
