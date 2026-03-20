@@ -32,15 +32,7 @@ void main() {
   setUp(() async {
     globalTearDownNeeded = true;
     callkeep = Callkeep();
-    for (var attempt = 0; attempt < 10; attempt++) {
-      try {
-        await callkeep.setUp(_options);
-        break;
-      } catch (_) {
-        if (attempt == 9) rethrow;
-        await Future.delayed(const Duration(milliseconds: 300));
-      }
-    }
+    await callkeep.setUp(_options);
   });
 
   tearDown(() async {
@@ -86,15 +78,7 @@ void main() {
       // First tearDown
       await callkeep.tearDown();
       // Re-setUp
-      for (var attempt = 0; attempt < 10; attempt++) {
-        try {
-          await callkeep.setUp(_options);
-          break;
-        } catch (_) {
-          if (attempt == 9) rethrow;
-          await Future.delayed(const Duration(milliseconds: 300));
-        }
-      }
+      await callkeep.setUp(_options);
       expect(await callkeep.isSetUp(), isTrue);
       // Second tearDown
       await callkeep.tearDown();
@@ -115,15 +99,7 @@ void main() {
       final events = <CallkeepStatus>[];
       final sub = callkeep.statusStream.listen(events.add);
 
-      for (var attempt = 0; attempt < 10; attempt++) {
-        try {
-          await callkeep.setUp(_options);
-          break;
-        } catch (_) {
-          if (attempt == 9) rethrow;
-          await Future.delayed(const Duration(milliseconds: 300));
-        }
-      }
+      await callkeep.setUp(_options);
 
       // Allow async event delivery before cancelling
       await Future.delayed(const Duration(milliseconds: 50));
@@ -163,15 +139,7 @@ void main() {
       final events = <CallkeepStatus>[];
       final sub = callkeep.statusStream.listen(events.add);
 
-      for (var attempt = 0; attempt < 10; attempt++) {
-        try {
-          await callkeep.setUp(_options);
-          break;
-        } catch (_) {
-          if (attempt == 9) rethrow;
-          await Future.delayed(const Duration(milliseconds: 300));
-        }
-      }
+      await callkeep.setUp(_options);
       await callkeep.tearDown();
       // Allow async event delivery before cancelling
       await Future.delayed(const Duration(milliseconds: 50));
@@ -215,15 +183,7 @@ void main() {
     test('currentStatus is uninitialized after re-tearDown in second cycle', () async {
       globalTearDownNeeded = false;
       await callkeep.tearDown();
-      for (var attempt = 0; attempt < 10; attempt++) {
-        try {
-          await callkeep.setUp(_options);
-          break;
-        } catch (_) {
-          if (attempt == 9) rethrow;
-          await Future.delayed(const Duration(milliseconds: 300));
-        }
-      }
+      await callkeep.setUp(_options);
       expect(callkeep.currentStatus, CallkeepStatus.active);
       await callkeep.tearDown();
       expect(callkeep.currentStatus, CallkeepStatus.uninitialized);
@@ -240,15 +200,7 @@ void main() {
       await callkeep.tearDown();
       expect(callkeep.currentStatus, CallkeepStatus.uninitialized);
 
-      for (var attempt = 0; attempt < 10; attempt++) {
-        try {
-          await callkeep.setUp(_options);
-          break;
-        } catch (_) {
-          if (attempt == 9) rethrow;
-          await Future.delayed(const Duration(milliseconds: 300));
-        }
-      }
+      await callkeep.setUp(_options);
       expect(callkeep.currentStatus, CallkeepStatus.active);
       await callkeep.tearDown();
     });
@@ -258,27 +210,11 @@ void main() {
 
       // Cycle 1
       await callkeep.tearDown();
-      for (var attempt = 0; attempt < 10; attempt++) {
-        try {
-          await callkeep.setUp(_options);
-          break;
-        } catch (_) {
-          if (attempt == 9) rethrow;
-          await Future.delayed(const Duration(milliseconds: 300));
-        }
-      }
+      await callkeep.setUp(_options);
 
       // Cycle 2
       await callkeep.tearDown();
-      for (var attempt = 0; attempt < 10; attempt++) {
-        try {
-          await callkeep.setUp(_options);
-          break;
-        } catch (_) {
-          if (attempt == 9) rethrow;
-          await Future.delayed(const Duration(milliseconds: 300));
-        }
-      }
+      await callkeep.setUp(_options);
       expect(callkeep.currentStatus, CallkeepStatus.active);
       await callkeep.tearDown();
     });
@@ -287,27 +223,11 @@ void main() {
       globalTearDownNeeded = false;
 
       await callkeep.tearDown();
-      for (var attempt = 0; attempt < 10; attempt++) {
-        try {
-          await callkeep.setUp(_options);
-          break;
-        } catch (_) {
-          if (attempt == 9) rethrow;
-          await Future.delayed(const Duration(milliseconds: 300));
-        }
-      }
+      await callkeep.setUp(_options);
       expect(await callkeep.isSetUp(), isTrue);
 
       await callkeep.tearDown();
-      for (var attempt = 0; attempt < 10; attempt++) {
-        try {
-          await callkeep.setUp(_options);
-          break;
-        } catch (_) {
-          if (attempt == 9) rethrow;
-          await Future.delayed(const Duration(milliseconds: 300));
-        }
-      }
+      await callkeep.setUp(_options);
       expect(await callkeep.isSetUp(), isTrue);
       await callkeep.tearDown();
     });

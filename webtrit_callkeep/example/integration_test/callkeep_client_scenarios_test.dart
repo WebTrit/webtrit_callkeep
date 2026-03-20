@@ -132,15 +132,7 @@ Future<T> _waitFor<T>(Future<T> future, {String label = 'callback'}) {
 // ---------------------------------------------------------------------------
 
 Future<void> _doSetUp(Callkeep callkeep) async {
-  for (var attempt = 0; attempt < 10; attempt++) {
-    try {
-      await callkeep.setUp(_options);
-      break;
-    } catch (_) {
-      if (attempt == 9) rethrow;
-      await Future.delayed(const Duration(milliseconds: 300));
-    }
-  }
+  await callkeep.setUp(_options);
 }
 
 // ---------------------------------------------------------------------------
@@ -314,7 +306,7 @@ void main() {
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Dan');
       final err = await callkeep.answerCall(id);
 
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 300));
 
       // Must complete without exception
       expect(() => err, returnsNormally);

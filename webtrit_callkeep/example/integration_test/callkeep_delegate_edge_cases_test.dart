@@ -149,15 +149,7 @@ void main() {
     globalTearDownNeeded = true;
     callkeep = Callkeep();
     delegate = _RecordingDelegate();
-    for (var attempt = 0; attempt < 10; attempt++) {
-      try {
-        await callkeep.setUp(_options);
-        break;
-      } catch (_) {
-        if (attempt == 9) rethrow;
-        await Future.delayed(const Duration(milliseconds: 300));
-      }
-    }
+    await callkeep.setUp(_options);
     callkeep.setDelegate(delegate);
   });
 

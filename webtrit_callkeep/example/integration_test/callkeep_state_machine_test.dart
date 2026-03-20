@@ -134,6 +134,22 @@ Future<T> _waitFor<T>(Future<T> future, {String label = 'callback'}) {
   );
 }
 
+// Poll until a Telecom connection for callId exists (or timeout). The
+// connection is created asynchronously in :callkeep_core after
+// reportNewIncomingCall, so it is not guaranteed to exist immediately.
+Future<CallkeepConnection?> _waitForConnection(
+  String callId, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(deadline)) {
+    final conn = await CallkeepConnections().getConnection(callId);
+    if (conn != null) return conn;
+    await Future.delayed(const Duration(milliseconds: 100));
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -149,15 +165,7 @@ void main() {
     globalTearDownNeeded = true;
     callkeep = Callkeep();
     delegate = _RecordingDelegate();
-    for (var attempt = 0; attempt < 10; attempt++) {
-      try {
-        await callkeep.setUp(_options);
-        break;
-      } catch (_) {
-        if (attempt == 9) rethrow;
-        await Future.delayed(const Duration(milliseconds: 300));
-      }
-    }
+    await callkeep.setUp(_options);
     callkeep.setDelegate(delegate);
   });
 
@@ -398,6 +406,11 @@ void main() {
       // Report id2
       await callkeep.reportNewIncomingCall(id2, _handle2, displayName: 'Frank');
 
+      // Wait for id2's Telecom connection to be created before proceeding.
+      // The connection is built asynchronously in :callkeep_core and may not
+      // exist yet by the time answerCall is called.
+      await _waitForConnection(id2);
+
       // Hold id1
       final holdLatch = Completer<void>();
       delegate.onPerformSetHeld = (cid, onHold) {
@@ -450,6 +463,7 @@ void main() {
       await _waitFor(answer1Latch.future, label: 'performAnswerCall id1');
 
       await callkeep.reportNewIncomingCall(id2, _handle2, displayName: 'Hank');
+      await _waitForConnection(id2);
 
       // Hold id1
       final holdLatch = Completer<void>();

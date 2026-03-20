@@ -142,15 +142,7 @@ void main() {
     globalTearDownNeeded = true;
     callkeep = Callkeep();
     delegate = _RecordingDelegate();
-    for (var attempt = 0; attempt < 10; attempt++) {
-      try {
-        await callkeep.setUp(_options);
-        break;
-      } catch (_) {
-        if (attempt == 9) rethrow;
-        await Future.delayed(const Duration(milliseconds: 300));
-      }
-    }
+    await callkeep.setUp(_options);
     callkeep.setDelegate(delegate);
   });
 
@@ -211,7 +203,7 @@ void main() {
 
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Bob');
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 300));
 
       final latch = Completer<String>();
       delegate.onPerformAnswerCall = (cid) {
@@ -244,7 +236,7 @@ void main() {
       await _waitFor(latch.future, label: 'performAnswerCall');
 
       // Wait briefly to allow any spurious second callback to arrive.
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 300));
 
       expect(
         delegate.answerCallIds.where((c) => c == id).length,
@@ -321,7 +313,7 @@ void main() {
       await callkeep.endCall(id);
       await _waitFor(latch.future, label: 'performEndCall');
 
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 300));
 
       expect(
         delegate.endCallIds.where((c) => c == id).length,
@@ -353,7 +345,7 @@ void main() {
       await callkeep.endCall(id);
       await _waitFor(endLatch.future, label: 'performEndCall');
 
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 300));
 
       expect(delegate.answerCallIds.where((c) => c == id).length, 1);
       expect(delegate.endCallIds.where((c) => c == id).length, 1);
@@ -422,7 +414,7 @@ void main() {
       await callkeep.tearDown();
       await _waitFor(endLatch.future, label: 'performEndCall on tearDown');
 
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 300));
 
       expect(
         delegate.endCallIds.where((c) => c == id).length,
@@ -543,12 +535,143 @@ void main() {
       await callkeep.tearDown();
       await _waitFor(endLatch.future, label: 'performEndCall on tearDown');
 
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 300));
 
       expect(
         delegate.endCallIds.where((c) => c == id).length,
         1,
         reason: 'tearDown must fire performEndCall exactly once even after a rejected re-report',
+      );
+    });
+  });
+
+  // =========================================================================
+  // cold-start adoption — CALL_ID_ALREADY_EXISTS_AND_ANSWERED branch
+  //
+  // Regression for the cold-start race where SyncConnectionState fires
+  // handleCSReportAnswerCall during ForegroundService.onCreate, marking the
+  // call as answered in the main-process tracker BEFORE reportNewIncomingCall
+  // arrives from the signaling layer (CallBloc.__onCallSignalingEventIncoming).
+  //
+  // In that state the tracker has isAnswered()==true but exists()==false and
+  // isPending()==false. The early check in reportNewIncomingCall returned
+  // CALL_ID_ALREADY_EXISTS_AND_ANSWERED immediately — without calling promote()
+  // or performAnswerCall — so WebRTC never started and endCall() could not
+  // find the call.
+  //
+  // We exercise the same ALREADY_ANSWERED branch via the observable re-report
+  // path: report -> answer (tracker: isAnswered=true, exists=true) -> re-report.
+  // The tracker state entering the branch differs only in exists(); the fix
+  // code runs identically in both cases.
+  // =========================================================================
+
+  group('cold-start adoption — already-answered re-report (Android only)', () {
+    test('re-report of already-answered call fires performAnswerCall', () async {
+      // Regression: the ALREADY_ANSWERED early-exit returned without firing
+      // performAnswerCall, so WebRTC never started after cold-start adoption.
+      if (!Platform.isAndroid) {
+        markTestSkipped('Android only');
+        return;
+      }
+
+      final id = _nextId();
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Oscar');
+
+      final firstAnswerLatch = Completer<void>();
+      delegate.onPerformAnswerCall = (cid) {
+        if (cid == id && !firstAnswerLatch.isCompleted) firstAnswerLatch.complete();
+      };
+      await callkeep.answerCall(id);
+      await _waitFor(firstAnswerLatch.future, label: 'performAnswerCall (first)');
+
+      // Simulate the signaling layer re-reporting the already-answered call
+      // (cold-start: reportNewIncomingCall arrives after SyncConnectionState
+      // already marked the call answered). The ALREADY_ANSWERED branch must
+      // fire performAnswerCall directly to trigger WebRTC setup.
+      final adoptLatch = Completer<void>();
+      delegate.onPerformAnswerCall = (cid) {
+        if (cid == id && !adoptLatch.isCompleted) adoptLatch.complete();
+      };
+
+      final err = await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Oscar');
+      expect(err, CallkeepIncomingCallError.callIdAlreadyExistsAndAnswered);
+
+      await _waitFor(adoptLatch.future, label: 'performAnswerCall (cold-start adoption)');
+      expect(delegate.answerCallIds.where((c) => c == id).length, greaterThanOrEqualTo(2));
+    });
+
+    test('endCall succeeds after cold-start adoption', () async {
+      // Regression: promote() was never called in the ALREADY_ANSWERED branch,
+      // so core.exists(callId) was false and endCall() logged
+      // "no connection or pending entry" without firing performEndCall.
+      if (!Platform.isAndroid) {
+        markTestSkipped('Android only');
+        return;
+      }
+
+      final id = _nextId();
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Paula');
+
+      final answerLatch = Completer<void>();
+      delegate.onPerformAnswerCall = (cid) {
+        if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
+      };
+      await callkeep.answerCall(id);
+      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+
+      // Simulate late-arriving reportNewIncomingCall (cold-start adoption).
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Paula');
+
+      // After adoption, endCall must locate the call (via core.exists()) and
+      // fire performEndCall — the primary observable failure before the fix.
+      final endLatch = Completer<String>();
+      delegate.onPerformEndCall = (cid) {
+        if (cid == id && !endLatch.isCompleted) endLatch.complete(cid);
+      };
+      await callkeep.endCall(id);
+
+      final ended = await _waitFor(endLatch.future, label: 'performEndCall after adoption');
+      expect(ended, id);
+    });
+
+    test('tearDown fires performEndCall exactly once after cold-start adoption', () async {
+      // After cold-start adoption, tearDown must find the call via getAll()
+      // (promote() was called) and fire performEndCall exactly once.
+      // drainUnconnectedPendingCallIds() must not also include it (promote()
+      // removes it from pendingCallIds), preventing a double-fire.
+      if (!Platform.isAndroid) {
+        markTestSkipped('Android only');
+        return;
+      }
+
+      globalTearDownNeeded = false;
+      final id = _nextId();
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Quinn');
+
+      final answerLatch = Completer<void>();
+      delegate.onPerformAnswerCall = (cid) {
+        if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
+      };
+      await callkeep.answerCall(id);
+      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+
+      // Simulate late-arriving reportNewIncomingCall (cold-start adoption).
+      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Quinn');
+
+      final endLatch = Completer<void>();
+      delegate.onPerformEndCall = (cid) {
+        if (cid == id && !endLatch.isCompleted) endLatch.complete();
+      };
+
+      await callkeep.tearDown();
+      await _waitFor(endLatch.future, label: 'performEndCall on tearDown');
+
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      expect(
+        delegate.endCallIds.where((c) => c == id).length,
+        1,
+        reason: 'tearDown must fire performEndCall exactly once after cold-start adoption',
       );
     });
   });
