@@ -13,7 +13,14 @@ class WebtritCallkeepWeb extends WebtritCallkeepPlatform {
 
   CallkeepDelegate? _delegate;
   bool _isSetUp = false;
+
+  /// Active connections keyed by callId.
   final Map<String, CallkeepConnection> _connections = {};
+
+  /// Call IDs that have been terminated (ended or torn down).
+  /// Used to return [CallkeepIncomingCallError.callIdAlreadyTerminated]
+  /// on a re-report of the same ID.
+  final Set<String> _terminatedCallIds = {};
 
   // ---------------------------------------------------------------------------
   // Platform identity
@@ -32,19 +39,13 @@ class WebtritCallkeepWeb extends WebtritCallkeepPlatform {
   }
 
   @override
-  void setBackgroundServiceDelegate(CallkeepBackgroundServiceDelegate? delegate) {
-    // No background service on web.
-  }
+  void setBackgroundServiceDelegate(CallkeepBackgroundServiceDelegate? delegate) {}
 
   @override
-  void setLogsDelegate(CallkeepLogsDelegate? delegate) {
-    // No native logging on web.
-  }
+  void setLogsDelegate(CallkeepLogsDelegate? delegate) {}
 
   @override
-  void setPushRegistryDelegate(PushRegistryDelegate? delegate) {
-    // No PushKit on web.
-  }
+  void setPushRegistryDelegate(PushRegistryDelegate? delegate) {}
 
   // ---------------------------------------------------------------------------
   // Push token
@@ -68,7 +69,14 @@ class WebtritCallkeepWeb extends WebtritCallkeepPlatform {
   @override
   Future<void> tearDown() async {
     _isSetUp = false;
+    // Notify Flutter for every still-active call before clearing state.
+    final activeIds = _connections.keys.toList();
+    for (final callId in activeIds) {
+      _terminatedCallIds.add(callId);
+      await _delegate?.performEndCall(callId);
+    }
     _connections.clear();
+    _terminatedCallIds.clear();
     _delegate?.didReset();
   }
 
@@ -83,6 +91,16 @@ class WebtritCallkeepWeb extends WebtritCallkeepPlatform {
     String? displayName,
     bool hasVideo,
   ) async {
+    if (_connections.containsKey(callId)) {
+      final state = _connections[callId]!.state;
+      if (state == CallkeepConnectionState.stateActive) {
+        return CallkeepIncomingCallError.callIdAlreadyExistsAndAnswered;
+      }
+      return CallkeepIncomingCallError.callIdAlreadyExists;
+    }
+    if (_terminatedCallIds.contains(callId)) {
+      return CallkeepIncomingCallError.callIdAlreadyTerminated;
+    }
     _connections[callId] = CallkeepConnection(
       callId: callId,
       state: CallkeepConnectionState.stateRinging,
@@ -114,18 +132,17 @@ class WebtritCallkeepWeb extends WebtritCallkeepPlatform {
     String? displayName,
     bool? hasVideo,
     bool? proximityEnabled,
-  ) async {
-    // No native call UI to update on web.
-  }
+  ) async {}
 
   @override
   Future<void> reportEndCall(String callId, String displayName, CallkeepEndCallReason reason) async {
     _connections.remove(callId);
+    _terminatedCallIds.add(callId);
     _delegate?.didDeactivateAudioSession();
   }
 
   // ---------------------------------------------------------------------------
-  // Call actions (triggered by Flutter UI on web)
+  // Call actions
   // ---------------------------------------------------------------------------
 
   @override
@@ -147,6 +164,9 @@ class WebtritCallkeepWeb extends WebtritCallkeepPlatform {
 
   @override
   Future<CallkeepCallRequestError?> answerCall(String callId) async {
+    if (!_connections.containsKey(callId)) {
+      return CallkeepCallRequestError.unknownCallUuid;
+    }
     _updateConnectionState(callId, CallkeepConnectionState.stateActive);
     await _delegate?.performAnswerCall(callId);
     _delegate?.didActivateAudioSession();
@@ -155,6 +175,10 @@ class WebtritCallkeepWeb extends WebtritCallkeepPlatform {
 
   @override
   Future<CallkeepCallRequestError?> endCall(String callId) async {
+    if (!_connections.containsKey(callId)) {
+      return CallkeepCallRequestError.unknownCallUuid;
+    }
+    _terminatedCallIds.add(callId);
     await _delegate?.performEndCall(callId);
     _connections.remove(callId);
     _delegate?.didDeactivateAudioSession();
@@ -163,6 +187,9 @@ class WebtritCallkeepWeb extends WebtritCallkeepPlatform {
 
   @override
   Future<CallkeepCallRequestError?> setHeld(String callId, bool onHold) async {
+    if (!_connections.containsKey(callId)) {
+      return CallkeepCallRequestError.unknownCallUuid;
+    }
     _updateConnectionState(callId, onHold ? CallkeepConnectionState.stateHolding : CallkeepConnectionState.stateActive);
     await _delegate?.performSetHeld(callId, onHold);
     return null;
@@ -181,10 +208,7 @@ class WebtritCallkeepWeb extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<CallkeepCallRequestError?> setSpeaker(String callId, bool enabled) async {
-    // No native speaker routing on web; handled by WebRTC.
-    return null;
-  }
+  Future<CallkeepCallRequestError?> setSpeaker(String callId, bool enabled) async => null;
 
   @override
   Future<CallkeepCallRequestError?> setAudioDevice(String callId, CallkeepAudioDevice device) async {
@@ -203,16 +227,17 @@ class WebtritCallkeepWeb extends WebtritCallkeepPlatform {
   Future<List<CallkeepConnection>> getConnections() async => _connections.values.toList();
 
   @override
-  Future<void> cleanConnections() async => _connections.clear();
+  Future<void> cleanConnections() async {
+    _connections.clear();
+    _terminatedCallIds.clear();
+  }
 
   // ---------------------------------------------------------------------------
   // Signaling status
   // ---------------------------------------------------------------------------
 
   @override
-  Future<void> updateActivitySignalingStatus(CallkeepSignalingStatus status) async {
-    // No native signaling indicator on web.
-  }
+  Future<void> updateActivitySignalingStatus(CallkeepSignalingStatus status) async {}
 
   // ---------------------------------------------------------------------------
   // Permissions (web grants all by default)
@@ -230,9 +255,7 @@ class WebtritCallkeepWeb extends WebtritCallkeepPlatform {
   Future<void> openSettings() async {}
 
   @override
-  Future<CallkeepAndroidBatteryMode> getBatteryMode() async {
-    return CallkeepAndroidBatteryMode.unknown;
-  }
+  Future<CallkeepAndroidBatteryMode> getBatteryMode() async => CallkeepAndroidBatteryMode.unknown;
 
   @override
   Future<Map<CallkeepPermission, CallkeepSpecialPermissionStatus>> requestPermissions(
@@ -262,9 +285,7 @@ class WebtritCallkeepWeb extends WebtritCallkeepPlatform {
   // ---------------------------------------------------------------------------
 
   @override
-  Future<void> playRingbackSound() async {
-    // Ringback is handled by the WebRTC layer on web.
-  }
+  Future<void> playRingbackSound() async {}
 
   @override
   Future<void> stopRingbackSound() async {}
