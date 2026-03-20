@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.telecom.Connection
 import android.telecom.ConnectionRequest
 import android.telecom.ConnectionService
@@ -340,10 +342,46 @@ class PhoneConnectionService : ConnectionService() {
 
         Log.e(TAG, failureMessage)
 
-        if (wasPending && callId != null) {
-            // Notify Flutter that this call ended so it can clean up its call state.
-            Log.i(TAG, "onCreateIncomingConnectionFailed: firing HungUp for pending callId=$callId")
-            dispatcher.dispatch(baseContext, CallLifecycleEvent.HungUp, CallMetadata(callId = callId).toBundle())
+        if (wasPending && callId != null && callMetadata != null) {
+            // Check whether the rejection is due to the RINGING→ACTIVE race in Telecom's
+            // CallsManager. When a self-managed call transitions RINGING→ACTIVE, setActive()
+            // posts an update to Telecom's handler thread asynchronously. If addNewIncomingCall
+            // for a second call arrives before that update is processed, Telecom rejects it
+            // even though the first call is no longer RINGING.
+            //
+            // Heuristic: PhoneConnection.hasAnswered is set synchronously inside onAnswer()
+            // before setActive() and the AnswerCall broadcast, so at the time this callback
+            // fires it is already true — while Connection.state may still be STATE_RINGING
+            // from Telecom's perspective.
+            //
+            // Retry guard: after the delay Telecom will have fully processed markCallAsActive().
+            // If Telecom still rejects, the existing connections are STATE_ACTIVE (not merely
+            // hasAnswered), so the guard `hasRecentlyAnsweredCall` will be false and we will
+            // not loop.
+            val hasRecentlyAnsweredCall =
+                connectionManager
+                    .getConnections()
+                    .any { it.hasAnswered && it.state != Connection.STATE_ACTIVE }
+
+            if (hasRecentlyAnsweredCall) {
+                // Retry once after the delay. By then Telecom will have moved the first call
+                // to STATE_ACTIVE in its CallsManager and will accept the second incoming call.
+                Log.i(TAG, "onCreateIncomingConnectionFailed: scheduling retry for $callId (RINGING→ACTIVE race)")
+                connectionManager.addPendingForIncomingCall(callId)
+                Handler(Looper.getMainLooper()).postDelayed({
+                    try {
+                        Log.i(TAG, "onCreateIncomingConnectionFailed: retrying addNewIncomingCall for $callId")
+                        TelephonyUtils(baseContext).addNewIncomingCall(callMetadata)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "onCreateIncomingConnectionFailed: retry failed for $callId", e)
+                        connectionManager.removePending(callId)
+                        dispatcher.dispatch(baseContext, CallLifecycleEvent.HungUp, CallMetadata(callId = callId).toBundle())
+                    }
+                }, RINGING_TO_ACTIVE_RETRY_DELAY_MS)
+            } else {
+                Log.i(TAG, "onCreateIncomingConnectionFailed: firing HungUp for pending callId=$callId")
+                dispatcher.dispatch(baseContext, CallLifecycleEvent.HungUp, CallMetadata(callId = callId).toBundle())
+            }
         } else {
             val failureMetadata = FailureMetadata(callMetadata, failureMessage).toBundle()
             dispatcher.dispatch(baseContext, CallLifecycleEvent.IncomingFailure, failureMetadata)
@@ -457,6 +495,11 @@ class PhoneConnectionService : ConnectionService() {
 
     companion object {
         private const val TAG = "PhoneConnectionService"
+
+        // Delay before retrying addNewIncomingCall after a spurious onCreateIncomingConnectionFailed
+        // caused by the RINGING→ACTIVE race in Telecom's CallsManager. The observed race window
+        // is ~2 ms; 300 ms gives Telecom's handler thread plenty of time to process markCallAsActive.
+        private const val RINGING_TO_ACTIVE_RETRY_DELAY_MS = 300L
 
         // The service state is used to determine if the service is running. This is useful to avoid invoking onStartCommand when the service is down.
         private var _isRunning = false
