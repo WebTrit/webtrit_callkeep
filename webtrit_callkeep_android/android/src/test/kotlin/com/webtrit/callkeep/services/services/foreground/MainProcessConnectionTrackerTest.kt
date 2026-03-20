@@ -469,4 +469,125 @@ class MainProcessConnectionTrackerTest {
         tracker.addPending("call-1")
         assertFalse(tracker.consumeAnswer("call-1"))
     }
+
+    // -------------------------------------------------------------------------
+    // cold-start race: markAnswered before addPending/promote
+    //
+    // Reproduces the scenario where SyncConnectionState fires
+    // handleCSReportAnswerCall during ForegroundService.onCreate (marking the
+    // call answered via markAnswered) before reportNewIncomingCall arrives
+    // from the signaling layer and calls addPending/promote.
+    //
+    // ForegroundService.reportNewIncomingCall checks isAnswered() in its early
+    // guard and must see true so that the CALL_ID_ALREADY_EXISTS_AND_ANSWERED
+    // branch fires. The fix then calls promote() + markAnswered() + performAnswerCall
+    // to adopt the call without another Telecom round-trip.
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `cold-start — markAnswered without prior promote — isAnswered returns true`() {
+        // SyncConnectionState calls markAnswered before the call is registered in the
+        // tracker. The early check in reportNewIncomingCall must detect this.
+        tracker.markAnswered("call-1")
+        assertTrue(tracker.isAnswered("call-1"))
+    }
+
+    @Test
+    fun `cold-start — markAnswered without prior promote — exists returns false`() {
+        // The call is answered in Telecom but not yet in the tracker's connections map.
+        // reportNewIncomingCall's early check uses isAnswered(), not exists().
+        tracker.markAnswered("call-1")
+        assertFalse(tracker.exists("call-1"))
+    }
+
+    @Test
+    fun `cold-start — markAnswered without prior promote — isPending returns false`() {
+        tracker.markAnswered("call-1")
+        assertFalse(tracker.isPending("call-1"))
+    }
+
+    @Test
+    fun `cold-start — markAnswered without prior promote — getAll returns empty`() {
+        // Call is not in connections yet; tearDown's getAll() would miss it if
+        // the fix does not call promote() afterward.
+        tracker.markAnswered("call-1")
+        assertTrue(tracker.getAll().isEmpty())
+    }
+
+    @Test
+    fun `cold-start — promote after markAnswered clears isAnswered — must re-mark`() {
+        // promote() resets answeredCallIds per its existing contract (guards against
+        // stale answered state on callId reuse). The fix must call markAnswered()
+        // AFTER promote() to restore the answered flag.
+        tracker.markAnswered("call-1")
+        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_ACTIVE)
+
+        assertTrue(tracker.exists("call-1"))
+        assertFalse(tracker.isAnswered("call-1")) // cleared by promote — caller must re-mark
+        assertEquals(PCallkeepConnectionState.STATE_ACTIVE, tracker.getState("call-1"))
+    }
+
+    @Test
+    fun `cold-start — full fix sequence — promote then markAnswered leaves tracker consistent`() {
+        // Verifies the exact sequence executed by the ALREADY_ANSWERED branch fix:
+        //   1. markAnswered()           <- SyncConnectionState (cold-start)
+        //   2. promote(STATE_ACTIVE)    <- fix step 1
+        //   3. markAnswered()           <- fix step 2 (re-mark after promote clears it)
+        //   4. markSignalingRegistered()  <- fix step 3
+        tracker.markAnswered("call-1") // cold-start
+        assertTrue(tracker.isAnswered("call-1"))
+
+        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_ACTIVE) // fix 1
+        tracker.markAnswered("call-1") // fix 2
+        tracker.markSignalingRegistered("call-1") // fix 3
+
+        assertTrue(tracker.exists("call-1"))
+        assertTrue(tracker.isAnswered("call-1"))
+        assertFalse(tracker.isPending("call-1"))
+        assertEquals(PCallkeepConnectionState.STATE_ACTIVE, tracker.getState("call-1"))
+        // DidPushIncomingCall broadcast must be suppressed after adoption
+        assertTrue(tracker.consumeSignalingRegistered("call-1"))
+    }
+
+    @Test
+    fun `cold-start — endCall can find adopted call via exists()`() {
+        // Regression guard: before the fix, promote() was never called in the
+        // ALREADY_ANSWERED branch so exists() was false and endCall() could not
+        // locate the call ("no connection or pending entry").
+        tracker.markAnswered("call-1")
+        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_ACTIVE)
+        tracker.markAnswered("call-1")
+
+        assertTrue(tracker.exists("call-1"))
+
+        tracker.markTerminated("call-1")
+
+        assertFalse(tracker.exists("call-1"))
+        assertTrue(tracker.isTerminated("call-1"))
+        assertEquals(PCallkeepConnectionState.STATE_DISCONNECTED, tracker.getState("call-1"))
+    }
+
+    @Test
+    fun `cold-start — getAll includes adopted call for tearDown`() {
+        // After adoption, getAll() must return the call so tearDown fires performEndCall.
+        tracker.markAnswered("call-1")
+        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_ACTIVE)
+        tracker.markAnswered("call-1")
+
+        val all = tracker.getAll()
+        assertEquals(1, all.size)
+        assertEquals("call-1", all.first().callId)
+    }
+
+    @Test
+    fun `cold-start — drainUnconnectedPendingCallIds does not include adopted call`() {
+        // promote() moves the call out of pendingCallIds, so drain() must not
+        // return it — preventing a spurious second performEndCall during tearDown.
+        tracker.markAnswered("call-1")
+        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_ACTIVE)
+        tracker.markAnswered("call-1")
+
+        val drained = tracker.drainUnconnectedPendingCallIds()
+        assertFalse(drained.contains("call-1"))
+    }
 }
