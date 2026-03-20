@@ -64,8 +64,6 @@ jobs:
             --test webtrit_callkeep/example/build/app/outputs/apk/androidTest/debug/app-debug-androidTest.apk \
             --device model=oriole,version=33,locale=en,orientation=portrait \
             --timeout 10m \
-            --results-bucket ${{ secrets.FIREBASE_PROJECT_ID }}.firebasestorage.app \
-            --results-dir ci-results/${{ github.run_id }} \
             --project ${{ secrets.FIREBASE_PROJECT_ID }}
 
       - name: Upload build artifacts and test APKs
