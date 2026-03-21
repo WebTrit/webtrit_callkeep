@@ -917,6 +917,14 @@ class ForegroundService :
             // Update tracker: call has ended.
             core.markTerminated(callId)
 
+            // Mark that performEndCall is being dispatched now, so that a subsequent
+            // endCall() call with isTerminated=true does NOT re-fire performEndCall.
+            // Without this, if onCreateIncomingConnectionFailed fires a HungUp broadcast
+            // while the call is still in the pending window (before Dart calls endCall),
+            // the broadcast fires performEndCall once here AND the endCall re-fire path
+            // fires it a second time — producing a duplicate delegate callback.
+            core.markEndCallDispatched(callId)
+
             flutterDelegateApi?.performEndCall(callId) {}
             flutterDelegateApi?.didDeactivateAudioSession {}
 
