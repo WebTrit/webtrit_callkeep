@@ -1060,28 +1060,32 @@ class ForegroundService :
 
             if (IncomingCallService.isRunning) {
                 // Push-notification path: the background isolate holds an active signaling
-                // WebSocket. Dispatch performAnswerCall to the main Flutter engine only after
-                // the isolate confirms its WebSocket is closed. This prevents the server from
-                // sending a 4441 "force attach close" to the main engine's newly-opened
-                // signaling connection, which previously left the call stuck at
-                // "Answering the call, please hold on…".
+                // WebSocket. Launch the activity and dispatch performAnswerCall to the main
+                // Flutter engine only AFTER the isolate confirms its WebSocket is closed
+                // (via pendingReleaseCallback). This prevents the main engine from
+                // reconnecting signaling before the isolate disconnects, which previously
+                // caused the server to send a 4441 "force attach close" to the main engine,
+                // leaving the call stuck at "Answering the call, please hold on…".
                 val callId = callMetaData.callId
                 IncomingCallService.pendingReleaseCallback = {
+                    ActivityHolder.start(baseContext)
                     flutterDelegateApi?.performAnswerCall(callId) {}
                 }
                 // Safety net: if the isolate never acks (crash, Dart exception), unblock
-                // performAnswerCall after a short timeout so the call is not permanently stuck.
+                // the activity launch and performAnswerCall after a short timeout so the
+                // call is not permanently stuck.
                 Handler(Looper.getMainLooper()).postDelayed({
                     val pending = IncomingCallService.pendingReleaseCallback
                     if (pending != null) {
-                        logger.w("handleCSReportAnswerCall: isolate release timeout, proceeding with performAnswerCall")
+                        logger.w("handleCSReportAnswerCall: isolate release timeout, proceeding with activity launch and performAnswerCall")
                         IncomingCallService.pendingReleaseCallback = null
                         pending()
                     }
                 }, ISOLATE_RELEASE_TIMEOUT_MS)
                 IncomingCallService.release(baseContext, IncomingCallRelease.IC_RELEASE_WITH_ANSWER)
             } else {
-                // Signaling path (no background isolate): notify Flutter immediately.
+                // Signaling path (no background isolate): launch activity and notify Flutter immediately.
+                ActivityHolder.start(baseContext)
                 flutterDelegateApi?.performAnswerCall(callMetaData.callId) {}
             }
         }
