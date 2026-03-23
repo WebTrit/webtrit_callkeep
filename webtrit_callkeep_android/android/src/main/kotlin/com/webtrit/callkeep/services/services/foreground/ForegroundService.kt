@@ -716,6 +716,8 @@ class ForegroundService :
             // Keep PhoneConnectionService alive for the next session so that its next
             // incoming intents (e.g. AnswerCall) arrive at a live service instance.
             core.tearDownService()
+            runCatching { TelephonyUtils(baseContext).unregisterPhoneAccount() }
+                .onFailure { e -> logger.w("tearDown: unregisterPhoneAccount failed: ${e.message}", e) }
             callback.invoke(Result.success(Unit))
         }
 
@@ -1184,6 +1186,9 @@ class ForegroundService :
             }
         }
         tearDownAckReceiver = null
+
+        runCatching { TelephonyUtils(baseContext).unregisterPhoneAccount() }
+            .onFailure { e -> logger.w("onDestroy: unregisterPhoneAccount failed: ${e.message}", e) }
 
         isRunning = false
     }
