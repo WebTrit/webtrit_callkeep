@@ -668,8 +668,9 @@ class ForegroundService :
         // PhoneConnection was never created (no DidPushIncomingCall received yet).
         val unconnectedPending = core.drainUnconnectedPendingCallIds()
 
-        // Step 3: Notify Flutter for active connections. Mark in directNotified
-        // BEFORE calling connection.hungUp() so the async HungUp broadcast is suppressed.
+        // Step 3: Notify Flutter for active connections. Mark directNotified
+        // BEFORE CallkeepCore/ConnectionService tears down the underlying connections so
+        // that any async HungUp broadcast emitted during that teardown phase is suppressed.
         // Also mark terminated + endCallDispatched so that any endCall() arriving during
         // the tearDown window does not re-fire performEndCall or dispatch a duplicate
         // startHungUpCall IPC.

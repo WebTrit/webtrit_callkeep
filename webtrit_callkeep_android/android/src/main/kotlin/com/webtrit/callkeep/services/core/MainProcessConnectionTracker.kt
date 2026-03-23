@@ -22,7 +22,8 @@ import java.util.concurrent.ConcurrentHashMap
  * state without crossing a process boundary. The main process never reads
  * [com.webtrit.callkeep.services.services.connection.PhoneConnectionService.connectionManager]
  * directly — that object lives in the `:callkeep_core` JVM and is empty in the main process.
- * All state transitions arrive via IPC broadcasts from `:callkeep_core`.
+ * Call state is mirrored via a combination of main-process updates (pending registration and
+ * local guards) and IPC broadcasts from `:callkeep_core` for lifecycle transitions.
  */
 class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
     // callId -> metadata for all known, non-terminated calls
