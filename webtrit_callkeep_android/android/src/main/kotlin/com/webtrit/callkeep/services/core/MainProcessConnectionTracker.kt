@@ -19,10 +19,10 @@ import java.util.concurrent.ConcurrentHashMap
  * - [com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent.OngoingCall]          -> promote outgoing
  *
  * This allows [ForegroundService] and [com.webtrit.callkeep.ConnectionsApi] to query connection
- * state without crossing a process boundary. In the current single-process setup the tracker
- * avoids tightly coupling to [com.webtrit.callkeep.services.services.connection.PhoneConnectionService.connectionManager].
- * When the `:callkeep_core` process split lands (PR-9b), only the broadcast wiring needs to
- * change — all callers of this tracker remain unchanged.
+ * state without crossing a process boundary. The main process never reads
+ * [com.webtrit.callkeep.services.services.connection.PhoneConnectionService.connectionManager]
+ * directly — that object lives in the `:callkeep_core` JVM and is empty in the main process.
+ * All state transitions arrive via IPC broadcasts from `:callkeep_core`.
  */
 class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
     // callId -> metadata for all known, non-terminated calls
