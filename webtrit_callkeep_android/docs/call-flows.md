@@ -122,7 +122,7 @@ second incoming call arrives while the first is still ringing, Telecom calls
 - The app must send the appropriate signaling (e.g. SIP BYE) to the server itself,
   without waiting for `performEndCall`.
 
-**Scope**: this is standard AOSP behaviour on Android 11+ (confirmed on stock Pixel 5).
+**Scope**: this is standard AOSP behavior on Android 11+ (confirmed on stock Pixel 5).
 Some vendors (Huawei, certain MediaTek OEMs) apply the same restriction even when the
 first call is ACTIVE rather than RINGING.
 

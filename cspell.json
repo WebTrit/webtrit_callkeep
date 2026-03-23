@@ -37,6 +37,8 @@
     "Parcelables",
     "unparcel",
     "backgrounded",
+    "backgrounding",
+    "AOSP",
     "Wakelock",
     "QUICKBOOT",
     "POWERON",
