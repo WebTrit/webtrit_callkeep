@@ -536,6 +536,12 @@ class ForegroundService :
                         logger.w("reportNewIncomingCall: Telecom confirmation timeout for callId=$callId, resolving with CALL_REJECTED_BY_SYSTEM")
                         pendingIncomingTimeouts.remove(callId)
                         if (addedPending) core.removePending(callId)
+                        // Mark terminated and endCallDispatched so that a late-arriving HungUp
+                        // broadcast (after the timeout) does not cause handleCSReportDeclineCall
+                        // to fire performEndCall for a call Flutter already got
+                        // callRejectedBySystem for.
+                        core.markTerminated(callId)
+                        core.markEndCallDispatched(callId)
                         resolvePendingIncomingCallback(
                             callId,
                             Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_REJECTED_BY_SYSTEM)),
@@ -1161,6 +1167,7 @@ class ForegroundService :
             logger.w("onDestroy: resolving pending incoming callback for callId=$callId with CALL_REJECTED_BY_SYSTEM")
             core.markDirectNotified(callId)
             core.removePending(callId)
+            core.markTerminated(callId)
             core.markEndCallDispatched(callId)
             resolvePendingIncomingCallback(
                 callId,

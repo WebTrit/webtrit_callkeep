@@ -22,9 +22,9 @@ enum CallkeepIncomingCallError {
   /// apply the same rejection even when the first call is already ACTIVE.
   ///
   /// **Consequences for the app**:
-  /// - The call was never presented to the user, so [performEndCall] will NOT
+  /// - The call was never presented to the user, so `performEndCall` will NOT
   ///   fire for this call ID.
   /// - The app must notify the server (e.g. send a SIP BYE) immediately upon
-  ///   receiving this error, without waiting for [performEndCall].
+  ///   receiving this error, without waiting for `performEndCall`.
   callRejectedBySystem,
 }
