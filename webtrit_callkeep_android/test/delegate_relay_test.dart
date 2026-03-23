@@ -1,5 +1,3 @@
-// ignore_for_file: avoid_relative_lib_imports
-
 import 'dart:async';
 
 import 'package:flutter/services.dart';

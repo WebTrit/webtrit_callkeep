@@ -1,5 +1,3 @@
-// ignore_for_file: avoid_relative_lib_imports
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:webtrit_callkeep_android/src/common/callkeep.pigeon.dart';
 import 'package:webtrit_callkeep_android/src/common/converters.dart';
