@@ -44,6 +44,8 @@ import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.core.CallkeepCore
+import com.webtrit.callkeep.services.services.incoming_call.IncomingCallRelease
+import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -1054,8 +1056,34 @@ class ForegroundService :
             core.consumeAnswer(callMetaData.callId)
             // Update tracker: call has been answered.
             core.markAnswered(callMetaData.callId)
-            flutterDelegateApi?.performAnswerCall(callMetaData.callId) {}
             flutterDelegateApi?.didActivateAudioSession {}
+
+            if (IncomingCallService.isRunning) {
+                // Push-notification path: the background isolate holds an active signaling
+                // WebSocket. Dispatch performAnswerCall to the main Flutter engine only after
+                // the isolate confirms its WebSocket is closed. This prevents the server from
+                // sending a 4441 "force attach close" to the main engine's newly-opened
+                // signaling connection, which previously left the call stuck at
+                // "Answering the call, please hold on…".
+                val callId = callMetaData.callId
+                IncomingCallService.pendingReleaseCallback = {
+                    flutterDelegateApi?.performAnswerCall(callId) {}
+                }
+                // Safety net: if the isolate never acks (crash, Dart exception), unblock
+                // performAnswerCall after a short timeout so the call is not permanently stuck.
+                Handler(Looper.getMainLooper()).postDelayed({
+                    val pending = IncomingCallService.pendingReleaseCallback
+                    if (pending != null) {
+                        logger.w("handleCSReportAnswerCall: isolate release timeout, proceeding with performAnswerCall")
+                        IncomingCallService.pendingReleaseCallback = null
+                        pending()
+                    }
+                }, ISOLATE_RELEASE_TIMEOUT_MS)
+                IncomingCallService.release(baseContext, IncomingCallRelease.IC_RELEASE_WITH_ANSWER)
+            } else {
+                // Signaling path (no background isolate): notify Flutter immediately.
+                flutterDelegateApi?.performAnswerCall(callMetaData.callId) {}
+            }
         }
     }
 
@@ -1209,6 +1237,7 @@ class ForegroundService :
 
         private const val OUTGOING_CALL_TIMEOUT_MS = 5_000L
         private const val TEAR_DOWN_ACK_TIMEOUT_MS = 3_000L
+        private const val ISOLATE_RELEASE_TIMEOUT_MS = 2_000L
 
         // Maximum time to wait for Telecom to confirm an incoming call via DidPushIncomingCall.
         // If this elapses without confirmation or rejection, resolve the Pigeon callback with

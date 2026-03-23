@@ -225,7 +225,12 @@ class IncomingCallService : Service() {
             // The call was answered and then ended by the remote/local side.
             // The background isolate is no longer needed for signaling — the main process
             // takes over the active-call session. Release resources immediately.
-            callLifecycleHandler.release()
+            // Consume any pending callback registered by ForegroundService so that
+            // performAnswerCall is dispatched only after the isolate confirms its
+            // signaling WebSocket is closed.
+            val callback = pendingReleaseCallback
+            pendingReleaseCallback = null
+            callLifecycleHandler.release(onComplete = callback)
         } else {
             // The call was declined or hung up before being answered.
             // The signaling layer (WebSocket) must send a SIP BYE/decline to the server
@@ -261,7 +266,21 @@ class IncomingCallService : Service() {
         private const val SERVICE_TIMEOUT_MS = 2_000L
 
         @Volatile
-        private var isRunning = false
+        var isRunning = false
+            private set
+
+        /**
+         * Callback registered by [ForegroundService] before triggering
+         * [IncomingCallRelease.IC_RELEASE_WITH_ANSWER]. It is invoked inside
+         * [CallLifecycleHandler.release] once the background isolate confirms its signaling
+         * WebSocket is closed, guaranteeing that [ForegroundService.performAnswerCall] fires
+         * only after the isolate has disconnected — preventing the server from sending a 4441
+         * "force attach close" to the main engine's signaling client.
+         *
+         * Consumed (set to null) atomically before being invoked, so it fires at most once.
+         */
+        @Volatile
+        var pendingReleaseCallback: (() -> Unit)? = null
 
         private fun setRunning(running: Boolean) {
             isRunning = running
