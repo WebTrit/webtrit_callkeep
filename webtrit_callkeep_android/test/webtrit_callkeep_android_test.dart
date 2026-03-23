@@ -1,17 +1,31 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:webtrit_callkeep_android/webtrit_callkeep_android.dart';
 import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
 
+void _mockVoidChannel(String channelName) {
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMessageHandler(
+    channelName,
+    (message) async => const StandardMessageCodec().encodeMessage([null]),
+  );
+}
+
+void _mockChannel(String channelName, Object? returnValue) {
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMessageHandler(
+    channelName,
+    (message) async => const StandardMessageCodec().encodeMessage([returnValue]),
+  );
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('registers instance', () {
+  setUp(() async {
     WebtritCallkeepAndroid.registerWith();
-    expect(WebtritCallkeepPlatform.instance, isA<WebtritCallkeepAndroid>());
-  });
-
-  setUp(() {
-    WebtritCallkeepPlatform.instance.setUp(
+    _mockVoidChannel('dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.setUp');
+    _mockVoidChannel('dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.tearDown');
+    _mockChannel('dev.flutter.pigeon.webtrit_callkeep_android.PHostApi.isSetUp', true);
+    await WebtritCallkeepPlatform.instance.setUp(
       const CallkeepOptions(
         ios: CallkeepIOSOptions(
           localizedName: 'Test',
@@ -24,8 +38,12 @@ void main() {
     );
   });
 
-  tearDown(() {
-    WebtritCallkeepPlatform.instance.tearDown();
+  tearDown(() async {
+    await WebtritCallkeepPlatform.instance.tearDown();
+  });
+
+  test('registers instance', () {
+    expect(WebtritCallkeepPlatform.instance, isA<WebtritCallkeepAndroid>());
   });
 
   test('isSetUp', () async {
