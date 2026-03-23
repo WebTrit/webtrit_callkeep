@@ -1187,8 +1187,9 @@ class ForegroundService :
         }
         tearDownAckReceiver = null
 
-        runCatching { TelephonyUtils(baseContext).unregisterPhoneAccount() }
-            .onFailure { e -> logger.w("onDestroy: unregisterPhoneAccount failed: ${e.message}", e) }
+        // Phone account registration is tied to the user session, not the service lifecycle.
+        // Unregistration happens only in finishTearDown() (explicit logout/tearDown call).
+        // Removing it here ensures cold-start push calls work even if the service was killed.
 
         isRunning = false
     }
