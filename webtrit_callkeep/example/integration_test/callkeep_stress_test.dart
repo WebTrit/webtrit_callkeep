@@ -344,16 +344,28 @@ void main() {
       final id1 = _nextId();
       final id2 = _nextId();
 
-      await callkeep.reportNewIncomingCall(id1, _handle1, displayName: 'Call 1');
-      await callkeep.reportNewIncomingCall(id2, _handle2, displayName: 'Call 2');
+      final err1 = await callkeep.reportNewIncomingCall(id1, _handle1, displayName: 'Call 1');
+      final err2 = await callkeep.reportNewIncomingCall(id2, _handle2, displayName: 'Call 2');
+
+      // On devices that do not support concurrent self-managed calls (standard
+      // Android 11+, Huawei, other OEMs), the second call is rejected by Telecom
+      // and never confirmed to Flutter, so performEndCall will only fire for the
+      // accepted calls.
+      final expectedIds = <String>{};
+      if (err1 == null) expectedIds.add(id1);
+      if (err2 == null) expectedIds.add(id2);
+
+      if (expectedIds.isEmpty) {
+        markTestSkipped('device rejected all incoming calls');
+        return;
+      }
 
       final endedIds = <String>[];
       final latch = Completer<void>();
-      var count = 0;
       delegate.onPerformEndCall = (id) {
+        if (!expectedIds.contains(id)) return;
         endedIds.add(id);
-        count++;
-        if (count == 2) latch.complete();
+        if (endedIds.length == expectedIds.length && !latch.isCompleted) latch.complete();
       };
 
       await callkeep.endCall(id1);
@@ -364,8 +376,8 @@ void main() {
         onTimeout: () => throw TimeoutException('not all performEndCall fired: $endedIds'),
       );
 
-      expect(endedIds, containsAll([id1, id2]));
-      expect(endedIds.length, 2);
+      expect(endedIds, containsAll(expectedIds.toList()));
+      expect(endedIds.length, expectedIds.length);
     });
 
     testWidgets('spam same ID concurrently - exactly one succeeds', (WidgetTester _) async {
