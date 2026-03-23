@@ -656,6 +656,8 @@ class ForegroundService :
             logger.w("tearDown: resolving pending incoming callback for callId=$callId with CALL_REJECTED_BY_SYSTEM")
             core.markDirectNotified(callId)
             core.removePending(callId)
+            core.markTerminated(callId)
+            core.markEndCallDispatched(callId)
             resolvePendingIncomingCallback(
                 callId,
                 Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_REJECTED_BY_SYSTEM)),
@@ -666,10 +668,16 @@ class ForegroundService :
         // PhoneConnection was never created (no DidPushIncomingCall received yet).
         val unconnectedPending = core.drainUnconnectedPendingCallIds()
 
-        // Step 3: Notify Flutter for active connections. Mark in directNotified
-        // BEFORE calling connection.hungUp() so the async HungUp broadcast is suppressed.
+        // Step 3: Notify Flutter for active connections. Mark directNotified
+        // BEFORE CallkeepCore/ConnectionService tears down the underlying connections so
+        // that any async HungUp broadcast emitted during that teardown phase is suppressed.
+        // Also mark terminated + endCallDispatched so that any endCall() arriving during
+        // the tearDown window does not re-fire performEndCall or dispatch a duplicate
+        // startHungUpCall IPC.
         activeCallIds.forEach { callId ->
             core.markDirectNotified(callId)
+            core.markTerminated(callId)
+            core.markEndCallDispatched(callId)
             flutterDelegateApi?.performEndCall(callId) {}
         }
 
@@ -678,8 +686,12 @@ class ForegroundService :
         // broadcast from connection.hungUp() (Step 5) is suppressed — this happens when
         // the deferred-answer path caused CS to create a PhoneConnection via reserveAnswer
         // even though DidPushIncomingCall had not yet arrived and the callId was still pending.
+        // Also mark terminated + endCallDispatched to match the onDestroy path and prevent
+        // a duplicate startHungUpCall IPC if endCall() arrives during the tearDown window.
         unconnectedPending.forEach { callId ->
             core.markDirectNotified(callId)
+            core.markTerminated(callId)
+            core.markEndCallDispatched(callId)
             flutterDelegateApi?.performEndCall(callId) {}
         }
 
