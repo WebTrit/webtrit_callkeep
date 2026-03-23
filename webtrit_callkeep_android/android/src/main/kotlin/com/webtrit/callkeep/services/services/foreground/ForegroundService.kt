@@ -44,6 +44,8 @@ import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.core.CallkeepCore
+import com.webtrit.callkeep.services.services.incoming_call.IncomingCallRelease
+import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -1054,8 +1056,15 @@ class ForegroundService :
             core.consumeAnswer(callMetaData.callId)
             // Update tracker: call has been answered.
             core.markAnswered(callMetaData.callId)
-            flutterDelegateApi?.performAnswerCall(callMetaData.callId) {}
             flutterDelegateApi?.didActivateAudioSession {}
+
+            if (IncomingCallService.isRunning) {
+                // Push-notification path: tell the background isolate to release its
+                // signaling WebSocket. ActivityHolder.start() already fired from
+                // PhoneConnection.onAnswer() in :callkeep_core.
+                IncomingCallService.release(baseContext, IncomingCallRelease.IC_RELEASE_WITH_ANSWER)
+            }
+            flutterDelegateApi?.performAnswerCall(callMetaData.callId) {}
         }
     }
 

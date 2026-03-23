@@ -1,0 +1,23 @@
+apply plugin: 'kotlin'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+}
+
+dependencies {
+    compileOnly "com.android.tools.lint:lint-api:31.7.3"
+    compileOnly "com.android.tools.lint:lint-checks:31.7.3"
+}
+
+jar {
+    manifest {
+        attributes("Lint-Registry-v2": "com.webtrit.callkeep.lint.CallkeepIssueRegistry")
+    }
+}

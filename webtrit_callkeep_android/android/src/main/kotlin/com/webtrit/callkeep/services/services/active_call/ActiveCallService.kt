@@ -13,7 +13,7 @@ import com.webtrit.callkeep.common.startForegroundServiceCompat
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.notifications.ActiveCallNotificationBuilder
-import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
+import com.webtrit.callkeep.services.core.CallkeepCore
 
 class ActiveCallService : Service() {
     private val activeCallNotificationBuilder = ActiveCallNotificationBuilder()
@@ -59,8 +59,8 @@ class ActiveCallService : Service() {
 
     private fun hungUpCall() =
         callsMetadata.firstOrNull()?.let {
-            PhoneConnectionService.startHungUpCall(baseContext, it)
-        } ?: PhoneConnectionService.tearDown(baseContext)
+            CallkeepCore.instance.startHungUpCall(it)
+        } ?: CallkeepCore.instance.tearDownService()
 
     private fun getForegroundServiceTypes(callsMetadata: List<CallMetadata>): Int? =
         when {

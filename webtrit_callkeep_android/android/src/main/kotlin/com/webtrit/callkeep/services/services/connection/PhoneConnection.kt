@@ -509,7 +509,12 @@ class PhoneConnection internal constructor(
     private fun onActiveConnection() {
         logger.i("Connection became active for callId: $callId")
         audioManager.stopRingtone()
-        notificationManager.cancelIncomingNotification(true)
+        // IncomingCallService release (IC_RELEASE_WITH_ANSWER) is intentionally NOT triggered
+        // here from :callkeep_core. ForegroundService.handleCSReportAnswerCall() owns that
+        // trigger and sets pendingReleaseCallback before firing it, ensuring performAnswerCall
+        // reaches the main Flutter engine only after the background isolate confirms its
+        // signaling WebSocket is closed. Triggering release from both places would race and
+        // risk pendingReleaseCallback being null when the isolate acks.
         notificationManager.showActiveCallNotification(callId, metadata)
 
         if (Build.VERSION.SDK_INT == Build.VERSION_CODES.O_MR1) {

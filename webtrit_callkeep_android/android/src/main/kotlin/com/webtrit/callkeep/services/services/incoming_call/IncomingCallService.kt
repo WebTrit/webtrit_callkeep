@@ -122,7 +122,7 @@ class IncomingCallService : Service() {
 
         callLifecycleHandler =
             CallLifecycleHandler(
-                connectionController = DefaultCallConnectionController(baseContext),
+                connectionController = DefaultCallConnectionController(),
                 stopService = { stopSelf() },
                 isolateHandler = isolateHandler,
             )
@@ -222,9 +222,8 @@ class IncomingCallService : Service() {
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
         timeoutHandler.postDelayed(stopTimeoutRunnable, SERVICE_TIMEOUT_MS)
         if (answered) {
-            // The call was answered and then ended by the remote/local side.
-            // The background isolate is no longer needed for signaling — the main process
-            // takes over the active-call session. Release resources immediately.
+            // The call was answered. The background isolate is no longer needed for signaling —
+            // the main process takes over the active-call session. Release resources immediately.
             callLifecycleHandler.release()
         } else {
             // The call was declined or hung up before being answered.
@@ -261,7 +260,8 @@ class IncomingCallService : Service() {
         private const val SERVICE_TIMEOUT_MS = 2_000L
 
         @Volatile
-        private var isRunning = false
+        var isRunning = false
+            private set
 
         private fun setRunning(running: Boolean) {
             isRunning = running

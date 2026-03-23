@@ -138,11 +138,15 @@ class CallLifecycleHandler(
     }
 
     // Isolate
-    fun release() {
+    fun release(onComplete: (() -> Unit)? = null) {
         Log.d(TAG, "Resources released")
         flutterApi?.releaseResources(currentCallData) {
+            onComplete?.invoke()
             stopServiceWithDelay()
-        } ?: run { stopService() }
+        } ?: run {
+            onComplete?.invoke()
+            stopService()
+        }
     }
 
     private fun stopServiceWithDelay() {
