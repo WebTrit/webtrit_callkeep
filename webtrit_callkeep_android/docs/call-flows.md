@@ -91,6 +91,43 @@ incoming call event.
 
 ---
 
+## Incoming Call Rejected by Telecom (`callRejectedBySystem`)
+
+Android does not allow two self-managed calls to be simultaneously in RINGING state. When a
+second incoming call arrives while the first is still ringing, Telecom calls
+`onCreateIncomingConnectionFailed` — **without** calling `onCreateIncomingConnection` first.
+
+```text
+1.  Dart / Push isolate calls reportNewIncomingCall(id2, meta)
+        |  (call id1 is already in RINGING state)
+        v
+2.  TelephonyUtils.addNewIncomingCall()  -->  Android Telecom
+        |
+        v
+3.  Telecom --> PhoneConnectionService.onCreateIncomingConnectionFailed(callId=id2)
+        |   ConnectionManager.isPending(id2) == true  (was registered in step 2)
+        |   broadcast: HungUp(id2)
+        v
+4.  ForegroundService.handleCSReportDeclineCall()
+        |   pendingIncomingCallbacks[id2] exists (Pigeon response deferred)
+        |   reply with PIncomingCallError(callRejectedBySystem)
+        |   (performEndCall is NOT fired — call was never confirmed to Flutter)
+        v
+5.  Dart receives reportNewIncomingCall() result = callRejectedBySystem
+```
+
+**Key consequences**:
+
+- `performEndCall` does **not** fire for `id2` — the call never existed in Telecom.
+- The app must send the appropriate signaling (e.g. SIP BYE) to the server itself,
+  without waiting for `performEndCall`.
+
+**Scope**: this is standard AOSP behaviour on Android 11+ (confirmed on stock Pixel 5).
+Some vendors (Huawei, certain MediaTek OEMs) apply the same restriction even when the
+first call is ACTIVE rather than RINGING.
+
+---
+
 ## Outgoing Call
 
 Triggered when the user initiates a call from the app UI.

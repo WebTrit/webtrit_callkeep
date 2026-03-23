@@ -336,10 +336,12 @@ void main() {
       // Wait for id1 to be promoted (DidPushIncomingCall received) before
       // adding id2. This ensures Telecom sees id1 in RINGING state first.
       await _waitForConnection(id1);
-      await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(id2, _handle2, displayName: 'Frank');
-      await _waitForConnection(id2);
 
+      // Register the callback before reporting id2. Telecom may call
+      // onCreateIncomingConnectionFailed for id2 (BUSY — id1 is RINGING),
+      // which fires performEndCall immediately via the HungUp broadcast path.
+      // Registering here ensures that early firing is captured even if
+      // _waitForConnection(id2) times out before endCall(id2) is called.
       final endedIds = <String>[];
       final allDone = Completer<void>();
       delegate.onPerformEndCall = (cid) {
@@ -348,6 +350,18 @@ void main() {
           if (endedIds.length == 2 && !allDone.isCompleted) allDone.complete();
         }
       };
+
+      await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
+          .reportNewIncomingCall(id2, _handle2, displayName: 'Frank');
+
+      // On OEM devices that reject concurrent incoming calls, id2 is never
+      // promoted (no DidPushIncomingCall). Skip rather than waiting the full
+      // _waitForConnection timeout on every run on such devices.
+      final conn2 = await _waitForConnection(id2);
+      if (conn2 == null) {
+        markTestSkipped('device does not support concurrent incoming calls');
+        return;
+      }
 
       await callkeep.endCall(id1);
       await callkeep.endCall(id2);

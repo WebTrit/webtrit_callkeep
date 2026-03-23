@@ -59,6 +59,8 @@ extension PIncomingCallErrorEnumConverter on PIncomingCallErrorEnum {
         return CallkeepIncomingCallError.filteredByBlockList;
       case PIncomingCallErrorEnum.internal:
         return CallkeepIncomingCallError.internal;
+      case PIncomingCallErrorEnum.callRejectedBySystem:
+        return CallkeepIncomingCallError.callRejectedBySystem;
     }
   }
 }

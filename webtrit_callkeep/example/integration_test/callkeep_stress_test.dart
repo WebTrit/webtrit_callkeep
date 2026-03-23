@@ -250,8 +250,15 @@ void main() {
         displayName: 'Call 2',
       );
 
-      expect(err1, isNull);
-      expect(err2, isNull);
+      expect(err1, isNull, reason: 'first call must succeed');
+      // On OEM devices that do not support concurrent self-managed calls (e.g.
+      // Huawei), the second call is rejected by Telecom and returns
+      // callRejectedBySystem. Accept this as a valid outcome.
+      expect(
+        err2 == null || err2 == CallkeepIncomingCallError.callRejectedBySystem,
+        isTrue,
+        reason: 'second call must succeed or be rejected by system (OEM device limitation)',
+      );
     });
   });
 
@@ -337,16 +344,28 @@ void main() {
       final id1 = _nextId();
       final id2 = _nextId();
 
-      await callkeep.reportNewIncomingCall(id1, _handle1, displayName: 'Call 1');
-      await callkeep.reportNewIncomingCall(id2, _handle2, displayName: 'Call 2');
+      final err1 = await callkeep.reportNewIncomingCall(id1, _handle1, displayName: 'Call 1');
+      final err2 = await callkeep.reportNewIncomingCall(id2, _handle2, displayName: 'Call 2');
+
+      // On devices that do not support concurrent self-managed calls (standard
+      // Android 11+, Huawei, other OEMs), the second call is rejected by Telecom
+      // and never confirmed to Flutter, so performEndCall will only fire for the
+      // accepted calls.
+      final expectedIds = <String>{};
+      if (err1 == null) expectedIds.add(id1);
+      if (err2 == null) expectedIds.add(id2);
+
+      if (expectedIds.isEmpty) {
+        markTestSkipped('device rejected all incoming calls');
+        return;
+      }
 
       final endedIds = <String>[];
       final latch = Completer<void>();
-      var count = 0;
       delegate.onPerformEndCall = (id) {
+        if (!expectedIds.contains(id)) return;
         endedIds.add(id);
-        count++;
-        if (count == 2) latch.complete();
+        if (endedIds.length == expectedIds.length && !latch.isCompleted) latch.complete();
       };
 
       await callkeep.endCall(id1);
@@ -357,8 +376,8 @@ void main() {
         onTimeout: () => throw TimeoutException('not all performEndCall fired: $endedIds'),
       );
 
-      expect(endedIds, containsAll([id1, id2]));
-      expect(endedIds.length, 2);
+      expect(endedIds, containsAll(expectedIds.toList()));
+      expect(endedIds.length, expectedIds.length);
     });
 
     testWidgets('spam same ID concurrently - exactly one succeeds', (WidgetTester _) async {
@@ -378,31 +397,41 @@ void main() {
       final id1 = _nextId();
       final id2 = _nextId();
 
-      await callkeep.reportNewIncomingCall(id1, _handle1, displayName: 'Call 1');
-      await callkeep.reportNewIncomingCall(id2, _handle2, displayName: 'Call 2');
+      final err1 = await callkeep.reportNewIncomingCall(id1, _handle1, displayName: 'Call 1');
+      final err2 = await callkeep.reportNewIncomingCall(id2, _handle2, displayName: 'Call 2');
+
+      // On OEM devices that do not support concurrent self-managed calls (e.g.
+      // Huawei), the second call is rejected and never confirmed to Flutter, so
+      // tearDown will only fire performEndCall for the accepted calls.
+      final expectedIds = <String>{};
+      if (err1 == null) expectedIds.add(id1);
+      if (err2 == null) expectedIds.add(id2);
+
+      if (expectedIds.isEmpty) {
+        markTestSkipped('device rejected all incoming calls');
+        return;
+      }
 
       final endedIds = <String>[];
       final latch = Completer<void>();
-      var count = 0;
       // Filter by expected IDs so stale callbacks from earlier tests don't
       // prematurely complete the latch.
       delegate.onPerformEndCall = (id) {
-        if (!{id1, id2}.contains(id)) return;
+        if (!expectedIds.contains(id)) return;
         endedIds.add(id);
-        count++;
-        if (count == 2 && !latch.isCompleted) latch.complete();
+        if (endedIds.length == expectedIds.length && !latch.isCompleted) latch.complete();
       };
 
       await callkeep.tearDown();
 
       // Pigeon delivers performEndCall asynchronously from the Dart side even
-      // though Kotlin fires them synchronously. Wait for both callbacks.
+      // though Kotlin fires them synchronously. Wait for all expected callbacks.
       await latch.future.timeout(
         const Duration(seconds: 10),
         onTimeout: () => throw TimeoutException('not all performEndCall fired: $endedIds'),
       );
 
-      expect(endedIds, containsAll([id1, id2]));
+      expect(endedIds, containsAll(expectedIds.toList()));
     });
   });
 
