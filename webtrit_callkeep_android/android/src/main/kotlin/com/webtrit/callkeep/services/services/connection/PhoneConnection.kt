@@ -15,6 +15,7 @@ import android.telecom.TelecomManager
 import android.telecom.VideoProfile
 import androidx.annotation.RequiresApi
 import androidx.core.net.toUri
+import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.Platform
 import com.webtrit.callkeep.managers.AudioManager
@@ -134,12 +135,7 @@ class PhoneConnection internal constructor(
         hasAnswered = true
         setActive()
         dispatcher(CallLifecycleEvent.AnswerCall, metadata)
-        // ActivityHolder.start() is intentionally NOT called here.
-        // For the push-notification path, ForegroundService.handleCSReportAnswerCall()
-        // launches the activity only AFTER the background isolate confirms its signaling
-        // WebSocket is closed (via pendingReleaseCallback). This prevents the main engine
-        // from reconnecting signaling before the isolate disconnects, which previously
-        // caused the server to send a 4441 "force attach close" to the main engine.
+        ActivityHolder.start(context)
     }
 
     /**

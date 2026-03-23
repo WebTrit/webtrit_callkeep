@@ -1059,35 +1059,12 @@ class ForegroundService :
             flutterDelegateApi?.didActivateAudioSession {}
 
             if (IncomingCallService.isRunning) {
-                // Push-notification path: the background isolate holds an active signaling
-                // WebSocket. Launch the activity and dispatch performAnswerCall to the main
-                // Flutter engine only AFTER the isolate confirms its WebSocket is closed
-                // (via pendingReleaseCallback). This prevents the main engine from
-                // reconnecting signaling before the isolate disconnects, which previously
-                // caused the server to send a 4441 "force attach close" to the main engine,
-                // leaving the call stuck at "Answering the call, please hold on…".
-                val callId = callMetaData.callId
-                IncomingCallService.pendingReleaseCallback = {
-                    ActivityHolder.start(baseContext)
-                    flutterDelegateApi?.performAnswerCall(callId) {}
-                }
-                // Safety net: if the isolate never acks (crash, Dart exception), unblock
-                // the activity launch and performAnswerCall after a short timeout so the
-                // call is not permanently stuck.
-                Handler(Looper.getMainLooper()).postDelayed({
-                    val pending = IncomingCallService.pendingReleaseCallback
-                    if (pending != null) {
-                        logger.w("handleCSReportAnswerCall: isolate release timeout, proceeding with activity launch and performAnswerCall")
-                        IncomingCallService.pendingReleaseCallback = null
-                        pending()
-                    }
-                }, ISOLATE_RELEASE_TIMEOUT_MS)
+                // Push-notification path: tell the background isolate to release its
+                // signaling WebSocket. ActivityHolder.start() already fired from
+                // PhoneConnection.onAnswer() in :callkeep_core.
                 IncomingCallService.release(baseContext, IncomingCallRelease.IC_RELEASE_WITH_ANSWER)
-            } else {
-                // Signaling path (no background isolate): launch activity and notify Flutter immediately.
-                ActivityHolder.start(baseContext)
-                flutterDelegateApi?.performAnswerCall(callMetaData.callId) {}
             }
+            flutterDelegateApi?.performAnswerCall(callMetaData.callId) {}
         }
     }
 
@@ -1241,7 +1218,6 @@ class ForegroundService :
 
         private const val OUTGOING_CALL_TIMEOUT_MS = 5_000L
         private const val TEAR_DOWN_ACK_TIMEOUT_MS = 3_000L
-        private const val ISOLATE_RELEASE_TIMEOUT_MS = 2_000L
 
         // Maximum time to wait for Telecom to confirm an incoming call via DidPushIncomingCall.
         // If this elapses without confirmation or rejection, resolve the Pigeon callback with
