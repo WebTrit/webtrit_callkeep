@@ -5,7 +5,7 @@ import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.toCallHandle
-import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
+import com.webtrit.callkeep.services.core.CallkeepCore
 
 class BackgroundPushNotificationIsolateBootstrapApi(
     private val context: Context,
@@ -52,8 +52,7 @@ class BackgroundPushNotificationIsolateBootstrapApi(
                 ringtonePath = ringtonePath,
             )
 
-        PhoneConnectionService.startIncomingCall(
-            context = context,
+        CallkeepCore.instance.startIncomingCall(
             metadata = metadata,
             onSuccess = { callback(Result.success(null)) },
             onError = { error -> callback(Result.success(error)) },
