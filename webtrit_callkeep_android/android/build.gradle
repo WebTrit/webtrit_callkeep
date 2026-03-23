@@ -90,6 +90,8 @@ dependencies {
         testRuntimeOnly files("$flutterSdkPath/bin/cache/artifacts/engine/android-x86/flutter.jar")
     }
 
+    lintChecks project(':lint')
+
     testImplementation "junit:junit:4.13.2"
     testImplementation "org.jetbrains.kotlin:kotlin-test"
     testImplementation "androidx.test:core:1.7.0"
