@@ -6,7 +6,7 @@ iOS platform implementation. Two layers: Dart (Flutter side) and Swift (native s
 
 ## Package structure
 
-```
+```text
 webtrit_callkeep_ios/
 ├── lib/src/
 │   ├── webtrit_callkeep_ios.dart       # WebtritCallkeepIOS — platform impl
@@ -24,9 +24,11 @@ webtrit_callkeep_ios/
 
 1. Edit `pigeons/callkeep.messages.dart`.
 2. Run from this package directory:
+
    ```bash
    flutter pub run pigeon --input pigeons/callkeep.messages.dart
    ```
+
 3. Commit both the input file and all generated output (`callkeep.pigeon.dart`, Swift files under `ios/Classes/`).
 
 **Never manually edit** `lib/src/common/callkeep.pigeon.dart` or Swift files in `ios/Classes/` that are Pigeon-generated.
@@ -38,7 +40,7 @@ When adding a converter for a new Pigeon type, add an extension in `lib/src/comm
 ## iOS call UI behavior
 
 | App state | UI used |
-|---|---|
+| --- | --- |
 | Foreground | Flutter-based incoming call screen |
 | Background / locked | System CallKit UI |
 | Terminated | CallKit via PushKit (VoIP push) wakes the app |
@@ -48,7 +50,7 @@ When adding a converter for a new Pigeon type, add an extension in `lib/src/comm
 ## Delegates
 
 | Delegate | How to register | Purpose |
-|---|---|---|
+| --- | --- | --- |
 | `CallkeepDelegate` | `Callkeep().setDelegate(...)` | All call lifecycle events |
 | `PushRegistryDelegate` | `Callkeep().setPushRegistryDelegate(...)` | PushKit VoIP token updates and incoming push |
 | `CallkeepLogsDelegate` | `Callkeep().setLogsDelegate(...)` | Forward native logs to Dart |

@@ -23,7 +23,7 @@ Branches must follow the pattern `<type>/<description>`, where `<description>` u
 
 Examples:
 
-```
+```text
 feat/android-background-signaling
 fix/null-pointer-on-incoming-call
 chore/upgrade-pigeon
@@ -34,7 +34,7 @@ release/1.2.0
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/):
 
-```
+```text
 <type>[(scope)]: <lowercase description>
 ```
 
@@ -46,7 +46,7 @@ Accepted types: `feat`, `fix`, `chore`, `refactor`, `test`, `docs`, `style`, `ci
 
 Examples:
 
-```
+```text
 feat(android): add SMS-triggered incoming call support
 fix(ios): handle nil push token in PushRegistryDelegate
 chore: upgrade pigeon to 26.0.3

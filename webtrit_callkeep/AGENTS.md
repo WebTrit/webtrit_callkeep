@@ -6,7 +6,7 @@ This package is the **public API surface** for app developers. It contains no pl
 
 ## Package structure
 
-```
+```text
 lib/src/
 ├── callkeep.dart                  # Callkeep singleton — core call operations + status stream
 ├── callkeep_connections.dart      # CallkeepConnections singleton — connection state (Android only)
@@ -32,6 +32,7 @@ lib/src/
 ## Key classes
 
 ### `Callkeep` (singleton)
+
 - `setUp(CallkeepOptions)` / `tearDown()` — initialize/shutdown native integration
 - `reportNewIncomingCall` / `startCall` / `answerCall` / `endCall` — call lifecycle
 - `setHeld` / `setMuted` / `sendDTMF` / `setAudioDevice` — in-call controls
@@ -39,7 +40,9 @@ lib/src/
 - `setDelegate(CallkeepDelegate?)` / `setPushRegistryDelegate(PushRegistryDelegate?)` — event callbacks
 
 ### `AndroidCallkeepServices` (static, Android only)
+
 Entry point for Android background modes. Always use these static singletons:
+
 - `backgroundSignalingBootstrapService` — configure + start/stop persistent signaling service
 - `backgroundSignalingService` — report incoming calls / end calls from signaling isolate
 - `backgroundPushNotificationBootstrapService` — configure + trigger push-notification-based calls
@@ -47,12 +50,14 @@ Entry point for Android background modes. Always use these static singletons:
 - `smsReceptionConfig` — **deprecated**, use `AndroidCallkeepUtils.smsReceptionConfig` instead
 
 ### `AndroidCallkeepUtils` (static, Android only)
+
 - `activityControl` — lock screen overlay, wake screen, send to background
 - `permissions` — request/check `CallkeepPermission` entries
 - `diagnostics` — get diagnostic report map
 - `smsReceptionConfig` — initialize SMS-triggered call reception
 
 ### `CallkeepConnections` (singleton, Android only)
+
 - `getConnection(callId)` / `getConnections()` / `cleanConnections()`
 - `updateActivitySignalingStatus(CallkeepSignalingStatus)`
 - All methods are no-ops on non-Android platforms (return `null` / empty list)
