@@ -28,3 +28,11 @@ pre-push:
             (cd "$dir" && flutter analyze) || exit 1
           fi
         done
+    flutter-tests:
+      run: |
+        echo "Running Flutter tests for webtrit_callkeep_android..."
+        (cd webtrit_callkeep_android && flutter test test/) || exit 1
+    android-native-tests:
+      run: |
+        echo "Running Android native (Kotlin) tests for webtrit_callkeep_android..."
+        (cd webtrit_callkeep_android/android && ./gradlew testDebugUnitTest) || exit 1
