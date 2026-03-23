@@ -56,6 +56,10 @@ class TelephonyUtils(
         getTelecomManager().registerPhoneAccount(phoneAccountBuilder.build())
     }
 
+    fun unregisterPhoneAccount() {
+        getTelecomManager().unregisterPhoneAccount(getPhoneAccountHandle())
+    }
+
     fun getPhoneAccountHandle(): PhoneAccountHandle {
         val componentName = ComponentName(context, PhoneConnectionService::class.java)
         val connectionServiceId = getConnectionServiceId()
