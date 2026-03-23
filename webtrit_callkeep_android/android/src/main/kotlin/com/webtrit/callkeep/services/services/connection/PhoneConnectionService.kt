@@ -261,6 +261,12 @@ class PhoneConnectionService : ConnectionService() {
             // does NOT trigger onCreateIncomingConnectionFailed.
             connectionManager.removePending(metadata.callId)
             connectionManager.consumeAnswer(metadata.callId)
+            // Notify the main process that this call was rejected so it can clean
+            // up its pending state. Without this, MainProcessConnectionTracker retains
+            // the callId in pendingCallIds and a subsequent answerCall() sends a
+            // ReserveAnswer that is never consumed (no onCreateIncomingConnection fires again).
+            // This mirrors the HungUp path in onCreateIncomingConnectionFailed.
+            dispatcher.dispatch(baseContext, CallLifecycleEvent.HungUp, metadata.toBundle())
             return Connection.createFailedConnection(DisconnectCause(DisconnectCause.BUSY))
         }
 

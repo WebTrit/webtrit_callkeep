@@ -409,7 +409,15 @@ void main() {
       // Wait for id2's Telecom connection to be created before proceeding.
       // The connection is built asynchronously in :callkeep_core and may not
       // exist yet by the time answerCall is called.
-      await _waitForConnection(id2);
+      // On some OEM devices (e.g. Huawei), Telecom rejects the second incoming
+      // call even when the first is active. If _waitForConnection returns null
+      // the device does not support concurrent self-managed calls and the
+      // remainder of this scenario cannot be exercised.
+      final conn2 = await _waitForConnection(id2);
+      if (conn2 == null) {
+        markTestSkipped('device does not support concurrent incoming calls');
+        return;
+      }
 
       // Hold id1
       final holdLatch = Completer<void>();
@@ -463,7 +471,12 @@ void main() {
       await _waitFor(answer1Latch.future, label: 'performAnswerCall id1');
 
       await callkeep.reportNewIncomingCall(id2, _handle2, displayName: 'Hank');
-      await _waitForConnection(id2);
+      // Same OEM guard as in the hold-swap test above: skip if Telecom rejects id2.
+      final conn2 = await _waitForConnection(id2);
+      if (conn2 == null) {
+        markTestSkipped('device does not support concurrent incoming calls');
+        return;
+      }
 
       // Hold id1
       final holdLatch = Completer<void>();

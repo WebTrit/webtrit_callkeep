@@ -85,6 +85,31 @@ class ForegroundService :
     // when startCall() is invoked again with the same callId.
     private val pendingCallCleanupsByCallId: ConcurrentHashMap<String, () -> Unit> = ConcurrentHashMap()
 
+    // Pigeon callbacks for reportNewIncomingCall() that are waiting for Telecom confirmation.
+    // Populated in startIncomingCall.onSuccess instead of resolving immediately, so that
+    // Flutter only gets "success" once Telecom has actually accepted the call (DidPushIncomingCall)
+    // or gets CALL_REJECTED_BY_SYSTEM when Telecom rejects it (HungUp / onCreateIncomingConnectionFailed).
+    private val pendingIncomingCallbacks: ConcurrentHashMap<String, (Result<PIncomingCallError?>) -> Unit> =
+        ConcurrentHashMap()
+
+    // Timeout runnables for pending incoming call confirmations, keyed by callId.
+    // Allows cancellation when the confirmation arrives before the timeout fires.
+    private val pendingIncomingTimeouts: ConcurrentHashMap<String, Runnable> = ConcurrentHashMap()
+
+    /**
+     * Resolves a pending [reportNewIncomingCall] Pigeon callback with [result].
+     * Cancels the associated safety timeout. Safe to call multiple times — only
+     * the first call has any effect (the entry is removed atomically).
+     */
+    private fun resolvePendingIncomingCallback(
+        callId: String,
+        result: Result<PIncomingCallError?>,
+    ) {
+        val cb = pendingIncomingCallbacks.remove(callId) ?: return
+        pendingIncomingTimeouts.remove(callId)?.let { mainHandler.removeCallbacks(it) }
+        cb(result)
+    }
+
     private var _flutterDelegateApi: PDelegateFlutterApi? = null
     var flutterDelegateApi: PDelegateFlutterApi?
         get() = _flutterDelegateApi
@@ -494,7 +519,30 @@ class ForegroundService :
                 // not fire an additional didPushIncomingCall Pigeon call. Flutter already
                 // learns about this call from __onCallSignalingEventIncoming.
                 core.markSignalingRegistered(callId)
-                callback(Result.success(null))
+
+                // Defer the Pigeon callback until Telecom confirms via DidPushIncomingCall
+                // (resolve with null) or rejects via HungUp (resolve with CALL_REJECTED_BY_SYSTEM).
+                // This prevents the broken API contract where Flutter receives success from
+                // reportNewIncomingCall and then immediately receives performEndCall — which
+                // happens on OEM devices (e.g. Huawei) that reject the second concurrent
+                // self-managed call in onCreateIncomingConnectionFailed.
+                pendingIncomingCallbacks[callId] = callback
+
+                // Safety timeout: if neither DidPushIncomingCall nor HungUp arrives within
+                // the expected window, resolve with CALL_REJECTED_BY_SYSTEM so the Pigeon
+                // callback is not leaked.
+                val timeoutRunnable =
+                    Runnable {
+                        logger.w("reportNewIncomingCall: Telecom confirmation timeout for callId=$callId, resolving with CALL_REJECTED_BY_SYSTEM")
+                        pendingIncomingTimeouts.remove(callId)
+                        if (addedPending) core.removePending(callId)
+                        resolvePendingIncomingCallback(
+                            callId,
+                            Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_REJECTED_BY_SYSTEM)),
+                        )
+                    }
+                pendingIncomingTimeouts[callId] = timeoutRunnable
+                mainHandler.postDelayed(timeoutRunnable, INCOMING_CALL_CONFIRMATION_TIMEOUT_MS)
             },
             onError = { error ->
                 when (error?.value) {
@@ -589,6 +637,22 @@ class ForegroundService :
 
         // Step 1: Collect active call IDs from the core shadow state (promoted connections).
         val activeCallIds = core.getAll().map { it.callId }
+
+        // Step 1b: Drain any deferred reportNewIncomingCall callbacks that are still waiting
+        // for Telecom confirmation. These calls were accepted by startIncomingCall() but
+        // DidPushIncomingCall has not yet arrived. Resolve them with CALL_REJECTED_BY_SYSTEM
+        // and mark directNotified so that any subsequent HungUp broadcast is suppressed.
+        // Must run before drainUnconnectedPendingCallIds() so the callIds are removed from
+        // pendingCallIds first, preventing tearDown from also firing performEndCall for them.
+        pendingIncomingCallbacks.keys().toList().forEach { callId ->
+            logger.w("tearDown: resolving pending incoming callback for callId=$callId with CALL_REJECTED_BY_SYSTEM")
+            core.markDirectNotified(callId)
+            core.removePending(callId)
+            resolvePendingIncomingCallback(
+                callId,
+                Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_REJECTED_BY_SYSTEM)),
+            )
+        }
 
         // Step 2: Drain pending calls that were registered with Telecom but whose
         // PhoneConnection was never created (no DidPushIncomingCall received yet).
@@ -774,6 +838,18 @@ class ForegroundService :
         callback: (Result<PCallRequestError?>) -> Unit,
     ) {
         logger.i("endCall $callId.")
+
+        // If there is a deferred reportNewIncomingCall callback waiting for Telecom
+        // confirmation, resolve it immediately with null (success). The call was
+        // accepted by startIncomingCall() and is now being explicitly ended by the
+        // app — the subsequent HungUp broadcast must still fire performEndCall.
+        // Without this, handleCSReportDeclineCall would see the pending callback and
+        // return CALL_REJECTED_BY_SYSTEM while suppressing performEndCall.
+        if (pendingIncomingCallbacks.containsKey(callId)) {
+            logger.d("endCall $callId: resolving deferred incoming callback before explicit end")
+            resolvePendingIncomingCallback(callId, Result.success(null))
+        }
+
         if (core.isTerminated(callId)) {
             // Re-fire performEndCall only on the first endCall for a Telecom-terminated call
             // (e.g. onCreateIncomingConnectionFailed fired before the Dart callback was registered).
@@ -868,6 +944,11 @@ class ForegroundService :
             // Promote from pending to fully registered incoming connection.
             core.promote(metadata.callId, metadata, PCallkeepConnectionState.STATE_RINGING)
 
+            // Resolve any deferred reportNewIncomingCall Pigeon callback waiting for this
+            // Telecom confirmation. This is the success path: Telecom accepted the call,
+            // so Flutter learns the call is live via the resolved callback (null = no error).
+            resolvePendingIncomingCallback(metadata.callId, Result.success(null))
+
             // If this call was registered via reportNewIncomingCall (the foreground signaling
             // path), Flutter already knows about it through __onCallSignalingEventIncoming.
             // Suppress didPushIncomingCall to prevent a duplicate push-path entry (line -1)
@@ -910,6 +991,23 @@ class ForegroundService :
             if (core.consumeDirectNotified(callId)) {
                 logger.d(
                     "handleCSReportDeclineCall: suppressing stale broadcast for callId=$callId (already notified directly)",
+                )
+                return@let
+            }
+
+            // If there is a pending reportNewIncomingCall callback for this callId, Telecom
+            // rejected the call before Flutter was ever notified of it. Resolve the Pigeon
+            // callback with CALL_REJECTED_BY_SYSTEM and return early — do NOT fire
+            // performEndCall since Flutter never received a successful registration.
+            if (pendingIncomingCallbacks.containsKey(callId)) {
+                logger.w(
+                    "handleCSReportDeclineCall: Telecom rejected callId=$callId before Flutter confirmation — resolving with CALL_REJECTED_BY_SYSTEM",
+                )
+                core.removePending(callId)
+                core.markTerminated(callId)
+                resolvePendingIncomingCallback(
+                    callId,
+                    Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_REJECTED_BY_SYSTEM)),
                 )
                 return@let
             }
@@ -1049,6 +1147,16 @@ class ForegroundService :
         pendingCallCleanupsByCallId.values.toList().forEach { it() }
         pendingCallCleanupsByCallId.clear()
 
+        // Resolve any deferred reportNewIncomingCall callbacks that are still pending.
+        // The service is being destroyed so Telecom confirmation will never arrive.
+        pendingIncomingCallbacks.keys().toList().forEach { callId ->
+            logger.w("onDestroy: resolving pending incoming callback for callId=$callId with CALL_REJECTED_BY_SYSTEM")
+            resolvePendingIncomingCallback(
+                callId,
+                Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_REJECTED_BY_SYSTEM)),
+            )
+        }
+
         // Cancel any in-progress tearDown so the receiver and timeout do not outlive the service.
         tearDownTimeoutRunnable?.let { mainHandler.removeCallbacks(it) }
         tearDownTimeoutRunnable = null
@@ -1077,6 +1185,11 @@ class ForegroundService :
 
         private const val OUTGOING_CALL_TIMEOUT_MS = 5_000L
         private const val TEAR_DOWN_ACK_TIMEOUT_MS = 3_000L
+
+        // Maximum time to wait for Telecom to confirm an incoming call via DidPushIncomingCall.
+        // If this elapses without confirmation or rejection, resolve the Pigeon callback with
+        // CALL_REJECTED_BY_SYSTEM to avoid leaking the deferred callback.
+        private const val INCOMING_CALL_CONFIRMATION_TIMEOUT_MS = 5_000L
 
         /**
          * Process-wide facade for all interactions with the `:callkeep_core` process.

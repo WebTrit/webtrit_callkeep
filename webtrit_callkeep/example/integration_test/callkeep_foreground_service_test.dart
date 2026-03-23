@@ -435,20 +435,27 @@ void main() {
 
       await callkeep.reportNewIncomingCall(id1, _handle1, displayName: 'Jack');
       await Future.delayed(const Duration(milliseconds: 200));
-      await callkeep.reportNewIncomingCall(id2, _handle2, displayName: 'Kate');
+      final err2 = await callkeep.reportNewIncomingCall(id2, _handle2, displayName: 'Kate');
+
+      // On OEM devices that do not support concurrent self-managed calls (e.g.
+      // Huawei), the second reportNewIncomingCall returns callRejectedBySystem.
+      // In that case the call was never confirmed to Flutter, so tearDown will
+      // only fire performEndCall for the calls that were actually accepted.
+      final expectedIds = <String>{id1};
+      if (err2 == null) expectedIds.add(id2);
 
       final endedIds = <String>[];
       final allDone = Completer<void>();
       delegate.onPerformEndCall = (cid) {
-        if ({id1, id2}.contains(cid) && !endedIds.contains(cid)) {
+        if (expectedIds.contains(cid) && !endedIds.contains(cid)) {
           endedIds.add(cid);
-          if (endedIds.length == 2 && !allDone.isCompleted) allDone.complete();
+          if (endedIds.length == expectedIds.length && !allDone.isCompleted) allDone.complete();
         }
       };
 
       await callkeep.tearDown();
-      await _waitFor(allDone.future, label: 'both performEndCall on tearDown');
-      expect(endedIds, containsAll([id1, id2]));
+      await _waitFor(allDone.future, label: 'performEndCall on tearDown for accepted calls');
+      expect(endedIds, containsAll(expectedIds.toList()));
     });
   });
 

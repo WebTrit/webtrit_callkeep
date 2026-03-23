@@ -82,6 +82,14 @@ enum PIncomingCallErrorEnum {
   filteredByDoNotDisturb,
   filteredByBlockList,
   internal,
+
+  /// Android only.
+  ///
+  /// Telecom rejected the incoming call registration — e.g. the device does
+  /// not support concurrent self-managed calls (common on Huawei and other OEM
+  /// devices). The call was never confirmed to Flutter so no [performEndCall]
+  /// will be fired.
+  callRejectedBySystem,
 }
 
 // TODO: See https://github.com/flutter/flutter/issues/87307

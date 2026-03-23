@@ -782,7 +782,14 @@ void main() {
       // Now answer id2. Wait for the Telecom connection to exist in
       // :callkeep_core before calling answerCall — the connection is created
       // asynchronously and answerCall fails silently if called too early.
-      await _waitForConnection(id2);
+      // On some OEM devices (e.g. Huawei), Telecom rejects the second incoming
+      // call even when the first is active. Skip if the device does not support
+      // concurrent self-managed calls.
+      final conn2 = await _waitForConnection(id2);
+      if (conn2 == null) {
+        markTestSkipped('device does not support concurrent incoming calls');
+        return;
+      }
       final answer2Latch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
         if (cid == id2 && !answer2Latch.isCompleted) answer2Latch.complete();
