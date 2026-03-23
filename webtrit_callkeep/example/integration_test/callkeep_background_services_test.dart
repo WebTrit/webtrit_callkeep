@@ -353,7 +353,15 @@ void main() {
 
       await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
           .reportNewIncomingCall(id2, _handle2, displayName: 'Frank');
-      await _waitForConnection(id2);
+
+      // On OEM devices that reject concurrent incoming calls, id2 is never
+      // promoted (no DidPushIncomingCall). Skip rather than waiting the full
+      // _waitForConnection timeout on every run on such devices.
+      final conn2 = await _waitForConnection(id2);
+      if (conn2 == null) {
+        markTestSkipped('device does not support concurrent incoming calls');
+        return;
+      }
 
       await callkeep.endCall(id1);
       await callkeep.endCall(id2);

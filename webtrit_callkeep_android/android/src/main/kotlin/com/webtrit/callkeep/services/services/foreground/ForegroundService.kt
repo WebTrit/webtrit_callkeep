@@ -1005,6 +1005,11 @@ class ForegroundService :
                 )
                 core.removePending(callId)
                 core.markTerminated(callId)
+                // Mark endCall as already dispatched so that a subsequent endCall()
+                // by Flutter (after receiving callRejectedBySystem) does not re-fire
+                // performEndCall — performEndCall must never fire for a call that was
+                // never confirmed to Flutter.
+                core.markEndCallDispatched(callId)
                 resolvePendingIncomingCallback(
                     callId,
                     Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_REJECTED_BY_SYSTEM)),
@@ -1149,8 +1154,14 @@ class ForegroundService :
 
         // Resolve any deferred reportNewIncomingCall callbacks that are still pending.
         // The service is being destroyed so Telecom confirmation will never arrive.
+        // Mirror the tearDown path: mark directNotified and remove from pending so
+        // that stale HungUp broadcasts from the dying CS process are suppressed and
+        // pendingCallIds do not leak into the next session's core state.
         pendingIncomingCallbacks.keys().toList().forEach { callId ->
             logger.w("onDestroy: resolving pending incoming callback for callId=$callId with CALL_REJECTED_BY_SYSTEM")
+            core.markDirectNotified(callId)
+            core.removePending(callId)
+            core.markEndCallDispatched(callId)
             resolvePendingIncomingCallback(
                 callId,
                 Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_REJECTED_BY_SYSTEM)),
