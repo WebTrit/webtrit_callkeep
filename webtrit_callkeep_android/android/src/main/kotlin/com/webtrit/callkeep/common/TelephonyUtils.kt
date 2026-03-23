@@ -36,12 +36,14 @@ class TelephonyUtils(
         uri: Uri,
         metadata: CallMetadata,
     ) {
+        registerPhoneAccount()
         val extras = buildOutgoingCallExtras(metadata)
         logger.i("placeCall: uri: '$uri', extras: '$extras'")
         getTelecomManager().placeCall(uri, extras)
     }
 
     fun addNewIncomingCall(metadata: CallMetadata) {
+        registerPhoneAccount()
         getTelecomManager().addNewIncomingCall(
             getPhoneAccountHandle(),
             buildIncomingCallExtras(metadata),
