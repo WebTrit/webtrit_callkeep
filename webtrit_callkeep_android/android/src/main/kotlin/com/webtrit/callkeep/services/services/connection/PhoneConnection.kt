@@ -103,7 +103,7 @@ class PhoneConnection internal constructor(
      */
     fun establish() {
         logger.d("Establishing connection for callId: $callId")
-        ActivityHolder.start(context)
+        context.startActivity(Platform.getLaunchActivity(context))
         setActive()
     }
 
