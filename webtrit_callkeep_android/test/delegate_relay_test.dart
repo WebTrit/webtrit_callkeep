@@ -1,7 +1,6 @@
 // ignore_for_file: avoid_relative_lib_imports
 
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -100,18 +99,14 @@ class _FakeCallkeepDelegate implements CallkeepDelegate {
   @override
   void didReset() => _record('didReset', []);
 
-  @override
   void performIncomingCall(String callId, CallkeepHandle handle, String? displayName, bool video) {
     _record('performIncomingCall', [callId, handle, displayName, video]);
   }
 
-  @override
   void performConnecting(String callId) => _record('performConnecting', [callId]);
 
-  @override
   void performConnected(String callId) => _record('performConnected', [callId]);
 
-  @override
   Future<bool> performEndCallWithUUID(String callId) async {
     _record('performEndCallWithUUID', [callId]);
     return true;

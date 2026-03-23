@@ -1,7 +1,5 @@
 // ignore_for_file: avoid_relative_lib_imports
 
-import 'dart:typed_data';
-
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:webtrit_callkeep_android/src/common/callkeep.pigeon.dart';
