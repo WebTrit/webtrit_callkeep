@@ -85,10 +85,23 @@ enum PIncomingCallErrorEnum {
 
   /// Android only.
   ///
-  /// Telecom rejected the incoming call registration — e.g. the device does
-  /// not support concurrent self-managed calls (common on Huawei and other OEM
-  /// devices). The call was never confirmed to Flutter so no `performEndCall`
-  /// will be fired.
+  /// Telecom rejected the incoming call registration via
+  /// `onCreateIncomingConnectionFailed` (i.e. without ever calling
+  /// `onCreateIncomingConnection`).
+  ///
+  /// **When this happens**: Android does not allow two self-managed calls to be
+  /// simultaneously in RINGING state. If a call is already ringing, Telecom
+  /// rejects every subsequent incoming self-managed call. This is standard
+  /// AOSP behaviour (observed on stock Pixel devices running Android 11+), not
+  /// an OEM-specific restriction. Some vendors (Huawei, certain MediaTek OEMs)
+  /// apply the same rejection even when the first call is already ACTIVE.
+  ///
+  /// **Consequences for the app**:
+  /// - The call was never confirmed to Flutter, so `performEndCall` will NOT
+  ///   fire for this call ID.
+  /// - The app must send the appropriate signaling (e.g. SIP BYE) to the
+  ///   server itself upon receiving this error, without waiting for
+  ///   `performEndCall`.
   callRejectedBySystem,
 }
 
