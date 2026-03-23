@@ -11,7 +11,7 @@ throw `UnimplementedError`.
 ## Related packages
 
 | Package | Description |
-|---|---|
+| --- | --- |
 | [`webtrit_callkeep`](../webtrit_callkeep/README.md) | Public API aggregator |
 | [`webtrit_callkeep_android`](../webtrit_callkeep_android/README.md) | Android implementation |
 | [`webtrit_callkeep_ios`](../webtrit_callkeep_ios/README.md) | iOS implementation |

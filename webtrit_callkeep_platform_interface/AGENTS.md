@@ -15,7 +15,7 @@ This package defines the **shared contract** between the aggregator and all plat
 ## Key source locations
 
 | Path | Contents |
-|---|---|
+| --- | --- |
 | `lib/src/webtrit_callkeep_platform_interface.dart` | Abstract platform class |
 | `lib/src/delegate/callkeep_delegate.dart` | `CallkeepDelegate` — main callback interface |
 | `lib/src/delegate/callkeep_android_service_delegate.dart` | `CallkeepBackgroundServiceDelegate` — background isolate callbacks |
@@ -30,18 +30,22 @@ This package defines the **shared contract** between the aggregator and all plat
 ## Delegate contracts
 
 ### `CallkeepDelegate`
+
 The primary callback interface. The app implements this and passes it via `Callkeep().setDelegate(...)`.
 
 `perform*` methods return `Future<bool>`:
+
 - Return `true` — operation succeeded, native UI proceeds.
 - Return `false` — operation failed, native side aborts (e.g., tears down the connection).
 
 Do not add new methods here without updating all platform implementations and the aggregator.
 
 ### `CallkeepBackgroundServiceDelegate`
+
 Used inside background isolates (Android only). Methods are `void`, not `Future<bool>` — fire-and-forget from the native side.
 
 ### `PushRegistryDelegate`
+
 iOS-only. Handle in a class separate from `CallkeepDelegate` and register via `Callkeep().setPushRegistryDelegate(...)`.
 
 ---
@@ -53,7 +57,7 @@ All models use `Equatable` for value equality. Do not override `==`/`hashCode` m
 Key models:
 
 | Class | Purpose |
-|---|---|
+| --- | --- |
 | `CallkeepHandle` | Represents a phone number or generic handle; use factory constructors (`.number(...)`, `.generic(...)`) |
 | `CallkeepOptions` | Top-level config; contains `CallkeepIOSOptions` and `CallkeepAndroidOptions` |
 | `CallkeepIncomingCallMetadata` | Metadata passed to background isolate callbacks |

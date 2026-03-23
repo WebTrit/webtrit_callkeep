@@ -10,7 +10,7 @@ Android platform implementation. Two layers: Dart (Flutter side) and Kotlin (nat
 
 ## Package structure
 
-```
+```text
 webtrit_callkeep_android/
 ├── lib/src/
 │   ├── webtrit_callkeep_android.dart   # WebtritCallkeepAndroid — platform impl
@@ -100,9 +100,11 @@ explicit `startService` intents. Events are grouped by broadcaster:
 
 1. Edit `pigeons/callkeep.messages.dart`.
 2. Run from this package directory:
+
    ```bash
    flutter pub run pigeon --input pigeons/callkeep.messages.dart
    ```
+
 3. Commit both the input file and all generated output (`callkeep.pigeon.dart`, Kotlin files under
    `android/`).
 

@@ -1,5 +1,8 @@
 pre-commit:
   commands:
+    md-lint:
+      glob: '**/*.md'
+      run: markdownlint-cli2 {staged_files}
     dart-format:
       glob: '**/*.dart'
       exclude: '(\.g\.dart|\.pigeon\.dart|\.freezed\.dart|\.gr\.dart)$'
