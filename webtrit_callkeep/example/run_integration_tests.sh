@@ -90,6 +90,14 @@ cleanup_device() {
 
 run_test_file() {
   local test_file="$1"
+  # Retry once on infrastructure failures (WebSocket drop during loading).
+  # These are not test-logic failures -- they occur when the Flutter test
+  # runner cannot attach to the app after a long previous test file.
+  if flutter test "$test_file" "${DEVICE_FLAG[@]+"${DEVICE_FLAG[@]}"}"; then
+    return 0
+  fi
+  echo "  [retry] $test_file failed, cleaning up and retrying once..."
+  cleanup_device
   flutter test "$test_file" "${DEVICE_FLAG[@]+"${DEVICE_FLAG[@]}"}"
 }
 
