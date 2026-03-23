@@ -702,7 +702,8 @@ class PhoneConnection internal constructor(
             setDisconnected(disconnectCause)
             onDisconnect()
         } else {
-            logger.v("terminateWithCause: already disconnected for callId: $callId, ignoring")
+            logger.v("terminateWithCause: already disconnected for callId: $callId, re-dispatching stored cause")
+            dispatcher(eventForDisconnectCause(this.disconnectCause), metadata)
         }
     }
 
