@@ -8,10 +8,8 @@ import 'package:webtrit_callkeep_android/src/common/callkeep.pigeon.dart';
 import 'package:webtrit_callkeep_android/webtrit_callkeep_android.dart';
 import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
 
-import 'src/common/test_callkeep.pigeon.dart' as test_pigeon;
-
 const _prefix = 'dev.flutter.pigeon.webtrit_callkeep_android';
-const _codec = test_pigeon.testPigeonCodec;
+final _codec = PHostApi.pigeonChannelCodec;
 
 // ── Fake delegates ───────────────────────────────────────────────────────────
 

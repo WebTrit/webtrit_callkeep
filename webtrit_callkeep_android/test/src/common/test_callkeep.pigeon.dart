@@ -185,6 +185,3 @@ class _PigeonCodec extends StandardMessageCodec {
     }
   }
 }
-
-// Public accessor so tests can encode Pigeon objects into mock channel responses.
-const testPigeonCodec = _PigeonCodec();
