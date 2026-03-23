@@ -39,7 +39,10 @@ object ActivityHolder : ActivityProvider {
                     Intent.FLAG_ACTIVITY_SINGLE_TOP or
                     // Brings the existing activity to the foreground instead of creating a new one
                     Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT
-            } ?: return
+            } ?: run {
+                Log.w(TAG, "No launch activity found for package ${context.packageName}; skipping startActivity")
+                return
+            }
 
         context.startActivity(hostAppActivity)
     }
