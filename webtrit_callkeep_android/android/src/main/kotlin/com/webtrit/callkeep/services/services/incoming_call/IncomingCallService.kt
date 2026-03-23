@@ -122,7 +122,7 @@ class IncomingCallService : Service() {
 
         callLifecycleHandler =
             CallLifecycleHandler(
-                connectionController = DefaultCallConnectionController(baseContext),
+                connectionController = DefaultCallConnectionController(),
                 stopService = { stopSelf() },
                 isolateHandler = isolateHandler,
             )

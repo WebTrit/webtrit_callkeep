@@ -9,7 +9,7 @@ import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.models.CallHandle
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
+import com.webtrit.callkeep.services.core.CallkeepCore
 import java.net.URLDecoder
 
 class IncomingCallSmsTriggerReceiver : BroadcastReceiver() {
@@ -44,8 +44,7 @@ class IncomingCallSmsTriggerReceiver : BroadcastReceiver() {
         metadata: CallMetadata,
     ) {
         try {
-            PhoneConnectionService.startIncomingCall(
-                context,
+            CallkeepCore.instance.startIncomingCall(
                 metadata,
                 onSuccess = { Log.d(TAG, "Incoming call started") },
                 onError = { Log.e(TAG, "Failed to start call: $it") },

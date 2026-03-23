@@ -1,8 +1,7 @@
 package com.webtrit.callkeep.services.services.incoming_call
 
-import android.content.Context
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
+import com.webtrit.callkeep.services.core.CallkeepCore
 
 interface CallConnectionController {
     fun answer(metadata: CallMetadata)
@@ -14,22 +13,20 @@ interface CallConnectionController {
     fun tearDown()
 }
 
-class DefaultCallConnectionController(
-    private val context: Context,
-) : CallConnectionController {
+class DefaultCallConnectionController : CallConnectionController {
     override fun answer(metadata: CallMetadata) {
-        PhoneConnectionService.startAnswerCall(context, metadata)
+        CallkeepCore.instance.startAnswerCall(metadata)
     }
 
     override fun decline(metadata: CallMetadata) {
-        PhoneConnectionService.startDeclineCall(context, metadata)
+        CallkeepCore.instance.startDeclineCall(metadata)
     }
 
     override fun hangUp(metadata: CallMetadata) {
-        PhoneConnectionService.startHungUpCall(context, metadata)
+        CallkeepCore.instance.startHungUpCall(metadata)
     }
 
     override fun tearDown() {
-        PhoneConnectionService.tearDown(context)
+        CallkeepCore.instance.tearDownService()
     }
 }
