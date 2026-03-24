@@ -13,10 +13,10 @@ import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.services.services.active_call.ActiveCallService
 
 class ActiveCallNotificationBuilder : NotificationBuilder() {
-    private var callsMetaData = ArrayList<CallMetadata>()
+    private var callsMetaData: List<CallMetadata> = emptyList()
 
     fun setCallsMetaData(callsMetaData: List<CallMetadata>) {
-        this.callsMetaData = callsMetaData as ArrayList<CallMetadata>
+        this.callsMetaData = callsMetaData
     }
 
     override fun build(): Notification {
