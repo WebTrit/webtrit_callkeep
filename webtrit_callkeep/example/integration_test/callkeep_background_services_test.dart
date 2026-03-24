@@ -509,14 +509,16 @@ void main() {
   //   performEndCall on main delegate
   // =========================================================================
 
-  // SignalingIsolateService must call startForeground() within Android's
-  // 5-second deadline, but starting a new Flutter engine inside the service
-  // while the test engine is already running regularly exceeds that window,
-  // causing ForegroundServiceDidNotStartInTimeException which kills the app.
-  // These groups are skipped and must be verified via manual / end-to-end runs.
-  const signalingSkip = 'SignalingIsolateService cannot be started in an integration-test process: '
-      'startForegroundService() → Flutter engine init exceeds the 5-second '
-      'startForeground() deadline, causing ForegroundServiceDidNotStartInTimeException';
+  // SignalingIsolateService starts foreground correctly (see lifecycle group below),
+  // but the groups below require the service's background Flutter isolate to be
+  // fully initialised and communicating via Pigeon. In an integration-test process
+  // a second Flutter engine cannot be brought up while the test engine is already
+  // running within the same OS process — the isolate never registers its Pigeon
+  // handlers, so incomingCall / endCall calls time out or are silently dropped.
+  // These groups require manual / end-to-end verification outside the test harness.
+  const signalingSkip = 'SignalingIsolateService Flutter isolate cannot register Pigeon handlers '
+      'in an integration-test process: a second Flutter engine cannot initialise '
+      'while the test engine is already running in the same OS process';
 
   group('background signaling service (Android only)', skip: signalingSkip, () {
     // -----------------------------------------------------------------------
