@@ -492,7 +492,12 @@ class ForegroundService :
                 flutterDelegateApi?.performAnswerCall(callId) {}
                 logger.i("reportNewIncomingCall: adopted already-answered call callId=$callId, fired performAnswerCall")
             } else {
-                logger.w("reportNewIncomingCall: rejecting callId=$callId, tracker state=${trackerError.value}")
+                // CALL_ID_ALREADY_EXISTS here is expected in the push+signaling combined flow:
+                // the push path registers the call first, and the signaling WebSocket arrives
+                // shortly after with the same callId. Logging at INFO avoids spurious
+                // Crashlytics exception reports in consuming apps that forward WARN to
+                // FirebaseCrashlytics.recordError().
+                logger.i("reportNewIncomingCall: rejecting duplicate callId=$callId, tracker state=${trackerError.value}")
             }
             callback(Result.success(trackerError))
             return
