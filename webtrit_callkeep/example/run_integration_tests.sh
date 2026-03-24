@@ -1,24 +1,50 @@
 #!/usr/bin/env bash
-# Run all integration test files sequentially on a single device.
+# Run all integration test files on a device or in Chrome (web).
 #
-# Each file is run in isolation because `flutter test integration_test/`
-# launches all files in parallel, and concurrent setUp/tearDown calls share
-# the same Android Telecom service, leading to duplicate connections and
-# wedged state.
+# Android (default):
+#   Each file is run in isolation because `flutter test integration_test/`
+#   launches all files in parallel, and concurrent setUp/tearDown calls share
+#   the same Android Telecom service, leading to duplicate connections and
+#   wedged state.
 #
-# Between files the app is force-stopped and we wait until both OS processes
-# (main + :callkeep_core) are confirmed dead before the next file starts.
-# This is not an arbitrary delay -- it is the minimum time required for the
-# OS to reclaim process resources and for the UiAutomation session used by
-# the Flutter test runner to be fully released. Without this wait, the next
-# flutter test process fails to attach or finds the app in a stale state.
+#   Between files the app is force-stopped and we wait until both OS processes
+#   (main + :callkeep_core) are confirmed dead before the next file starts.
+#
+# Web:
+#   All test files are combined in integration_test/all_tests.dart and run in
+#   a single flutter drive session via chromedriver. Android-only test groups
+#   are automatically skipped.
 #
 # Usage:
-#   ./run_integration_tests.sh                   # auto-detect device
-#   ./run_integration_tests.sh -d <device-id>    # explicit device
+#   ./run_integration_tests.sh                   # auto-detect Android device
+#   ./run_integration_tests.sh -d <device-id>    # explicit Android device
+#   ./run_integration_tests.sh --web             # run on Chrome (web)
 
 set -euo pipefail
 
+CHROMEDRIVER_PORT=4444
+
+# ---- Web mode ------------------------------------------------------------
+if [[ "${1:-}" == "--web" ]]; then
+  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+  echo "  [web] Killing any existing chromedriver on port $CHROMEDRIVER_PORT..."
+  lsof -ti tcp:$CHROMEDRIVER_PORT | xargs kill -9 2>/dev/null || true
+  sleep 1
+  echo "  [web] Starting chromedriver..."
+  npx chromedriver --port=$CHROMEDRIVER_PORT &
+  CHROMEDRIVER_PID=$!
+  trap "kill $CHROMEDRIVER_PID 2>/dev/null || true" EXIT
+  sleep 2
+  echo "  [web] Running all tests in Chrome..."
+  cd "$SCRIPT_DIR"
+  flutter drive \
+    --driver=test_driver/integration_test.dart \
+    --target=integration_test/all_tests.dart \
+    -d chrome
+  exit $?
+fi
+
+# ---- Android mode --------------------------------------------------------
 DEVICE_FLAG=()
 ADB_SERIAL_FLAG=()
 if [[ "${1:-}" == "-d" && -n "${2:-}" ]]; then
