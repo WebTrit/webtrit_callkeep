@@ -52,8 +52,9 @@ class PhoneConnectionService : ConnectionService() {
         ContextHolder.init(applicationContext)
         // Initialize AssetCacheManager for the :callkeep_core process so that
         // PhoneConnection.onShowIncomingCallUi() can resolve the custom ringtone asset
-        // path via AssetCacheManager.getAsset(). Without this, getRingtone() throws
-        // IllegalStateException and falls back to the system default ringtone.
+        // path via AssetCacheManager.getAsset(). Without this, AssetCacheManager.getAsset()
+        // may throw IllegalStateException, which is caught inside getRingtone() and causes
+        // a fallback to the system default ringtone.
         AssetCacheManager.init(applicationContext)
         // Set the service state to true when the system starts the service.
         isRunning = true
