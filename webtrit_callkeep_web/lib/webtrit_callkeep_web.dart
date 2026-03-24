@@ -17,9 +17,13 @@ class WebtritCallkeepWeb extends WebtritCallkeepPlatform {
   /// Active connections keyed by callId.
   final Map<String, CallkeepConnection> _connections = {};
 
-  /// Call IDs that have been terminated (ended or torn down).
+  /// Call IDs that have been terminated since the last [setUp].
+  ///
+  /// Populated by [endCall], [reportEndCall], and [tearDown].
+  /// Cleared on [tearDown] (after notifying the delegate) and on [cleanConnections],
+  /// so it only guards within a single setUp/tearDown session.
   /// Used to return [CallkeepIncomingCallError.callIdAlreadyTerminated]
-  /// on a re-report of the same ID.
+  /// on a re-report of the same ID within the same session.
   final Set<String> _terminatedCallIds = {};
 
   // ---------------------------------------------------------------------------
@@ -73,6 +77,7 @@ class WebtritCallkeepWeb extends WebtritCallkeepPlatform {
     for (final callId in activeIds) {
       _terminatedCallIds.add(callId);
       await _delegate?.performEndCall(callId);
+      _delegate?.didDeactivateAudioSession();
     }
     _connections.clear();
     _terminatedCallIds.clear();
@@ -152,6 +157,9 @@ class WebtritCallkeepWeb extends WebtritCallkeepPlatform {
     bool video,
     bool proximityEnabled,
   ) async {
+    if (_connections.containsKey(callId)) {
+      return CallkeepCallRequestError.callUuidAlreadyExists;
+    }
     _connections[callId] = CallkeepConnection(
       callId: callId,
       state: CallkeepConnectionState.stateDialing,
@@ -196,12 +204,18 @@ class WebtritCallkeepWeb extends WebtritCallkeepPlatform {
 
   @override
   Future<CallkeepCallRequestError?> setMuted(String callId, bool muted) async {
+    if (!_connections.containsKey(callId)) {
+      return CallkeepCallRequestError.unknownCallUuid;
+    }
     await _delegate?.performSetMuted(callId, muted);
     return null;
   }
 
   @override
   Future<CallkeepCallRequestError?> sendDTMF(String callId, String key) async {
+    if (!_connections.containsKey(callId)) {
+      return CallkeepCallRequestError.unknownCallUuid;
+    }
     await _delegate?.performSendDTMF(callId, key);
     return null;
   }

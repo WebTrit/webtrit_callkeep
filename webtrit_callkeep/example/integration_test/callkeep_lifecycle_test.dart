@@ -1,5 +1,3 @@
-import 'dart:io' show Platform;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -58,7 +56,7 @@ void main() {
     testWidgets('isSetUp returns false after tearDown', (WidgetTester _) async {
       // Android: ForegroundService persists after tearDown, so isSetUp() may
       // remain true. Only assert on iOS where tearDown fully stops CallKit.
-      if (!kIsWeb && Platform.isAndroid) {
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
         markTestSkipped('Android ForegroundService persists; isSetUp always true');
         return;
       }
@@ -70,7 +68,7 @@ void main() {
 
     testWidgets('isSetUp returns false after re-tearDown in second cycle', (WidgetTester _) async {
       // Android: same as above — ForegroundService keeps isSetUp true.
-      if (!kIsWeb && Platform.isAndroid) {
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
         markTestSkipped('Android ForegroundService persists; isSetUp always true');
         return;
       }

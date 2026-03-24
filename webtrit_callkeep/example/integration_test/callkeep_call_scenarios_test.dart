@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -613,7 +612,7 @@ void main() {
 
   group('audio device selection (Android only)', () {
     testWidgets('setAudioDevice completes without error on an answered call', (WidgetTester _) async {
-      if (kIsWeb || !Platform.isAndroid) {
+      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -657,7 +656,7 @@ void main() {
 
   group('outgoing call lifecycle (Android only)', () {
     testWidgets('startCall fires performStartCall', (WidgetTester _) async {
-      if (kIsWeb || !Platform.isAndroid) {
+      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -678,7 +677,7 @@ void main() {
 
     testWidgets('startCall → reportConnectingOutgoingCall → reportConnectedOutgoingCall completes',
         (WidgetTester _) async {
-      if (kIsWeb || !Platform.isAndroid) {
+      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -709,7 +708,7 @@ void main() {
     });
 
     testWidgets('outgoing call endCall before answer fires performEndCall', (WidgetTester _) async {
-      if (kIsWeb || !Platform.isAndroid) {
+      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -1215,7 +1214,7 @@ void main() {
 
   group('outgoing call extended (Android only)', () {
     testWidgets('startCall with hasVideo=true fires performStartCall', (WidgetTester _) async {
-      if (kIsWeb || !Platform.isAndroid) {
+      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -1243,7 +1242,7 @@ void main() {
     });
 
     testWidgets('startCall with proximityEnabled=true completes', (WidgetTester _) async {
-      if (kIsWeb || !Platform.isAndroid) {
+      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -1272,7 +1271,7 @@ void main() {
     });
 
     testWidgets('full outgoing sequence: start + connect + hold + DTMF + unhold + end', (WidgetTester _) async {
-      if (kIsWeb || !Platform.isAndroid) {
+      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -1330,7 +1329,7 @@ void main() {
 
   group('handle type diversity (Android only)', () {
     testWidgets('reportNewIncomingCall with CallkeepHandle.generic reports without error', (WidgetTester _) async {
-      if (kIsWeb || !Platform.isAndroid) {
+      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -1344,7 +1343,7 @@ void main() {
     });
 
     testWidgets('reportNewIncomingCall with CallkeepHandle.email reports without error', (WidgetTester _) async {
-      if (kIsWeb || !Platform.isAndroid) {
+      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -1358,7 +1357,7 @@ void main() {
     });
 
     testWidgets('startCall with CallkeepHandle.generic fires performStartCall', (WidgetTester _) async {
-      if (kIsWeb || !Platform.isAndroid) {
+      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
