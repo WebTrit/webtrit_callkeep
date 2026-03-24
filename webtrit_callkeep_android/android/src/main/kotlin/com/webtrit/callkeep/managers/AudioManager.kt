@@ -25,25 +25,6 @@ class AudioManager(
     }
 
     /**
-     * Sets the system-wide microphone mute state.
-     *
-     * @deprecated Not reliable for self-managed VoIP calls.
-     * The system may override this when the audio route changes,
-     * it affects all apps globally, and can desync the UI from
-     * the actual media state. Instead, mute in your media engine
-     * and track the state internally.
-     *
-     * @param isMicrophoneMute true to mute, false to unmute.
-     */
-    @Deprecated(
-        message = "Avoid in self-managed VoIP. Use media engine mute instead.",
-        level = DeprecationLevel.WARNING,
-    )
-    fun setMicrophoneMute(isMicrophoneMute: Boolean) {
-        audioManager.isMicrophoneMute = isMicrophoneMute
-    }
-
-    /**
      * Check if a wired headset is connected.
      *
      * @return True if a wired headset is connected, false otherwise.
