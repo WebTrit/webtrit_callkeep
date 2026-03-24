@@ -10,13 +10,13 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
-import android.util.Log
 import androidx.annotation.Keep
 import androidx.core.app.NotificationCompat
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.ContextHolder
+import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.PermissionsHelper
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.startForegroundServiceCompat
