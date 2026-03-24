@@ -257,7 +257,7 @@ void main() {
 
   group('mute while on hold (Android only)', () {
     testWidgets('setMuted(true) while held fires performSetMuted(true)', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -294,7 +294,7 @@ void main() {
     });
 
     testWidgets('setMuted(false) while held fires performSetMuted(false)', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -345,7 +345,7 @@ void main() {
 
   group('DTMF while on hold (Android only)', () {
     testWidgets("sendDTMF('5') while held fires performSendDTMF", (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -386,7 +386,7 @@ void main() {
 
   group('two-call hold swap (Android only)', () {
     testWidgets('hold call1, answer call2, unhold call1 produces correct holdEvents', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -454,7 +454,7 @@ void main() {
     });
 
     testWidgets('DTMF on call2 while call1 is held routes only to call2', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -515,7 +515,7 @@ void main() {
 
   group('nested controls: mute then hold (Android only)', () {
     testWidgets('mute then hold then end fires each callback exactly once', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }

@@ -169,7 +169,7 @@ void main() {
 
   group('setDelegate(null) mid-call (Android only)', () {
     testWidgets('setDelegate(null) during active call does not crash', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -195,7 +195,7 @@ void main() {
     });
 
     testWidgets('setDelegate(null) then restore routes callbacks to restored delegate', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -226,7 +226,7 @@ void main() {
 
   group('delegate swap mid-call (Android only)', () {
     testWidgets('swapping to new delegate routes only new delegate receives events', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -266,7 +266,7 @@ void main() {
 
   group('didPushIncomingCall callback (Android only)', () {
     testWidgets('fires with null error on successful push-path registration', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -285,7 +285,7 @@ void main() {
     });
 
     testWidgets('fires with callIdAlreadyExists on duplicate registration', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -316,7 +316,7 @@ void main() {
 
   group('audio session delegate callbacks (Android only)', () {
     testWidgets('didActivateAudioSession fires after answerCall', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -348,7 +348,7 @@ void main() {
     });
 
     testWidgets('didDeactivateAudioSession fires after call ends', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }

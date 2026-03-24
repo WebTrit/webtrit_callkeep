@@ -209,7 +209,7 @@ void main() {
     // -----------------------------------------------------------------------
 
     testWidgets('push-path report then main-process report returns callIdAlreadyExists', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -229,7 +229,7 @@ void main() {
     });
 
     testWidgets('push-path duplicate report returns callIdAlreadyExists', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -250,7 +250,7 @@ void main() {
     });
 
     testWidgets('concurrent push-path spam — exactly one succeeds', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -284,7 +284,7 @@ void main() {
     // -----------------------------------------------------------------------
 
     testWidgets('push-path call endCall fires performEndCall on main delegate', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -323,7 +323,7 @@ void main() {
     // We use callkeep.endCall() per call instead to end Telecom connections
     // and verify performEndCall fires for each one.
     testWidgets('push-path endCalls fires performEndCall for every active call', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -384,7 +384,7 @@ void main() {
 
     testWidgets('push-path call answered → main-process report returns callIdAlreadyExistsAndAnswered',
         (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -428,7 +428,7 @@ void main() {
 
     testWidgets('after push service ends a call, re-reporting same id returns callIdAlreadyTerminated',
         (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -473,7 +473,7 @@ void main() {
     // -----------------------------------------------------------------------
 
     testWidgets('callkeep tearDown fires performEndCall for push-path active call', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -529,7 +529,7 @@ void main() {
     // -----------------------------------------------------------------------
 
     testWidgets('signaling service incomingCall creates a call recognised by main process', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -553,7 +553,7 @@ void main() {
     });
 
     testWidgets('signaling service incomingCall duplicate returns callIdAlreadyExists', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -578,7 +578,7 @@ void main() {
     // -----------------------------------------------------------------------
 
     testWidgets('signaling service endCall fires performEndCall on main delegate', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -600,7 +600,7 @@ void main() {
     });
 
     testWidgets('signaling service endCall fires performEndCall exactly once', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -638,7 +638,7 @@ void main() {
     // -----------------------------------------------------------------------
 
     testWidgets('signaling service endCalls fires performEndCall for every active call', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -667,7 +667,7 @@ void main() {
     });
 
     testWidgets('signaling service endCalls with no active calls does not fire performEndCall', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -691,7 +691,7 @@ void main() {
 
     testWidgets('signaling-service call answered → main-process report returns callIdAlreadyExistsAndAnswered',
         (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -728,7 +728,7 @@ void main() {
     // -----------------------------------------------------------------------
 
     testWidgets('callkeep tearDown fires performEndCall for signaling-service active call', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -763,7 +763,7 @@ void main() {
     // Ensure service is stopped after each lifecycle test so they don't
     // interfere with each other (some tests start but may not stop).
     tearDown(() async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) return;
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
       try {
         await AndroidCallkeepServices.backgroundSignalingBootstrapService
             .stopService()
@@ -779,7 +779,7 @@ void main() {
     // -----------------------------------------------------------------------
 
     testWidgets('setUp then startService completes without error', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -796,7 +796,7 @@ void main() {
     });
 
     testWidgets('startService is idempotent — calling twice does not throw', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -809,7 +809,7 @@ void main() {
     });
 
     testWidgets('stopService completes without error', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -823,7 +823,7 @@ void main() {
     });
 
     testWidgets('stopService without prior startService does not throw', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -837,7 +837,7 @@ void main() {
     });
 
     testWidgets('start → stop → start cycle completes without error', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -874,7 +874,7 @@ void main() {
 
     testWidgets('push then signaling service for same callId — signaling report returns callIdAlreadyExists',
         (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -891,7 +891,7 @@ void main() {
 
     testWidgets('signaling then push service for same callId — push report returns callIdAlreadyExists',
         (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -920,7 +920,7 @@ void main() {
     // -----------------------------------------------------------------------
 
     testWidgets('push service endCall does not affect a separate signaling service call', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }

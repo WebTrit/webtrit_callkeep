@@ -189,7 +189,7 @@ void main() {
 
   group('CallkeepConnections.getConnection (Android only)', () {
     testWidgets('getConnection returns null for nonexistent callId', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -198,7 +198,7 @@ void main() {
     });
 
     testWidgets('getConnection returns stateRinging after reportNewIncomingCall', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -212,7 +212,7 @@ void main() {
     });
 
     testWidgets('getConnection returns stateActive after answerCall', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -232,7 +232,7 @@ void main() {
     });
 
     testWidgets('getConnection returns stateHolding after setHeld(true)', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -254,7 +254,7 @@ void main() {
     });
 
     testWidgets('getConnection returns null or stateDisconnected after endCall', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -290,7 +290,7 @@ void main() {
 
   group('CallkeepConnections.getConnections (Android only)', () {
     testWidgets('getConnections has no entry for a nonexistent callId before any call', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -301,7 +301,7 @@ void main() {
     });
 
     testWidgets('getConnections includes connection after reportNewIncomingCall', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -313,7 +313,7 @@ void main() {
     });
 
     testWidgets('getConnections includes both connections for two concurrent calls', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -344,7 +344,7 @@ void main() {
 
   group('CallkeepConnections.cleanConnections (Android only)', () {
     testWidgets('cleanConnections completes without error on empty state', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -352,7 +352,7 @@ void main() {
     });
 
     testWidgets('cleanConnections removes all active connections', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -375,7 +375,7 @@ void main() {
 
   group('CallkeepConnections.updateActivitySignalingStatus (Android only)', () {
     testWidgets('updateActivitySignalingStatus completes for each enum value', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -388,7 +388,7 @@ void main() {
     });
 
     testWidgets('updateActivitySignalingStatus after tearDown does not throw', (WidgetTester _) async {
-      if (kIsWeb || !defaultTargetPlatform == TargetPlatform.android) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
