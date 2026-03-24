@@ -255,7 +255,7 @@ void main() {
   // Mute while on hold (Android only)
   // -------------------------------------------------------------------------
 
-  group('mute while on hold (Android only)', () {
+  group('mute while on hold (Android only)', skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('setMuted(true) while held fires performSetMuted(true)', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
@@ -343,7 +343,7 @@ void main() {
   // DTMF while on hold (Android only)
   // -------------------------------------------------------------------------
 
-  group('DTMF while on hold (Android only)', () {
+  group('DTMF while on hold (Android only)', skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets("sendDTMF('5') while held fires performSendDTMF", (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
@@ -384,7 +384,7 @@ void main() {
   // Two-call hold swap (Android only)
   // -------------------------------------------------------------------------
 
-  group('two-call hold swap (Android only)', () {
+  group('two-call hold swap (Android only)', skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('hold call1, answer call2, unhold call1 produces correct holdEvents', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
@@ -513,7 +513,8 @@ void main() {
   // Nested controls: mute then hold (Android only)
   // -------------------------------------------------------------------------
 
-  group('nested controls: mute then hold (Android only)', () {
+  group('nested controls: mute then hold (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('mute then hold then end fires each callback exactly once', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');

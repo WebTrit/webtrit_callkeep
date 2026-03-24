@@ -187,7 +187,8 @@ void main() {
   // CallkeepConnections.getConnection (Android only)
   // -------------------------------------------------------------------------
 
-  group('CallkeepConnections.getConnection (Android only)', () {
+  group('CallkeepConnections.getConnection (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('getConnection returns null for nonexistent callId', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
@@ -288,7 +289,8 @@ void main() {
   // CallkeepConnections.getConnections (Android only)
   // -------------------------------------------------------------------------
 
-  group('CallkeepConnections.getConnections (Android only)', () {
+  group('CallkeepConnections.getConnections (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('getConnections has no entry for a nonexistent callId before any call', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
@@ -342,7 +344,8 @@ void main() {
   // CallkeepConnections.cleanConnections (Android only)
   // -------------------------------------------------------------------------
 
-  group('CallkeepConnections.cleanConnections (Android only)', () {
+  group('CallkeepConnections.cleanConnections (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('cleanConnections completes without error on empty state', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
@@ -373,7 +376,8 @@ void main() {
   // CallkeepConnections.updateActivitySignalingStatus (Android only)
   // -------------------------------------------------------------------------
 
-  group('CallkeepConnections.updateActivitySignalingStatus (Android only)', () {
+  group('CallkeepConnections.updateActivitySignalingStatus (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('updateActivitySignalingStatus completes for each enum value', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');

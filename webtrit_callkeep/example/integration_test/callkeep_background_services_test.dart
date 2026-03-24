@@ -197,7 +197,8 @@ void main() {
   //   user acts → SIP BYE → endCall (push path) → isolate shuts down
   // =========================================================================
 
-  group('push notification background service (Android only)', () {
+  group('push notification background service (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     // -----------------------------------------------------------------------
     // Registration and deduplication
     //

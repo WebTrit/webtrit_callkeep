@@ -165,7 +165,8 @@ void main() {
   // connectionManager to detect the PhoneConnection and answer immediately.
   // =========================================================================
 
-  group('main-process signaling path — answerCall timing (Android only)', () {
+  group('main-process signaling path — answerCall timing (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('answerCall immediately after reportNewIncomingCall fires performAnswerCall', (WidgetTester _) async {
       // This is the primary regression test for the broadcast-lag bug.
       // No delay between reportNewIncomingCall and answerCall — exercises the
@@ -274,7 +275,8 @@ void main() {
   // reportNewIncomingCall (before broadcast delivery).
   // =========================================================================
 
-  group('main-process signaling path — endCall (Android only)', () {
+  group('main-process signaling path — endCall (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('endCall immediately after reportNewIncomingCall fires performEndCall', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
@@ -360,7 +362,8 @@ void main() {
   // broadcast was delivered to ForegroundService.
   // =========================================================================
 
-  group('main-process signaling path — tearDown (Android only)', () {
+  group('main-process signaling path — tearDown (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('tearDown fires performEndCall for an unanswered main-process call', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
@@ -466,7 +469,8 @@ void main() {
   // second reportNewIncomingCall for the same callId must return an error.
   // =========================================================================
 
-  group('main-process signaling path — deduplication (Android only)', () {
+  group('main-process signaling path — deduplication (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('duplicate reportNewIncomingCall returns callIdAlreadyExists', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
@@ -572,7 +576,8 @@ void main() {
   // code runs identically in both cases.
   // =========================================================================
 
-  group('cold-start adoption — already-answered re-report (Android only)', () {
+  group('cold-start adoption — already-answered re-report (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('re-report of already-answered call fires performAnswerCall', (WidgetTester _) async {
       // Regression: the ALREADY_ANSWERED early-exit returned without firing
       // performAnswerCall, so WebRTC never started after cold-start adoption.

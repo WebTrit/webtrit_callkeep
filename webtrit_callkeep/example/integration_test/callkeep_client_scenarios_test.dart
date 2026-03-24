@@ -168,7 +168,7 @@ void main() {
   // answerCall idempotency (Android only)
   // -------------------------------------------------------------------------
 
-  group('answerCall idempotency (Android only)', () {
+  group('answerCall idempotency (Android only)', skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('answerCall twice fires performAnswerCall exactly once', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
@@ -222,7 +222,8 @@ void main() {
   // endCall returns unknownCallUuid after reportEndCall (Android only)
   // -------------------------------------------------------------------------
 
-  group('endCall returns unknownCallUuid after reportEndCall (Android only)', () {
+  group('endCall returns unknownCallUuid after reportEndCall (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('endCall after reportEndCall(remoteEnded) returns unknownCallUuid or null', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
@@ -261,7 +262,8 @@ void main() {
   // WebtritCallkeepSound ringback (Android only)
   // -------------------------------------------------------------------------
 
-  group('WebtritCallkeepSound ringback (Android only)', () {
+  group('WebtritCallkeepSound ringback (Android only)', skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android,
+      () {
     testWidgets('playRingbackSound completes without error', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
@@ -292,7 +294,8 @@ void main() {
   // performAnswerCall returning false is handled gracefully (Android only)
   // -------------------------------------------------------------------------
 
-  group('performAnswerCall returning false is handled gracefully (Android only)', () {
+  group('performAnswerCall returning false is handled gracefully (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('performAnswerCall returning false does not crash callkeep', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
@@ -317,7 +320,8 @@ void main() {
   // updateActivitySignalingStatus rapid transitions (Android only)
   // -------------------------------------------------------------------------
 
-  group('updateActivitySignalingStatus rapid transitions (Android only)', () {
+  group('updateActivitySignalingStatus rapid transitions (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('rapid updateActivitySignalingStatus calls do not crash', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
@@ -343,7 +347,8 @@ void main() {
   // setDelegate(null) in close() pattern (Android only)
   // -------------------------------------------------------------------------
 
-  group('setDelegate(null) in close() pattern (Android only)', () {
+  group('setDelegate(null) in close() pattern (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('tearDown after setDelegate(null) does not crash or fire stale callbacks', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
@@ -374,7 +379,8 @@ void main() {
   // performEndCall async contract (Android only)
   // -------------------------------------------------------------------------
 
-  group('performEndCall async contract (Android only)', () {
+  group('performEndCall async contract (Android only)', skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android,
+      () {
     testWidgets('performEndCall async work is awaited before native connection cleanup', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
@@ -442,7 +448,8 @@ void main() {
   // performEndCall during signaling connect race (Android only)
   // -------------------------------------------------------------------------
 
-  group('performEndCall during signaling connect race (Android only)', () {
+  group('performEndCall during signaling connect race (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('endCall fires performEndCall even when called immediately after reportNewIncomingCall',
         (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {

@@ -610,7 +610,7 @@ void main() {
   //   → performAudioDeviceSet → platform routes audio
   // -------------------------------------------------------------------------
 
-  group('audio device selection (Android only)', () {
+  group('audio device selection (Android only)', skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('setAudioDevice completes without error on an answered call', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
@@ -654,7 +654,7 @@ void main() {
   // reportConnectingOutgoingCall / reportConnectedOutgoingCall.
   // -------------------------------------------------------------------------
 
-  group('outgoing call lifecycle (Android only)', () {
+  group('outgoing call lifecycle (Android only)', skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('startCall fires performStartCall', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
@@ -1212,7 +1212,7 @@ void main() {
   // Outgoing call extended (Android only)
   // -------------------------------------------------------------------------
 
-  group('outgoing call extended (Android only)', () {
+  group('outgoing call extended (Android only)', skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('startCall with hasVideo=true fires performStartCall', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
@@ -1327,7 +1327,7 @@ void main() {
   // Handle type diversity (Android only)
   // -------------------------------------------------------------------------
 
-  group('handle type diversity (Android only)', () {
+  group('handle type diversity (Android only)', skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('reportNewIncomingCall with CallkeepHandle.generic reports without error', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');

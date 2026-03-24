@@ -443,7 +443,8 @@ void main() {
   // closing the WebSocket before the BYE could be sent.
   // -------------------------------------------------------------------------
 
-  group('regression - decline unanswered call (Android only)', () {
+  group('regression - decline unanswered call (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     /// Verifies that declining an unanswered call triggers performEndCall
     /// and does NOT trigger performAnswerCall.
     ///
@@ -574,7 +575,8 @@ void main() {
   // Regression - push auto-answer then main process reportNewIncomingCall
   // -------------------------------------------------------------------------
 
-  group('regression - push auto-answer then main-process report (Android only)', () {
+  group('regression - push auto-answer then main-process report (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     /// Regression for the bug where `onCreateIncomingConnection` never called
     /// `removePending(callId)`.
     ///
@@ -746,7 +748,7 @@ void main() {
   // Stress - push + direct (Android only)
   // -------------------------------------------------------------------------
 
-  group('stress - push + direct (Android only)', () {
+  group('stress - push + direct (Android only)', skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('push then direct same ID - direct returns callIdAlreadyExists', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
@@ -815,7 +817,8 @@ void main() {
   // didPushIncomingCall for those callIds.
   // -------------------------------------------------------------------------
 
-  group('regression - signaling-path incoming call does not duplicate via push (Android only)', () {
+  group('regression - signaling-path incoming call does not duplicate via push (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     // After reportNewIncomingCall (signaling path), the DidPushIncomingCall
     // broadcast from :callkeep_core must NOT reach Flutter as didPushIncomingCall.
     // If it did, CallBloc would add a second ActiveCall for the same callId.
@@ -877,7 +880,8 @@ void main() {
   // performAudioDevicesUpdate callback (Android only)
   // -------------------------------------------------------------------------
 
-  group('performAudioDevicesUpdate callback (Android only)', () {
+  group('performAudioDevicesUpdate callback (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('performAudioDevicesUpdate fires with non-empty devices after answerCall', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
