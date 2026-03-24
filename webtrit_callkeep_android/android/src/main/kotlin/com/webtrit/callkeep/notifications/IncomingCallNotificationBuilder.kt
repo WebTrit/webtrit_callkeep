@@ -12,6 +12,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.ContextHolder.context
+import com.webtrit.callkeep.common.PermissionsHelper
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.managers.NotificationChannelManager.INCOMING_CALL_NOTIFICATION_CHANNEL_ID
 import com.webtrit.callkeep.models.CallMetadata
@@ -51,6 +52,10 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
             setContentTitle(title)
             text?.let { setContentText(it) }
             setAutoCancel(true)
+            // Explicitly set PUBLIC visibility so the full notification content
+            // is shown on the lock screen (channel-level VISIBILITY_PUBLIC is not
+            // always inherited by individual notifications on MIUI/HyperOS).
+            setVisibility(Notification.VISIBILITY_PUBLIC)
         }
 
     private fun createNotificationAction(
@@ -84,7 +89,16 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
         val builder =
             baseNotificationBuilder(title, description).apply {
                 setOngoing(true)
-                if (StorageDelegate.IncomingCall.isFullScreen(context)) {
+                // Use full-screen intent only when both the app setting is enabled and the
+                // system permission is granted.  On Android 14+ (API 34) the permission can
+                // be revoked by the user; on MIUI/HyperOS it is denied by default for
+                // third-party apps.  Passing a full-screen intent when the permission is
+                // denied has no effect and produces a log warning, so we skip it and rely on
+                // the WakeLock acquired in IncomingCallService as the fallback wake mechanism.
+                val canUseFullScreen =
+                    StorageDelegate.IncomingCall.isFullScreen(context) &&
+                        PermissionsHelper(context).canUseFullScreenIntent()
+                if (canUseFullScreen) {
                     setFullScreenIntent(buildOpenAppIntent(context), true)
                 }
             }
@@ -133,6 +147,9 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
             .setSound(null)
             .setVibrate(null)
             .setFullScreenIntent(null, false)
+            // Explicit PUBLIC visibility so the ongoing call notification remains
+            // visible on the lock screen on MIUI/HyperOS after the ringing phase.
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
             .apply {
                 flags = flags and Notification.FLAG_INSISTENT.inv()
