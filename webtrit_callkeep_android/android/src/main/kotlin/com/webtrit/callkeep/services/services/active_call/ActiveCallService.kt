@@ -52,8 +52,6 @@ class ActiveCallService : Service() {
             getForegroundServiceTypes(callsMetadata),
         )
 
-        // TODO: maybe FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK is needed as well
-
         return START_STICKY
     }
 
