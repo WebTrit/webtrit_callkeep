@@ -420,7 +420,6 @@ class ForegroundService :
         error: Throwable?,
     ) = failedCallsStore.add(metadata, source, error?.message)
 
-    // TODO: Move logic to the PhoneConnectionService
     override fun reportNewIncomingCall(
         callId: String,
         handle: PHandle,
