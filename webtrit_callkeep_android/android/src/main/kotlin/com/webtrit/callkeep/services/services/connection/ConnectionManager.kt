@@ -127,10 +127,7 @@ class ConnectionManager {
         }
     }
 
-    // TODO(Serdun): The current modifier is incorrect; this method is public but should be restricted.
-    // Consider limiting its accessibility to the connection service only.
-    @Synchronized
-    fun addConnection(
+    internal fun addConnection(
         callId: String,
         connection: PhoneConnection,
     ) {
