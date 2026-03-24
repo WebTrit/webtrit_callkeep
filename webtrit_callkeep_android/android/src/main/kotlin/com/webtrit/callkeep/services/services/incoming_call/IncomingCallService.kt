@@ -17,6 +17,8 @@ import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.ContextHolder
+import com.webtrit.callkeep.common.PermissionsHelper
+import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.startForegroundServiceCompat
 import com.webtrit.callkeep.managers.NotificationChannelManager
 import com.webtrit.callkeep.models.CallMetadata
@@ -214,7 +216,7 @@ class IncomingCallService : Service() {
     private fun handleLaunch(metadata: CallMetadata): Int {
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
         callLifecycleHandler.currentCallData = metadata.toPCallkeepIncomingCallData()
-        acquireScreenWakeLock()
+        acquireScreenWakeLockIfNeeded()
         incomingCallHandler.handle(metadata)
         // START_NOT_STICKY: if the OS kills this service after the incoming call is set up,
         // do not restart it. A restart would deliver a null intent — the current onStartCommand
@@ -226,6 +228,10 @@ class IncomingCallService : Service() {
 
     // Handles the RELEASE action and cancels the timeout
     private fun handleRelease(answered: Boolean = false): Int {
+        // The ringing phase is over — release the wake lock immediately so the screen
+        // is not held on for the full WAKELOCK_TIMEOUT_MS during post-call teardown.
+        // onDestroy() keeps the lock as a final safety net in case this path is skipped.
+        releaseScreenWakeLock()
         incomingCallHandler.releaseIncomingCallNotification(answered)
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
         timeoutHandler.postDelayed(stopTimeoutRunnable, SERVICE_TIMEOUT_MS)
@@ -264,14 +270,24 @@ class IncomingCallService : Service() {
 
     /**
      * Acquires a wake lock that turns on the screen when an incoming call arrives.
-     * This is the fallback for devices (MIUI/HyperOS) where USE_FULL_SCREEN_INTENT
-     * is denied by default and the full-screen intent cannot wake the display.
-     * The lock expires automatically after WAKELOCK_TIMEOUT_MS to prevent draining
-     * the battery if the call is never answered or the release path is skipped.
+     *
+     * This is a fallback for devices (MIUI/HyperOS) where USE_FULL_SCREEN_INTENT is
+     * denied by default and the full-screen intent cannot wake the display. When
+     * full-screen intent is available and enabled, the system handles screen wake via
+     * the full-screen intent itself, so no wake lock is needed.
+     *
+     * The lock expires automatically after WAKELOCK_TIMEOUT_MS to prevent battery
+     * drain if the release path is skipped.
      */
     @Suppress("DEPRECATION") // SCREEN_BRIGHT_WAKE_LOCK is deprecated but is the correct flag
     // for waking the screen; the modern alternative (FLAG_TURN_SCREEN_ON) requires an Activity.
-    private fun acquireScreenWakeLock() {
+    private fun acquireScreenWakeLockIfNeeded() {
+        val fullScreenEnabled = StorageDelegate.IncomingCall.isFullScreen(this)
+        val canUseFullScreenIntent = PermissionsHelper(this).canUseFullScreenIntent()
+        if (fullScreenEnabled && canUseFullScreenIntent) {
+            Log.d(TAG, "Screen wake lock skipped: full-screen intent is available")
+            return
+        }
         if (screenWakeLock?.isHeld == true) return
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
         screenWakeLock =

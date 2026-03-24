@@ -147,6 +147,9 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
             .setSound(null)
             .setVibrate(null)
             .setFullScreenIntent(null, false)
+            // Explicit PUBLIC visibility so the ongoing call notification remains
+            // visible on the lock screen on MIUI/HyperOS after the ringing phase.
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
             .apply {
                 flags = flags and Notification.FLAG_INSISTENT.inv()
