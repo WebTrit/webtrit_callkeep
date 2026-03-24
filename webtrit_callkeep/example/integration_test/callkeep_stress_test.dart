@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -152,7 +151,7 @@ void main() {
     // Telecom fully drains its DISCONNECTING queue; calling cleanConnections()
     // here ensures the next test starts with a blank connection slate and
     // avoids "wrong call ID" routing failures in multi-call tests.
-    if (!kIsWeb && Platform.isAndroid) {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       await CallkeepConnections().cleanConnections();
     }
   });
@@ -444,7 +443,8 @@ void main() {
   // closing the WebSocket before the BYE could be sent.
   // -------------------------------------------------------------------------
 
-  group('regression - decline unanswered call (Android only)', () {
+  group('regression - decline unanswered call (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     /// Verifies that declining an unanswered call triggers performEndCall
     /// and does NOT trigger performAnswerCall.
     ///
@@ -454,7 +454,7 @@ void main() {
     /// performEndCall fires; the absence of performAnswerCall confirms the
     /// correct (decline, not answer) callback sequence ran.
     testWidgets('decline unanswered call fires performEndCall, not performAnswerCall', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -504,7 +504,7 @@ void main() {
     /// before the BYE was sent. The fix serialises the teardown so BYE
     /// always precedes WebSocket close.
     testWidgets('immediate decline (no delay) still fires performEndCall', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -536,7 +536,7 @@ void main() {
     /// the full cleanup path (performEndCall → release → releaseResources)
     /// completed and the ConnectionManager's terminated set was updated.
     testWidgets('after decline, re-reporting same ID returns callIdAlreadyTerminated', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -575,7 +575,8 @@ void main() {
   // Regression - push auto-answer then main process reportNewIncomingCall
   // -------------------------------------------------------------------------
 
-  group('regression - push auto-answer then main-process report (Android only)', () {
+  group('regression - push auto-answer then main-process report (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     /// Regression for the bug where `onCreateIncomingConnection` never called
     /// `removePending(callId)`.
     ///
@@ -593,7 +594,7 @@ void main() {
     /// as a generic duplicate error.
     testWidgets('answered call - second reportNewIncomingCall returns callIdAlreadyExistsAndAnswered',
         (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -747,9 +748,9 @@ void main() {
   // Stress - push + direct (Android only)
   // -------------------------------------------------------------------------
 
-  group('stress - push + direct (Android only)', () {
+  group('stress - push + direct (Android only)', skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('push then direct same ID - direct returns callIdAlreadyExists', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -772,7 +773,7 @@ void main() {
     });
 
     testWidgets('mixed push + direct spam 3x same ID - system stays stable', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -816,12 +817,13 @@ void main() {
   // didPushIncomingCall for those callIds.
   // -------------------------------------------------------------------------
 
-  group('regression - signaling-path incoming call does not duplicate via push (Android only)', () {
+  group('regression - signaling-path incoming call does not duplicate via push (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     // After reportNewIncomingCall (signaling path), the DidPushIncomingCall
     // broadcast from :callkeep_core must NOT reach Flutter as didPushIncomingCall.
     // If it did, CallBloc would add a second ActiveCall for the same callId.
     testWidgets('reportNewIncomingCall via signaling does not fire didPushIncomingCall', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -845,7 +847,7 @@ void main() {
 
     // Push path must still fire didPushIncomingCall (unchanged behaviour).
     testWidgets('push-path reportNewIncomingCall still fires didPushIncomingCall', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -878,9 +880,10 @@ void main() {
   // performAudioDevicesUpdate callback (Android only)
   // -------------------------------------------------------------------------
 
-  group('performAudioDevicesUpdate callback (Android only)', () {
+  group('performAudioDevicesUpdate callback (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('performAudioDevicesUpdate fires with non-empty devices after answerCall', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }

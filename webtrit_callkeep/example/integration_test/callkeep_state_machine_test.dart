@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -255,9 +255,9 @@ void main() {
   // Mute while on hold (Android only)
   // -------------------------------------------------------------------------
 
-  group('mute while on hold (Android only)', () {
+  group('mute while on hold (Android only)', skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('setMuted(true) while held fires performSetMuted(true)', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -294,7 +294,7 @@ void main() {
     });
 
     testWidgets('setMuted(false) while held fires performSetMuted(false)', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -343,9 +343,9 @@ void main() {
   // DTMF while on hold (Android only)
   // -------------------------------------------------------------------------
 
-  group('DTMF while on hold (Android only)', () {
+  group('DTMF while on hold (Android only)', skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets("sendDTMF('5') while held fires performSendDTMF", (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -384,9 +384,9 @@ void main() {
   // Two-call hold swap (Android only)
   // -------------------------------------------------------------------------
 
-  group('two-call hold swap (Android only)', () {
+  group('two-call hold swap (Android only)', skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('hold call1, answer call2, unhold call1 produces correct holdEvents', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -454,7 +454,7 @@ void main() {
     });
 
     testWidgets('DTMF on call2 while call1 is held routes only to call2', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -513,9 +513,10 @@ void main() {
   // Nested controls: mute then hold (Android only)
   // -------------------------------------------------------------------------
 
-  group('nested controls: mute then hold (Android only)', () {
+  group('nested controls: mute then hold (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('mute then hold then end fires each callback exactly once', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }

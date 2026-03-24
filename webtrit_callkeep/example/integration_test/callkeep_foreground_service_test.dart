@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -165,13 +165,14 @@ void main() {
   // connectionManager to detect the PhoneConnection and answer immediately.
   // =========================================================================
 
-  group('main-process signaling path — answerCall timing (Android only)', () {
+  group('main-process signaling path — answerCall timing (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('answerCall immediately after reportNewIncomingCall fires performAnswerCall', (WidgetTester _) async {
       // This is the primary regression test for the broadcast-lag bug.
       // No delay between reportNewIncomingCall and answerCall — exercises the
       // window where tracker.isPending(callId) is true but the CS already has
       // the PhoneConnection.
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -196,7 +197,7 @@ void main() {
       // Verifies the normal (non-race) path still works after the fix.
       // A short delay gives the DidPushIncomingCall broadcast time to arrive
       // so tracker.exists() is true when answerCall() is called.
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -219,7 +220,7 @@ void main() {
     testWidgets('answerCall fires performAnswerCall exactly once', (WidgetTester _) async {
       // Guards against double-answer: the tracker or deferred-answer path must
       // not cause performAnswerCall to fire twice for a single answerCall().
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -246,7 +247,7 @@ void main() {
     });
 
     testWidgets('video call: answerCall immediately fires performAnswerCall', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -274,9 +275,10 @@ void main() {
   // reportNewIncomingCall (before broadcast delivery).
   // =========================================================================
 
-  group('main-process signaling path — endCall (Android only)', () {
+  group('main-process signaling path — endCall (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('endCall immediately after reportNewIncomingCall fires performEndCall', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -297,7 +299,7 @@ void main() {
     });
 
     testWidgets('endCall fires performEndCall exactly once', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -323,7 +325,7 @@ void main() {
     });
 
     testWidgets('answer then endCall fires performEndCall once (not for answered call twice)', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -360,9 +362,10 @@ void main() {
   // broadcast was delivered to ForegroundService.
   // =========================================================================
 
-  group('main-process signaling path — tearDown (Android only)', () {
+  group('main-process signaling path — tearDown (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('tearDown fires performEndCall for an unanswered main-process call', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -390,7 +393,7 @@ void main() {
       // Regression: with the stale-pending bug, tearDown fired performEndCall
       // twice — once from tracker.getAll() and once from
       // drainUnconnectedPendingCallIds() when the call was still in pendingCallIds.
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -424,7 +427,7 @@ void main() {
     });
 
     testWidgets('tearDown fires performEndCall for every active main-process call', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -466,9 +469,10 @@ void main() {
   // second reportNewIncomingCall for the same callId must return an error.
   // =========================================================================
 
-  group('main-process signaling path — deduplication (Android only)', () {
+  group('main-process signaling path — deduplication (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('duplicate reportNewIncomingCall returns callIdAlreadyExists', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -488,7 +492,7 @@ void main() {
     testWidgets('answered call re-report returns callIdAlreadyExistsAndAnswered', (WidgetTester _) async {
       // Regression: before the removePending fix, the stale pendingCallIds entry
       // from the rejected re-report caused tearDown to fire performEndCall twice.
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -515,7 +519,7 @@ void main() {
       // Verifies that removePending() is called when CS rejects the re-report,
       // so tearDown does not see the callId in both getAll() and
       // drainUnconnectedPendingCallIds() and fire performEndCall twice.
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -572,11 +576,12 @@ void main() {
   // code runs identically in both cases.
   // =========================================================================
 
-  group('cold-start adoption — already-answered re-report (Android only)', () {
+  group('cold-start adoption — already-answered re-report (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('re-report of already-answered call fires performAnswerCall', (WidgetTester _) async {
       // Regression: the ALREADY_ANSWERED early-exit returned without firing
       // performAnswerCall, so WebRTC never started after cold-start adoption.
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -611,7 +616,7 @@ void main() {
       // Regression: promote() was never called in the ALREADY_ANSWERED branch,
       // so core.exists(callId) was false and endCall() logged
       // "no connection or pending entry" without firing performEndCall.
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -646,7 +651,7 @@ void main() {
       // (promote() was called) and fire performEndCall exactly once.
       // drainUnconnectedPendingCallIds() must not also include it (promote()
       // removes it from pendingCallIds), preventing a double-fire.
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }

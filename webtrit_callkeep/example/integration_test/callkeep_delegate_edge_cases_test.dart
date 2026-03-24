@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -167,9 +167,10 @@ void main() {
   // setDelegate(null) mid-call (Android only)
   // -------------------------------------------------------------------------
 
-  group('setDelegate(null) mid-call (Android only)', () {
+  group('setDelegate(null) mid-call (Android only)', skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android,
+      () {
     testWidgets('setDelegate(null) during active call does not crash', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -195,7 +196,7 @@ void main() {
     });
 
     testWidgets('setDelegate(null) then restore routes callbacks to restored delegate', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -224,9 +225,9 @@ void main() {
   // Delegate swap mid-call (Android only)
   // -------------------------------------------------------------------------
 
-  group('delegate swap mid-call (Android only)', () {
+  group('delegate swap mid-call (Android only)', skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('swapping to new delegate routes only new delegate receives events', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -264,9 +265,10 @@ void main() {
   // didPushIncomingCall callback (Android only)
   // -------------------------------------------------------------------------
 
-  group('didPushIncomingCall callback (Android only)', () {
+  group('didPushIncomingCall callback (Android only)', skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android,
+      () {
     testWidgets('fires with null error on successful push-path registration', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -285,7 +287,7 @@ void main() {
     });
 
     testWidgets('fires with callIdAlreadyExists on duplicate registration', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -314,9 +316,10 @@ void main() {
   // Audio session delegate callbacks (Android only)
   // -------------------------------------------------------------------------
 
-  group('audio session delegate callbacks (Android only)', () {
+  group('audio session delegate callbacks (Android only)',
+      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
     testWidgets('didActivateAudioSession fires after answerCall', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
@@ -348,7 +351,7 @@ void main() {
     });
 
     testWidgets('didDeactivateAudioSession fires after call ends', (WidgetTester _) async {
-      if (!Platform.isAndroid) {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
       }
