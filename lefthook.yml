@@ -1,9 +1,17 @@
 pre-commit:
   commands:
+    md-lint:
+      glob: '**/*.md'
+      run: markdownlint-cli2 {staged_files}
     dart-format:
       glob: '**/*.dart'
       exclude: '(\.g\.dart|\.pigeon\.dart|\.freezed\.dart|\.gr\.dart)$'
       run: dart format --line-length 120 {staged_files}
+      stage_fixed: true
+    kt-format:
+      glob: '**/*.kt'
+      exclude: 'Generated\.kt$'
+      run: ktlint --format {staged_files}
       stage_fixed: true
 
 commit-msg:
@@ -23,3 +31,11 @@ pre-push:
             (cd "$dir" && flutter analyze) || exit 1
           fi
         done
+    flutter-tests:
+      run: |
+        echo "Running Flutter tests for webtrit_callkeep_android..."
+        (cd webtrit_callkeep_android && flutter test test/) || exit 1
+    android-native-tests:
+      run: |
+        echo "Running Android native (Kotlin) tests for webtrit_callkeep_android..."
+        (cd webtrit_callkeep_android/android && ./gradlew testDebugUnitTest) || exit 1

@@ -59,6 +59,8 @@ extension PIncomingCallErrorEnumConverter on PIncomingCallErrorEnum {
         return CallkeepIncomingCallError.filteredByBlockList;
       case PIncomingCallErrorEnum.internal:
         return CallkeepIncomingCallError.internal;
+      case PIncomingCallErrorEnum.callRejectedBySystem:
+        return CallkeepIncomingCallError.callRejectedBySystem;
     }
   }
 }
@@ -169,7 +171,11 @@ extension CallkeepIOSOptionsConverter on CallkeepIOSOptions {
 
 extension CallkeepAndroidOptionsConverter on CallkeepAndroidOptions {
   PAndroidOptions toPigeon() {
-    return PAndroidOptions(ringtoneSound: ringtoneSound, ringbackSound: ringbackSound);
+    return PAndroidOptions(
+      ringtoneSound: ringtoneSound,
+      ringbackSound: ringbackSound,
+      incomingCallFullScreen: incomingCallFullScreen,
+    );
   }
 }
 

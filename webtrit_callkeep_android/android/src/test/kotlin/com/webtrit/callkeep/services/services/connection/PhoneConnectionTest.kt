@@ -28,7 +28,6 @@ import java.util.UUID
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [Build.VERSION_CODES.UPSIDE_DOWN_CAKE])
 class PhoneConnectionTest {
-
     private val context: Context = RuntimeEnvironment.getApplication()
     private val dispatcher: PerformDispatchHandle = mock()
     private val onDisconnect: (PhoneConnection) -> Unit = mock()
@@ -49,16 +48,18 @@ class PhoneConnectionTest {
     private fun simulateEndpoints(connection: PhoneConnection) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             // Create dummy endpoints (Speaker and Earpiece)
-            val earpiece = CallEndpoint(
-                "Earpiece",
-                CallEndpoint.TYPE_EARPIECE,
-                ParcelUuid(UUID.randomUUID())
-            )
-            val speaker = CallEndpoint(
-                "Speaker",
-                CallEndpoint.TYPE_SPEAKER,
-                ParcelUuid(UUID.randomUUID())
-            )
+            val earpiece =
+                CallEndpoint(
+                    "Earpiece",
+                    CallEndpoint.TYPE_EARPIECE,
+                    ParcelUuid(UUID.randomUUID()),
+                )
+            val speaker =
+                CallEndpoint(
+                    "Speaker",
+                    CallEndpoint.TYPE_SPEAKER,
+                    ParcelUuid(UUID.randomUUID()),
+                )
 
             // Push them to the connection
             connection.onAvailableCallEndpointsChanged(listOf(earpiece, speaker))
@@ -95,11 +96,12 @@ class PhoneConnectionTest {
     @Test
     fun `updateData with Video TRUE and Config FALSE ignores speaker`() {
         // Start with audio call, Explicitly DISABLE speaker config
-        val initial = CallMetadata(
-            callId = "test-disabled",
-            hasVideo = false,
-            speakerOnVideo = false
-        )
+        val initial =
+            CallMetadata(
+                callId = "test-disabled",
+                hasVideo = false,
+                speakerOnVideo = false,
+            )
         val connection = createConnection(initial)
         simulateEndpoints(connection)
 
@@ -123,11 +125,12 @@ class PhoneConnectionTest {
         simulateEndpoints(connection)
 
         // Update to VIDEO with Explicit ENABLE.
-        val update = CallMetadata(
-            callId = "test-enabled",
-            hasVideo = true,
-            speakerOnVideo = true
-        )
+        val update =
+            CallMetadata(
+                callId = "test-enabled",
+                hasVideo = true,
+                speakerOnVideo = true,
+            )
 
         connection.updateData(update)
 

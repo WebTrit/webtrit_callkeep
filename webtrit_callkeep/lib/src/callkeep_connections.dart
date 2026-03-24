@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 
 import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
@@ -20,8 +18,8 @@ class CallkeepConnections {
   ///
   /// Returns a [Future] resolving to a [CallkeepConnection] if found, or null otherwise.
   Future<CallkeepConnection?> getConnection(String callId) {
-    if (kIsWeb || !Platform.isAndroid) {
-      return Future.value();
+    if (!kIsWeb && defaultTargetPlatform != TargetPlatform.android) {
+      return Future.value(null);
     }
 
     return platform.getConnection(callId);
@@ -29,10 +27,10 @@ class CallkeepConnections {
 
   /// Cleans up all Callkeep connections.
   ///
-  /// If the platform is web or not Android, it returns immediately.
+  /// If the platform is not web and not Android, it returns immediately.
   /// Otherwise, it performs the platform-specific cleanup of connections.
   Future<void> cleanConnections() {
-    if (kIsWeb || !Platform.isAndroid) {
+    if (!kIsWeb && defaultTargetPlatform != TargetPlatform.android) {
       return Future.value();
     }
 
@@ -44,7 +42,7 @@ class CallkeepConnections {
   /// Returns a [Future] that resolves to a list of [CallkeepConnection] objects representing
   /// the active connections.
   Future<List<CallkeepConnection>> getConnections() {
-    if (kIsWeb || !Platform.isAndroid) {
+    if (!kIsWeb && defaultTargetPlatform != TargetPlatform.android) {
       return Future.value([]);
     }
 
@@ -56,7 +54,7 @@ class CallkeepConnections {
   /// Set the signaling status for the current activity connection,
   /// represented by the [CallkeepSignalingStatus] enum.
   Future<void> updateActivitySignalingStatus(CallkeepSignalingStatus status) {
-    if (kIsWeb || !Platform.isAndroid) {
+    if (!kIsWeb && defaultTargetPlatform != TargetPlatform.android) {
       return Future.value();
     }
 

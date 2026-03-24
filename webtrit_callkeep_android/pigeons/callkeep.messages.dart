@@ -7,9 +7,7 @@ import 'package:pigeon/pigeon.dart';
     dartOut: 'lib/src/common/callkeep.pigeon.dart',
     dartTestOut: 'test/src/common/test_callkeep.pigeon.dart',
     kotlinOut: 'android/src/main/kotlin/com/webtrit/callkeep/Generated.kt',
-    kotlinOptions: KotlinOptions(
-      package: 'com.webtrit.callkeep',
-    ),
+    kotlinOptions: KotlinOptions(package: 'com.webtrit.callkeep'),
   ),
 )
 class PIOSOptions {
@@ -30,6 +28,7 @@ class PIOSOptions {
 class PAndroidOptions {
   late String? ringtoneSound;
   late String? ringbackSound;
+  late bool? incomingCallFullScreen;
 }
 
 class POptions {
@@ -43,78 +42,36 @@ class PAudioDevice {
   late String? name;
 }
 
-enum PLogTypeEnum {
-  debug,
-  error,
-  info,
-  verbose,
-  warn,
-}
+enum PLogTypeEnum { debug, error, info, verbose, warn }
 
-enum PCallkeepPermission {
-  readPhoneState,
-  readPhoneNumbers,
-}
+enum PCallkeepPermission { readPhoneState, readPhoneNumbers }
 
-enum PSpecialPermissionStatusTypeEnum {
-  denied,
-  granted,
-  unknown,
-}
+enum PSpecialPermissionStatusTypeEnum { denied, granted, unknown }
 
 class PPermissionResult {
   late PCallkeepPermission permission;
   late PSpecialPermissionStatusTypeEnum status;
 }
 
-enum PCallkeepAndroidBatteryMode {
-  unrestricted,
-  optimized,
-  restricted,
-  unknown,
-}
+enum PCallkeepAndroidBatteryMode { unrestricted, optimized, restricted, unknown }
 
-enum PHandleTypeEnum {
-  generic,
-  number,
-  email,
-}
+enum PHandleTypeEnum { generic, number, email }
 
-enum PCallInfoConsts {
-  uuid,
-  dtmf,
-  isVideo,
-  number,
-  name,
-}
+enum PCallInfoConsts { uuid, dtmf, isVideo, number, name }
 
 class PHandle {
   late PHandleTypeEnum type;
   late String value;
 }
 
-enum PEndCallReasonEnum {
-  failed,
-  remoteEnded,
-  unanswered,
-  answeredElsewhere,
-  declinedElsewhere,
-  missed,
-}
+enum PEndCallReasonEnum { failed, remoteEnded, unanswered, answeredElsewhere, declinedElsewhere, missed }
 
 // TODO: See https://github.com/flutter/flutter/issues/87307
 class PEndCallReason {
   late PEndCallReasonEnum value;
 }
 
-enum PAudioDeviceType {
-  earpiece,
-  speaker,
-  bluetooth,
-  wiredHeadset,
-  streaming,
-  unknown,
-}
+enum PAudioDeviceType { earpiece, speaker, bluetooth, wiredHeadset, streaming, unknown }
 
 enum PIncomingCallErrorEnum {
   unknown,
@@ -125,6 +82,27 @@ enum PIncomingCallErrorEnum {
   filteredByDoNotDisturb,
   filteredByBlockList,
   internal,
+
+  /// Android only.
+  ///
+  /// Telecom rejected the incoming call registration via
+  /// `onCreateIncomingConnectionFailed` (i.e. without ever calling
+  /// `onCreateIncomingConnection`).
+  ///
+  /// **When this happens**: Android does not allow two self-managed calls to be
+  /// simultaneously in RINGING state. If a call is already ringing, Telecom
+  /// rejects every subsequent incoming self-managed call. This is standard
+  /// AOSP behaviour (observed on stock Pixel devices running Android 11+), not
+  /// an OEM-specific restriction. Some vendors (Huawei, certain MediaTek OEMs)
+  /// apply the same rejection even when the first call is already ACTIVE.
+  ///
+  /// **Consequences for the app**:
+  /// - The call was never confirmed to Flutter, so `performEndCall` will NOT
+  ///   fire for this call ID.
+  /// - The app must send the appropriate signaling (e.g. SIP BYE) to the
+  ///   server itself upon receiving this error, without waiting for
+  ///   `performEndCall`.
+  callRejectedBySystem,
 }
 
 // TODO: See https://github.com/flutter/flutter/issues/87307
@@ -171,20 +149,9 @@ class PCallRequestError {
   late PCallRequestErrorEnum value;
 }
 
-enum PCallkeepLifecycleEvent {
-  onCreate,
-  onStart,
-  onResume,
-  onPause,
-  onStop,
-  onDestroy,
-  onAny,
-}
+enum PCallkeepLifecycleEvent { onCreate, onStart, onResume, onPause, onStop, onDestroy, onAny }
 
-enum PCallkeepPushNotificationSyncStatus {
-  synchronizeCallStatus,
-  releaseResources,
-}
+enum PCallkeepPushNotificationSyncStatus { synchronizeCallStatus, releaseResources }
 
 class PCallkeepIncomingCallData {
   late String callId;
@@ -225,13 +192,7 @@ enum PCallkeepDisconnectCauseType {
   callPulled,
 }
 
-enum PCallkeepSignalingStatus {
-  disconnecting,
-  disconnect,
-  connecting,
-  connect,
-  failure,
-}
+enum PCallkeepSignalingStatus { disconnecting, disconnect, connecting, connect, failure }
 
 class PCallkeepDisconnectCause {
   late PCallkeepDisconnectCauseType type;
@@ -247,16 +208,10 @@ class PCallkeepConnection {
 @HostApi()
 abstract class PHostBackgroundSignalingIsolateBootstrapApi {
   @async
-  void initializeSignalingServiceCallback({
-    required int callbackDispatcher,
-    required int onSync,
-  });
+  void initializeSignalingServiceCallback({required int callbackDispatcher, required int onSync});
 
   @async
-  void configureSignalingService({
-    String? androidNotificationName,
-    String? androidNotificationDescription,
-  });
+  void configureSignalingService({String? androidNotificationName, String? androidNotificationDescription});
 
   @async
   void startService();
@@ -268,17 +223,10 @@ abstract class PHostBackgroundSignalingIsolateBootstrapApi {
 @HostApi()
 abstract class PHostBackgroundSignalingIsolateApi {
   @async
-  void incomingCall(
-    String callId,
-    PHandle handle,
-    String? displayName,
-    bool hasVideo,
-  );
+  void incomingCall(String callId, PHandle handle, String? displayName, bool hasVideo);
 
   @async
-  void endCall(
-    String callId,
-  );
+  void endCall(String callId);
 
   @async
   void endAllCalls();
@@ -287,31 +235,19 @@ abstract class PHostBackgroundSignalingIsolateApi {
 @HostApi()
 abstract class PHostBackgroundPushNotificationIsolateBootstrapApi {
   @async
-  void initializePushNotificationCallback({
-    required int callbackDispatcher,
-    required int onNotificationSync,
-  });
+  void initializePushNotificationCallback({required int callbackDispatcher, required int onNotificationSync});
 
   @async
-  void configureSignalingService({
-    bool launchBackgroundIsolateEvenIfAppIsOpen = false,
-  });
+  void configureSignalingService({bool launchBackgroundIsolateEvenIfAppIsOpen = false});
 
   @async
-  PIncomingCallError? reportNewIncomingCall(
-    String callId,
-    PHandle handle,
-    String? displayName,
-    bool hasVideo,
-  );
+  PIncomingCallError? reportNewIncomingCall(String callId, PHandle handle, String? displayName, bool hasVideo);
 }
 
 @HostApi()
 abstract class PHostBackgroundPushNotificationIsolateApi {
   @async
-  void endCall(
-    String callId,
-  );
+  void endCall(String callId);
 
   @async
   void endAllCalls();
@@ -356,13 +292,21 @@ abstract class PHostSoundApi {
 @FlutterApi()
 abstract class PDelegateBackgroundRegisterFlutterApi {
   @async
-  void onWakeUpBackgroundHandler(int userCallbackHandle, PCallkeepServiceStatus status, PCallkeepIncomingCallData? callData);
+  void onWakeUpBackgroundHandler(
+    int userCallbackHandle,
+    PCallkeepServiceStatus status,
+    PCallkeepIncomingCallData? callData,
+  );
 
   @async
   void onApplicationStatusChanged(int applicationStatusCallbackHandle, PCallkeepServiceStatus status);
 
   @async
-  void onNotificationSync(int pushNotificationSyncStatusHandle, PCallkeepPushNotificationSyncStatus status, PCallkeepIncomingCallData? callData);
+  void onNotificationSync(
+    int pushNotificationSyncStatusHandle,
+    PCallkeepPushNotificationSyncStatus status,
+    PCallkeepIncomingCallData? callData,
+  );
 }
 
 @HostApi()
@@ -380,12 +324,7 @@ abstract class PHostApi {
 
   @ObjCSelector('reportNewIncomingCall:handle:displayName:hasVideo:')
   @async
-  PIncomingCallError? reportNewIncomingCall(
-    String callId,
-    PHandle handle,
-    String? displayName,
-    bool hasVideo,
-  );
+  PIncomingCallError? reportNewIncomingCall(String callId, PHandle handle, String? displayName, bool hasVideo);
 
   @ObjCSelector('reportConnectingOutgoingCall:')
   @async
@@ -397,13 +336,7 @@ abstract class PHostApi {
 
   @ObjCSelector('reportUpdateCall:handle:displayName:hasVideo:proximityEnabled:')
   @async
-  void reportUpdateCall(
-    String callId,
-    PHandle? handle,
-    String? displayName,
-    bool? hasVideo,
-    bool? proximityEnabled,
-  );
+  void reportUpdateCall(String callId, PHandle? handle, String? displayName, bool? hasVideo, bool? proximityEnabled);
 
   @ObjCSelector('reportEndCall:displayName:reason:')
   @async
@@ -469,29 +402,14 @@ abstract class PHostConnectionsApi {
 @FlutterApi()
 abstract class PDelegateFlutterApi {
   @ObjCSelector('continueStartCallIntentHandle:displayName:video:')
-  void continueStartCallIntent(
-    PHandle handle,
-    String? displayName,
-    bool video,
-  );
+  void continueStartCallIntent(PHandle handle, String? displayName, bool video);
 
   @ObjCSelector('didPushIncomingCallHandle:displayName:video:id:error:')
-  void didPushIncomingCall(
-    PHandle handle,
-    String? displayName,
-    bool video,
-    String callId,
-    PIncomingCallError? error,
-  );
+  void didPushIncomingCall(PHandle handle, String? displayName, bool video, String callId, PIncomingCallError? error);
 
   @ObjCSelector('performStartCall:handle:displayNameOrContactIdentifier:video:')
   @async
-  bool performStartCall(
-    String callId,
-    PHandle handle,
-    String? displayNameOrContactIdentifier,
-    bool video,
-  );
+  bool performStartCall(String callId, PHandle handle, String? displayNameOrContactIdentifier, bool video);
 
   @ObjCSelector('performAnswerCall:')
   @async
@@ -580,10 +498,7 @@ abstract class PHostSmsReceptionConfigApi {
   /// messagePrefix: "<#> WEBTRIT:"
   /// regexPattern: r'\{"type":"incoming","handle":"([^"]+)","callID":"([^"]+)","displayName":"([^"]+)","hasVideo":(true|false)\}'
   @async
-  void initializeSmsReception({
-    required String messagePrefix,
-    required String regexPattern,
-  });
+  void initializeSmsReception({required String messagePrefix, required String regexPattern});
 }
 
 // ------------------------------------------------------------------------------------------------

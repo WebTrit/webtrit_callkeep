@@ -5,8 +5,9 @@ import android.content.Context
 import android.os.Build
 import android.os.PowerManager
 
-class BatteryModeHelper(private val context: Context) {
-
+class BatteryModeHelper(
+    private val context: Context,
+) {
     private val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
     private val activityManager =
         context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
@@ -23,16 +24,12 @@ class BatteryModeHelper(private val context: Context) {
      * Checks if the app is in Restricted mode.
      * This attempts to infer "restricted" status, as Android does not directly expose it.
      */
-    fun isRestricted(): Boolean {
-        return !isUnrestricted() && isBackgroundRestricted()
-    }
+    fun isRestricted(): Boolean = !isUnrestricted() && isBackgroundRestricted()
 
     /**
      * Checks if the app is in Optimized mode (not ignoring battery optimizations and not restricted).
      */
-    fun isOptimized(): Boolean {
-        return !isUnrestricted() && !isRestricted()
-    }
+    fun isOptimized(): Boolean = !isUnrestricted() && !isRestricted()
 
     /**
      * Checks if the app has background restrictions imposed (may indicate "restricted" mode).

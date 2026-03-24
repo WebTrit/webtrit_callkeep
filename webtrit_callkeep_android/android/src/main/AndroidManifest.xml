@@ -33,6 +33,7 @@
             android:enabled="true"
             android:exported="false"
             android:label="PhoneConnectionService"
+            android:process=":callkeep_core"
             android:permission="android.permission.BIND_TELECOM_CONNECTION_SERVICE">
             <intent-filter>
                 <action android:name="android.telecom.ConnectionService" />

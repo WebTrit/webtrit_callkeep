@@ -15,7 +15,9 @@ interface IsolateLaunchPolicy {
  *
  * @param service The service instance used to access shared preferences.
  */
-class DefaultIsolateLaunchPolicy(private val service: Service) : IsolateLaunchPolicy {
+class DefaultIsolateLaunchPolicy(
+    private val service: Service,
+) : IsolateLaunchPolicy {
     override fun shouldLaunch(): Boolean {
         val isolate = IsolateSelector.getIsolateType()
         val signalingRunning = SignalingIsolateService.isRunning

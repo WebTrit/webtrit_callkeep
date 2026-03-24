@@ -5,9 +5,8 @@ import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.managers.AudioManager
 
 class SoundApi(
-    private val context: Context
+    private val context: Context,
 ) : PHostSoundApi {
-
     private val audioManager = AudioManager(context)
 
     override fun playRingbackSound(callback: (Result<Unit>) -> Unit) {

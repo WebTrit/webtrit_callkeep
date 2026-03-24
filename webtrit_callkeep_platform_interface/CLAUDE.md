@@ -27,7 +27,7 @@ dart format --line-length 120 --set-exit-if-changed lib
 ## Related packages
 
 | Package | Path |
-|---|---|
+| --- | --- |
 | Aggregator | `../webtrit_callkeep` |
 | Android impl | `../webtrit_callkeep_android` |
 | iOS impl | `../webtrit_callkeep_ios` |

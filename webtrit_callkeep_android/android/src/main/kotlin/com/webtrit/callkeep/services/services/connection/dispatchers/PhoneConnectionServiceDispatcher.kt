@@ -2,7 +2,7 @@ package com.webtrit.callkeep.services.services.connection.dispatchers
 
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
+import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.services.connection.ActivityWakelockManager
 import com.webtrit.callkeep.services.services.connection.ConnectionManager
 import com.webtrit.callkeep.services.services.connection.PhoneConnection
@@ -11,7 +11,9 @@ import com.webtrit.callkeep.services.services.connection.ServiceAction
 import com.webtrit.callkeep.services.services.connection.models.PerformDispatchHandle
 
 enum class ConnectionLifecycleAction {
-    ConnectionCreated, ConnectionChanged, ServiceDestroyed
+    ConnectionCreated,
+    ConnectionChanged,
+    ServiceDestroyed,
 }
 
 /**
@@ -34,7 +36,6 @@ class PhoneConnectionServiceDispatcher(
     private val activityWakelockManager: ActivityWakelockManager,
     private val proximitySensorManager: ProximitySensorManager,
 ) {
-
     /**
      * Dispatches a given [ServiceAction] with optional [CallMetadata] to the appropriate
      * connection or fallback dispatcher.
@@ -46,36 +47,69 @@ class PhoneConnectionServiceDispatcher(
      * @param action The service action to be performed.
      * @param metadata Metadata associated with the call, if applicable.
      */
-    fun dispatch(action: ServiceAction, metadata: CallMetadata?) {
+    fun dispatch(
+        action: ServiceAction,
+        metadata: CallMetadata?,
+    ) {
         logger.d("Dispatching ServiceAction: $action | CallId: ${metadata?.callId ?: "N/A"}")
 
         when (action) {
             ServiceAction.AnswerCall -> metadata?.let { handleAnswerCall(it) }
+
             ServiceAction.DeclineCall -> metadata?.let { handleDeclineCall(it) }
+
             ServiceAction.HungUpCall -> metadata?.let { handleHungUpCall(it) }
+
             ServiceAction.EstablishCall -> metadata?.let { handleEstablishCall(it) }
+
             ServiceAction.Muting -> metadata?.let { handleMute(it) }
+
             ServiceAction.Holding -> metadata?.let { handleHold(it) }
+
             ServiceAction.UpdateCall -> metadata?.let { handleUpdateCall(it) }
+
             ServiceAction.SendDTMF -> metadata?.let { handleSendDTMF(it) }
+
             ServiceAction.Speaker -> metadata?.let { handleSpeaker(it) }
+
             ServiceAction.AudioDeviceSet -> metadata?.let { handleAudioDeviceSet(it) }
+
             ServiceAction.TearDown -> handleTearDown()
+
+            // IPC command actions are handled directly in PhoneConnectionService.onStartCommand
+            // before reaching the dispatcher, so they should never arrive here.
+            ServiceAction.TearDownConnections,
+            ServiceAction.ReserveAnswer,
+            ServiceAction.NotifyPending,
+            ServiceAction.CleanConnections,
+            ServiceAction.SyncAudioState,
+            ServiceAction.SyncConnectionState,
+            -> logger.w("dispatch: unexpected IPC command action: $action")
         }
     }
 
     /**
      * Dispatches lifecycle events related to connection state changes.
      */
-    fun dispatchLifecycle(action: ConnectionLifecycleAction, metadata: CallMetadata? = null) {
+    fun dispatchLifecycle(
+        action: ConnectionLifecycleAction,
+        metadata: CallMetadata? = null,
+    ) {
         logger.d("Dispatching LifecycleAction: $action")
         when (action) {
-            ConnectionLifecycleAction.ConnectionCreated -> metadata?.let {
-                handleConnectionCreated(it)
+            ConnectionLifecycleAction.ConnectionCreated -> {
+                metadata?.let {
+                    handleConnectionCreated(it)
+                }
             }
 
-            ConnectionLifecycleAction.ConnectionChanged -> handleConnectionChanged()
-            ConnectionLifecycleAction.ServiceDestroyed -> handleServiceDestroyed()
+            ConnectionLifecycleAction.ConnectionChanged -> {
+                handleConnectionChanged()
+            }
+
+            ConnectionLifecycleAction.ServiceDestroyed -> {
+                handleServiceDestroyed()
+            }
         }
     }
 
@@ -157,10 +191,15 @@ class PhoneConnectionServiceDispatcher(
     }
 
     private fun handleTearDown() {
-        val connections = connectionManager.getConnections()
-        logger.i("Tearing down all ${connections.size} active connections")
-
-        connections.forEach { it.hungUp() }
+        // ForegroundService.tearDown() already performs all state cleanup synchronously
+        // (hungUp for each connection, drainUnconnectedPendingCallIds, cleanConnections).
+        // This intent is sent solely to keep PhoneConnectionService alive so that the
+        // next session's intents (AnswerCall, HungUpCall, etc.) arrive at a live service.
+        //
+        // We must NOT call cleanConnections() or drainUnconnectedPendingCallIds() here:
+        // this intent is processed asynchronously and may arrive after the next session
+        // has already added new pending call IDs, which would corrupt that session's state.
+        logger.i("handleTearDown: synchronising sensor state after tearDown")
         updateSensorsState()
     }
 
@@ -230,11 +269,12 @@ class PhoneConnectionServiceDispatcher(
         // or a connecting call hasn't updated its metadata yet.
         val hasVideo = activeConnections.any { it.hasVideo }
         // Proximity should only be enabled for audio-only calls that explicitly allow it.
-        val shouldEnableProximity = activeConnections.any {
-            !it.hasVideo && it.proximityEnabled
-        }
+        val shouldEnableProximity =
+            activeConnections.any {
+                !it.hasVideo && it.proximityEnabled
+            }
         logger.v(
-            "Updating sensors state. HasVideo: $hasVideo, HasAnyConnection: $hasAnyConnection, ShouldEnableProximity: $shouldEnableProximity"
+            "Updating sensors state. HasVideo: $hasVideo, HasAnyConnection: $hasAnyConnection, ShouldEnableProximity: $shouldEnableProximity",
         )
         if (hasVideo) {
             activityWakelockManager.acquireScreenWakeLock()
@@ -255,17 +295,28 @@ class PhoneConnectionServiceDispatcher(
 
     /**
      * Helper to safely execute an action on a connection.
-     * If the connection is missing, it logs a warning and dispatches [ConnectionPerform.ConnectionNotFound].
+     * If the connection is missing, it logs a warning and dispatches [CallLifecycleEvent.ConnectionNotFound].
      */
     private inline fun executeOnConnection(
-        metadata: CallMetadata, actionName: String, block: (PhoneConnection) -> Unit
+        metadata: CallMetadata,
+        actionName: String,
+        block: (PhoneConnection) -> Unit,
     ) {
         val connection = connectionManager.getConnection(metadata.callId)
         if (connection != null) {
             block(connection)
         } else {
             logger.w("Unable to perform $actionName: Connection not found for callId: ${metadata.callId}")
-            dispatcher(ConnectionPerform.ConnectionNotFound, metadata)
+            // Mark as terminated so a subsequent endCall for the same ID returns an error
+            // rather than firing a second HungUp / performEndCall.
+            connectionManager.markTerminated(metadata.callId)
+            // Also clear any pending reservation and deferred answer. If the action (e.g.
+            // HungUpCall) arrived before onCreateIncomingConnection fired, the callId is still
+            // in pendingCallIds. Without this, Telecom will later call onCreateIncomingConnection,
+            // pass the isPending() gate, and create a zombie connection for a call already ended.
+            connectionManager.removePending(metadata.callId)
+            connectionManager.consumeAnswer(metadata.callId)
+            dispatcher(CallLifecycleEvent.ConnectionNotFound, metadata)
         }
     }
 

@@ -13,7 +13,7 @@ import com.webtrit.callkeep.common.startForegroundServiceCompat
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.notifications.ActiveCallNotificationBuilder
-import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
+import com.webtrit.callkeep.services.core.CallkeepCore
 
 class ActiveCallService : Service() {
     private val activeCallNotificationBuilder = ActiveCallNotificationBuilder()
@@ -24,7 +24,11 @@ class ActiveCallService : Service() {
         ContextHolder.init(applicationContext)
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    override fun onStartCommand(
+        intent: Intent?,
+        flags: Int,
+        startId: Int,
+    ): Int {
         // Handle the hangup action from the notification
         if (NotificationAction.Decline.action == intent?.action) {
             hungUpCall()
@@ -33,7 +37,9 @@ class ActiveCallService : Service() {
         }
 
         callsMetadata =
-            intent?.parcelableArrayList<Bundle>("metadata")?.map { CallMetadata.fromBundle(it) }
+            intent
+                ?.parcelableArrayList<Bundle>("metadata")
+                ?.map { CallMetadata.fromBundle(it) }
                 ?.toMutableList() ?: mutableListOf()
 
         activeCallNotificationBuilder.setCallsMetaData(callsMetadata)
@@ -51,12 +57,13 @@ class ActiveCallService : Service() {
         return START_STICKY
     }
 
-    private fun hungUpCall() = callsMetadata.firstOrNull()?.let {
-        PhoneConnectionService.startHungUpCall(baseContext, it)
-    } ?: PhoneConnectionService.tearDown(baseContext)
+    private fun hungUpCall() =
+        callsMetadata.firstOrNull()?.let {
+            CallkeepCore.instance.startHungUpCall(it)
+        } ?: CallkeepCore.instance.tearDownService()
 
-    private fun getForegroundServiceTypes(callsMetadata: List<CallMetadata>): Int? {
-        return when {
+    private fun getForegroundServiceTypes(callsMetadata: List<CallMetadata>): Int? =
+        when {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
                 val hasVideo = callsMetadata.any { it.hasVideo ?: false }
                 val hasCameraPermission = PermissionsHelper(this).hasCameraPermission()
@@ -78,10 +85,14 @@ class ActiveCallService : Service() {
                 types
             }
 
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
-            else -> null
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
+            }
+
+            else -> {
+                null
+            }
         }
-    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 }

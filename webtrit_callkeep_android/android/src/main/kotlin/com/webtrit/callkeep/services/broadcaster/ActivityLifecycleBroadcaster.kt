@@ -20,20 +20,32 @@ object ActivityLifecycleBroadcaster {
     val currentValue: Lifecycle.Event?
         get() = value
 
-    fun setValue(context: Context, newValue: Lifecycle.Event) {
+    fun setValue(
+        context: Context,
+        newValue: Lifecycle.Event,
+    ) {
         value = newValue
         notifyValueChanged(context, newValue)
     }
 
-    fun register(context: Context, receiver: BroadcastReceiver) {
+    fun register(
+        context: Context,
+        receiver: BroadcastReceiver,
+    ) {
         context.registerReceiverCompat(receiver, IntentFilter(ACTION))
     }
 
-    fun unregister(context: Context, receiver: BroadcastReceiver) {
+    fun unregister(
+        context: Context,
+        receiver: BroadcastReceiver,
+    ) {
         context.unregisterReceiver(receiver)
     }
 
-    private fun notifyValueChanged(context: Context, value: Lifecycle.Event) {
+    private fun notifyValueChanged(
+        context: Context,
+        value: Lifecycle.Event,
+    ) {
         context.applicationContext.sendInternalBroadcast(ACTION, value.toBundle())
     }
 }

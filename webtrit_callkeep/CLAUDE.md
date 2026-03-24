@@ -11,7 +11,7 @@ See **[AGENTS.md](AGENTS.md)** for commands, code style, and architecture detail
 ## Key singletons
 
 | Class | Access | Purpose |
-|---|---|---|
+| --- | --- | --- |
 | `Callkeep` | `Callkeep()` | Core call operations + status stream |
 | `CallkeepConnections` | `CallkeepConnections()` | Connection state queries (Android only) |
 | `AndroidCallkeepServices` | static | Bootstrap Android background services |
@@ -32,7 +32,7 @@ flutter test
 ## Related packages
 
 | Package | Path |
-|---|---|
+| --- | --- |
 | Platform interface | `../webtrit_callkeep_platform_interface` |
 | Android impl | `../webtrit_callkeep_android` |
 | iOS impl | `../webtrit_callkeep_ios` |

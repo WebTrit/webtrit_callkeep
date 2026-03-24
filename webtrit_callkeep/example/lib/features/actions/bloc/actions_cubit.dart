@@ -1,25 +1,63 @@
 import 'package:bloc/bloc.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
-
 import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 import 'package:webtrit_callkeep_example/app/constants.dart';
+import 'package:webtrit_callkeep_example/core/log_entry.dart';
 
 part 'actions_state.dart';
 
-part 'actions_cubit.freezed.dart';
-
-class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, CallkeepBackgroundServiceDelegate {
-  ActionsCubit(this._callkeep) : super(const ActionsState(actions: [])) {
+class ActionsCubit extends Cubit<ActionsState>
+    implements CallkeepDelegate, CallkeepBackgroundServiceDelegate, CallkeepLogsDelegate {
+  ActionsCubit(this._callkeep) : super(const ActionsState()) {
     _callkeep.setDelegate(this);
   }
 
   final Callkeep _callkeep;
+  int _lineCounter = 0;
+
+  /// Ensures a [CallLine] with [callId] exists in [s].
+  /// If absent, appends a new line using [callId] as both id and label.
+  ActionsState _ensureLine(ActionsState s, String callId) {
+    if (s.lines.any((l) => l.id == callId)) return s;
+    return s.copyWith(lines: [...s.lines, CallLine(id: callId, label: callId)]);
+  }
+
+  /// Removes the line with [callId] and adjusts activeLineId if needed.
+  ActionsState _removeLine(ActionsState s, String callId) {
+    final newLines = s.lines.where((l) => l.id != callId).toList();
+    ActionsState next = s.copyWith(lines: newLines);
+    if (s.activeLineId == callId) {
+      next = newLines.isNotEmpty ? next.copyWith(activeLineId: newLines.last.id) : next.withNoActiveLine();
+    }
+    return next;
+  }
 
   @override
   Future<void> close() {
     _callkeep.setDelegate(null);
+    WebtritCallkeepLogs().setLogsDelegate(null);
     return super.close();
   }
+
+  void clearLog() => emit(state.clearLog());
+
+  // ---------------------------------------------------------------------------
+  // Line management
+  // ---------------------------------------------------------------------------
+
+  void addLine() {
+    final id = 'line-${++_lineCounter}';
+    final label = 'Line $_lineCounter';
+    final newLine = CallLine(id: id, label: label);
+    emit(state.copyWith(lines: [...state.lines, newLine], activeLineId: id));
+  }
+
+  void selectLine(String id) => emit(state.copyWith(activeLineId: id));
+
+  void removeLine(String id) => emit(_removeLine(state, id));
+
+  // ---------------------------------------------------------------------------
+  // Lifecycle
+  // ---------------------------------------------------------------------------
 
   void setup() async {
     try {
@@ -32,31 +70,18 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
         ),
         android: CallkeepAndroidOptions(),
       ));
-      emit(state.addAction('Setup success'));
-    } catch (error) {
-      emit(state.addAction('Setup error: $error'));
+      emit(state.copyWith(isSetUp: true).log(LogEntry.success('setUp: ok')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('setUp: $e')));
     }
   }
 
   void isSetup() async {
     try {
       final result = await _callkeep.isSetUp();
-      emit(state.addAction('Is setup: $result'));
-    } catch (error) {
-      emit(state.addAction('Is setup error: $error'));
-    }
-  }
-
-  void incomingCallAndroid() async {
-    try {
-      AndroidCallkeepServices.backgroundPushNotificationBootstrapService.reportNewIncomingCall(
-        call1Identifier,
-        call1Number,
-        displayName: 'User Name',
-      );
-      emit(state.addAction('[Android]: Incoming  cal'));
-    } catch (error) {
-      emit(state.addAction('[Android]: Is setup error: $error'));
+      emit(state.log(LogEntry.info('isSetUp → $result')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('isSetUp: $e')));
     }
   }
 
@@ -64,190 +89,382 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
     try {
       await _callkeep.tearDown();
       emit(
-        state.copyWith(speakerEnabled: false, isMuted: false, isHold: false).addAction('Tear down success'),
+        state.copyWith(isSetUp: false, connections: []).log(LogEntry.success('tearDown: ok')),
       );
-    } catch (error) {
-      emit(state.addAction('Error tear down: $error'));
+    } catch (e) {
+      emit(state.log(LogEntry.error('tearDown: $e')));
     }
   }
 
-  void reportNewIncomingCall() async {
+  void getPushToken() async {
     try {
-      final result = await _callkeep.reportNewIncomingCall(
-        call1Identifier,
+      final token = await _callkeep.pushTokenForPushTypeVoIP();
+      emit(state.log(LogEntry.info('pushToken: ${token ?? "null"}')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('pushToken: $e')));
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Incoming calls
+  // ---------------------------------------------------------------------------
+
+  void reportIncomingCall() async {
+    try {
+      final err = await _callkeep.reportNewIncomingCall(
+        state.currentCallId,
         call1Number,
-        displayName: 'User Name',
-        hasVideo: true,
+        displayName: call1Name,
+        hasVideo: false,
       );
-      if (result != null) {
-        emit(state.addAction('Error report new incoming call error: ${result.name}'));
+      if (err != null) {
+        emit(state.log(LogEntry.error('reportIncoming[${state.currentCallId}]: ${err.name}')));
       } else {
-        emit(state.addAction('Success  report new incoming call'));
+        emit(state.log(LogEntry.success('reportIncoming[${state.currentCallId}]: ok')));
+        await _syncConnections();
       }
-    } catch (error) {
-      emit(state.addAction('Error report new incoming call error: $error'));
+    } catch (e) {
+      emit(state.log(LogEntry.error('reportIncoming: $e')));
     }
   }
 
-  void reportNewIncomingCallV2() async {
+  void incomingCallViaPush() {
     try {
-      final result = await _callkeep.reportNewIncomingCall(
-        call2Identifier,
-        call2Number,
-        displayName: 'User Name 1',
-        hasVideo: true,
-      );
-      if (result != null) {
-        emit(state.addAction('Error report new incoming call error: ${result.name}'));
-      } else {
-        emit(state.addAction('Success  report new incoming call'));
-      }
-    } catch (error) {
-      emit(state.addAction('Error report new incoming call error: $error'));
-    }
-  }
-
-  void startOutgoingCall() async {
-    try {
-      final result = await _callkeep.startCall(
-        call1Identifier,
+      AndroidCallkeepServices.backgroundPushNotificationBootstrapService.reportNewIncomingCall(
+        state.currentCallId,
         call1Number,
-        displayNameOrContactIdentifier: 'User Name',
-        hasVideo: true,
+        displayName: call1Name,
       );
-      if (result != null) {
-        emit(state.addAction('Error start outgoing call error: ${result.name}'));
-      } else {
-        emit(state.addAction('Success start outgoing call'));
-      }
-    } catch (error) {
-      emit(state.addAction('Error start outgoing call error: $error'));
+      emit(state.log(LogEntry.info('reportIncoming via push: dispatched')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('reportIncoming via push: $e')));
     }
   }
 
-  void reportConnectedOutgoingCall() async {
+  void reportEndCall(CallkeepEndCallReason reason) async {
     try {
-      await _callkeep.reportConnectedOutgoingCall(call1Identifier);
-      emit(state.addAction('Success report connected outgoing call'));
-    } catch (error) {
-      emit(state.addAction('Error report connected outgoing call error: $error'));
+      await _callkeep.reportEndCall(state.currentCallId, call1Name, reason);
+      emit(state.log(LogEntry.success('reportEndCall(${reason.name}): ok')));
+      await _syncConnections();
+    } catch (e) {
+      emit(state.log(LogEntry.error('reportEndCall: $e')));
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Outgoing calls
+  // ---------------------------------------------------------------------------
+
+  void startOutgoingCall(String number) async {
+    final handle = CallkeepHandle.number(number);
+    try {
+      final err = await _callkeep.startCall(
+        state.currentCallId,
+        handle,
+        displayNameOrContactIdentifier: number,
+        hasVideo: false,
+      );
+      if (err != null) {
+        emit(state.log(LogEntry.error('startCall → $number: ${err.name}')));
+      } else {
+        emit(state.log(LogEntry.success('startCall → $number: ok')));
+        await _syncConnections();
+      }
+    } catch (e) {
+      emit(state.log(LogEntry.error('startCall: $e')));
     }
   }
 
   void reportConnectingOutgoingCall() async {
     try {
-      await _callkeep.reportConnectingOutgoingCall(call1Identifier);
-      emit(state.addAction('Success report connecting outgoing call'));
-    } catch (error) {
-      emit(state.addAction('Error report connecting outgoing call error: $error'));
+      await _callkeep.reportConnectingOutgoingCall(state.currentCallId);
+      emit(state.log(LogEntry.success('reportConnecting: ok')));
+      await _syncConnections();
+    } catch (e) {
+      emit(state.log(LogEntry.error('reportConnecting: $e')));
+    }
+  }
+
+  void reportConnectedOutgoingCall() async {
+    try {
+      await _callkeep.reportConnectedOutgoingCall(state.currentCallId);
+      emit(state.log(LogEntry.success('reportConnected: ok')));
+      await _syncConnections();
+    } catch (e) {
+      emit(state.log(LogEntry.error('reportConnected: $e')));
     }
   }
 
   void reportUpdateCall() async {
     try {
       await _callkeep.reportUpdateCall(
-        call1Identifier,
+        state.currentCallId,
         handle: call1Number,
-        displayName: 'User Name',
-        hasVideo: true,
+        displayName: call1Name,
+        hasVideo: false,
       );
-      emit(state.addAction('Success report update call'));
-    } catch (error) {
-      emit(state.addAction('Error report update  error: $error'));
+      emit(state.log(LogEntry.success('reportUpdate: ok')));
+      await _syncConnections();
+    } catch (e) {
+      emit(state.log(LogEntry.error('reportUpdate: $e')));
     }
   }
 
-  void reportEndCall() async {
-    try {
-      await _callkeep.reportEndCall(
-        call1Identifier,
-        'Display Name',
-        CallkeepEndCallReason.declinedElsewhere,
-      );
-      emit(state.addAction('Success report end call'));
-    } catch (error) {
-      emit(state.addAction('Error eeport  end  error: $error'));
-    }
-  }
+  // ---------------------------------------------------------------------------
+  // In-call controls
+  // ---------------------------------------------------------------------------
 
   void answerCall() async {
     try {
-      await _callkeep.answerCall(call1Identifier);
-      emit(state.addAction('Success report answer call'));
-    } catch (error) {
-      emit(state.addAction('Error answer  error: $error'));
+      final err = await _callkeep.answerCall(state.currentCallId);
+      if (err != null) {
+        emit(state.log(LogEntry.error('answerCall: ${err.name}')));
+      } else {
+        emit(state.updateLine(state.currentCallId, isAnswered: true).log(LogEntry.success('answerCall: ok')));
+        await _syncConnections();
+      }
+    } catch (e) {
+      emit(state.log(LogEntry.error('answerCall: $e')));
     }
   }
 
   void endCall() async {
     try {
-      await _callkeep.endCall(call1Identifier);
-      emit(state.addAction('Success end call'));
-    } catch (error) {
-      emit(state.addAction('Error end  error: $error'));
+      final err = await _callkeep.endCall(state.currentCallId);
+      if (err != null) {
+        emit(state.log(LogEntry.error('endCall: ${err.name}')));
+      } else {
+        emit(state.log(LogEntry.success('endCall: ok')));
+        await _syncConnections();
+      }
+    } catch (e) {
+      emit(state.log(LogEntry.error('endCall: $e')));
     }
   }
 
   void setHeld() async {
     try {
       final onHold = !state.isHold;
-      await _callkeep.setHeld(call1Identifier, onHold: onHold);
-      emit(
-        state.copyWith(isHold: onHold).addAction('Held action sent (onHold: $onHold)'),
-      );
-    } catch (error) {
-      emit(state.addAction('Error set held  error: $error'));
+      final err = await _callkeep.setHeld(state.currentCallId, onHold: onHold);
+      if (err != null) {
+        emit(state.log(LogEntry.error('setHeld($onHold): ${err.name}')));
+      } else {
+        emit(state.updateLine(state.currentCallId, isHold: onHold).log(LogEntry.success('setHeld($onHold): ok')));
+        await _syncConnections();
+      }
+    } catch (e) {
+      emit(state.log(LogEntry.error('setHeld: $e')));
     }
   }
 
   void setMuted() async {
     try {
       final muted = !state.isMuted;
-      await _callkeep.setMuted(call1Identifier, muted: muted);
-      emit(
-        state.copyWith(isMuted: muted).addAction('Mute action sent (muted: $muted)'),
-      );
-    } catch (error) {
-      emit(state.addAction('Error set muted  error: $error'));
+      final err = await _callkeep.setMuted(state.currentCallId, muted: muted);
+      if (err != null) {
+        emit(state.log(LogEntry.error('setMuted($muted): ${err.name}')));
+      } else {
+        emit(state.updateLine(state.currentCallId, isMuted: muted).log(LogEntry.success('setMuted($muted): ok')));
+        await _syncConnections();
+      }
+    } catch (e) {
+      emit(state.log(LogEntry.error('setMuted: $e')));
     }
   }
 
-  void setSpeaker() async {
+  void sendDTMF(String key) async {
     try {
-      final enabled = !state.speakerEnabled;
-      // ignore: deprecated_member_use
-      await _callkeep.setSpeaker(call1Identifier, enabled: enabled);
-      emit(
-        state.copyWith(speakerEnabled: enabled).addAction('Speaker action sent (enabled: $enabled)'),
-      );
-    } catch (error) {
-      emit(state.addAction('Error  set speaker  error: $error'));
+      final err = await _callkeep.sendDTMF(state.currentCallId, key);
+      if (err != null) {
+        emit(state.log(LogEntry.error('sendDTMF($key): ${err.name}')));
+      } else {
+        emit(state.log(LogEntry.success('sendDTMF($key): ok')));
+      }
+    } catch (e) {
+      emit(state.log(LogEntry.error('sendDTMF: $e')));
     }
   }
 
-  void setDTMF() async {
+  void setAudioDevice(CallkeepAudioDeviceType type) async {
+    final device = CallkeepAudioDevice(type: type);
     try {
-      await _callkeep.sendDTMF(call1Identifier, 'A');
-      emit(state.addAction('DTMF action sent'));
-    } catch (error) {
-      emit(state.addAction('Error set DTMF  error: $error'));
+      final err = await _callkeep.setAudioDevice(state.currentCallId, device);
+      if (err != null) {
+        emit(state.log(LogEntry.error('setAudioDevice(${type.name}): ${err.name}')));
+      } else {
+        emit(state.log(LogEntry.success('setAudioDevice(${type.name}): ok')));
+      }
+    } catch (e) {
+      emit(state.log(LogEntry.error('setAudioDevice: $e')));
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sound
+  // ---------------------------------------------------------------------------
+
+  void playRingback() async {
+    try {
+      await WebtritCallkeepSound().playRingbackSound();
+      emit(state.copyWith(isRingbackPlaying: true).log(LogEntry.success('playRingback: ok')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('playRingback: $e')));
+    }
+  }
+
+  void stopRingback() async {
+    try {
+      await WebtritCallkeepSound().stopRingbackSound();
+      emit(state.copyWith(isRingbackPlaying: false).log(LogEntry.success('stopRingback: ok')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('stopRingback: $e')));
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Connections
+  // ---------------------------------------------------------------------------
+
+  void refreshConnections() async {
+    try {
+      final list = await CallkeepConnections().getConnections();
+      emit(state.copyWith(connections: list).log(LogEntry.info('connections: ${list.length} active')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('getConnections: $e')));
+    }
+  }
+
+  void cleanConnections() async {
+    try {
+      await CallkeepConnections().cleanConnections();
+      emit(state.copyWith(connections: []).log(LogEntry.success('cleanConnections: ok')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('cleanConnections: $e')));
+    }
+  }
+
+  void getConnectionByCallId() async {
+    try {
+      final conn = await CallkeepConnections().getConnection(state.currentCallId);
+      if (conn == null) {
+        emit(state.log(LogEntry.info('getConnection[${state.currentCallId}]: not found')));
+      } else {
+        emit(state.log(LogEntry.info(
+          'getConnection[${conn.callId}]: state=${conn.state.name}'
+          '${conn.disconnectCause != null ? " cause=${conn.disconnectCause!.type.name}" : ""}',
+        )));
+      }
+    } catch (e) {
+      emit(state.log(LogEntry.error('getConnection: $e')));
+    }
+  }
+
+  void updateSignalingStatus(CallkeepSignalingStatus status) async {
+    try {
+      await CallkeepConnections().updateActivitySignalingStatus(status);
+      emit(state.log(LogEntry.success('signalingStatus → ${status.name}: ok')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('signalingStatus: $e')));
+    }
+  }
+
+  /// Silently fetches the current native connections and updates state.
+  /// Does not add a log entry so it can be called frequently without noise.
+  Future<void> _syncConnections() async {
+    try {
+      final list = await CallkeepConnections().getConnections();
+      emit(state.copyWith(connections: list));
+    } catch (_) {
+      // best-effort: ignore errors from background syncs
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Permissions
+  // ---------------------------------------------------------------------------
+
+  void checkPermissions() async {
+    try {
+      final result = await WebtritCallkeepPermissions().checkPermissionsStatus(CallkeepPermission.values);
+      final str = result.entries.map((e) => '${e.key.name}=${e.value.name}').join(', ');
+      emit(state.log(LogEntry.info('checkPerms: ${str.isEmpty ? "n/a" : str}')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('checkPerms: $e')));
+    }
+  }
+
+  void requestPermissions() async {
+    try {
+      final result = await WebtritCallkeepPermissions().requestPermissions(CallkeepPermission.values);
+      final str = result.entries.map((e) => '${e.key.name}=${e.value.name}').join(', ');
+      emit(state.log(LogEntry.info('requestPerms: ${str.isEmpty ? "n/a" : str}')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('requestPerms: $e')));
+    }
+  }
+
+  void getBatteryMode() async {
+    try {
+      final mode = await WebtritCallkeepPermissions().getBatteryMode();
+      emit(state.log(LogEntry.info('batteryMode: ${mode.name}')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('batteryMode: $e')));
+    }
+  }
+
+  void getFullScreenIntentStatus() async {
+    try {
+      final status = await WebtritCallkeepPermissions().getFullScreenIntentPermissionStatus();
+      emit(state.log(LogEntry.info('fullScreenIntent: ${status.name}')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('fullScreenIntent: $e')));
+    }
+  }
+
+  void openFullScreenIntentSettings() async {
+    try {
+      await WebtritCallkeepPermissions().openFullScreenIntentSettings();
+      emit(state.log(LogEntry.info('openFullScreenIntentSettings: ok')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('openFullScreenIntentSettings: $e')));
+    }
+  }
+
+  void openSettings() async {
+    try {
+      await WebtritCallkeepPermissions().openSettings();
+      emit(state.log(LogEntry.info('openSettings: ok')));
+    } catch (e) {
+      emit(state.log(LogEntry.error('openSettings: $e')));
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Logs
+  // ---------------------------------------------------------------------------
+
+  void toggleLogsDelegate() {
+    if (state.isLogsDelegateActive) {
+      WebtritCallkeepLogs().setLogsDelegate(null);
+      emit(state.copyWith(isLogsDelegateActive: false).log(LogEntry.info('logs delegate: OFF')));
+    } else {
+      WebtritCallkeepLogs().setLogsDelegate(this);
+      emit(state.copyWith(isLogsDelegateActive: true).log(LogEntry.info('logs delegate: ON')));
     }
   }
 
   @override
-  void continueStartCallIntent(CallkeepHandle handle, String? displayName, bool video) {
-    emit(state.addAction('Perform continue start call intent'));
+  void onLog(CallkeepLogType type, String tag, String message) {
+    emit(state.log(LogEntry.event('[native/${type.name}] $tag: $message')));
   }
 
-  @override
-  void didActivateAudioSession() {
-    emit(state.addAction('Perform did activate audio session'));
-  }
+  // ---------------------------------------------------------------------------
+  // CallkeepDelegate callbacks
+  // ---------------------------------------------------------------------------
 
   @override
-  void didDeactivateAudioSession() {
-    emit(state.addAction('Perform did deactivate audio session'));
-  }
+  void continueStartCallIntent(CallkeepHandle handle, String? displayName, bool video) =>
+      emit(state.log(LogEntry.event('[cb] continueStartCallIntent: ${handle.value}')));
 
   @override
   void didPushIncomingCall(
@@ -256,90 +473,85 @@ class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, Call
     bool video,
     String callId,
     CallkeepIncomingCallError? error,
-  ) {
-    emit(state.addAction('Perform did push incoming call'));
+  ) async {
+    final errStr = error != null ? ' err=${error.name}' : '';
+    // Ensure a line exists for this callId; select it when there is no error.
+    var s = _ensureLine(state, callId);
+    if (error == null) s = s.copyWith(activeLineId: callId);
+    emit(s.log(LogEntry.event('[cb] didPushIncomingCall id=$callId$errStr')));
+    if (error == null) await _syncConnections();
   }
 
   @override
-  void didReset() {
-    emit(
-      state.copyWith(speakerEnabled: false, isMuted: false, isHold: false).addAction('Perform did reset'),
-    );
+  void didActivateAudioSession() => emit(state.log(LogEntry.event('[cb] didActivateAudioSession')));
+
+  @override
+  void didDeactivateAudioSession() => emit(state.log(LogEntry.event('[cb] didDeactivateAudioSession')));
+
+  @override
+  void didReset() => emit(state.log(LogEntry.event('[cb] didReset')));
+
+  @override
+  Future<bool> performStartCall(String callId, CallkeepHandle handle, String? displayName, bool video) async {
+    // Ensure a line exists and select it so all controls target this call.
+    final s = _ensureLine(state, callId).copyWith(activeLineId: callId);
+    emit(s.log(LogEntry.event('[cb] performStartCall id=$callId')));
+    await _syncConnections();
+    return true;
   }
 
   @override
-  Future<bool> performAnswerCall(String callId) {
-    emit(state.addAction('Delegate answer call'));
-    return Future.value(true);
+  Future<bool> performAnswerCall(String callId) async {
+    emit(_ensureLine(state, callId).updateLine(callId, isAnswered: true).log(
+          LogEntry.event('[cb] performAnswerCall id=$callId'),
+        ));
+    await _syncConnections();
+    return true;
   }
 
   @override
-  Future<bool> performEndCall(String callId) {
-    emit(state.addAction('Delegate end call'));
-    return Future.value(true);
+  Future<bool> performEndCall(String callId) async {
+    // Remove the line when the native side ends the call.
+    emit(_removeLine(state, callId).log(LogEntry.event('[cb] performEndCall id=$callId')));
+    await _syncConnections();
+    return true;
+  }
+
+  @override
+  Future<bool> performSetHeld(String callId, bool onHold) async {
+    emit(_ensureLine(state, callId).updateLine(callId, isHold: onHold).log(
+          LogEntry.event('[cb] performSetHeld id=$callId held=$onHold'),
+        ));
+    await _syncConnections();
+    return true;
+  }
+
+  @override
+  Future<bool> performSetMuted(String callId, bool muted) async {
+    emit(_ensureLine(state, callId).updateLine(callId, isMuted: muted).log(
+          LogEntry.event('[cb] performSetMuted id=$callId muted=$muted'),
+        ));
+    await _syncConnections();
+    return true;
   }
 
   @override
   Future<bool> performSendDTMF(String callId, String key) {
-    emit(state.addAction('Delegate dtmf pressed: $key'));
+    emit(state.log(LogEntry.event('[cb] performSendDTMF id=$callId key=$key')));
     return Future.value(true);
-  }
-
-  @override
-  Future<bool> performSetHeld(String callId, bool onHold) {
-    emit(
-      state.copyWith(isHold: onHold).addAction('Delegate held: $onHold'),
-    );
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performSetMuted(String callId, bool muted) {
-    emit(
-      state.copyWith(isMuted: muted).addAction('Delegate muted: $muted'),
-    );
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performStartCall(
-    String callId,
-    CallkeepHandle handle,
-    String? displayNameOrContactIdentifier,
-    bool video,
-  ) {
-    emit(state.addAction('Perform start call'));
-    return Future.value(true);
-  }
-
-  Future<bool> performSetSpeaker(String callId, bool enabled) {
-    emit(
-      state.copyWith(speakerEnabled: enabled).addAction('Delegate set speaker: $enabled'),
-    );
-    return Future.value(true);
-  }
-
-  void performReceivedCall(
-    String callId,
-    String number,
-    DateTime createdTime,
-    String? displayName,
-    DateTime? acceptedTime,
-    DateTime? hungUpTime, {
-    bool video = false,
-  }) {
-    emit(state.addAction('End call received'));
   }
 
   @override
   Future<bool> performAudioDeviceSet(String callId, CallkeepAudioDevice device) {
-    emit(state.addAction('Delegate audio device set: ${device.name}'));
+    emit(state.log(LogEntry.event('[cb] performAudioDeviceSet id=$callId device=${device.type.name}')));
     return Future.value(true);
   }
 
   @override
   Future<bool> performAudioDevicesUpdate(String callId, List<CallkeepAudioDevice> devices) {
-    emit(state.addAction("Delegate audio devices update: ${devices.map((d) => d.name).join(", ")}"));
+    emit(state.log(
+      LogEntry.event('[cb] performAudioDevicesUpdate id=$callId [${devices.map((d) => d.type.name).join(',')}]'),
+    ));
     return Future.value(true);
   }
 }

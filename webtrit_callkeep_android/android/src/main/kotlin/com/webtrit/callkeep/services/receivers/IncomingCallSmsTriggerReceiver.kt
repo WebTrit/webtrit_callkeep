@@ -9,21 +9,25 @@ import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.models.CallHandle
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
+import com.webtrit.callkeep.services.core.CallkeepCore
 import java.net.URLDecoder
 
 class IncomingCallSmsTriggerReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
+    override fun onReceive(
+        context: Context,
+        intent: Intent,
+    ) {
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
 
         ContextHolder.init(context)
 
         val prefix = StorageDelegate.IncomingCallSmsConfig.getSmsPrefix(context) ?: return
         val pattern = StorageDelegate.IncomingCallSmsConfig.getRegexPattern(context) ?: return
-        val regex = runCatching { Regex(pattern) }.getOrElse {
-            Log.e(TAG, "Invalid regex: $pattern, error: ${it.message}")
-            return
-        }
+        val regex =
+            runCatching { Regex(pattern) }.getOrElse {
+                Log.e(TAG, "Invalid regex: $pattern, error: ${it.message}")
+                return
+            }
 
         val validMessages = extractValidSmsMessages(context, intent, prefix, regex)
         if (validMessages.isEmpty()) {
@@ -35,20 +39,26 @@ class IncomingCallSmsTriggerReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun tryStartCall(context: Context, metadata: CallMetadata) {
+    private fun tryStartCall(
+        context: Context,
+        metadata: CallMetadata,
+    ) {
         try {
-            PhoneConnectionService.startIncomingCall(
-                context,
+            CallkeepCore.instance.startIncomingCall(
                 metadata,
                 onSuccess = { Log.d(TAG, "Incoming call started") },
-                onError = { Log.e(TAG, "Failed to start call: $it") })
+                onError = { Log.e(TAG, "Failed to start call: $it") },
+            )
         } catch (e: Exception) {
             Log.e(TAG, "Exception starting call: ${e.message}")
         }
     }
 
     private fun extractValidSmsMessages(
-        context: Context, intent: Intent, prefix: String, regex: Regex
+        context: Context,
+        intent: Intent,
+        prefix: String,
+        regex: Regex,
     ): List<CallMetadata> {
         val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent) ?: return emptyList()
 
@@ -65,8 +75,8 @@ class IncomingCallSmsTriggerReceiver : BroadcastReceiver() {
                 handle = CallHandle(handleValue),
                 displayName = URLDecoder.decode(displayNameEncoded, "UTF-8"),
                 hasVideo = hasVideoStr == "true",
-                ringtonePath = StorageDelegate.Sound.getRingtonePath(context)
-            )
+                ringtonePath = StorageDelegate.Sound.getRingtonePath(context),
+            ),
         )
     }
 

@@ -8,18 +8,22 @@ import android.net.Uri
 import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.Platform
 
-abstract class NotificationBuilder() {
-    protected fun buildOpenAppIntent(context: Context, uri: Uri = Uri.EMPTY): PendingIntent {
-        val hostAppActivity = Platform.getLaunchActivity(context)?.apply {
-            data = uri
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-        }
+abstract class NotificationBuilder {
+    protected fun buildOpenAppIntent(
+        context: Context,
+        uri: Uri = Uri.EMPTY,
+    ): PendingIntent {
+        val hostAppActivity =
+            Platform.getLaunchActivity(context)?.apply {
+                data = uri
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
 
         return PendingIntent.getActivity(
             context,
             R.integer.notification_incoming_call_id,
             hostAppActivity,
-            PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_IMMUTABLE,
         )
     }
 

@@ -1,13 +1,14 @@
 package com.webtrit.callkeep.services.services.connection
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.os.PowerManager
 import android.telecom.ConnectionService
-import android.content.Context
 import com.webtrit.callkeep.common.Log
 
 class ProximitySensorManager(
-    private val context: Context, private val state: PhoneConnectionConsts
+    private val context: Context,
+    private val state: PhoneConnectionConsts,
 ) {
     private val sensorListener = PhoneSensorListener()
 
@@ -35,7 +36,9 @@ class ProximitySensorManager(
         if (isWakelockActive == active) return
         isWakelockActive = active
 
-        logger.v("Updating proximity wakelock. State: [shouldListen: ${state.shouldListenProximity()}, isListening: $isListening] -> Active: $active")
+        logger.v(
+            "Updating proximity wakelock. State: [shouldListen: ${state.shouldListenProximity()}, isListening: $isListening] -> Active: $active",
+        )
         sensorListener.upsertProximityWakelock(context, active)
     }
 
@@ -66,16 +69,22 @@ class PhoneSensorListener {
 
     @Synchronized
     @SuppressLint("InvalidWakeLockTag")
-    fun upsertProximityWakelock(context: Context, turnOn: Boolean) {
+    fun upsertProximityWakelock(
+        context: Context,
+        turnOn: Boolean,
+    ) {
         try {
             if (proximityWakelock == null) {
                 val manager =
                     context.getSystemService(ConnectionService.POWER_SERVICE) as PowerManager
-                proximityWakelock = manager.newWakeLock(
-                    PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK, "callkeep-voip"
-                ).apply {
-                    setReferenceCounted(false)
-                }
+                proximityWakelock =
+                    manager
+                        .newWakeLock(
+                            PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK,
+                            "callkeep-voip",
+                        ).apply {
+                            setReferenceCounted(false)
+                        }
             }
 
             val wakelock = proximityWakelock ?: return
