@@ -14,6 +14,7 @@ import android.telecom.PhoneAccountHandle
 import androidx.annotation.RequiresPermission
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.common.ActivityHolder
+import com.webtrit.callkeep.common.AssetCacheManager
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.TelephonyUtils
@@ -49,6 +50,12 @@ class PhoneConnectionService : ConnectionService() {
         // Initialize ContextHolder for the :callkeep_core process. Each OS process has its own
         // JVM, so ContextHolder.init() called in the main process has no effect here.
         ContextHolder.init(applicationContext)
+        // Initialize AssetCacheManager for the :callkeep_core process so that
+        // PhoneConnection.onShowIncomingCallUi() can resolve the custom ringtone asset
+        // path via AssetCacheManager.getAsset(). Without this, AssetCacheManager.getAsset()
+        // may throw IllegalStateException, which is caught inside getRingtone() and causes
+        // a fallback to the system default ringtone.
+        AssetCacheManager.init(applicationContext)
         // Set the service state to true when the system starts the service.
         isRunning = true
         telephonyUtils = TelephonyUtils(applicationContext)
