@@ -760,7 +760,7 @@ void main() {
   //   app foregrounded → stopService (WebSocket torn down, isolate released)
   // =========================================================================
 
-  group('background signaling service lifecycle (Android only)', skip: signalingSkip, () {
+  group('background signaling service lifecycle (Android only)', () {
     // Ensure service is stopped after each lifecycle test so they don't
     // interfere with each other (some tests start but may not stop).
     tearDown(() async {

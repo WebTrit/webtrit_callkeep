@@ -150,6 +150,13 @@ class SignalingIsolateService :
 
     /**
      * Starts the service in the foreground with a notification.
+     *
+     * startForeground() MUST be called within 5 seconds of startForegroundService() regardless
+     * of POST_NOTIFICATIONS permission status. Calling stopSelf() without startForeground() first
+     * causes ForegroundServiceDidNotStartInTimeException on Android 13+ devices where the
+     * runtime permission has not been granted (e.g. integration-test environments). The service
+     * transitions to foreground first; if the notification cannot be shown (no permission), it
+     * stops itself cleanly afterwards.
      */
     private fun startForegroundService() {
         Log.d(TAG, "Starting foreground service")
@@ -165,14 +172,14 @@ class SignalingIsolateService :
         )
         val notification = notificationBuilder.build()
 
-        if (PermissionsHelper(baseContext).hasNotificationPermission()) {
-            startForegroundServiceCompat(
-                this,
-                ForegroundCallNotificationBuilder.NOTIFICATION_ID,
-                notification,
-                if (SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL else null,
-            )
-        } else {
+        startForegroundServiceCompat(
+            this,
+            ForegroundCallNotificationBuilder.NOTIFICATION_ID,
+            notification,
+            if (SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL else null,
+        )
+
+        if (!PermissionsHelper(baseContext).hasNotificationPermission()) {
             stopSelf()
         }
     }
