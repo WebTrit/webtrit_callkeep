@@ -174,6 +174,10 @@ class IncomingCallService : Service() {
     override fun onDestroy() {
         Log.d(TAG, "onDestroy called")
 
+        // Cancel the safety-net timeout so it does not fire after a graceful stop and
+        // report a false-alarm to Crashlytics.
+        timeoutHandler.removeCallbacks(stopTimeoutRunnable)
+
         setRunning(false)
         releaseScreenWakeLock()
         // Unregister the service from receiving connection service perform events
