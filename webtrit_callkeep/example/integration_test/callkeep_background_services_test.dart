@@ -1,25 +1,28 @@
 import 'dart:async';
+import 'dart:isolate' show SendPort;
+import 'dart:ui' show IsolateNameServer;
+
 import 'package:flutter/foundation.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 
-// ---------------------------------------------------------------------------
-// No-op signaling service callback.
-//
-// Must be a top-level function annotated with @pragma('vm:entry-point') so
-// that Android can register it as the isolate entry point via
-// initializeCallback().  The test variant does nothing — tests drive calls
-// directly through BackgroundSignalingService, so the isolate callback is
-// never invoked during the tests themselves.
-// ---------------------------------------------------------------------------
+// onStartForegroundService registers the IsolateNameServer command port and
+// routes signaling commands (incomingCall / endCall / endCalls) to the
+// BackgroundSignalingService Pigeon API.  Importing it here ensures the
+// function is included in the test APK binary so that
+// PluginUtilities.getCallbackFromHandle can resolve it in the background
+// engine, and so that initializeCallback can store a valid handle in
+// SharedPreferences before the service is started.
+import '../lib/isolates.dart' show onStartForegroundService;
 
-@pragma('vm:entry-point')
-Future<void> _noOpSignalingServiceCallback(
-  CallkeepServiceStatus status,
-  CallkeepIncomingCallMetadata? metadata,
-) async {}
+// The signaling test port name must match signalingServiceCommandPortName in
+// isolates.dart (example/lib/isolates.dart).  The background isolate
+// (onStartForegroundService) registers a ReceivePort under this name on first
+// invocation so this test can send incomingCall / endCall / endCalls commands
+// that are executed on the correct Flutter engine messenger.
+const _signalingTestPortName = 'webtrit_callkeep.signaling_test';
 
 // ---------------------------------------------------------------------------
 // Background services integration tests
@@ -154,6 +157,69 @@ Future<CallkeepConnection?> _waitForConnection(
 }
 
 // ---------------------------------------------------------------------------
+// Signaling-isolate command helpers
+//
+// Starts the SignalingIsolateService and waits until _signalingTestCallback
+// has registered its command port.  Triggering updateActivitySignalingStatus
+// fires SignalingIsolateService.synchronizeSignalingIsolate() which calls
+// onWakeUpBackgroundHandler in the background Dart isolate — that invokes
+// _signalingTestCallback, which registers the IsolateNameServer port.
+// ---------------------------------------------------------------------------
+
+Future<void> _startSignalingServiceAndAwaitPort() async {
+  IsolateNameServer.removePortNameMapping(_signalingTestPortName);
+  // Store valid CALLBACK_DISPATCHER and ON_SYNC_HANDLER handles in
+  // SharedPreferences.  These are required by FlutterEngineHelper to start
+  // the background Dart engine and by synchronizeSignalingIsolate to invoke
+  // onStartForegroundService.  bootstrap.dart normally does this during app
+  // startup, but integration tests run with the test file as the Dart entry
+  // point so bootstrap() is never called.
+  await AndroidCallkeepServices.backgroundSignalingBootstrapService.initializeCallback(onStartForegroundService);
+  await AndroidCallkeepServices.backgroundSignalingBootstrapService.startService();
+
+  final deadline = DateTime.now().add(const Duration(seconds: 10));
+  while (DateTime.now().isBefore(deadline)) {
+    await Future.delayed(const Duration(milliseconds: 300));
+    try {
+      await CallkeepConnections().updateActivitySignalingStatus(CallkeepSignalingStatus.disconnect);
+    } catch (_) {}
+    await Future.delayed(const Duration(milliseconds: 200));
+    if (IsolateNameServer.lookupPortByName(_signalingTestPortName) != null) return;
+  }
+  throw TimeoutException('Background signaling isolate did not register command port within 10s');
+}
+
+void _sendToSignalingIsolate(Map<String, dynamic> message) {
+  final port = IsolateNameServer.lookupPortByName(_signalingTestPortName) as SendPort?;
+  if (port == null) throw StateError('Signaling test port not registered');
+  port.send(message);
+}
+
+Future<void> _signalingIncomingCall(
+  String callId,
+  CallkeepHandle handle, {
+  String? displayName,
+  bool hasVideo = false,
+}) async {
+  _sendToSignalingIsolate({
+    'action': 'incomingCall',
+    'callId': callId,
+    'handleValue': handle.value,
+    'handleType': handle.type.name,
+    'displayName': displayName,
+    'hasVideo': hasVideo,
+  });
+}
+
+Future<void> _signalingEndCall(String callId) async {
+  _sendToSignalingIsolate({'action': 'endCall', 'callId': callId});
+}
+
+Future<void> _signalingEndCalls() async {
+  _sendToSignalingIsolate({'action': 'endCalls'});
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -168,12 +234,6 @@ void main() {
     globalTearDownNeeded = true;
     callkeep = Callkeep();
     delegate = _RecordingDelegate();
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      // Register the entry-point callback so startService() can start the
-      // SignalingIsolateService.  Safe to call every setUp — it only writes
-      // to SharedPreferences.
-      AndroidCallkeepServices.backgroundSignalingBootstrapService.initializeCallback(_noOpSignalingServiceCallback);
-    }
     await callkeep.setUp(_options);
     callkeep.setDelegate(delegate);
   });
@@ -509,18 +569,21 @@ void main() {
   //   performEndCall on main delegate
   // =========================================================================
 
-  // SignalingIsolateService starts foreground correctly (see lifecycle group below),
-  // but the groups below require the service's background Flutter isolate to be
-  // fully initialised and communicating via Pigeon. In an integration-test process
-  // a second Flutter engine cannot be brought up while the test engine is already
-  // running within the same OS process — the isolate never registers its Pigeon
-  // handlers, so incomingCall / endCall calls time out or are silently dropped.
-  // These groups require manual / end-to-end verification outside the test harness.
-  const signalingSkip = 'SignalingIsolateService Flutter isolate cannot register Pigeon handlers '
-      'in an integration-test process: a second Flutter engine cannot initialise '
-      'while the test engine is already running in the same OS process';
+  group('background signaling service (Android only)', () {
+    setUp(() async {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+      await _startSignalingServiceAndAwaitPort();
+    });
 
-  group('background signaling service (Android only)', skip: signalingSkip, () {
+    tearDown(() async {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+      IsolateNameServer.removePortNameMapping(_signalingTestPortName);
+      try {
+        await AndroidCallkeepServices.backgroundSignalingBootstrapService
+            .stopService()
+            .timeout(const Duration(seconds: 5));
+      } catch (_) {}
+    });
     // -----------------------------------------------------------------------
     // Incoming call via signaling service
     //
@@ -539,11 +602,7 @@ void main() {
 
       final id = _nextId();
 
-      await AndroidCallkeepServices.backgroundSignalingService.incomingCall(
-        id,
-        _handle1,
-        displayName: 'Jack',
-      );
+      await _signalingIncomingCall(id, _handle1, displayName: 'Jack');
       await Future.delayed(const Duration(milliseconds: 400));
 
       final err = await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Jack');
@@ -563,7 +622,7 @@ void main() {
 
       final id = _nextId();
 
-      await AndroidCallkeepServices.backgroundSignalingService.incomingCall(id, _handle1, displayName: 'Kate');
+      await _signalingIncomingCall(id, _handle1, displayName: 'Kate');
       await Future.delayed(const Duration(milliseconds: 400));
 
       final err2 = await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Kate');
@@ -588,7 +647,7 @@ void main() {
 
       final id = _nextId();
 
-      await AndroidCallkeepServices.backgroundSignalingService.incomingCall(id, _handle1, displayName: 'Leo');
+      await _signalingIncomingCall(id, _handle1, displayName: 'Leo');
       await Future.delayed(const Duration(milliseconds: 400));
 
       final latch = Completer<String>();
@@ -596,7 +655,7 @@ void main() {
         if (cid == id && !latch.isCompleted) latch.complete(cid);
       };
 
-      await AndroidCallkeepServices.backgroundSignalingService.endCall(id);
+      await _signalingEndCall(id);
 
       final ended = await _waitFor(latch.future, label: 'performEndCall via signaling service');
       expect(ended, id);
@@ -610,7 +669,7 @@ void main() {
 
       final id = _nextId();
 
-      await AndroidCallkeepServices.backgroundSignalingService.incomingCall(id, _handle1, displayName: 'Mia');
+      await _signalingIncomingCall(id, _handle1, displayName: 'Mia');
       await Future.delayed(const Duration(milliseconds: 400));
 
       final latch = Completer<void>();
@@ -618,7 +677,7 @@ void main() {
         if (cid == id && !latch.isCompleted) latch.complete();
       };
 
-      await AndroidCallkeepServices.backgroundSignalingService.endCall(id);
+      await _signalingEndCall(id);
       await _waitFor(latch.future, label: 'performEndCall');
 
       expect(
@@ -649,11 +708,11 @@ void main() {
       final id1 = _nextId();
       final id2 = _nextId();
 
-      await AndroidCallkeepServices.backgroundSignalingService.incomingCall(id1, _handle1, displayName: 'Nick');
-      await Future.delayed(const Duration(milliseconds: 200));
-      await AndroidCallkeepServices.backgroundSignalingService.incomingCall(id2, _handle2, displayName: 'Olivia');
-      await Future.delayed(const Duration(milliseconds: 400));
-
+      // Register the listener before creating calls so that an early
+      // performEndCall for id2 is captured on devices that reject concurrent
+      // incoming calls (id2 gets onCreateIncomingConnectionFailed while id1 is
+      // still RINGING).  Without this, the callback fires during the delay
+      // below and the test misses it.
       final endedIds = <String>[];
       final allDone = Completer<void>();
       delegate.onPerformEndCall = (cid) {
@@ -663,7 +722,12 @@ void main() {
         }
       };
 
-      await AndroidCallkeepServices.backgroundSignalingService.endCalls();
+      await _signalingIncomingCall(id1, _handle1, displayName: 'Nick');
+      await Future.delayed(const Duration(milliseconds: 200));
+      await _signalingIncomingCall(id2, _handle2, displayName: 'Olivia');
+      await Future.delayed(const Duration(milliseconds: 400));
+
+      await _signalingEndCalls();
 
       await _waitFor(allDone.future, label: 'both performEndCall via signaling service endCalls');
       expect(endedIds, containsAll([id1, id2]));
@@ -676,7 +740,7 @@ void main() {
       }
 
       // No calls registered — endCalls must complete silently.
-      await AndroidCallkeepServices.backgroundSignalingService.endCalls();
+      await _signalingEndCalls();
       await Future.delayed(const Duration(milliseconds: 300));
 
       expect(delegate.endCallIds, isEmpty);
@@ -701,7 +765,7 @@ void main() {
 
       final id = _nextId();
 
-      await AndroidCallkeepServices.backgroundSignalingService.incomingCall(id, _handle1, displayName: 'Paul');
+      await _signalingIncomingCall(id, _handle1, displayName: 'Paul');
       await Future.delayed(const Duration(milliseconds: 300));
 
       final answerLatch = Completer<String>();
@@ -739,7 +803,7 @@ void main() {
       globalTearDownNeeded = false;
       final id = _nextId();
 
-      await AndroidCallkeepServices.backgroundSignalingService.incomingCall(id, _handle1, displayName: 'Quinn');
+      await _signalingIncomingCall(id, _handle1, displayName: 'Quinn');
       await Future.delayed(const Duration(milliseconds: 400));
 
       final latch = Completer<void>();
@@ -864,8 +928,21 @@ void main() {
   // arrives while the background signaling service is also running.
   // =========================================================================
 
-  group('cross-service interactions (Android only)', skip: signalingSkip, () {
-    // (setUpAll removed — startService() would crash the app; see skip reason)
+  group('cross-service interactions (Android only)', () {
+    setUp(() async {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+      await _startSignalingServiceAndAwaitPort();
+    });
+
+    tearDown(() async {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+      IsolateNameServer.removePortNameMapping(_signalingTestPortName);
+      try {
+        await AndroidCallkeepServices.backgroundSignalingBootstrapService
+            .stopService()
+            .timeout(const Duration(seconds: 5));
+      } catch (_) {}
+    });
 
     // -----------------------------------------------------------------------
     // Push and signaling services register the same callId
@@ -901,7 +978,7 @@ void main() {
 
       final id = _nextId();
 
-      await AndroidCallkeepServices.backgroundSignalingService.incomingCall(id, _handle1, displayName: 'Sam');
+      await _signalingIncomingCall(id, _handle1, displayName: 'Sam');
       await Future.delayed(const Duration(milliseconds: 400));
 
       final err = await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
@@ -933,13 +1010,19 @@ void main() {
 
       AndroidCallkeepServices.backgroundPushNotificationBootstrapService
           .reportNewIncomingCall(pushId, _handle1, displayName: 'Tina');
-      await Future.delayed(const Duration(milliseconds: 200));
-      await AndroidCallkeepServices.backgroundSignalingService.incomingCall(
-        signalingId,
-        _handle2,
-        displayName: 'Uma',
-      );
+      await _waitForConnection(pushId);
+
+      await _signalingIncomingCall(signalingId, _handle2, displayName: 'Uma');
       await Future.delayed(const Duration(milliseconds: 400));
+
+      // On devices that reject concurrent incoming calls, signalingId gets
+      // onCreateIncomingConnectionFailed immediately (pushId is still RINGING).
+      // Skip rather than asserting on a call that was never established.
+      final signalingConn = await _waitForConnection(signalingId);
+      if (signalingConn == null) {
+        markTestSkipped('device does not support concurrent incoming calls');
+        return;
+      }
 
       // End only the push-path call via main-process API (IncomingCallService
       // is not available without a real FCM push).
