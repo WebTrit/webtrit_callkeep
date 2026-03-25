@@ -46,29 +46,24 @@ class StandaloneCallService : Service() {
     private val dispatcher = ConnectionServicePerformBroadcaster.handle
     private val audioManager by lazy { getSystemService(AUDIO_SERVICE) as AudioManager }
 
+    // Tracks whether startForeground() has been called in this service instance.
+    // startForeground() is deferred until an actual call is handled so that lifecycle-only
+    // commands (SyncConnectionState, SyncAudioState, etc.) do not post a foreground
+    // notification when there is no call in progress.
+    private var isForeground = false
+
     override fun onCreate() {
         super.onCreate()
         ContextHolder.init(applicationContext)
         AssetCacheManager.init(applicationContext)
+        // Register notification channels here as well as in ForegroundService.setUp().
+        // StandaloneCallService runs in the :callkeep_core process and may start before
+        // setUp() is invoked from the Flutter layer (e.g. when SyncConnectionState is
+        // dispatched during app startup). Without this call, startForeground() would
+        // crash with CannotPostForegroundServiceNotificationException because the
+        // channel does not yet exist in the system.
+        NotificationChannelManager.registerNotificationChannels(applicationContext)
         isRunning = true
-
-        // Satisfy Android's 5-second startForeground() requirement immediately.
-        // The actual visible incoming-call notification is shown by IncomingCallService in the
-        // main process. This is a minimal placeholder required only to keep the :callkeep_core
-        // process alive for the duration of the call.
-        val placeholder =
-            Notification
-                .Builder(this, NotificationChannelManager.FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setCategory(NotificationCompat.CATEGORY_CALL)
-                .setOngoing(true)
-                .build()
-        startForegroundServiceCompat(
-            this,
-            NOTIFICATION_ID,
-            placeholder,
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL,
-        )
         Log.i(TAG, "onCreate")
     }
 
@@ -108,6 +103,13 @@ class StandaloneCallService : Service() {
             Log.e(TAG, "Exception $e with action: ${intent?.action}")
         }
 
+        // If no calls are active or pending after processing, there is nothing to keep alive.
+        // This handles the case where a lifecycle-only command (SyncConnectionState,
+        // SyncAudioState, CleanConnections) starts the service when no call is in progress.
+        if (callMetadataMap.isEmpty() && pendingAnswers.isEmpty()) {
+            stopSelf()
+        }
+
         return START_NOT_STICKY
     }
 
@@ -116,6 +118,7 @@ class StandaloneCallService : Service() {
     override fun onDestroy() {
         Log.i(TAG, "onDestroy")
         isRunning = false
+        isForeground = false
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }
@@ -124,8 +127,37 @@ class StandaloneCallService : Service() {
     // Command handlers
     // -------------------------------------------------------------------------
 
+    /**
+     * Promotes the service to a foreground service the first time a real call is handled.
+     *
+     * Called from [handleIncomingCall] and [handleOutgoingCall] — the only two handlers that
+     * are triggered by [startForegroundService]. All other commands arrive via [startService]
+     * and do not require a foreground notification.
+     *
+     * The actual visible call notification is shown by [IncomingCallService] in the main
+     * process. This placeholder keeps the :callkeep_core process alive for the call duration.
+     */
+    private fun promoteToForeground() {
+        if (isForeground) return
+        val placeholder =
+            Notification
+                .Builder(this, NotificationChannelManager.FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setOngoing(true)
+                .build()
+        startForegroundServiceCompat(
+            this,
+            NOTIFICATION_ID,
+            placeholder,
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL,
+        )
+        isForeground = true
+    }
+
     private fun handleIncomingCall(metadata: CallMetadata) {
         Log.i(TAG, "handleIncomingCall: callId=${metadata.callId}")
+        promoteToForeground()
         callMetadataMap[metadata.callId] = metadata
         answeredCallIds.remove(metadata.callId)
         // Notify the main process that the call has been registered. ForegroundService listens
@@ -137,6 +169,7 @@ class StandaloneCallService : Service() {
 
     private fun handleOutgoingCall(metadata: CallMetadata) {
         Log.i(TAG, "handleOutgoingCall: callId=${metadata.callId}")
+        promoteToForeground()
         callMetadataMap[metadata.callId] = metadata
         answeredCallIds.remove(metadata.callId)
         // Notify the main process that the outgoing call is in progress, mirroring the
