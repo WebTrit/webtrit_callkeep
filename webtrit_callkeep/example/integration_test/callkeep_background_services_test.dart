@@ -15,7 +15,7 @@ import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 // PluginUtilities.getCallbackFromHandle can resolve it in the background
 // engine, and so that initializeCallback can store a valid handle in
 // SharedPreferences before the service is started.
-import '../lib/isolates.dart' show onStartForegroundService;
+import 'package:webtrit_callkeep_example/isolates.dart' show onStartForegroundService;
 
 // The signaling test port name must match signalingServiceCommandPortName in
 // isolates.dart (example/lib/isolates.dart).  The background isolate
@@ -190,7 +190,7 @@ Future<void> _startSignalingServiceAndAwaitPort() async {
 }
 
 void _sendToSignalingIsolate(Map<String, dynamic> message) {
-  final port = IsolateNameServer.lookupPortByName(_signalingTestPortName) as SendPort?;
+  final SendPort? port = IsolateNameServer.lookupPortByName(_signalingTestPortName);
   if (port == null) throw StateError('Signaling test port not registered');
   port.send(message);
 }
