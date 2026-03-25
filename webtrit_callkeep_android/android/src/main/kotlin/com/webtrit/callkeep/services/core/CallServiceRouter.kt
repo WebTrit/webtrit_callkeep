@@ -148,13 +148,21 @@ class CallServiceRouter(
     fun sendSyncAudioState() =
         route(
             telecom = { PhoneConnectionService.sendSyncAudioState(ctx) },
-            standalone = { StandaloneCallService.communicate(ctx, StandaloneServiceAction.SyncAudioState, null) },
+            standalone = {
+                if (StandaloneCallService.isRunning) {
+                    StandaloneCallService.communicate(ctx, StandaloneServiceAction.SyncAudioState, null)
+                }
+            },
         )
 
     fun sendSyncConnectionState() =
         route(
             telecom = { PhoneConnectionService.sendSyncConnectionState(ctx) },
-            standalone = { StandaloneCallService.communicate(ctx, StandaloneServiceAction.SyncConnectionState, null) },
+            standalone = {
+                if (StandaloneCallService.isRunning) {
+                    StandaloneCallService.communicate(ctx, StandaloneServiceAction.SyncConnectionState, null)
+                }
+            },
         )
 
     // -------------------------------------------------------------------------

@@ -64,10 +64,6 @@ class StandaloneCallService : Service() {
         // channel does not yet exist in the system.
         NotificationChannelManager.registerNotificationChannels(applicationContext)
         isRunning = true
-        // Satisfy Android's 5-second startForeground() requirement immediately.
-        // promoteToForeground() is a no-op once isForeground is true, so calling it here
-        // does not interfere with the call-handling paths that call it later.
-        promoteToForeground()
         Log.i(TAG, "onCreate")
     }
 
@@ -134,9 +130,10 @@ class StandaloneCallService : Service() {
     /**
      * Promotes the service to a foreground service the first time a real call is handled.
      *
-     * Called from [handleIncomingCall] and [handleOutgoingCall] — the only two handlers that
-     * are triggered by [startForegroundService]. All other commands arrive via [startService]
-     * and do not require a foreground notification.
+     * Called only from [handleIncomingCall] and [handleOutgoingCall] — the two handlers
+     * triggered by [startForegroundService]. All other commands arrive via [startService]
+     * and do not require a foreground notification, so [startForeground] is intentionally
+     * deferred rather than called in [onCreate].
      *
      * The actual visible call notification is shown by [IncomingCallService] in the main
      * process. This placeholder keeps the :callkeep_core process alive for the call duration.
