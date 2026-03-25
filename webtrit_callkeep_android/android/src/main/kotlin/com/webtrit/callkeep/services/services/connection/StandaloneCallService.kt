@@ -87,6 +87,8 @@ class StandaloneCallService : Service() {
         try {
             when (action) {
                 StandaloneServiceAction.IncomingCall -> metadata?.let { handleIncomingCall(it) }
+                StandaloneServiceAction.OutgoingCall -> metadata?.let { handleOutgoingCall(it) }
+                StandaloneServiceAction.EstablishCall -> metadata?.let { handleEstablishCall(it) }
                 StandaloneServiceAction.AnswerCall -> metadata?.let { handleAnswerCall(it) }
                 StandaloneServiceAction.DeclineCall -> metadata?.let { handleDeclineCall(it) }
                 StandaloneServiceAction.HungUpCall -> metadata?.let { handleHungUpCall(it) }
@@ -128,6 +130,33 @@ class StandaloneCallService : Service() {
         // into the core shadow state, matching the PhoneConnectionService.onCreateIncomingConnection
         // path in the Telecom-enabled flow.
         dispatcher.dispatch(baseContext, CallLifecycleEvent.DidPushIncomingCall, metadata.toBundle())
+    }
+
+    private fun handleOutgoingCall(metadata: CallMetadata) {
+        Log.i(TAG, "handleOutgoingCall: callId=${metadata.callId}")
+        callMetadataMap[metadata.callId] = metadata
+        answeredCallIds.remove(metadata.callId)
+        // Notify the main process that the outgoing call is in progress, mirroring the
+        // OngoingCall broadcast that PhoneConnectionService fires after onCreateOutgoingConnection.
+        // ForegroundService listens for this to promote the call to STATE_DIALING and call performStartCall.
+        dispatcher.dispatch(baseContext, CallLifecycleEvent.OngoingCall, metadata.toBundle())
+    }
+
+    private fun handleEstablishCall(metadata: CallMetadata) {
+        Log.i(TAG, "handleEstablishCall: callId=${metadata.callId}")
+        val full = (callMetadataMap[metadata.callId] ?: metadata).mergeWith(metadata)
+        callMetadataMap[metadata.callId] = full.copy(acceptedTime = System.currentTimeMillis())
+        answeredCallIds.add(metadata.callId)
+        pendingAnswers.remove(metadata.callId)
+
+        activateAudio()
+        fireInitialAudioState(metadata.callId)
+
+        dispatcher.dispatch(
+            baseContext,
+            CallLifecycleEvent.AnswerCall,
+            callMetadataMap[metadata.callId]!!.toBundle(),
+        )
     }
 
     private fun handleAnswerCall(metadata: CallMetadata) {
@@ -353,6 +382,33 @@ class StandaloneCallService : Service() {
         }
 
         /**
+         * Starts an outgoing call in standalone mode.
+         *
+         * Fires the service with [StandaloneServiceAction.OutgoingCall], which stores the call
+         * metadata and broadcasts [CallLifecycleEvent.OngoingCall] back to the main process so
+         * that [ForegroundService] can promote the call and notify the Flutter layer.
+         *
+         * The call is established (audio activated, [CallLifecycleEvent.AnswerCall] fired) when
+         * the app later calls [startEstablishCall] via [StandaloneServiceAction.EstablishCall].
+         */
+        fun startOutgoingCall(
+            context: Context,
+            metadata: CallMetadata,
+        ) {
+            val intent =
+                Intent(context, StandaloneCallService::class.java).apply {
+                    action = StandaloneServiceAction.OutgoingCall.action
+                    putExtras(metadata.toBundle())
+                }
+            try {
+                context.startForegroundService(intent)
+            } catch (e: Exception) {
+                Log.e(TAG, "startOutgoingCall: startForegroundService failed for callId=${metadata.callId}", e)
+                throw e
+            }
+        }
+
+        /**
          * Dispatches [action] to the running [StandaloneCallService] via [startService].
          *
          * If [StandaloneCallService] is not currently running (e.g. the OS killed the process
@@ -400,6 +456,8 @@ class StandaloneCallService : Service() {
  */
 enum class StandaloneServiceAction {
     IncomingCall,
+    OutgoingCall,
+    EstablishCall,
     AnswerCall,
     DeclineCall,
     HungUpCall,
