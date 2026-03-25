@@ -100,7 +100,7 @@ class StandaloneCallService : Service() {
                 StandaloneServiceAction.SyncConnectionState -> handleSyncConnectionState()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Exception $e with action: ${intent?.action}")
+            Log.e(TAG, "Exception with action: ${intent?.action}", e)
         }
 
         // If no calls are active or pending after processing, there is nothing to keep alive.
@@ -165,6 +165,12 @@ class StandaloneCallService : Service() {
         // into the core shadow state, matching the PhoneConnectionService.onCreateIncomingConnection
         // path in the Telecom-enabled flow.
         dispatcher.dispatch(baseContext, CallLifecycleEvent.DidPushIncomingCall, metadata.toBundle())
+
+        // If an answer was reserved before this call was registered (ReserveAnswer arrived first),
+        // consume the pending reservation and immediately trigger the answer flow.
+        if (pendingAnswers.remove(metadata.callId)) {
+            handleAnswerCall(metadata)
+        }
     }
 
     private fun handleOutgoingCall(metadata: CallMetadata) {
@@ -354,6 +360,9 @@ class StandaloneCallService : Service() {
     private fun deactivateAudio(force: Boolean = false) {
         if (force || callMetadataMap.isEmpty()) {
             audioManager.mode = AudioManager.MODE_NORMAL
+            @Suppress("DEPRECATION")
+            audioManager.isSpeakerphoneOn = false
+            audioManager.isMicrophoneMute = false
         }
     }
 

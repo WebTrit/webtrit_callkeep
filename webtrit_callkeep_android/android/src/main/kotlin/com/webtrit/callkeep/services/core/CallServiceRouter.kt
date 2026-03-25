@@ -118,7 +118,7 @@ class CallServiceRouter(
     fun tearDownService() =
         route(
             telecom = { PhoneConnectionService.tearDown(ctx) },
-            standalone = { StandaloneCallService.tearDown(ctx) },
+            standalone = { StandaloneCallService.communicate(ctx, StandaloneServiceAction.CleanConnections, null) },
         )
 
     fun sendTearDownConnections() =
