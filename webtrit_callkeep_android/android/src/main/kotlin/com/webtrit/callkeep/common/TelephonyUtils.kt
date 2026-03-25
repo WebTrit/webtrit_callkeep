@@ -95,5 +95,15 @@ class TelephonyUtils(
         private const val TAG = "TelephonyUtils"
 
         private val logger = Log(TAG)
+
+        /**
+         * Returns true if the device supports the Android Telecom framework
+         * (`android.software.telecom` system feature).
+         *
+         * Devices without this feature (e.g. some tablets, Android Go builds, certain OEM
+         * configurations) cannot use [TelecomManager] for call management. Callers should
+         * check this before registering a phone account or invoking any Telecom API.
+         */
+        fun isTelecomSupported(context: Context): Boolean = context.packageManager.hasSystemFeature("android.software.telecom")
     }
 }
