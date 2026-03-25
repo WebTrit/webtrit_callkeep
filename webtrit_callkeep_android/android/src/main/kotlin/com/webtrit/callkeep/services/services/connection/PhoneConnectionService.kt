@@ -486,10 +486,6 @@ class PhoneConnectionService : ConnectionService() {
             context: Context,
             metadata: CallMetadata,
         ) {
-            if (!TelephonyUtils.isTelecomSupported(context)) {
-                StandaloneCallService.communicate(context, StandaloneServiceAction.AnswerCall, metadata)
-                return
-            }
             communicate(context, ServiceAction.AnswerCall, metadata)
         }
 
@@ -497,29 +493,20 @@ class PhoneConnectionService : ConnectionService() {
             context: Context,
             metadata: CallMetadata,
         ) {
-            if (TelephonyUtils.isTelecomSupported(context)) {
-                communicate(context, ServiceAction.EstablishCall, metadata)
-            }
-            // No-op in standalone mode: outgoing calls are not supported without Telecom.
+            communicate(context, ServiceAction.EstablishCall, metadata)
         }
 
         fun startUpdateCall(
             context: Context,
             metadata: CallMetadata,
         ) {
-            if (TelephonyUtils.isTelecomSupported(context)) {
-                communicate(context, ServiceAction.UpdateCall, metadata)
-            }
+            communicate(context, ServiceAction.UpdateCall, metadata)
         }
 
         fun startDeclineCall(
             context: Context,
             metadata: CallMetadata,
         ) {
-            if (!TelephonyUtils.isTelecomSupported(context)) {
-                StandaloneCallService.communicate(context, StandaloneServiceAction.DeclineCall, metadata)
-                return
-            }
             communicate(context, ServiceAction.DeclineCall, metadata)
         }
 
@@ -527,10 +514,6 @@ class PhoneConnectionService : ConnectionService() {
             context: Context,
             metadata: CallMetadata,
         ) {
-            if (!TelephonyUtils.isTelecomSupported(context)) {
-                StandaloneCallService.communicate(context, StandaloneServiceAction.HungUpCall, metadata)
-                return
-            }
             communicate(context, ServiceAction.HungUpCall, metadata)
         }
 
@@ -538,19 +521,13 @@ class PhoneConnectionService : ConnectionService() {
             context: Context,
             metadata: CallMetadata,
         ) {
-            if (TelephonyUtils.isTelecomSupported(context)) {
-                communicate(context, ServiceAction.SendDTMF, metadata)
-            }
+            communicate(context, ServiceAction.SendDTMF, metadata)
         }
 
         fun startMutingCall(
             context: Context,
             metadata: CallMetadata,
         ) {
-            if (!TelephonyUtils.isTelecomSupported(context)) {
-                StandaloneCallService.communicate(context, StandaloneServiceAction.Muting, metadata)
-                return
-            }
             communicate(context, ServiceAction.Muting, metadata)
         }
 
@@ -558,20 +535,13 @@ class PhoneConnectionService : ConnectionService() {
             context: Context,
             metadata: CallMetadata,
         ) {
-            if (TelephonyUtils.isTelecomSupported(context)) {
-                communicate(context, ServiceAction.Holding, metadata)
-            }
-            // Hold is not supported in standalone mode.
+            communicate(context, ServiceAction.Holding, metadata)
         }
 
         fun startSpeaker(
             context: Context,
             metadata: CallMetadata,
         ) {
-            if (!TelephonyUtils.isTelecomSupported(context)) {
-                StandaloneCallService.communicate(context, StandaloneServiceAction.Speaker, metadata)
-                return
-            }
             communicate(context, ServiceAction.Speaker, metadata)
         }
 
@@ -579,18 +549,10 @@ class PhoneConnectionService : ConnectionService() {
             context: Context,
             metadata: CallMetadata,
         ) {
-            if (!TelephonyUtils.isTelecomSupported(context)) {
-                StandaloneCallService.communicate(context, StandaloneServiceAction.AudioDeviceSet, metadata)
-                return
-            }
             communicate(context, ServiceAction.AudioDeviceSet, metadata)
         }
 
         fun tearDown(context: Context) {
-            if (!TelephonyUtils.isTelecomSupported(context)) {
-                StandaloneCallService.tearDown(context)
-                return
-            }
             communicate(context, ServiceAction.TearDown, null)
         }
 
@@ -606,10 +568,6 @@ class PhoneConnectionService : ConnectionService() {
          * and reply with [CallCommandEvent.TearDownComplete].
          */
         fun sendTearDownConnections(context: Context) {
-            if (!TelephonyUtils.isTelecomSupported(context)) {
-                StandaloneCallService.communicate(context, StandaloneServiceAction.TearDownConnections, null)
-                return
-            }
             val intent =
                 Intent(context, PhoneConnectionService::class.java).apply {
                     action = ServiceAction.TearDownConnections.action
@@ -651,14 +609,6 @@ class PhoneConnectionService : ConnectionService() {
             context: Context,
             callId: String,
         ) {
-            if (!TelephonyUtils.isTelecomSupported(context)) {
-                StandaloneCallService.communicate(
-                    context,
-                    StandaloneServiceAction.ReserveAnswer,
-                    CallMetadata(callId = callId),
-                )
-                return
-            }
             val intent =
                 Intent(context, PhoneConnectionService::class.java).apply {
                     action = ServiceAction.ReserveAnswer.action
@@ -676,10 +626,6 @@ class PhoneConnectionService : ConnectionService() {
          * registered without a permission are effectively exported.
          */
         fun sendCleanConnections(context: Context) {
-            if (!TelephonyUtils.isTelecomSupported(context)) {
-                StandaloneCallService.communicate(context, StandaloneServiceAction.CleanConnections, null)
-                return
-            }
             val intent =
                 Intent(context, PhoneConnectionService::class.java).apply {
                     action = ServiceAction.CleanConnections.action
@@ -695,10 +641,6 @@ class PhoneConnectionService : ConnectionService() {
          * Used by [ForegroundService.onDelegateSet] to restore Flutter UI after hot restart.
          */
         fun sendSyncAudioState(context: Context) {
-            if (!TelephonyUtils.isTelecomSupported(context)) {
-                StandaloneCallService.communicate(context, StandaloneServiceAction.SyncAudioState, null)
-                return
-            }
             val intent =
                 Intent(context, PhoneConnectionService::class.java).apply {
                     action = ServiceAction.SyncAudioState.action
@@ -715,10 +657,6 @@ class PhoneConnectionService : ConnectionService() {
          * when it starts after the AnswerCall broadcast was originally emitted (cold-start race).
          */
         fun sendSyncConnectionState(context: Context) {
-            if (!TelephonyUtils.isTelecomSupported(context)) {
-                StandaloneCallService.communicate(context, StandaloneServiceAction.SyncConnectionState, null)
-                return
-            }
             val intent =
                 Intent(context, PhoneConnectionService::class.java).apply {
                     action = ServiceAction.SyncConnectionState.action
@@ -739,11 +677,6 @@ class PhoneConnectionService : ConnectionService() {
             context: Context,
             metadata: CallMetadata,
         ) {
-            if (!TelephonyUtils.isTelecomSupported(context)) {
-                throw UnsupportedOperationException(
-                    "Outgoing calls are not supported on devices without android.software.telecom",
-                )
-            }
             Log.i(TAG, "onOutgoingCall, callId: ${metadata.callId}")
 
             val uri: Uri = Uri.fromParts(PhoneAccount.SCHEME_TEL, metadata.number, null)
@@ -786,11 +719,6 @@ class PhoneConnectionService : ConnectionService() {
             onError: (PIncomingCallError?) -> Unit,
         ) {
             Log.i(TAG, "startIncomingCall: callId=${metadata.callId}")
-
-            if (!TelephonyUtils.isTelecomSupported(context)) {
-                StandaloneCallService.startIncomingCall(context, metadata, onSuccess, onError)
-                return
-            }
 
             ConnectionManager.validateConnectionAddition(metadata = metadata, onSuccess = {
                 try {
