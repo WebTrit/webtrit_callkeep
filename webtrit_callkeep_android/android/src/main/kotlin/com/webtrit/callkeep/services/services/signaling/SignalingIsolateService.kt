@@ -432,11 +432,13 @@ class SignalingIsolateService :
             finish()
         }, END_CALL_TIMEOUT_MS)
 
-        // sendTearDownConnections calls hungUp() on every PhoneConnection, which fires
-        // HungUp broadcasts.  ForegroundService receives those broadcasts and calls
-        // performEndCall() on the Flutter delegate, which is the expected behaviour.
-        // tearDownService() only updates sensor state and does not send HungUp broadcasts,
-        // so it must not be used here.
+        // When there are active or pending calls, sendTearDownConnections() must be used
+        // instead of tearDownService(), because it calls hungUp() on every PhoneConnection,
+        // which fires HungUp broadcasts.  ForegroundService receives those broadcasts and
+        // calls performEndCall() on the Flutter delegate, which is the expected behaviour.
+        // tearDownService() only updates sensor state and does not send HungUp broadcasts.
+        // The empty-call shortcut above may safely call tearDownService(), since there are
+        // no connections to notify.
         CallkeepCore.instance.sendTearDownConnections()
     }
 

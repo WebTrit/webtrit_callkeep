@@ -22,9 +22,9 @@ public class MainActivityTest {
     public ActivityTestRule<MainActivity> rule =
             new ActivityTestRule<>(MainActivity.class, true, false);
 
-    // Grant POST_NOTIFICATIONS before tests run so SignalingIsolateService
-    // does not call stopSelf() and terminate before the background engine
-    // can register its command port.
+    // Grant POST_NOTIFICATIONS before tests run so notification-related
+    // behaviour and background components that depend on this permission
+    // can operate reliably during instrumentation tests.
     //
     // UiAutomation.grantRuntimePermission() is unreliable on API 33+ for this
     // permission; using "pm grant" via executeShellCommand runs as the shell

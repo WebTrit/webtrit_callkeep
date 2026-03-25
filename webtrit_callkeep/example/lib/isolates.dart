@@ -44,6 +44,8 @@ Future<void> onStartForegroundService(CallkeepServiceStatus status, CallkeepInco
             await BackgroundSignalingService().endCall(message['callId'] as String);
           case 'endCalls':
             await BackgroundSignalingService().endCalls();
+          default:
+            _log.warning('Unknown signaling action: ${message['action']}');
         }
       } catch (_) {}
     });

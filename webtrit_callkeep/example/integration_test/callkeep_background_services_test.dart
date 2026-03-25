@@ -15,14 +15,11 @@ import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 // PluginUtilities.getCallbackFromHandle can resolve it in the background
 // engine, and so that initializeCallback can store a valid handle in
 // SharedPreferences before the service is started.
-import 'package:webtrit_callkeep_example/isolates.dart' show onStartForegroundService;
+import 'package:webtrit_callkeep_example/isolates.dart' show onStartForegroundService, signalingServiceCommandPortName;
 
-// The signaling test port name must match signalingServiceCommandPortName in
-// isolates.dart (example/lib/isolates.dart).  The background isolate
-// (onStartForegroundService) registers a ReceivePort under this name on first
-// invocation so this test can send incomingCall / endCall / endCalls commands
-// that are executed on the correct Flutter engine messenger.
-const _signalingTestPortName = 'webtrit_callkeep.signaling_test';
+// Reuse the port name constant from isolates.dart so tests break at compile
+// time rather than silently if the string is ever renamed.
+const _signalingTestPortName = signalingServiceCommandPortName;
 
 // ---------------------------------------------------------------------------
 // Background services integration tests
@@ -159,11 +156,11 @@ Future<CallkeepConnection?> _waitForConnection(
 // ---------------------------------------------------------------------------
 // Signaling-isolate command helpers
 //
-// Starts the SignalingIsolateService and waits until _signalingTestCallback
+// Starts the SignalingIsolateService and waits until onStartForegroundService
 // has registered its command port.  Triggering updateActivitySignalingStatus
 // fires SignalingIsolateService.synchronizeSignalingIsolate() which calls
 // onWakeUpBackgroundHandler in the background Dart isolate — that invokes
-// _signalingTestCallback, which registers the IsolateNameServer port.
+// onStartForegroundService, which registers the IsolateNameServer port.
 // ---------------------------------------------------------------------------
 
 Future<void> _startSignalingServiceAndAwaitPort() async {
