@@ -27,6 +27,16 @@
         android:name="android.hardware.telephony"
         android:required="false" />
 
+    <!--
+        Declare android.software.telecom as optional so Play Store filters and device
+        compatibility checks correctly reflect that the app works without the Telecom
+        subsystem. On devices where this feature is absent, StandaloneCallService is used
+        instead of PhoneConnectionService for call management.
+    -->
+    <uses-feature
+        android:name="android.software.telecom"
+        android:required="false" />
+
     <application>
         <service
             android:name=".services.services.connection.PhoneConnectionService"
@@ -39,6 +49,19 @@
                 <action android:name="android.telecom.ConnectionService" />
             </intent-filter>
         </service>
+
+        <!--
+          Standalone call management service for devices without android.software.telecom.
+          Runs in the :callkeep_core process and dispatches the same ConnectionEvent broadcasts
+          as PhoneConnectionService, allowing the main process and Flutter layer to remain
+          unaware of which call path is active.
+        -->
+        <service
+            android:name=".services.services.connection.StandaloneCallService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="phoneCall"
+            android:process=":callkeep_core" />
 
         <service
             android:name=".services.services.signaling.SignalingIsolateService"
