@@ -64,6 +64,10 @@ class StandaloneCallService : Service() {
         // channel does not yet exist in the system.
         NotificationChannelManager.registerNotificationChannels(applicationContext)
         isRunning = true
+        // Satisfy Android's 5-second startForeground() requirement immediately.
+        // promoteToForeground() is a no-op once isForeground is true, so calling it here
+        // does not interfere with the call-handling paths that call it later.
+        promoteToForeground()
         Log.i(TAG, "onCreate")
     }
 
