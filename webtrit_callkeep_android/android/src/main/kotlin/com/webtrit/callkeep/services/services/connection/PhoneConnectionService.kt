@@ -40,7 +40,6 @@ import com.webtrit.callkeep.services.services.foreground.ForegroundService
  */
 class PhoneConnectionService : ConnectionService() {
     private lateinit var phoneConnectionServiceDispatcher: PhoneConnectionServiceDispatcher
-    private lateinit var telephonyUtils: TelephonyUtils
 
     private val dispatcher: ConnectionServicePerformBroadcaster.DispatchHandle =
         ConnectionServicePerformBroadcaster.handle
@@ -58,7 +57,6 @@ class PhoneConnectionService : ConnectionService() {
         AssetCacheManager.init(applicationContext)
         // Set the service state to true when the system starts the service.
         isRunning = true
-        telephonyUtils = TelephonyUtils(applicationContext)
 
         val activityWakelockManager = ActivityWakelockManager(ActivityHolder)
         val proximitySensorManager =
