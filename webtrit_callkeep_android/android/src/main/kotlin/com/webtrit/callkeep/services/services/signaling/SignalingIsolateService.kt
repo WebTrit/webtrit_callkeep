@@ -24,7 +24,6 @@ import com.webtrit.callkeep.common.CallDataConst
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.FlutterEngineHelper
 import com.webtrit.callkeep.common.Log
-import com.webtrit.callkeep.common.PermissionsHelper
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.fromBundle
 import com.webtrit.callkeep.common.startForegroundServiceCompat
@@ -152,11 +151,12 @@ class SignalingIsolateService :
      * Starts the service in the foreground with a notification.
      *
      * startForeground() MUST be called within 5 seconds of startForegroundService() regardless
-     * of POST_NOTIFICATIONS permission status. Calling stopSelf() without startForeground() first
-     * causes ForegroundServiceDidNotStartInTimeException on Android 13+ devices where the
-     * runtime permission has not been granted (e.g. integration-test environments). The service
-     * transitions to foreground first; if the notification cannot be shown (no permission), it
-     * stops itself cleanly afterwards.
+     * of POST_NOTIFICATIONS permission status.  Android allows the foreground service to run
+     * even when POST_NOTIFICATIONS has not been granted — the notification is simply not shown
+     * to the user.  Stopping the service here when the permission is missing causes
+     * ForegroundServiceDidNotStartInTimeException on some devices and prevents the background
+     * Flutter engine from registering its command port in test and production environments
+     * where the permission is absent.
      */
     private fun startForegroundService() {
         Log.d(TAG, "Starting foreground service")
@@ -178,10 +178,6 @@ class SignalingIsolateService :
             notification,
             if (SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL else null,
         )
-
-        if (!PermissionsHelper(baseContext).hasNotificationPermission()) {
-            stopSelf()
-        }
     }
 
     /**
@@ -436,7 +432,14 @@ class SignalingIsolateService :
             finish()
         }, END_CALL_TIMEOUT_MS)
 
-        CallkeepCore.instance.tearDownService()
+        // When there are active or pending calls, sendTearDownConnections() must be used
+        // instead of tearDownService(), because it calls hungUp() on every PhoneConnection,
+        // which fires HungUp broadcasts.  ForegroundService receives those broadcasts and
+        // calls performEndCall() on the Flutter delegate, which is the expected behaviour.
+        // tearDownService() only updates sensor state and does not send HungUp broadcasts.
+        // The empty-call shortcut above may safely call tearDownService(), since there are
+        // no connections to notify.
+        CallkeepCore.instance.sendTearDownConnections()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
