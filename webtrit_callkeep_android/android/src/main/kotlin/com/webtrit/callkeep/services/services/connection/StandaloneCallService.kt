@@ -92,6 +92,9 @@ class StandaloneCallService : Service() {
                 StandaloneServiceAction.AnswerCall -> metadata?.let { handleAnswerCall(it) }
                 StandaloneServiceAction.DeclineCall -> metadata?.let { handleDeclineCall(it) }
                 StandaloneServiceAction.HungUpCall -> metadata?.let { handleHungUpCall(it) }
+                StandaloneServiceAction.UpdateCall -> metadata?.let { handleUpdateCall(it) }
+                StandaloneServiceAction.SendDtmf -> metadata?.let { handleSendDtmf(it) }
+                StandaloneServiceAction.Holding -> metadata?.let { handleHolding(it) }
                 StandaloneServiceAction.TearDownConnections -> handleTearDownConnections()
                 StandaloneServiceAction.CleanConnections -> handleCleanConnections()
                 StandaloneServiceAction.ReserveAnswer -> metadata?.callId?.let { handleReserveAnswer(it) }
@@ -186,6 +189,33 @@ class StandaloneCallService : Service() {
         Log.i(TAG, "handleHungUpCall: callId=${metadata.callId}")
         endCall(metadata)
         dispatcher.dispatch(baseContext, CallLifecycleEvent.HungUp, metadata.toBundle())
+    }
+
+    private fun handleUpdateCall(metadata: CallMetadata) {
+        Log.i(TAG, "handleUpdateCall: callId=${metadata.callId}")
+        val updated = (callMetadataMap[metadata.callId] ?: metadata).mergeWith(metadata)
+        callMetadataMap[metadata.callId] = updated
+    }
+
+    private fun handleSendDtmf(metadata: CallMetadata) {
+        val dtmf = metadata.dualToneMultiFrequency ?: return
+        Log.i(TAG, "handleSendDtmf: callId=${metadata.callId}, dtmf=$dtmf")
+        val updated = (callMetadataMap[metadata.callId] ?: metadata).copy(dualToneMultiFrequency = dtmf)
+        callMetadataMap[metadata.callId] = updated
+        dispatcher.dispatch(baseContext, CallMediaEvent.SentDTMF, updated.toBundle())
+    }
+
+    private fun handleHolding(metadata: CallMetadata) {
+        val onHold = metadata.hasHold ?: return
+        Log.i(TAG, "handleHolding: callId=${metadata.callId}, onHold=$onHold")
+        if (onHold) {
+            audioManager.mode = AudioManager.MODE_NORMAL
+        } else {
+            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+        }
+        val updated = (callMetadataMap[metadata.callId] ?: metadata).copy(hasHold = onHold)
+        callMetadataMap[metadata.callId] = updated
+        dispatcher.dispatch(baseContext, CallMediaEvent.ConnectionHolding, updated.toBundle())
     }
 
     private fun handleTearDownConnections() {
@@ -461,6 +491,9 @@ enum class StandaloneServiceAction {
     AnswerCall,
     DeclineCall,
     HungUpCall,
+    UpdateCall,
+    SendDtmf,
+    Holding,
     TearDownConnections,
     CleanConnections,
     ReserveAnswer,

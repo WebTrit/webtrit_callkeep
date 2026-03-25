@@ -75,13 +75,17 @@ class CallServiceRouter(
             standalone = { StandaloneCallService.communicate(ctx, StandaloneServiceAction.EstablishCall, metadata) },
         )
 
-    fun startUpdateCall(metadata: CallMetadata) {
-        if (isTelecomSupported) PhoneConnectionService.startUpdateCall(ctx, metadata)
-    }
+    fun startUpdateCall(metadata: CallMetadata) =
+        route(
+            telecom = { PhoneConnectionService.startUpdateCall(ctx, metadata) },
+            standalone = { StandaloneCallService.communicate(ctx, StandaloneServiceAction.UpdateCall, metadata) },
+        )
 
-    fun startSendDtmfCall(metadata: CallMetadata) {
-        if (isTelecomSupported) PhoneConnectionService.startSendDtmfCall(ctx, metadata)
-    }
+    fun startSendDtmfCall(metadata: CallMetadata) =
+        route(
+            telecom = { PhoneConnectionService.startSendDtmfCall(ctx, metadata) },
+            standalone = { StandaloneCallService.communicate(ctx, StandaloneServiceAction.SendDtmf, metadata) },
+        )
 
     fun startMutingCall(metadata: CallMetadata) =
         route(
@@ -89,10 +93,11 @@ class CallServiceRouter(
             standalone = { StandaloneCallService.communicate(ctx, StandaloneServiceAction.Muting, metadata) },
         )
 
-    fun startHoldingCall(metadata: CallMetadata) {
-        // Hold is not supported in standalone mode.
-        if (isTelecomSupported) PhoneConnectionService.startHoldingCall(ctx, metadata)
-    }
+    fun startHoldingCall(metadata: CallMetadata) =
+        route(
+            telecom = { PhoneConnectionService.startHoldingCall(ctx, metadata) },
+            standalone = { StandaloneCallService.communicate(ctx, StandaloneServiceAction.Holding, metadata) },
+        )
 
     fun startSpeaker(metadata: CallMetadata) =
         route(
