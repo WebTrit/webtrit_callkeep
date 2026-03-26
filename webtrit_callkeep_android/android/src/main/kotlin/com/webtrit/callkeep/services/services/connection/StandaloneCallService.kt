@@ -64,16 +64,24 @@ class StandaloneCallService : Service() {
         // channel does not yet exist in the system.
         NotificationChannelManager.registerNotificationChannels(applicationContext)
         isRunning = true
-        // Satisfy Android's 5-second startForeground() requirement immediately.
-        // On slow-starting processes (e.g. MediaTek OEM devices recovering from a
-        // previous service stop), onStartCommand() delivery can be delayed enough to
-        // exceed the 5-second window, causing "Bringing down service while still waiting
-        // for start foreground" and marking the process as bad. Calling startForeground()
-        // here prevents that. The isRunning guard in CallServiceRouter.sendSyncAudioState()
-        // and sendSyncConnectionState() prevents lifecycle-only commands from starting
-        // this service when no call is active, so this notification is never shown on the
-        // login page before setUp() is called.
-        promoteToForeground()
+        // Do NOT call promoteToForeground() here.
+        //
+        // This service is started via two different mechanisms:
+        //   1. startForegroundService() — for IncomingCall / OutgoingCall (call setup).
+        //   2. startService()           — for all other commands (CleanConnections,
+        //                                 TearDownConnections, AnswerCall, etc.).
+        //
+        // Calling startForeground(FOREGROUND_SERVICE_TYPE_PHONE_CALL) from onCreate()
+        // when the service was launched via startService() crashes the :callkeep_core
+        // process on some OEM devices (e.g. Lenovo TB300FU, Android 13). The repeated
+        // crash marks the process as "bad", causing all subsequent service starts to be
+        // suppressed by ActivityManager.
+        //
+        // Instead, promoteToForeground() is called at the very top of onStartCommand()
+        // for IncomingCall and OutgoingCall only. Since onStartCommand() executes on the
+        // main thread immediately after onCreate() returns, the 5-second startForeground()
+        // window imposed by startForegroundService() is still satisfied — the dominant
+        // delay is process startup time, not the transition between the two callbacks.
         Log.i(TAG, "onCreate")
     }
 
@@ -88,6 +96,14 @@ class StandaloneCallService : Service() {
                 return START_NOT_STICKY
             }
         val metadata = intent.extras?.let { CallMetadata.fromBundle(it) }
+
+        // Satisfy the 5-second startForeground() window for call-setup actions, which
+        // are the only ones started via startForegroundService(). All other actions
+        // arrive via startService() and must NOT call startForeground() here — doing so
+        // from a non-foreground-service start crashes the process on some OEM devices.
+        if (action == StandaloneServiceAction.IncomingCall || action == StandaloneServiceAction.OutgoingCall) {
+            promoteToForeground()
+        }
 
         try {
             when (action) {
@@ -140,8 +156,10 @@ class StandaloneCallService : Service() {
     /**
      * Promotes the service to a foreground service.
      *
-     * Called from [onCreate] to satisfy Android's 5-second [startForeground] requirement
-     * immediately (before [onStartCommand] is delivered). Also called from
+     * Called from [onStartCommand] for [StandaloneServiceAction.IncomingCall] and
+     * [StandaloneServiceAction.OutgoingCall] — the only actions that arrive via
+     * [android.content.Context.startForegroundService] and therefore impose the 5-second
+     * [android.app.Service.startForeground] requirement. Also called from
      * [handleIncomingCall] and [handleOutgoingCall] as a no-op guard once already promoted.
      *
      * The actual visible call notification is shown by [IncomingCallService] in the main
