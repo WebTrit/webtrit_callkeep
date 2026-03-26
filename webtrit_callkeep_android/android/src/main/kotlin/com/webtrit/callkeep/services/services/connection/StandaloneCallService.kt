@@ -64,6 +64,16 @@ class StandaloneCallService : Service() {
         // channel does not yet exist in the system.
         NotificationChannelManager.registerNotificationChannels(applicationContext)
         isRunning = true
+        // Satisfy Android's 5-second startForeground() requirement immediately.
+        // On slow-starting processes (e.g. MediaTek OEM devices recovering from a
+        // previous service stop), onStartCommand() delivery can be delayed enough to
+        // exceed the 5-second window, causing "Bringing down service while still waiting
+        // for start foreground" and marking the process as bad. Calling startForeground()
+        // here prevents that. The isRunning guard in CallServiceRouter.sendSyncAudioState()
+        // and sendSyncConnectionState() prevents lifecycle-only commands from starting
+        // this service when no call is active, so this notification is never shown on the
+        // login page before setUp() is called.
+        promoteToForeground()
         Log.i(TAG, "onCreate")
     }
 
@@ -128,12 +138,11 @@ class StandaloneCallService : Service() {
     // -------------------------------------------------------------------------
 
     /**
-     * Promotes the service to a foreground service the first time a real call is handled.
+     * Promotes the service to a foreground service.
      *
-     * Called only from [handleIncomingCall] and [handleOutgoingCall] — the two handlers
-     * triggered by [startForegroundService]. All other commands arrive via [startService]
-     * and do not require a foreground notification, so [startForeground] is intentionally
-     * deferred rather than called in [onCreate].
+     * Called from [onCreate] to satisfy Android's 5-second [startForeground] requirement
+     * immediately (before [onStartCommand] is delivered). Also called from
+     * [handleIncomingCall] and [handleOutgoingCall] as a no-op guard once already promoted.
      *
      * The actual visible call notification is shown by [IncomingCallService] in the main
      * process. This placeholder keeps the :callkeep_core process alive for the call duration.
