@@ -3,16 +3,21 @@ package com.webtrit.callkeep.services.core
 import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
 import android.content.IntentFilter
+import android.os.Bundle
 import androidx.annotation.RequiresPermission
 import com.webtrit.callkeep.PCallkeepConnection
 import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
+import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * In-process implementation of [CallkeepCore].
@@ -31,6 +36,56 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
     // created early without risking a NullPointerException. ContextHolder.init() must
     // have been called before any CS command method is invoked (guaranteed by Application.onCreate).
     private val context get() = ContextHolder.context
+
+    // -------------------------------------------------------------------------
+    // Listener registry and lazy global BroadcastReceiver
+    // -------------------------------------------------------------------------
+
+    private val listeners = CopyOnWriteArrayList<ConnectionEventListener>()
+    private var globalReceiver: BroadcastReceiver? = null
+    private val receiverLock = Any()
+
+    override fun addConnectionEventListener(listener: ConnectionEventListener) {
+        listeners.add(listener)
+        synchronized(receiverLock) {
+            if (globalReceiver == null) {
+                globalReceiver =
+                    createGlobalReceiver().also { receiver ->
+                        ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
+                            GLOBAL_LISTENER_EVENTS,
+                            context,
+                            receiver,
+                        )
+                    }
+            }
+        }
+    }
+
+    override fun removeConnectionEventListener(listener: ConnectionEventListener) {
+        listeners.remove(listener)
+        synchronized(receiverLock) {
+            if (listeners.isEmpty()) {
+                globalReceiver?.let { receiver ->
+                    runCatching {
+                        ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(context, receiver)
+                    }
+                }
+                globalReceiver = null
+            }
+        }
+    }
+
+    private fun createGlobalReceiver(): BroadcastReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                ctx: Context?,
+                intent: Intent?,
+            ) {
+                val action = intent?.action ?: return
+                val event = GLOBAL_LISTENER_EVENTS.find { it.name == action } ?: return
+                listeners.forEach { it.onConnectionEvent(event, intent.extras) }
+            }
+        }
 
     // -------------------------------------------------------------------------
     // State queries
@@ -170,5 +225,27 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
 
     companion object {
         val instance: CallkeepCore = InProcessCallkeepCore()
+
+        /**
+         * Events delivered to all [ConnectionEventListener] subscribers.
+         *
+         * Covers the persistent global subscriptions used by [ForegroundService] and
+         * [IncomingCallService]. Per-call one-off receivers (OngoingCall, OutgoingFailure,
+         * TearDownComplete, IncomingFailure) are excluded — they stay as dynamic
+         * receivers registered via [registerConnectionEvents].
+         */
+        internal val GLOBAL_LISTENER_EVENTS: List<ConnectionEvent> =
+            listOf(
+                CallLifecycleEvent.DidPushIncomingCall,
+                CallLifecycleEvent.DeclineCall,
+                CallLifecycleEvent.HungUp,
+                CallLifecycleEvent.ConnectionNotFound,
+                CallLifecycleEvent.AnswerCall,
+                CallMediaEvent.AudioDeviceSet,
+                CallMediaEvent.AudioDevicesUpdate,
+                CallMediaEvent.AudioMuting,
+                CallMediaEvent.ConnectionHolding,
+                CallMediaEvent.SentDTMF,
+            )
     }
 }

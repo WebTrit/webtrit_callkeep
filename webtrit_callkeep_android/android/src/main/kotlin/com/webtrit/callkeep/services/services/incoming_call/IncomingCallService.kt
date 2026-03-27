@@ -2,10 +2,10 @@ package com.webtrit.callkeep.services.services.incoming_call
 
 import android.app.Notification
 import android.app.Service
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -26,14 +26,18 @@ import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.models.toPCallkeepIncomingCallData
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
+import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
 import com.webtrit.callkeep.services.common.DefaultIsolateLaunchPolicy
 import com.webtrit.callkeep.services.core.CallkeepCore
+import com.webtrit.callkeep.services.core.ConnectionEventListener
 import com.webtrit.callkeep.services.services.incoming_call.handlers.CallLifecycleHandler
 import com.webtrit.callkeep.services.services.incoming_call.handlers.FlutterIsolateHandler
 import com.webtrit.callkeep.services.services.incoming_call.handlers.IncomingCallHandler
 
 @Keep
-class IncomingCallService : Service() {
+class IncomingCallService :
+    Service(),
+    ConnectionEventListener {
     private val incomingCallNotificationBuilder by lazy { IncomingCallNotificationBuilder() }
 
     // Held while an incoming call is ringing. Wakes the screen on devices where
@@ -54,31 +58,21 @@ class IncomingCallService : Service() {
 
     fun getCallLifecycleHandler(): CallLifecycleHandler = callLifecycleHandler
 
-    private val connectionService =
-        listOf(
-            CallLifecycleEvent.AnswerCall,
-        )
-
-    private val connectionServicePerformReceiver =
-        object : BroadcastReceiver() {
-            override fun onReceive(
-                context: Context?,
-                intent: Intent?,
-            ) {
-                val metadata = intent?.extras?.let(CallMetadata::fromBundleOrNull)
-
-                when (intent?.action) {
-                    // Listen connection service actions (and try to notify isolate if it background)
-                    CallLifecycleEvent.AnswerCall.name -> performAnswerCall(metadata!!)
-                    // DeclineCall and HungUp are handled via IC_RELEASE_WITH_DECLINE intent
-                    // (triggered from PhoneConnection.onDisconnect → cancelIncomingNotification).
-                    // Handling them here as well would cause a double performEndCall: once from
-                    // handleRelease and once from this receiver, racing to tear down the WebSocket
-                    // before the SIP BYE is sent. The IC_RELEASE_WITH_DECLINE path is the single
-                    // authoritative source for decline teardown.
-                }
-            }
+    override fun onConnectionEvent(
+        event: ConnectionEvent,
+        data: Bundle?,
+    ) {
+        // Only handle AnswerCall. DeclineCall and HungUp are handled via IC_RELEASE_WITH_DECLINE
+        // intent (triggered from PhoneConnection.onDisconnect -> cancelIncomingNotification).
+        // Handling them here as well would cause a double performEndCall: once from handleRelease
+        // and once from this listener, racing to tear down the WebSocket before the SIP BYE is
+        // sent. The IC_RELEASE_WITH_DECLINE path is the single authoritative source for decline
+        // teardown.
+        if (event == CallLifecycleEvent.AnswerCall) {
+            val metadata = data?.let(CallMetadata::fromBundleOrNull) ?: return
+            performAnswerCall(metadata)
         }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -108,12 +102,7 @@ class IncomingCallService : Service() {
 
         Log.d(TAG, "IncomingCallService created")
 
-        // Register the service to receive connection service perform events
-        CallkeepCore.instance.registerConnectionEvents(
-            this,
-            connectionService,
-            connectionServicePerformReceiver,
-        )
+        CallkeepCore.instance.addConnectionEventListener(this)
 
         isolateHandler =
             FlutterIsolateHandler(this@IncomingCallService, this@IncomingCallService) {
@@ -180,11 +169,7 @@ class IncomingCallService : Service() {
 
         setRunning(false)
         releaseScreenWakeLock()
-        // Unregister the service from receiving connection service perform events
-        CallkeepCore.instance.unregisterConnectionEvents(
-            this,
-            connectionServicePerformReceiver,
-        )
+        CallkeepCore.instance.removeConnectionEventListener(this)
 
         stopForeground(STOP_FOREGROUND_REMOVE)
         isolateHandler.cleanup()

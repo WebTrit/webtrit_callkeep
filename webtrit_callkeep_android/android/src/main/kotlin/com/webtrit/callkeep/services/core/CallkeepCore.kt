@@ -4,12 +4,26 @@ import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.IntentFilter
+import android.os.Bundle
 import androidx.annotation.RequiresPermission
 import com.webtrit.callkeep.PCallkeepConnection
 import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
+
+/**
+ * Receives connection events dispatched by [CallkeepCore].
+ *
+ * Register via [CallkeepCore.addConnectionEventListener]; unregister via
+ * [CallkeepCore.removeConnectionEventListener]. The callback is invoked on the main thread.
+ */
+fun interface ConnectionEventListener {
+    fun onConnectionEvent(
+        event: ConnectionEvent,
+        data: Bundle?,
+    )
+}
 
 /**
  * Single facade for all interactions with the `:callkeep_core` process.
@@ -107,9 +121,26 @@ interface CallkeepCore {
     // -------------------------------------------------------------------------
 
     /**
+     * Subscribes [listener] to receive connection events from [ConnectionServicePerformBroadcaster].
+     *
+     * The first registered listener triggers registration of a single global [BroadcastReceiver]
+     * that lives until the last listener unregisters. All subsequent listeners share that receiver.
+     * Safe to call multiple times with the same listener — duplicates are allowed by
+     * [java.util.concurrent.CopyOnWriteArrayList] semantics; callers must balance
+     * add/remove calls.
+     */
+    fun addConnectionEventListener(listener: ConnectionEventListener)
+
+    /**
+     * Unsubscribes [listener]. When the last listener is removed the global [BroadcastReceiver]
+     * is unregistered.
+     */
+    fun removeConnectionEventListener(listener: ConnectionEventListener)
+
+    /**
      * Registers [receiver] to receive the given [events] from [ConnectionServicePerformBroadcaster].
-     * Prefer this over calling [ConnectionServicePerformBroadcaster] directly so all registration
-     * goes through a single access point.
+     * Use this for temporary per-call receivers (e.g. waiting for one specific confirmation
+     * broadcast). For persistent subscriptions prefer [addConnectionEventListener].
      */
     fun registerConnectionEvents(
         context: Context,

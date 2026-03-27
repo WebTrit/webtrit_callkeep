@@ -43,6 +43,7 @@ import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
 import com.webtrit.callkeep.services.core.CallkeepCore
+import com.webtrit.callkeep.services.core.ConnectionEventListener
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallRelease
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
 import java.util.concurrent.ConcurrentHashMap
@@ -68,7 +69,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 @Keep
 class ForegroundService :
     Service(),
-    PHostApi {
+    PHostApi,
+    ConnectionEventListener {
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
 
     // Stored as fields so onDestroy() can cancel the timeout and unregister the receiver
@@ -118,86 +120,62 @@ class ForegroundService :
             _flutterDelegateApi = value
         }
 
-    private val connectionServicePerformReceiver =
-        object : BroadcastReceiver() {
-            override fun onReceive(
-                context: Context?,
-                intent: Intent?,
-            ) {
-                val action = intent?.action
-                logger.d("connectionServicePerformReceiver onReceive: $action")
-                when (action) {
-                    CallLifecycleEvent.DidPushIncomingCall.name -> {
-                        handleCSReportDidPushIncomingCall(
-                            intent.extras,
-                        )
-                    }
-
-                    CallLifecycleEvent.DeclineCall.name -> {
-                        handleCSReportDeclineCall(intent.extras)
-                    }
-
-                    CallLifecycleEvent.HungUp.name -> {
-                        handleCSReportDeclineCall(intent.extras)
-                    }
-
-                    CallLifecycleEvent.ConnectionNotFound.name -> {
-                        handleCSReportDeclineCall(intent.extras)
-                    }
-
-                    CallLifecycleEvent.AnswerCall.name -> {
-                        handleCSReportAnswerCall(intent.extras)
-                    }
-
-                    CallMediaEvent.AudioDeviceSet.name -> {
-                        handleCSReportAudioDeviceSet(intent.extras)
-                    }
-
-                    CallMediaEvent.AudioDevicesUpdate.name -> {
-                        handleCsReportAudioDevicesUpdate(intent.extras)
-                    }
-
-                    CallMediaEvent.AudioMuting.name -> {
-                        handleCSReportAudioMuting(intent.extras)
-                    }
-
-                    CallMediaEvent.ConnectionHolding.name -> {
-                        handleCSReportConnectionHolding(intent.extras)
-                    }
-
-                    CallMediaEvent.SentDTMF.name -> {
-                        handleCSReportSentDTMF(intent.extras)
-                    }
-                }
+    override fun onConnectionEvent(
+        event: ConnectionEvent,
+        data: Bundle?,
+    ) {
+        logger.d("onConnectionEvent: ${event.name}")
+        when (event) {
+            CallLifecycleEvent.DidPushIncomingCall -> {
+                handleCSReportDidPushIncomingCall(data)
             }
+
+            CallLifecycleEvent.DeclineCall -> {
+                handleCSReportDeclineCall(data)
+            }
+
+            CallLifecycleEvent.HungUp -> {
+                handleCSReportDeclineCall(data)
+            }
+
+            CallLifecycleEvent.ConnectionNotFound -> {
+                handleCSReportDeclineCall(data)
+            }
+
+            CallLifecycleEvent.AnswerCall -> {
+                handleCSReportAnswerCall(data)
+            }
+
+            CallMediaEvent.AudioDeviceSet -> {
+                handleCSReportAudioDeviceSet(data)
+            }
+
+            CallMediaEvent.AudioDevicesUpdate -> {
+                handleCsReportAudioDevicesUpdate(data)
+            }
+
+            CallMediaEvent.AudioMuting -> {
+                handleCSReportAudioMuting(data)
+            }
+
+            CallMediaEvent.ConnectionHolding -> {
+                handleCSReportConnectionHolding(data)
+            }
+
+            CallMediaEvent.SentDTMF -> {
+                handleCSReportSentDTMF(data)
+            }
+
+            else -> { /* per-call events handled by dynamic receivers in startCall() */ }
         }
+    }
 
     override fun onBind(intent: Intent?): IBinder = binder
 
     override fun onCreate() {
         super.onCreate()
         logger.d("onCreate")
-        // Register only the events that connectionServicePerformReceiver actually handles.
-        // OngoingCall/OutgoingFailure go to per-call receivers in startCall().
-        // IncomingFailure is not handled here and is excluded to avoid noise.
-        val globalEvents: List<ConnectionEvent> =
-            listOf(
-                CallLifecycleEvent.DidPushIncomingCall,
-                CallLifecycleEvent.DeclineCall,
-                CallLifecycleEvent.HungUp,
-                CallLifecycleEvent.ConnectionNotFound,
-                CallLifecycleEvent.AnswerCall,
-                CallMediaEvent.AudioDeviceSet,
-                CallMediaEvent.AudioDevicesUpdate,
-                CallMediaEvent.AudioMuting,
-                CallMediaEvent.ConnectionHolding,
-                CallMediaEvent.SentDTMF,
-            )
-        core.registerConnectionEvents(
-            baseContext,
-            globalEvents,
-            connectionServicePerformReceiver,
-        )
+        core.addConnectionEventListener(this)
         isRunning = true
         // Ask :callkeep_core to re-fire AnswerCall for every connection that was already
         // answered before this service started (cold-start race: the user answers via the
@@ -1175,11 +1153,7 @@ class ForegroundService :
     override fun onDestroy() {
         super.onDestroy()
         logger.d("onDestroy")
-        // Unregister the service from receiving connection service perform events
-        core.unregisterConnectionEvents(
-            baseContext,
-            connectionServicePerformReceiver,
-        )
+        core.removeConnectionEventListener(this)
 
         pendingCallCleanupsByCallId.values.toList().forEach { it() }
         pendingCallCleanupsByCallId.clear()
