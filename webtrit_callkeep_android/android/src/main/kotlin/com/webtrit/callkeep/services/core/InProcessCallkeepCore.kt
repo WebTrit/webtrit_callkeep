@@ -55,6 +55,7 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
                             GLOBAL_LISTENER_EVENTS,
                             context,
                             receiver,
+                            exported = false,
                         )
                     }
             }

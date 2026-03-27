@@ -146,7 +146,7 @@ interface CallkeepCore {
         context: Context,
         events: List<ConnectionEvent>,
         receiver: BroadcastReceiver,
-        exported: Boolean = true,
+        exported: Boolean = false,
     ): IntentFilter
 
     /**
