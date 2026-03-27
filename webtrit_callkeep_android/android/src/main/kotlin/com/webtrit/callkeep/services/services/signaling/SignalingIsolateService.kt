@@ -37,7 +37,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 
 /**
@@ -82,15 +81,15 @@ class SignalingIsolateService :
         latestLifecycleActivityEvent = ActivityLifecycleState.currentValue ?: Lifecycle.Event.ON_DESTROY
 
         serviceScope.launch {
-            SignalingStatusState.flow.drop(1).collect { status ->
+            SignalingStatusState.updates.collect { status ->
                 latestSignalingStatus = status
                 synchronizeSignalingIsolate(latestLifecycleActivityEvent, latestSignalingStatus)
             }
         }
 
         serviceScope.launch {
-            ActivityLifecycleState.flow.drop(1).collect { event ->
-                latestLifecycleActivityEvent = event ?: Lifecycle.Event.ON_DESTROY
+            ActivityLifecycleState.updates.collect { event ->
+                latestLifecycleActivityEvent = event
                 synchronizeSignalingIsolate(latestLifecycleActivityEvent, latestSignalingStatus)
             }
         }

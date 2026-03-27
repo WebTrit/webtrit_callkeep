@@ -1,25 +1,39 @@
 package com.webtrit.callkeep.services.broadcaster
 
 import com.webtrit.callkeep.models.SignalingStatus
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 /**
- * Holds the current signaling status and exposes it as a [StateFlow].
+ * Holds the current signaling status and exposes changes as a [SharedFlow].
  *
- * All writers and readers are in the main process, so a plain in-process
- * [StateFlow] is sufficient — no broadcast transport is needed.
+ * All writers and readers are in the main process — no broadcast transport needed.
+ *
+ * [updates] uses [SharedFlow] with no replay so that every [setValue] call
+ * delivers an event to active collectors regardless of whether the value changed.
+ * This matches the behaviour of the previous [sendBroadcast]-based approach,
+ * which always sent a broadcast on each [setValue] without deduplication.
  */
 object SignalingStatusState {
-    private val _flow = MutableStateFlow<SignalingStatus?>(null)
+    @Volatile
+    private var _currentValue: SignalingStatus? = null
 
-    val flow: StateFlow<SignalingStatus?> = _flow.asStateFlow()
+    private val _updates =
+        MutableSharedFlow<SignalingStatus>(
+            replay = 0,
+            extraBufferCapacity = 1,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST,
+        )
+
+    val updates: SharedFlow<SignalingStatus> = _updates.asSharedFlow()
 
     val currentValue: SignalingStatus?
-        get() = _flow.value
+        get() = _currentValue
 
     fun setValue(newValue: SignalingStatus) {
-        _flow.value = newValue
+        _currentValue = newValue
+        _updates.tryEmit(newValue)
     }
 }
