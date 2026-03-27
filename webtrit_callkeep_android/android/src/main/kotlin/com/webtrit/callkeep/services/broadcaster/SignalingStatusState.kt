@@ -12,9 +12,12 @@ import kotlinx.coroutines.flow.asSharedFlow
  * All writers and readers are in the main process — no broadcast transport needed.
  *
  * [updates] uses [SharedFlow] with no replay so that every [setValue] call
- * delivers an event to active collectors regardless of whether the value changed.
- * This matches the behaviour of the previous [sendBroadcast]-based approach,
- * which always sent a broadcast on each [setValue] without deduplication.
+ * notifies active collectors regardless of whether the value changed — matching
+ * the previous [sendBroadcast]-based approach which always sent a broadcast on
+ * each [setValue] without deduplication. Events emitted while no collector is
+ * active are buffered (capacity 1, DROP_OLDEST) and may be dropped under
+ * sustained backpressure; callers that need lossless delivery should use a
+ * larger buffer or suspend-based emission.
  */
 object SignalingStatusState {
     @Volatile

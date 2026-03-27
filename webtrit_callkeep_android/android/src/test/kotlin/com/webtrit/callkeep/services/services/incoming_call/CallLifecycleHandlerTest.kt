@@ -130,7 +130,7 @@ class CallLifecycleHandlerTest {
     fun setUp() {
         // Force BACKGROUND isolate so executeIfBackground always runs the action.
         // Without this, tests can become order-dependent if another test class leaves
-        // SignalingStatusBroadcaster in a CONNECT/CONNECTING (MAIN) state.
+        // SignalingStatusState in a CONNECT/CONNECTING (MAIN) state.
         SignalingStatusState.setValue(SignalingStatus.DISCONNECT)
 
         communicator = FakeCommunicator()

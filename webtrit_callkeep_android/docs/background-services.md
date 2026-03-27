@@ -31,11 +31,11 @@ triggers the callkeep stack to register the call with Telecom.
 ### Event Sources (internal)
 
 `SignalingIsolateService` receives two categories of intra-process state changes via
-`StateFlow` collection (not through `CallkeepCore` and not via `BroadcastReceiver`):
+`SharedFlow` collection (not through `CallkeepCore` and not via `BroadcastReceiver`):
 
-- `SignalingStatusState.flow` — emits signaling connected/disconnected status changes;
+- `SignalingStatusState.updates` — emits signaling connected/disconnected status changes;
   forwarded to the Flutter isolate via `synchronizeSignalingIsolate()`.
-- `ActivityLifecycleState.flow` — emits activity lifecycle events so the isolate
+- `ActivityLifecycleState.updates` — emits activity lifecycle events so the isolate
   knows whether the foreground UI is active.
 
 Both flows are collected in `serviceScope` (a `CoroutineScope` tied to the service lifetime),
