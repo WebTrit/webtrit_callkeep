@@ -1,12 +1,17 @@
 package com.webtrit.callkeep.services.core
 
 import android.Manifest
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
 import androidx.annotation.RequiresPermission
 import com.webtrit.callkeep.PCallkeepConnection
 import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
+import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 
 /**
@@ -93,6 +98,22 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
     override fun markSignalingRegistered(callId: String) = tracker.markSignalingRegistered(callId)
 
     override fun consumeSignalingRegistered(callId: String): Boolean = tracker.consumeSignalingRegistered(callId)
+
+    // -------------------------------------------------------------------------
+    // Connection event receivers
+    // -------------------------------------------------------------------------
+
+    override fun registerConnectionEvents(
+        context: Context,
+        events: List<ConnectionEvent>,
+        receiver: BroadcastReceiver,
+        exported: Boolean,
+    ): IntentFilter = ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(events, context, receiver, exported)
+
+    override fun unregisterConnectionEvents(
+        context: Context,
+        receiver: BroadcastReceiver,
+    ) = ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(context, receiver)
 
     // -------------------------------------------------------------------------
     // CS commands

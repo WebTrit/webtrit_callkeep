@@ -26,8 +26,8 @@ import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.models.toPCallkeepIncomingCallData
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
-import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.common.DefaultIsolateLaunchPolicy
+import com.webtrit.callkeep.services.core.CallkeepCore
 import com.webtrit.callkeep.services.services.incoming_call.handlers.CallLifecycleHandler
 import com.webtrit.callkeep.services.services.incoming_call.handlers.FlutterIsolateHandler
 import com.webtrit.callkeep.services.services.incoming_call.handlers.IncomingCallHandler
@@ -109,9 +109,9 @@ class IncomingCallService : Service() {
         Log.d(TAG, "IncomingCallService created")
 
         // Register the service to receive connection service perform events
-        ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            connectionService,
+        CallkeepCore.instance.registerConnectionEvents(
             this,
+            connectionService,
             connectionServicePerformReceiver,
         )
 
@@ -181,7 +181,7 @@ class IncomingCallService : Service() {
         setRunning(false)
         releaseScreenWakeLock()
         // Unregister the service from receiving connection service perform events
-        ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(
+        CallkeepCore.instance.unregisterConnectionEvents(
             this,
             connectionServicePerformReceiver,
         )

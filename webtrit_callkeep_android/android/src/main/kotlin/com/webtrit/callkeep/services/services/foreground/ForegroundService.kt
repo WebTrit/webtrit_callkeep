@@ -42,7 +42,6 @@ import com.webtrit.callkeep.services.broadcaster.CallCommandEvent
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
-import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.core.CallkeepCore
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallRelease
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
@@ -64,7 +63,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  *
  * Lifecycle:
  * - Bound to the activity lifecycle: starts when activity is active, stops when unbound.
- * - Registers and unregisters itself with [ConnectionServicePerformBroadcaster] for communication.
+ * - Registers and unregisters itself via [com.webtrit.callkeep.services.core.CallkeepCore] for connection events.
  */
 @Keep
 class ForegroundService :
@@ -194,9 +193,9 @@ class ForegroundService :
                 CallMediaEvent.ConnectionHolding,
                 CallMediaEvent.SentDTMF,
             )
-        ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            globalEvents,
+        core.registerConnectionEvents(
             baseContext,
+            globalEvents,
             connectionServicePerformReceiver,
         )
         isRunning = true
@@ -298,7 +297,7 @@ class ForegroundService :
             // is registered (i.e., between pendingCallCleanupsByCallId.put and registerConnectionPerformReceiver).
             receiver?.let {
                 try {
-                    ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, it)
+                    core.unregisterConnectionEvents(baseContext, it)
                 } catch (_: IllegalArgumentException) {
                 }
             }
@@ -367,9 +366,9 @@ class ForegroundService :
                 }
             }
 
-        ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(CallLifecycleEvent.OngoingCall, CallLifecycleEvent.OutgoingFailure),
+        core.registerConnectionEvents(
             baseContext,
+            listOf(CallLifecycleEvent.OngoingCall, CallLifecycleEvent.OutgoingFailure),
             receiver!!,
             exported = false,
         )
@@ -713,7 +712,7 @@ class ForegroundService :
         tearDownTimeoutRunnable?.let { mainHandler.removeCallbacks(it) }
         tearDownAckReceiver?.let {
             runCatching {
-                ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, it)
+                core.unregisterConnectionEvents(baseContext, it)
             }
         }
 
@@ -725,7 +724,7 @@ class ForegroundService :
             tearDownTimeoutRunnable = null
             tearDownAckReceiver?.let {
                 runCatching {
-                    ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, it)
+                    core.unregisterConnectionEvents(baseContext, it)
                 }
             }
             tearDownAckReceiver = null
@@ -752,9 +751,9 @@ class ForegroundService :
                 }
             }
 
-        ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(CallCommandEvent.TearDownComplete),
+        core.registerConnectionEvents(
             baseContext,
+            listOf(CallCommandEvent.TearDownComplete),
             tearDownAckReceiver!!,
             exported = false,
         )
@@ -1177,7 +1176,7 @@ class ForegroundService :
         super.onDestroy()
         logger.d("onDestroy")
         // Unregister the service from receiving connection service perform events
-        ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(
+        core.unregisterConnectionEvents(
             baseContext,
             connectionServicePerformReceiver,
         )
@@ -1207,7 +1206,7 @@ class ForegroundService :
         tearDownTimeoutRunnable = null
         tearDownAckReceiver?.let {
             runCatching {
-                ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, it)
+                core.unregisterConnectionEvents(baseContext, it)
             }
         }
         tearDownAckReceiver = null

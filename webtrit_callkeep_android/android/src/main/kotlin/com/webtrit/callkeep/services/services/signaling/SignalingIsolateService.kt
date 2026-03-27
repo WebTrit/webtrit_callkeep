@@ -36,7 +36,6 @@ import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder.Companion.ACTION_RESTORE_NOTIFICATION
 import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
-import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
 import com.webtrit.callkeep.services.core.CallkeepCore
 import com.webtrit.callkeep.services.services.signaling.workers.SignalingServiceBootWorker
@@ -322,7 +321,7 @@ class SignalingIsolateService :
             if (!resolved.compareAndSet(false, true)) return
             handler.removeCallbacksAndMessages(null)
             try {
-                ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, receiver)
+                CallkeepCore.instance.unregisterConnectionEvents(baseContext, receiver)
             } catch (
                 _: IllegalArgumentException,
             ) {
@@ -341,9 +340,9 @@ class SignalingIsolateService :
                 }
             }
 
-        ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(CallLifecycleEvent.HungUp, CallLifecycleEvent.DeclineCall),
+        CallkeepCore.instance.registerConnectionEvents(
             baseContext,
+            listOf(CallLifecycleEvent.HungUp, CallLifecycleEvent.DeclineCall),
             receiver,
             exported = false,
         )
@@ -401,7 +400,7 @@ class SignalingIsolateService :
             if (!resolved.compareAndSet(false, true)) return
             handler.removeCallbacksAndMessages(null)
             try {
-                ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, receiver)
+                CallkeepCore.instance.unregisterConnectionEvents(baseContext, receiver)
             } catch (
                 _: IllegalArgumentException,
             ) {
@@ -420,9 +419,9 @@ class SignalingIsolateService :
                 }
             }
 
-        ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(CallLifecycleEvent.HungUp, CallLifecycleEvent.DeclineCall),
+        CallkeepCore.instance.registerConnectionEvents(
             baseContext,
+            listOf(CallLifecycleEvent.HungUp, CallLifecycleEvent.DeclineCall),
             receiver,
             exported = false,
         )

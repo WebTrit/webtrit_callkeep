@@ -1,11 +1,15 @@
 package com.webtrit.callkeep.services.core
 
 import android.Manifest
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
 import androidx.annotation.RequiresPermission
 import com.webtrit.callkeep.PCallkeepConnection
 import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
 
 /**
  * Single facade for all interactions with the `:callkeep_core` process.
@@ -97,6 +101,30 @@ interface CallkeepCore {
     fun markSignalingRegistered(callId: String)
 
     fun consumeSignalingRegistered(callId: String): Boolean
+
+    // -------------------------------------------------------------------------
+    // Connection event receivers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Registers [receiver] to receive the given [events] from [ConnectionServicePerformBroadcaster].
+     * Prefer this over calling [ConnectionServicePerformBroadcaster] directly so all registration
+     * goes through a single access point.
+     */
+    fun registerConnectionEvents(
+        context: Context,
+        events: List<ConnectionEvent>,
+        receiver: BroadcastReceiver,
+        exported: Boolean = true,
+    ): IntentFilter
+
+    /**
+     * Unregisters a [receiver] previously registered via [registerConnectionEvents].
+     */
+    fun unregisterConnectionEvents(
+        context: Context,
+        receiver: BroadcastReceiver,
+    )
 
     // -------------------------------------------------------------------------
     // CS commands
