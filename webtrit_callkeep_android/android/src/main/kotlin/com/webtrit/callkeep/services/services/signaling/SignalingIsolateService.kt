@@ -9,9 +9,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Build.VERSION.SDK_INT
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
 import android.os.PowerManager
 import androidx.annotation.Keep
 import androidx.lifecycle.Lifecycle
@@ -20,7 +18,6 @@ import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.PHandle
 import com.webtrit.callkeep.PHostBackgroundSignalingIsolateApi
-import com.webtrit.callkeep.common.CallDataConst
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.FlutterEngineHelper
 import com.webtrit.callkeep.common.Log
@@ -35,13 +32,9 @@ import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder.Companion.ACTION_RESTORE_NOTIFICATION
 import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
-import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
-import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
 import com.webtrit.callkeep.services.core.CallkeepCore
 import com.webtrit.callkeep.services.services.signaling.workers.SignalingServiceBootWorker
-import java.util.Collections
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * A foreground service that manages the call state and Flutter background isolate.
@@ -295,151 +288,46 @@ class SignalingIsolateService :
     /**
      * Ends a single active call identified by [callId].
      *
-     * Sends a hang-up intent to [PhoneConnectionService] and then waits for a
-     * [CallLifecycleEvent.HungUp] or [CallLifecycleEvent.DeclineCall] broadcast that carries
-     * the same [callId] before resolving [callback] with success. This ensures Dart is not
-     * notified before the Telecom framework has actually torn down the connection.
-     *
-     * If no confirmation broadcast arrives within [END_CALL_TIMEOUT_MS] milliseconds the
-     * callback is resolved anyway and a warning is logged, so the Dart side is never left
-     * hanging indefinitely.
-     *
-     * [AtomicBoolean] guarantees the callback is invoked exactly once even when the broadcast
-     * and the timeout race each other.
-     *
-     * @param callId  Identifier of the call to terminate.
-     * @param callback Pigeon-generated callback; receives [Result.success] on completion.
+     * Dispatches a hang-up command to [PhoneConnectionService] and resolves [callback]
+     * immediately. Telecom teardown is asynchronous — [ForegroundService] receives the
+     * resulting HungUp broadcast and notifies the main Flutter isolate
+     * via performEndCall(). The background isolate does not need to
+     * wait for Telecom confirmation before resolving: the signaling layer (WebSocket/SIP)
+     * closes independently through its own lifecycle and does not depend on this callback.
      */
     override fun endCall(
         callId: String,
         callback: (Result<Unit>) -> Unit,
     ) {
-        val handler = Handler(Looper.getMainLooper())
-        val resolved = AtomicBoolean(false)
-        lateinit var receiver: BroadcastReceiver
-
-        fun finish() {
-            if (!resolved.compareAndSet(false, true)) return
-            handler.removeCallbacksAndMessages(null)
-            try {
-                ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, receiver)
-            } catch (
-                _: IllegalArgumentException,
-            ) {
-            }
-            callback(Result.success(Unit))
-        }
-
-        receiver =
-            object : BroadcastReceiver() {
-                override fun onReceive(
-                    context: Context?,
-                    intent: Intent?,
-                ) {
-                    val id = intent?.extras?.getString(CallDataConst.CALL_ID) ?: return
-                    if (id == callId) finish()
-                }
-            }
-
-        ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(CallLifecycleEvent.HungUp, CallLifecycleEvent.DeclineCall),
-            baseContext,
-            receiver,
-            exported = false,
-        )
-
-        handler.postDelayed({
-            Log.w(TAG, "endCall timeout waiting for confirmation, callId: $callId")
-            finish()
-        }, END_CALL_TIMEOUT_MS)
-
         CallkeepCore.instance.startHungUpCall(CallMetadata(callId = callId))
+        callback(Result.success(Unit))
     }
 
     /**
      * Tears down all active calls managed by [PhoneConnectionService].
      *
-     * Snapshots the currently tracked connections before issuing the teardown intent:
+     * When there are active or pending calls, [sendTearDownConnections] is used so that
+     * [PhoneConnectionService] calls hungUp() on every [PhoneConnection], which fires
+     * HungUp broadcasts that [ForegroundService] receives and forwards to the main Flutter
+     * isolate via performEndCall(). When there are no active calls, [tearDownService] resets
+     * service state for the next session.
      *
-     * - **No active connections** — teardown is sent and [callback] is resolved immediately,
-     *   since there are no broadcasts to wait for.
-     * - **One or more active connections** — a [BroadcastReceiver] is registered for
-     *   [CallLifecycleEvent.HungUp] / [CallLifecycleEvent.DeclineCall]. An [AtomicInteger]
-     *   counts down each arriving broadcast; [callback] is resolved once the counter reaches
-     *   zero, meaning every tracked connection has confirmed teardown.
-     *
-     * A [END_CALL_TIMEOUT_MS]-millisecond safety timeout resolves the callback and unregisters
-     * the receiver if not all confirmations arrive in time, logging how many were still pending.
-     *
-     * [AtomicBoolean] guarantees the callback is invoked exactly once regardless of whether
-     * the countdown or the timeout wins the race.
+     * The callback is resolved immediately after dispatching the teardown command. The
+     * signaling layer (WebSocket/SIP) closes independently through its own lifecycle and
+     * does not depend on Telecom teardown confirmation.
      *
      * @param callback Pigeon-generated callback; receives [Result.success] on completion.
      */
     override fun endAllCalls(callback: (Result<Unit>) -> Unit) {
-        // Union promoted connections and pending calls to cover the broadcast-lag window:
-        // CS may have created a PhoneConnection and be about to send DidPushIncomingCall,
-        // but the core shadow has not yet received the broadcast and promoted the call.
-        // Including pending call IDs ensures we register a HungUp listener for them too;
-        // the 5-second safety timeout handles the case where CS had no connection for a
-        // pending ID (i.e. the call was truly still queued and tearDown clears it silently).
         val core = CallkeepCore.instance
         val allCallIds = core.getAll().map { it.callId }.toSet() + core.getPendingCallIds()
 
         if (allCallIds.isEmpty()) {
             core.tearDownService()
-            callback(Result.success(Unit))
-            return
+        } else {
+            core.sendTearDownConnections()
         }
-
-        val pendingIds = Collections.synchronizedSet(allCallIds.toMutableSet())
-        val handler = Handler(Looper.getMainLooper())
-        val resolved = AtomicBoolean(false)
-        lateinit var receiver: BroadcastReceiver
-
-        fun finish() {
-            if (!resolved.compareAndSet(false, true)) return
-            handler.removeCallbacksAndMessages(null)
-            try {
-                ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, receiver)
-            } catch (
-                _: IllegalArgumentException,
-            ) {
-            }
-            callback(Result.success(Unit))
-        }
-
-        receiver =
-            object : BroadcastReceiver() {
-                override fun onReceive(
-                    context: Context?,
-                    intent: Intent?,
-                ) {
-                    val id = intent?.extras?.getString(CallDataConst.CALL_ID) ?: return
-                    if (pendingIds.remove(id) && pendingIds.isEmpty()) finish()
-                }
-            }
-
-        ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(CallLifecycleEvent.HungUp, CallLifecycleEvent.DeclineCall),
-            baseContext,
-            receiver,
-            exported = false,
-        )
-
-        handler.postDelayed({
-            Log.w(TAG, "endAllCalls timeout waiting for ${pendingIds.size} remaining confirmation(s)")
-            finish()
-        }, END_CALL_TIMEOUT_MS)
-
-        // When there are active or pending calls, sendTearDownConnections() must be used
-        // instead of tearDownService(), because it calls hungUp() on every PhoneConnection,
-        // which fires HungUp broadcasts.  ForegroundService receives those broadcasts and
-        // calls performEndCall() on the Flutter delegate, which is the expected behaviour.
-        // tearDownService() only updates sensor state and does not send HungUp broadcasts.
-        // The empty-call shortcut above may safely call tearDownService(), since there are
-        // no connections to notify.
-        CallkeepCore.instance.sendTearDownConnections()
+        callback(Result.success(Unit))
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -447,7 +335,6 @@ class SignalingIsolateService :
     companion object {
         private const val TAG = "SignalingIsolateService"
         private const val WAKE_LOCK_TAG = "com.webtrit.callkeep:SignalingIsolateService.Lock"
-        private const val END_CALL_TIMEOUT_MS = 5_000L
 
         var isRunning = false
 

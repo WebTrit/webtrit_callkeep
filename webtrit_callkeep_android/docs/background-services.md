@@ -28,12 +28,31 @@ triggers the callkeep stack to register the call with Telecom.
   callback has already been registered.
 - Stopped by `BackgroundSignalingIsolateBootstrapApi.stopService()`.
 
-### Broadcast Receivers (internal)
+### Event Sources (internal)
+
+`SignalingIsolateService` receives two categories of intra-process events via its own
+`BroadcastReceiver` instances (not through `CallkeepCore`):
 
 - `signalingStatusReceiver` — listens for `SignalingStatusBroadcaster` events (e.g., signaling
   connected/disconnected) and forwards them to the Flutter isolate.
 - `lifecycleEventReceiver` — listens for `ActivityLifecycleBroadcaster` events so the isolate
   knows whether the foreground UI is active.
+
+These are intra-process broadcasts and are separate from `:callkeep_core` cross-process events.
+Replacing them with `SharedFlow`/`StateFlow` is deferred to a future iteration.
+
+### Pigeon Host API: `PHostBackgroundSignalingIsolateApi`
+
+Commands arriving from the background signaling Flutter isolate:
+
+| Method          | Behavior                                                                                   |
+|-----------------|--------------------------------------------------------------------------------------------|
+| `incomingCall`  | Builds `CallMetadata` and delegates to `CallkeepCore.startIncomingCall()`                  |
+| `endCall`       | Dispatches `CallkeepCore.startHungUpCall()` and resolves immediately                       |
+| `endAllCalls`   | Dispatches `tearDownService()` or `sendTearDownConnections()`; resolves immediately        |
+
+Both `endCall` and `endAllCalls` resolve their callbacks immediately after dispatching.
+The signaling layer (WebSocket/SIP) closes via its own lifecycle independently of Telecom teardown.
 
 ### Flutter Engine
 
@@ -59,6 +78,8 @@ registered by `BackgroundSignalingIsolateBootstrapApi.initializeSignalingService
 
 **Annotation**: `@Keep`
 
+**Implements**: `ConnectionEventListener`
+
 **Type**: One-shot foreground service (`foregroundServiceType=phoneCall`)
 
 ### Responsibility
@@ -77,10 +98,20 @@ Spawned when an FCM push notification (or SMS trigger) announces an incoming cal
       background message handler).
   - `NotificationManager.showIncomingCallNotification()` (from FCM handler code).
 - `onCreate()` — calls `startForeground()` with a placeholder notification immediately to avoid
-  Android's 10-second ANR window for foreground service start.
+  Android's 10-second ANR window for foreground service start; subscribes to `CallkeepCore`
+  events via `CallkeepCore.instance.addConnectionEventListener(this)`.
 - `onStartCommand()` — replaces placeholder with the actual incoming-call notification; delegates
   to `IncomingCallHandler` and `CallLifecycleHandler`.
+- `onDestroy()` — calls `CallkeepCore.instance.removeConnectionEventListener(this)`.
 - `release()` — stops the foreground service (called after call ends or timeout).
+
+### Connection Event Listener
+
+`IncomingCallService` implements `ConnectionEventListener` and receives events routed by
+`CallkeepCore`. It only acts on `AnswerCall` — when the system UI or the user taps answer,
+`PhoneConnectionService` fires `AnswerCall` which `onConnectionEvent()` forwards to
+`CallLifecycleHandler.performAnswerCall()`. `DeclineCall` and `HungUp` are handled via the
+`IC_RELEASE_WITH_DECLINE` intent path instead to avoid a double `performEndCall` race.
 
 ### Key Handlers (Composition)
 
@@ -147,3 +178,4 @@ the signaling connection is re-established automatically.
 - [pigeon-apis.md](pigeon-apis.md) — bootstrap API definitions
 - [notifications.md](notifications.md) — notification builders used by these services
 - [foreground-service.md](foreground-service.md) — coordinates with `ActiveCallService`
+- [callkeep-core.md](callkeep-core.md) — `ConnectionEventListener` API used by `IncomingCallService`

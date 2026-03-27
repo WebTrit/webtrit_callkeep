@@ -4,7 +4,7 @@
 
 **Extends**: `Service`
 
-**Implements**: `PHostApi` (Pigeon-generated)
+**Implements**: `PHostApi` (Pigeon-generated), `ConnectionEventListener`
 
 **Annotation**: `@Keep` (must not be renamed or removed by ProGuard/R8)
 
@@ -14,8 +14,8 @@
 
 - Serves as a bound service that the Flutter activity binds to for its lifetime.
 - Implements the `PHostApi` Pigeon interface — all call-control commands from Dart arrive here.
-- Receives call lifecycle events from `:callkeep_core` via local broadcasts and forwards them to
-  the Flutter layer via `PDelegateFlutterApi`.
+- Implements `ConnectionEventListener` — receives call lifecycle events from `CallkeepCore` and
+  forwards them to the Flutter layer via `PDelegateFlutterApi`.
 - Manages phone account registration and notification channels.
 - Bridges Android Telecom (indirect, via `CallkeepCore`) with the Flutter/Dart world.
 
@@ -23,7 +23,8 @@
 
 ### `onCreate()`
 
-- Registers `connectionServicePerformReceiver` (broadcast receiver for `:callkeep_core` events).
+- Calls `CallkeepCore.instance.addConnectionEventListener(this)` to subscribe to all
+  `:callkeep_core` events routed through the core's single global receiver.
 - Sends `SyncConnectionState` command to `:callkeep_core` — if the service was killed and
   restarted, `:callkeep_core` re-emits current connection state so the main process catches up.
 
@@ -33,7 +34,7 @@
 
 ### `onDestroy()`
 
-- Unregisters the broadcast receiver.
+- Calls `CallkeepCore.instance.removeConnectionEventListener(this)` to unsubscribe.
 - Tears down audio and notification managers.
 
 ## Pigeon Host API Implementation (`PHostApi`)
@@ -68,9 +69,14 @@
 | `setAudioDevice(callId, device)` | `CallkeepCore.setAudioDevice()`                                                                                        |
 | `sendDTMF(callId, digit)`        | `CallkeepCore.startSendDtmf()`                                                                                         |
 
-## Broadcast Receiver: `connectionServicePerformReceiver`
+## Connection Event Listener: `onConnectionEvent()`
 
-Listens for events dispatched by `PhoneConnectionService` in `:callkeep_core`.
+Events arrive from `CallkeepCore` via `onConnectionEvent(event, data)`. `CallkeepCore` holds a
+single `globalReceiver` that receives all `:callkeep_core` broadcasts and fans them out to every
+registered `ConnectionEventListener`. `ForegroundService` does not register its own
+`BroadcastReceiver` directly.
+
+**Global events** (received via `ConnectionEventListener`):
 
 | Event                 | Handler                               | Main Action                                                              |
 |-----------------------|---------------------------------------|--------------------------------------------------------------------------|
@@ -78,16 +84,21 @@ Listens for events dispatched by `PhoneConnectionService` in `:callkeep_core`.
 | `AnswerCall`          | `handleCSReportAnswerCall()`          | `markAnswered()` in tracker, call `performAnswerCall()` on Dart delegate |
 | `DeclineCall`         | `handleCSReportDeclineCall()`         | `markTerminated()`, call `performEndCall()`                              |
 | `HungUp`              | `handleCSReportDeclineCall()`         | Same as DeclineCall                                                      |
-| `OngoingCall`         | `handleCSReportOngoingCall()`         | Promote outgoing call, notify Dart                                       |
-| `OutgoingFailure`     | `handleCSReportOutgoingFailure()`     | `markTerminated()`, notify Dart of failure                               |
-| `IncomingFailure`     | `handleCSReportIncomingFailure()`     | `markTerminated()`, notify Dart of failure                               |
 | `ConnectionNotFound`  | `handleCSConnectionNotFound()`        | Synthesize HungUp — `performEndCall()`                                   |
-| `TearDownComplete`    | Inline lambda                         | Completes the tearDown deferred                                          |
 | `AudioMuting`         | Inline                                | Call `performMuteCall()` on Dart delegate                                |
 | `AudioDeviceSet`      | Inline                                | Call `performSetAudioDevice()`                                           |
 | `AudioDevicesUpdate`  | Inline                                | Call `performUpdateAudioDevices()`                                       |
 | `ConnectionHolding`   | Inline                                | Call `performHoldCall()`                                                 |
 | `SentDTMF`            | Inline                                | Call `performSendDTMF()`                                                 |
+
+**Per-call dynamic receivers** (registered ad-hoc via `CallkeepCore.registerConnectionEvents()`):
+
+| Event             | Handler                           | Main Action                              |
+|-------------------|-----------------------------------|------------------------------------------|
+| `OngoingCall`     | `handleCSReportOngoingCall()`     | Promote outgoing call, notify Dart       |
+| `OutgoingFailure` | `handleCSReportOutgoingFailure()` | `markTerminated()`, notify Dart          |
+| `IncomingFailure` | `handleCSReportIncomingFailure()` | `markTerminated()`, notify Dart          |
+| `TearDownComplete`| Inline lambda                     | Completes the `tearDown()` deferred      |
 
 ## Duplicate-Notification Guards
 
@@ -103,4 +114,5 @@ these before dispatching:
 - [callkeep-core.md](callkeep-core.md) — all Telecom commands go through here
 - [connection-tracker.md](connection-tracker.md) — state mutated here on broadcast events
 - [pigeon-apis.md](pigeon-apis.md) — `PHostApi` and `PDelegateFlutterApi` definitions
-- [ipc-broadcasting.md](ipc-broadcasting.md) — events received by the broadcast receiver
+- [callkeep-core.md](callkeep-core.md) — `ConnectionEventListener` API and event routing
+- [ipc-broadcasting.md](ipc-broadcasting.md) — cross-process broadcast transport

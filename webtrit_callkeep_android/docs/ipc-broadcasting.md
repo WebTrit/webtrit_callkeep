@@ -84,14 +84,22 @@ RECEIVER_NOT_EXPORTED)` on API 33+ and the equivalent on older versions.
 
 ## Receiver Locations
 
-| Receiver                                             | Listens For                                              |
-|------------------------------------------------------|----------------------------------------------------------|
-| `ForegroundService.connectionServicePerformReceiver` | All call lifecycle, media, and `TearDownComplete` events |
-| `PhoneConnectionService` broadcast receiver          | `NotifyPending` (only during setup)                      |
+| Receiver                                               | Listens For                                                                               |
+|--------------------------------------------------------|-------------------------------------------------------------------------------------------|
+| `InProcessCallkeepCore.globalReceiver`                 | All global call lifecycle and media events; fans out to `ConnectionEventListener` subs    |
+| `ForegroundService` (via `ConnectionEventListener`)    | Global events routed by `CallkeepCore`                                                    |
+| `IncomingCallService` (via `ConnectionEventListener`)  | Global events routed by `CallkeepCore`                                                    |
+| Per-call dynamic receivers in `ForegroundService`      | `OngoingCall`, `OutgoingFailure`, `IncomingFailure`, `TearDownComplete`                   |
+| `PhoneConnectionService` broadcast receiver            | `NotifyPending` (only during setup)                                                       |
+
+`InProcessCallkeepCore` maintains a single `globalReceiver` registered via
+`ConnectionServicePerformBroadcaster`. Individual services no longer register their own receivers
+for `:callkeep_core` events — they subscribe through `CallkeepCore.addConnectionEventListener()`.
 
 ## Related Components
 
 - [phone-connection.md](phone-connection.md) — dispatches lifecycle/media events
 - [phone-connection-service.md](phone-connection-service.md) — dispatches `TearDownComplete`
-- [foreground-service.md](foreground-service.md) — receives all events, drives Dart notifications
+- [callkeep-core.md](callkeep-core.md) — routes events to `ConnectionEventListener` subscribers
+- [foreground-service.md](foreground-service.md) — implements `ConnectionEventListener`
 - [dual-process.md](dual-process.md) — overall IPC design

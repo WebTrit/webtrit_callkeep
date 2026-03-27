@@ -8,13 +8,15 @@
 ## Responsibility
 
 `CallkeepCore` is the single facade used by the **main process** for all interactions with the
-`:callkeep_core` process. It combines two concerns:
+`:callkeep_core` process. It combines three concerns:
 
 1. **State queries** — reads the shadow call state held in `MainProcessConnectionTracker`.
 2. **Command dispatch** — sends `startService` intents or broadcasts to `PhoneConnectionService`.
+3. **Event routing** — receives all `:callkeep_core` broadcasts via a single internal receiver and
+   fans them out to registered `ConnectionEventListener` subscribers.
 
-All main-process code that needs to know call state or trigger a Telecom action goes through
-`CallkeepCore.instance`, never through `PhoneConnectionService` directly.
+All main-process code that needs to know call state, trigger a Telecom action, or subscribe to
+connection events goes through `CallkeepCore.instance`.
 
 ## Access Pattern
 
@@ -41,10 +43,39 @@ val meta = core.get(callId)
 State is backed by `MainProcessConnectionTracker`;
 see [connection-tracker.md](connection-tracker.md).
 
+## Connection Event Listener API
+
+`InProcessCallkeepCore` holds a single lazy `BroadcastReceiver` (`globalReceiver`) that listens
+to all `:callkeep_core` broadcasts. It is registered on the first `addConnectionEventListener`
+call and unregistered when the last listener is removed (ref-counted). All registered listeners
+receive events via `onConnectionEvent(event, data)` on the main thread.
+
+```kotlin
+// Subscribe (e.g. in Service.onCreate())
+CallkeepCore.instance.addConnectionEventListener(this)
+
+// Unsubscribe (e.g. in Service.onDestroy())
+CallkeepCore.instance.removeConnectionEventListener(this)
+```
+
+| Method                                | Description                                              |
+|---------------------------------------|----------------------------------------------------------|
+| `addConnectionEventListener(l)`       | Register a persistent global subscriber                  |
+| `removeConnectionEventListener(l)`    | Unregister; tears down globalReceiver when list is empty |
+| `registerConnectionEvents(...)`       | Register a temporary per-call dynamic receiver           |
+| `unregisterConnectionEvents(...)`     | Unregister a temporary receiver                          |
+
+**Global events** (routed to all `ConnectionEventListener` subscribers):
+`DidPushIncomingCall`, `DeclineCall`, `HungUp`, `ConnectionNotFound`, `AnswerCall`,
+`AudioDeviceSet`, `AudioDevicesUpdate`, `AudioMuting`, `ConnectionHolding`, `SentDTMF`.
+
+**Per-call dynamic receivers** (registered ad-hoc, not via listener):
+`OngoingCall`, `OutgoingFailure`, `IncomingFailure`, `TearDownComplete`.
+
 ## State Mutation API
 
-These are called **from broadcast handlers in `ForegroundService`** when `:callkeep_core` reports
-events. They update `MainProcessConnectionTracker`.
+These are called **from `onConnectionEvent()` in `ForegroundService`** when `:callkeep_core`
+reports events via `CallkeepCore`. They update `MainProcessConnectionTracker`.
 
 | Method                             | Triggered by                       | Effect                          |
 |------------------------------------|------------------------------------|---------------------------------|
@@ -92,6 +123,7 @@ These send intents / broadcasts to `PhoneConnectionService` in `:callkeep_core`.
 ## Related Components
 
 - [connection-tracker.md](connection-tracker.md) — state storage backend
-- [foreground-service.md](foreground-service.md) — calls mutation API from broadcast handlers
+- [foreground-service.md](foreground-service.md) — implements `ConnectionEventListener`, calls mutation API from `onConnectionEvent()`
+- [background-services.md](background-services.md) — `IncomingCallService` also implements `ConnectionEventListener`
 - [phone-connection-service.md](phone-connection-service.md) — receives commands dispatched here
-- [ipc-broadcasting.md](ipc-broadcasting.md) — broadcast events that drive state mutations
+- [ipc-broadcasting.md](ipc-broadcasting.md) — broadcast events routed through `globalReceiver`

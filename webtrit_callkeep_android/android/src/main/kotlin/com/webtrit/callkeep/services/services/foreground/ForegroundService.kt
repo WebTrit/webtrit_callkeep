@@ -42,8 +42,8 @@ import com.webtrit.callkeep.services.broadcaster.CallCommandEvent
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
-import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
 import com.webtrit.callkeep.services.core.CallkeepCore
+import com.webtrit.callkeep.services.core.ConnectionEventListener
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallRelease
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
 import java.util.concurrent.ConcurrentHashMap
@@ -64,12 +64,13 @@ import java.util.concurrent.atomic.AtomicBoolean
  *
  * Lifecycle:
  * - Bound to the activity lifecycle: starts when activity is active, stops when unbound.
- * - Registers and unregisters itself with [ConnectionServicePerformBroadcaster] for communication.
+ * - Registers and unregisters itself via [com.webtrit.callkeep.services.core.CallkeepCore] for connection events.
  */
 @Keep
 class ForegroundService :
     Service(),
-    PHostApi {
+    PHostApi,
+    ConnectionEventListener {
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
 
     // Stored as fields so onDestroy() can cancel the timeout and unregister the receiver
@@ -119,86 +120,62 @@ class ForegroundService :
             _flutterDelegateApi = value
         }
 
-    private val connectionServicePerformReceiver =
-        object : BroadcastReceiver() {
-            override fun onReceive(
-                context: Context?,
-                intent: Intent?,
-            ) {
-                val action = intent?.action
-                logger.d("connectionServicePerformReceiver onReceive: $action")
-                when (action) {
-                    CallLifecycleEvent.DidPushIncomingCall.name -> {
-                        handleCSReportDidPushIncomingCall(
-                            intent.extras,
-                        )
-                    }
-
-                    CallLifecycleEvent.DeclineCall.name -> {
-                        handleCSReportDeclineCall(intent.extras)
-                    }
-
-                    CallLifecycleEvent.HungUp.name -> {
-                        handleCSReportDeclineCall(intent.extras)
-                    }
-
-                    CallLifecycleEvent.ConnectionNotFound.name -> {
-                        handleCSReportDeclineCall(intent.extras)
-                    }
-
-                    CallLifecycleEvent.AnswerCall.name -> {
-                        handleCSReportAnswerCall(intent.extras)
-                    }
-
-                    CallMediaEvent.AudioDeviceSet.name -> {
-                        handleCSReportAudioDeviceSet(intent.extras)
-                    }
-
-                    CallMediaEvent.AudioDevicesUpdate.name -> {
-                        handleCsReportAudioDevicesUpdate(intent.extras)
-                    }
-
-                    CallMediaEvent.AudioMuting.name -> {
-                        handleCSReportAudioMuting(intent.extras)
-                    }
-
-                    CallMediaEvent.ConnectionHolding.name -> {
-                        handleCSReportConnectionHolding(intent.extras)
-                    }
-
-                    CallMediaEvent.SentDTMF.name -> {
-                        handleCSReportSentDTMF(intent.extras)
-                    }
-                }
+    override fun onConnectionEvent(
+        event: ConnectionEvent,
+        data: Bundle?,
+    ) {
+        logger.d("onConnectionEvent: ${event.name}")
+        when (event) {
+            CallLifecycleEvent.DidPushIncomingCall -> {
+                handleCSReportDidPushIncomingCall(data)
             }
+
+            CallLifecycleEvent.DeclineCall -> {
+                handleCSReportDeclineCall(data)
+            }
+
+            CallLifecycleEvent.HungUp -> {
+                handleCSReportDeclineCall(data)
+            }
+
+            CallLifecycleEvent.ConnectionNotFound -> {
+                handleCSReportDeclineCall(data)
+            }
+
+            CallLifecycleEvent.AnswerCall -> {
+                handleCSReportAnswerCall(data)
+            }
+
+            CallMediaEvent.AudioDeviceSet -> {
+                handleCSReportAudioDeviceSet(data)
+            }
+
+            CallMediaEvent.AudioDevicesUpdate -> {
+                handleCsReportAudioDevicesUpdate(data)
+            }
+
+            CallMediaEvent.AudioMuting -> {
+                handleCSReportAudioMuting(data)
+            }
+
+            CallMediaEvent.ConnectionHolding -> {
+                handleCSReportConnectionHolding(data)
+            }
+
+            CallMediaEvent.SentDTMF -> {
+                handleCSReportSentDTMF(data)
+            }
+
+            else -> { /* per-call events handled by dynamic receivers in startCall() */ }
         }
+    }
 
     override fun onBind(intent: Intent?): IBinder = binder
 
     override fun onCreate() {
         super.onCreate()
         logger.d("onCreate")
-        // Register only the events that connectionServicePerformReceiver actually handles.
-        // OngoingCall/OutgoingFailure go to per-call receivers in startCall().
-        // IncomingFailure is not handled here and is excluded to avoid noise.
-        val globalEvents: List<ConnectionEvent> =
-            listOf(
-                CallLifecycleEvent.DidPushIncomingCall,
-                CallLifecycleEvent.DeclineCall,
-                CallLifecycleEvent.HungUp,
-                CallLifecycleEvent.ConnectionNotFound,
-                CallLifecycleEvent.AnswerCall,
-                CallMediaEvent.AudioDeviceSet,
-                CallMediaEvent.AudioDevicesUpdate,
-                CallMediaEvent.AudioMuting,
-                CallMediaEvent.ConnectionHolding,
-                CallMediaEvent.SentDTMF,
-            )
-        ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            globalEvents,
-            baseContext,
-            connectionServicePerformReceiver,
-        )
+        core.addConnectionEventListener(this)
         isRunning = true
         // Ask :callkeep_core to re-fire AnswerCall for every connection that was already
         // answered before this service started (cold-start race: the user answers via the
@@ -298,7 +275,7 @@ class ForegroundService :
             // is registered (i.e., between pendingCallCleanupsByCallId.put and registerConnectionPerformReceiver).
             receiver?.let {
                 try {
-                    ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, it)
+                    core.unregisterConnectionEvents(baseContext, it)
                 } catch (_: IllegalArgumentException) {
                 }
             }
@@ -367,9 +344,9 @@ class ForegroundService :
                 }
             }
 
-        ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(CallLifecycleEvent.OngoingCall, CallLifecycleEvent.OutgoingFailure),
+        core.registerConnectionEvents(
             baseContext,
+            listOf(CallLifecycleEvent.OngoingCall, CallLifecycleEvent.OutgoingFailure),
             receiver!!,
             exported = false,
         )
@@ -713,7 +690,7 @@ class ForegroundService :
         tearDownTimeoutRunnable?.let { mainHandler.removeCallbacks(it) }
         tearDownAckReceiver?.let {
             runCatching {
-                ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, it)
+                core.unregisterConnectionEvents(baseContext, it)
             }
         }
 
@@ -725,7 +702,7 @@ class ForegroundService :
             tearDownTimeoutRunnable = null
             tearDownAckReceiver?.let {
                 runCatching {
-                    ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, it)
+                    core.unregisterConnectionEvents(baseContext, it)
                 }
             }
             tearDownAckReceiver = null
@@ -752,9 +729,9 @@ class ForegroundService :
                 }
             }
 
-        ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(
-            listOf(CallCommandEvent.TearDownComplete),
+        core.registerConnectionEvents(
             baseContext,
+            listOf(CallCommandEvent.TearDownComplete),
             tearDownAckReceiver!!,
             exported = false,
         )
@@ -1176,11 +1153,7 @@ class ForegroundService :
     override fun onDestroy() {
         super.onDestroy()
         logger.d("onDestroy")
-        // Unregister the service from receiving connection service perform events
-        ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(
-            baseContext,
-            connectionServicePerformReceiver,
-        )
+        core.removeConnectionEventListener(this)
 
         pendingCallCleanupsByCallId.values.toList().forEach { it() }
         pendingCallCleanupsByCallId.clear()
@@ -1207,7 +1180,7 @@ class ForegroundService :
         tearDownTimeoutRunnable = null
         tearDownAckReceiver?.let {
             runCatching {
-                ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(baseContext, it)
+                core.unregisterConnectionEvents(baseContext, it)
             }
         }
         tearDownAckReceiver = null
