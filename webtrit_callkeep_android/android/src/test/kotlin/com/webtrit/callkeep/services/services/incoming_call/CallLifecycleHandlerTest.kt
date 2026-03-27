@@ -5,7 +5,7 @@ import android.os.Build
 import com.webtrit.callkeep.PCallkeepIncomingCallData
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.SignalingStatus
-import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
+import com.webtrit.callkeep.services.broadcaster.SignalingStatusState
 import com.webtrit.callkeep.services.services.incoming_call.handlers.CallLifecycleHandler
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -131,7 +131,7 @@ class CallLifecycleHandlerTest {
         // Force BACKGROUND isolate so executeIfBackground always runs the action.
         // Without this, tests can become order-dependent if another test class leaves
         // SignalingStatusBroadcaster in a CONNECT/CONNECTING (MAIN) state.
-        SignalingStatusBroadcaster.setValue(context, SignalingStatus.DISCONNECT)
+        SignalingStatusState.setValue(SignalingStatus.DISCONNECT)
 
         communicator = FakeCommunicator()
         fakeController = FakeConnectionController()

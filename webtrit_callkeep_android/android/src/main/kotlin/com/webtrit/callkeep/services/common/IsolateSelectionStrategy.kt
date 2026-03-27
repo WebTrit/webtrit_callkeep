@@ -3,8 +3,8 @@ package com.webtrit.callkeep.services.common
 import androidx.lifecycle.Lifecycle
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.models.SignalingStatus
-import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
-import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
+import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleState
+import com.webtrit.callkeep.services.broadcaster.SignalingStatusState
 
 enum class IsolateType {
     MAIN,
@@ -40,7 +40,7 @@ class SignalingStatusStrategy(
  */
 class ActivityStateStrategy : IsolateSelectionStrategy {
     override fun getIsolateType(): IsolateType {
-        val state = ActivityLifecycleBroadcaster.currentValue
+        val state = ActivityLifecycleState.currentValue
         return if (state == Lifecycle.Event.ON_RESUME || state == Lifecycle.Event.ON_PAUSE || state == Lifecycle.Event.ON_STOP) {
             IsolateType.MAIN
         } else {
@@ -60,7 +60,7 @@ object IsolateSelector {
     private const val TAG = "IsolateSelector"
 
     private fun getStrategy(): IsolateSelectionStrategy =
-        SignalingStatusBroadcaster.currentValue?.let { SignalingStatusStrategy(it) }
+        SignalingStatusState.currentValue?.let { SignalingStatusStrategy(it) }
             ?: ActivityStateStrategy()
 
     // Determines the isolate type based on the current strategy

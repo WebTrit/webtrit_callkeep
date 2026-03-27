@@ -3,7 +3,6 @@ package com.webtrit.callkeep.services.services.signaling
 import android.annotation.SuppressLint
 import android.app.NotificationManager
 import android.app.Service
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
@@ -22,7 +21,6 @@ import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.FlutterEngineHelper
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.StorageDelegate
-import com.webtrit.callkeep.common.fromBundle
 import com.webtrit.callkeep.common.startForegroundServiceCompat
 import com.webtrit.callkeep.common.toPCallkeepLifecycleType
 import com.webtrit.callkeep.common.toPCallkeepSignalingStatus
@@ -31,10 +29,15 @@ import com.webtrit.callkeep.models.SignalingStatus
 import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder.Companion.ACTION_RESTORE_NOTIFICATION
-import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
-import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
+import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleState
+import com.webtrit.callkeep.services.broadcaster.SignalingStatusState
 import com.webtrit.callkeep.services.core.CallkeepCore
 import com.webtrit.callkeep.services.services.signaling.workers.SignalingServiceBootWorker
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 /**
  * A foreground service that manages the call state and Flutter background isolate.
@@ -48,6 +51,8 @@ class SignalingIsolateService :
     PHostBackgroundSignalingIsolateApi {
     private var latestSignalingStatus: SignalingStatus? = null
     private var latestLifecycleActivityEvent: Lifecycle.Event = Lifecycle.Event.ON_DESTROY
+
+    private val serviceScope = CoroutineScope(Dispatchers.Main.immediate + Job())
 
     private lateinit var notificationBuilder: ForegroundCallNotificationBuilder
     private lateinit var flutterEngineHelper: FlutterEngineHelper
@@ -66,40 +71,28 @@ class SignalingIsolateService :
             _isolateCalkeepFlutterApi = value
         }
 
-    private val signalingStatusReceiver =
-        object : BroadcastReceiver() {
-            override fun onReceive(
-                context: Context?,
-                intent: Intent?,
-            ) {
-                latestSignalingStatus = SignalingStatus.fromBundle(intent?.extras)
-                synchronizeSignalingIsolate(latestLifecycleActivityEvent, latestSignalingStatus)
-            }
-        }
-
-    private val lifecycleEventReceiver =
-        object : BroadcastReceiver() {
-            override fun onReceive(
-                context: Context?,
-                intent: Intent?,
-            ) {
-                latestLifecycleActivityEvent = Lifecycle.Event.fromBundle(intent?.extras) ?: return
-                synchronizeSignalingIsolate(latestLifecycleActivityEvent, latestSignalingStatus)
-            }
-        }
-
     override fun onCreate() {
         super.onCreate()
         ContextHolder.init(applicationContext)
 
         Log.d(TAG, "SignalingIsolateService onCreate")
-        // Register the service to receive signaling status updates
-        latestSignalingStatus = SignalingStatusBroadcaster.currentValue
-        SignalingStatusBroadcaster.register(this, signalingStatusReceiver)
 
-        // Register the service to receive lifecycle events
-        latestLifecycleActivityEvent = ActivityLifecycleBroadcaster.currentValue ?: Lifecycle.Event.ON_DESTROY
-        ActivityLifecycleBroadcaster.register(this, lifecycleEventReceiver)
+        latestSignalingStatus = SignalingStatusState.currentValue
+        latestLifecycleActivityEvent = ActivityLifecycleState.currentValue ?: Lifecycle.Event.ON_DESTROY
+
+        serviceScope.launch {
+            SignalingStatusState.flow.collect { status ->
+                latestSignalingStatus = status
+                synchronizeSignalingIsolate(latestLifecycleActivityEvent, latestSignalingStatus)
+            }
+        }
+
+        serviceScope.launch {
+            ActivityLifecycleState.flow.collect { event ->
+                latestLifecycleActivityEvent = event ?: Lifecycle.Event.ON_DESTROY
+                synchronizeSignalingIsolate(latestLifecycleActivityEvent, latestSignalingStatus)
+            }
+        }
 
         notificationBuilder = ForegroundCallNotificationBuilder()
 
@@ -115,12 +108,7 @@ class SignalingIsolateService :
     override fun onDestroy() {
         Log.d(TAG, "SignalingIsolateService onDestroy")
 
-        // Unregister the service from receiving signaling status updates
-        SignalingStatusBroadcaster.unregister(this, signalingStatusReceiver)
-        latestSignalingStatus = null
-
-        // Unregister the service from receiving lifecycle events
-        ActivityLifecycleBroadcaster.unregister(this, lifecycleEventReceiver)
+        serviceScope.cancel()
 
         if (StorageDelegate.SignalingService.isSignalingServiceEnabled(context = applicationContext)) {
             SignalingServiceBootWorker.enqueue(this)
