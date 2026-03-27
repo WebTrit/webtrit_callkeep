@@ -35,8 +35,9 @@ import com.webtrit.callkeep.services.core.CallkeepCore
 import com.webtrit.callkeep.services.services.signaling.workers.SignalingServiceBootWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 
 /**
@@ -52,7 +53,7 @@ class SignalingIsolateService :
     private var latestSignalingStatus: SignalingStatus? = null
     private var latestLifecycleActivityEvent: Lifecycle.Event = Lifecycle.Event.ON_DESTROY
 
-    private val serviceScope = CoroutineScope(Dispatchers.Main.immediate + Job())
+    private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     private lateinit var notificationBuilder: ForegroundCallNotificationBuilder
     private lateinit var flutterEngineHelper: FlutterEngineHelper
@@ -81,14 +82,14 @@ class SignalingIsolateService :
         latestLifecycleActivityEvent = ActivityLifecycleState.currentValue ?: Lifecycle.Event.ON_DESTROY
 
         serviceScope.launch {
-            SignalingStatusState.flow.collect { status ->
+            SignalingStatusState.flow.drop(1).collect { status ->
                 latestSignalingStatus = status
                 synchronizeSignalingIsolate(latestLifecycleActivityEvent, latestSignalingStatus)
             }
         }
 
         serviceScope.launch {
-            ActivityLifecycleState.flow.collect { event ->
+            ActivityLifecycleState.flow.drop(1).collect { event ->
                 latestLifecycleActivityEvent = event ?: Lifecycle.Event.ON_DESTROY
                 synchronizeSignalingIsolate(latestLifecycleActivityEvent, latestSignalingStatus)
             }
