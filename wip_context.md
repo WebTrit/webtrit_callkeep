@@ -1,15 +1,20 @@
-# WIP Context — fix/standalone-mode-no-telecom
+# WIP Context — fix/standalone-mode-no-telecom-v2
 
-Date: 2026-03-27
+Date: 2026-03-30
+Status: COMPLETED — PR #232 merged to develop
 
-## Мета гілки
+## Meta
 
-Виправити падіння інтеграційних тестів на пристрої HA1SVX8G (Lenovo TB300FU, Android 13, API 33)
-який не має `android.software.telecom`. Всі дзвінки роутяться через `StandaloneCallService`.
+Fix integration test failures on device HA1SVX8G (Lenovo TB300FU, Android 13, API 33)
+which has no `android.software.telecom`. All calls are routed through `StandaloneCallService`.
+
+Branch created fresh from `develop` (which already includes PR #230 CallkeepCore facade
+and PR #231 SharedFlow migration). 11 commits cherry-picked from old
+`fix/standalone-mode-no-telecom` branch, adapted to the new architecture.
 
 ---
 
-## Статус тестів
+## Test Status — all PASSED on HA1SVX8G
 
 | Script | Status |
 |--------|--------|
@@ -22,156 +27,117 @@ Date: 2026-03-27
 | `tools/run_callkeep_state_machine.sh` | PASSED |
 | `tools/run_callkeep_stress.sh` | PASSED |
 | `tools/run_callkeep_call_scenarios.sh` | PASSED |
-| `tools/run_callkeep_background_services.sh` | **IN PROGRESS** |
+| `tools/run_callkeep_background_services.sh` | PASSED |
 
 ---
 
-## Вже застосовані фікси (закомічено в попередніх комітах)
+## Root causes and fixes
 
-### Root cause 1 — StandaloneCallService в :callkeep_core процесі
+### Root cause 1 — StandaloneCallService in :callkeep_core process
 
-`StandaloneCallService` був задекларований з `android:process=":callkeep_core"` в
-`AndroidManifest.xml`. На Lenovo TB300FU OEM `bringUpServiceLocked` позначав вторинні
-процеси як "bad", блокуючи всі наступні старти сервісу.
+`StandaloneCallService` was declared with `android:process=":callkeep_core"` in
+`AndroidManifest.xml`. On Lenovo TB300FU the OEM `bringUpServiceLocked` marks secondary
+processes as "bad", blocking all subsequent service starts.
 
-**Fix**: прибрано `android:process=":callkeep_core"` з `StandaloneCallService`,
-`foregroundServiceType` змінено з `phoneCall` на `microphone`.
+Additionally, in a separate JVM the `InProcessCallkeepCore.instance` singleton is a
+different object from the main process singleton — `listeners` is empty, so
+`notifyConnectionEvent()` delivers to nobody.
 
-### Root cause 2 — OEM broadcast suppression
+**Fix**: removed `android:process=":callkeep_core"` from `StandaloneCallService`.
+Service now runs in the main process alongside `ForegroundService`.
 
-Lenovo TB300FU має кастомний `ActivityManagerService.broadcastIntentWithFeature()` який
-пригнічує ВСІ `sendBroadcast` виклики з застосунку. `sendBroadcast` завжди йде через
-`system_server` (PID 1191) навіть для компонентів в одному процесі — через Binder IPC.
-OEM перехоплює виклик на рівні AMS до того як intent потрапляє в чергу доставки.
+### Root cause 2 — Foreground service type mismatch
 
-Logcat доказ (під час failing тесту):
+`StandaloneCallService.promoteToForeground()` called `startForeground()` with
+`FOREGROUND_SERVICE_TYPE_PHONE_CALL` (0x04), but the manifest declared `microphone` (0x80).
+This caused `IllegalArgumentException: foregroundServiceType 0x00000004 is not a subset of
+foregroundServiceType attribute 0x00000080`.
+
+The `phoneCall` foreground type also requires the Telecom subsystem, which is absent on
+devices that use `StandaloneCallService`.
+
+**Fix**: changed to `ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE` in `promoteToForeground()`.
+
+### Root cause 3 — OEM broadcast suppression
+
+Lenovo TB300FU has a custom `ActivityManagerService.broadcastIntentWithFeature()` that
+suppresses ALL `sendBroadcast` calls from the app. `sendBroadcast` always goes through
+`system_server` (PID 1191) even for components in the same process — via Binder IPC.
+The OEM intercepts the call at the AMS level before the intent reaches the delivery queue.
+
+Logcat evidence (during failing test):
 
 ```
-06:52:07.887  FlutterEngineHelper(12257): FlutterEngine initialized and attached successfully
-06:52:08.388  ActivityManager(1191): broadcastIntentWithFeature, suppress to broadcastIntent!
-// ...18 разів з інтервалом ~512ms (це polling loop тесту)...
-06:52:17.747  FlutterEngineHelper(12257): FlutterEngine detached and destroyed
+broadcastIntentWithFeature, suppress to broadcastIntent!
+// repeated ~18 times at ~512ms intervals (test polling loop)
+// SignalingIsolateService.signalingStatusReceiver — never fires
+// background isolate port — never registered
+// timeout after 10s
 ```
 
-**Fix**: додано in-process delivery до `ConnectionServicePerformBroadcaster`:
+**Fix — StandaloneCallService**: replaced `ConnectionServicePerformBroadcaster.handle.dispatch()`
+with `CallkeepCore.instance.notifyConnectionEvent()`. This delivers events directly to all
+registered `ConnectionEventListener`s and per-call dynamic receivers in-process, bypassing AMS.
 
-- `inProcessReceivers: ConcurrentHashMap<BroadcastReceiver, List<String>>`
-- `mainHandler = Handler(Looper.getMainLooper())`
-- `registerInProcessReceiver()` / `unregisterInProcessReceiver()`
-- `deliverInProcess()` — `Handler.post` прямий виклик `receiver.onReceive()`, без AMS
-- `localHandle` — `DispatchHandle` що використовує `deliverInProcess` замість `sendBroadcast`
-
-`StandaloneCallService` змінено з `handle` на `localHandle`.
-`ForegroundService` реєструє своїх receivers і в системному broadcast, і в in-process registry.
+**Fix — SignalingStatusBroadcaster / SignalingIsolateService**: already solved in `develop`
+via PR #231 (SharedFlow migration). `SignalingStatusBroadcaster` now uses `StateFlow` instead
+of `sendBroadcast`. `SignalingIsolateService` collects via a `CoroutineScope`, never touches AMS.
+This fix was inherited for free when branching from `develop`.
 
 ---
 
-## Поточна проблема — run_callkeep_background_services.sh
+## Architecture — final solution
 
-### Що тестує цей файл
+### StandaloneCallService event dispatch
 
-`callkeep_background_services_test.dart` — дві групи тестів:
-
-1. **Push notification background service** — симулює FCM-triggered дзвінки через
-   `PushNotificationIsolateManager`. Тестує: дублікати, конкурентні виклики, endCall,
-   endCalls, tearDown, answered/terminated states.
-
-2. **Background signaling service** — симулює `SignalingForegroundIsolateManager`.
-   Стартує реальний `SignalingIsolateService` + background Flutter engine. Тести
-   комунікують з background isolate через `IsolateNameServer` SendPort. Background
-   isolate викликає callkeep API (Pigeon) від свого імені.
-
-### Де падає
-
-`_startSignalingServiceAndAwaitPort()` — helper що поллить `IsolateNameServer` 10 секунд.
-
-Chain:
-
-```
-updateActivitySignalingStatus(disconnect)
-  -> ConnectionsApi (Pigeon)
-  -> SignalingStatusBroadcaster.setValue()
-  -> sendInternalBroadcast("SignalingStatusBroadcaster.SIGNALING_STATUS")
-  -> AMS (system_server PID 1191)
-  -> [OEM suppress]
-  -> SignalingIsolateService.signalingStatusReceiver -- NEVER fires
-  -> synchronizeSignalingIsolate() -- NEVER called
-  -> onWakeUpBackgroundHandler -- NEVER called
-  -> background isolate port -- NEVER registered
-  -> timeout after 10s
-```
-
-### Додаткова проблема (ширше)
-
-Навіть якщо `signalingStatusReceiver` отримає подію (після фіксу),
-`SignalingIsolateService.endCall()` і `endAllCalls()` також реєструють receiver через
-`registerConnectionPerformReceiver` (системний broadcast). `StandaloneCallService` вже
-відправляє через `localHandle` (in-process). Цей receiver ніколи не отримає подію —
-завжди буде 5-секундний timeout.
-
----
-
-## Дискусія про архітектурне рішення (незавершена)
-
-### Поточна реалізація — ConcurrentHashMap + Handler.post
-
-Вже застосована для `ConnectionServicePerformBroadcaster`. Працює, але:
-
-- Два паралельні канали (системний broadcast + in-process registry) для однієї події
-- Ручний register/unregister — ризик витоку пам'яті якщо забути
-- Шаблонний код: `AtomicBoolean`, `Handler`, `lateinit var receiver`, `snapshot`
-
-### Альтернатива — SharedFlow (Kotlin Coroutines)
+Before:
 
 ```kotlin
-object SignalingStatusBus {
-    private val _flow = MutableStateFlow<SignalingStatus?>(null)
-    val flow: StateFlow<SignalingStatus?> = _flow.asStateFlow()
-    fun emit(value: SignalingStatus) { _flow.value = value }
+dispatcher.dispatch(baseContext, event, data)
+// -> ConnectionServicePerformBroadcaster.handle.dispatch()
+// -> context.sendBroadcast()  -- OEM suppresses this
+```
+
+After:
+
+```kotlin
+core.notifyConnectionEvent(event, data)
+// -> CallkeepCore.instance (main process singleton)
+// -> listeners.forEach { it.onConnectionEvent(event, data) }      -- ForegroundService etc.
+// -> inProcessReceivers.forEach { receiver.onReceive(ctx, intent) } -- per-call receivers
+// No AMS, no Binder IPC, no OEM suppression
+```
+
+### CallkeepCore.notifyConnectionEvent
+
+Added to `CallkeepCore` interface and implemented in `InProcessCallkeepCore`:
+
+```kotlin
+override fun notifyConnectionEvent(event: ConnectionEvent, data: Bundle?) {
+    val actionName = event.name
+    val intent = Intent(actionName).apply { data?.let { putExtras(it) } }
+    listeners.forEach { it.onConnectionEvent(event, data) }
+    inProcessReceivers.entries.toList().forEach { (receiver, actions) ->
+        if (actionName in actions) receiver.onReceive(context, intent)
+    }
 }
 ```
 
-Підписник:
-
-```kotlin
-private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-// в onCreate:
-serviceScope.launch { SignalingStatusBus.flow.filterNotNull().collect { ... } }
-// в onDestroy:
-serviceScope.cancel()
-```
-
-Переваги SharedFlow над поточною реалізацією:
-
-- Один канал замість двох (немає питання "через AMS чи ні")
-- Scope скасовує підписку автоматично — немає ризику витоку
-- Type-safe (Kotlin-об'єкт замість Bundle)
-- `endCall` стає: `withTimeoutOrNull(TIMEOUT) { flow.first { it.callId == callId } }`
-  замість `AtomicBoolean + Handler + lateinit var + ручний unregister`
-- Thread safety вбудований в coroutines
-
-Мінус: потребує `CoroutineScope` в сервісах (manual scope — без `LifecycleService`).
-
-### Не вирішено
-
-Чи використовувати `SharedFlow` для:
-
-- Тільки `SignalingStatusBroadcaster` (мінімальна зміна)
-- І `SignalingStatusBroadcaster` і `ConnectionServicePerformBroadcaster` (повний рефакторинг)
-- Чи залишити поточний патерн і просто розширити його на `SignalingIsolateService`
+`inProcessReceivers: ConcurrentHashMap<BroadcastReceiver, List<String>>` — populated by
+`registerConnectionEvents()` / `unregisterConnectionEvents()`. Per-call receivers
+(OngoingCall, TearDownComplete, etc.) registered this way are delivered in-process.
 
 ---
 
-## Файли змінені в поточному робочому дереві (unstaged)
+## Files changed in this branch
 
-| Файл | Зміна |
-|------|-------|
-| `.gitignore` | додано виключення для worktrees |
-| `webtrit_callkeep/example/run_integration_tests.sh` | оновлено скрипт |
-| `AndroidManifest.xml` | прибрано process з StandaloneCallService |
-| `ConnectionServicePerformBroadcaster.kt` | in-process registry + localHandle |
-| `StandaloneCallService.kt` | localHandle замість handle |
-| `ForegroundService.kt` | registerInProcessReceiver в onCreate/onDestroy/startCall/tearDown |
-
-`SignalingStatusBroadcaster.kt` та `SignalingIsolateService.kt` — НЕ змінені,
-фікс відкатаний, очікує архітектурного рішення.
+| File | Change |
+|------|--------|
+| `AndroidManifest.xml` | removed `android:process` from StandaloneCallService |
+| `StandaloneCallService.kt` | use `core.notifyConnectionEvent()` instead of broadcaster dispatch; `FOREGROUND_SERVICE_TYPE_MICROPHONE` |
+| `CallkeepCore.kt` | added `notifyConnectionEvent()` to interface |
+| `InProcessCallkeepCore.kt` | added `inProcessReceivers` map; implemented `notifyConnectionEvent()`; extended register/unregister |
+| `tools/run_callkeep_*.sh` | per-suite test runner scripts |
+| `tools/_test_lib.sh` | shared test helper library |
+| `.gitignore` | added exclusion for worktrees |
+| `example/run_integration_tests.sh` | updated test runner script |
