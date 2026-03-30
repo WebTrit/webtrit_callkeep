@@ -162,8 +162,10 @@ class StandaloneCallService : Service() {
      * [android.app.Service.startForeground] requirement. Also called from
      * [handleIncomingCall] and [handleOutgoingCall] as a no-op guard once already promoted.
      *
-     * The actual visible call notification is shown by [IncomingCallService] in the main
-     * process. This placeholder keeps the :callkeep_core process alive for the call duration.
+     * Uses [ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE] because this service is only
+     * active on devices that do NOT have [android.software.telecom], making the phone-call
+     * foreground type inappropriate. Microphone type is semantically correct for a service
+     * that manages audio call sessions.
      */
     private fun promoteToForeground() {
         if (isForeground) return
@@ -178,7 +180,7 @@ class StandaloneCallService : Service() {
             this,
             NOTIFICATION_ID,
             placeholder,
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL,
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE,
         )
         isForeground = true
     }
