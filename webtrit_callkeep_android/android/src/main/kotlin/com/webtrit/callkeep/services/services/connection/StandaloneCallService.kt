@@ -22,7 +22,7 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.broadcaster.CallCommandEvent
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
-import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
+import com.webtrit.callkeep.services.core.CallkeepCore
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -43,7 +43,7 @@ import java.util.concurrent.ConcurrentHashMap
  */
 @Keep
 class StandaloneCallService : Service() {
-    private val dispatcher = ConnectionServicePerformBroadcaster.handle
+    private val core get() = CallkeepCore.instance
     private val audioManager by lazy { getSystemService(AUDIO_SERVICE) as AudioManager }
 
     // Tracks whether startForeground() has been called in this service instance.
@@ -192,7 +192,7 @@ class StandaloneCallService : Service() {
         // for this broadcast to resolve its pendingIncomingCallbacks entry and promote the call
         // into the core shadow state, matching the PhoneConnectionService.onCreateIncomingConnection
         // path in the Telecom-enabled flow.
-        dispatcher.dispatch(baseContext, CallLifecycleEvent.DidPushIncomingCall, metadata.toBundle())
+        core.notifyConnectionEvent(CallLifecycleEvent.DidPushIncomingCall, metadata.toBundle())
 
         // If an answer was reserved before this call was registered (ReserveAnswer arrived first),
         // consume the pending reservation and immediately trigger the answer flow.
@@ -209,7 +209,7 @@ class StandaloneCallService : Service() {
         // Notify the main process that the outgoing call is in progress, mirroring the
         // OngoingCall broadcast that PhoneConnectionService fires after onCreateOutgoingConnection.
         // ForegroundService listens for this to promote the call to STATE_DIALING and call performStartCall.
-        dispatcher.dispatch(baseContext, CallLifecycleEvent.OngoingCall, metadata.toBundle())
+        core.notifyConnectionEvent(CallLifecycleEvent.OngoingCall, metadata.toBundle())
     }
 
     private fun handleEstablishCall(metadata: CallMetadata) {
@@ -222,11 +222,7 @@ class StandaloneCallService : Service() {
         activateAudio()
         fireInitialAudioState(metadata.callId)
 
-        dispatcher.dispatch(
-            baseContext,
-            CallLifecycleEvent.AnswerCall,
-            callMetadataMap[metadata.callId]!!.toBundle(),
-        )
+        core.notifyConnectionEvent(CallLifecycleEvent.AnswerCall, callMetadataMap[metadata.callId]!!.toBundle())
     }
 
     private fun handleAnswerCall(metadata: CallMetadata) {
@@ -239,23 +235,19 @@ class StandaloneCallService : Service() {
         activateAudio()
         fireInitialAudioState(metadata.callId)
 
-        dispatcher.dispatch(
-            baseContext,
-            CallLifecycleEvent.AnswerCall,
-            callMetadataMap[metadata.callId]!!.toBundle(),
-        )
+        core.notifyConnectionEvent(CallLifecycleEvent.AnswerCall, callMetadataMap[metadata.callId]!!.toBundle())
     }
 
     private fun handleDeclineCall(metadata: CallMetadata) {
         Log.i(TAG, "handleDeclineCall: callId=${metadata.callId}")
         endCall(metadata)
-        dispatcher.dispatch(baseContext, CallLifecycleEvent.HungUp, metadata.toBundle())
+        core.notifyConnectionEvent(CallLifecycleEvent.HungUp, metadata.toBundle())
     }
 
     private fun handleHungUpCall(metadata: CallMetadata) {
         Log.i(TAG, "handleHungUpCall: callId=${metadata.callId}")
         endCall(metadata)
-        dispatcher.dispatch(baseContext, CallLifecycleEvent.HungUp, metadata.toBundle())
+        core.notifyConnectionEvent(CallLifecycleEvent.HungUp, metadata.toBundle())
     }
 
     private fun handleUpdateCall(metadata: CallMetadata) {
@@ -269,7 +261,7 @@ class StandaloneCallService : Service() {
         Log.i(TAG, "handleSendDtmf: callId=${metadata.callId}, dtmf=$dtmf")
         val updated = (callMetadataMap[metadata.callId] ?: metadata).copy(dualToneMultiFrequency = dtmf)
         callMetadataMap[metadata.callId] = updated
-        dispatcher.dispatch(baseContext, CallMediaEvent.SentDTMF, updated.toBundle())
+        core.notifyConnectionEvent(CallMediaEvent.SentDTMF, updated.toBundle())
     }
 
     private fun handleHolding(metadata: CallMetadata) {
@@ -282,20 +274,20 @@ class StandaloneCallService : Service() {
         }
         val updated = (callMetadataMap[metadata.callId] ?: metadata).copy(hasHold = onHold)
         callMetadataMap[metadata.callId] = updated
-        dispatcher.dispatch(baseContext, CallMediaEvent.ConnectionHolding, updated.toBundle())
+        core.notifyConnectionEvent(CallMediaEvent.ConnectionHolding, updated.toBundle())
     }
 
     private fun handleTearDownConnections() {
         Log.i(TAG, "handleTearDownConnections: cleaning up ${callMetadataMap.size} calls")
         callMetadataMap.keys.toList().forEach { callId ->
             val meta = callMetadataMap[callId] ?: CallMetadata(callId = callId)
-            dispatcher.dispatch(baseContext, CallLifecycleEvent.HungUp, meta.toBundle())
+            core.notifyConnectionEvent(CallLifecycleEvent.HungUp, meta.toBundle())
         }
         callMetadataMap.clear()
         answeredCallIds.clear()
         pendingAnswers.clear()
         deactivateAudio(force = true)
-        dispatcher.dispatch(baseContext, CallCommandEvent.TearDownComplete)
+        core.notifyConnectionEvent(CallCommandEvent.TearDownComplete)
         stopSelf()
     }
 
@@ -331,7 +323,7 @@ class StandaloneCallService : Service() {
         val updated =
             (callMetadataMap[metadata.callId] ?: metadata).copy(hasMute = muted)
         callMetadataMap[metadata.callId] = updated
-        dispatcher.dispatch(baseContext, CallMediaEvent.AudioMuting, updated.toBundle())
+        core.notifyConnectionEvent(CallMediaEvent.AudioMuting, updated.toBundle())
     }
 
     private fun handleSpeaker(metadata: CallMetadata) {
@@ -346,7 +338,7 @@ class StandaloneCallService : Service() {
                 audioDevice = AudioDevice(deviceType),
             )
         callMetadataMap[metadata.callId] = updated
-        dispatcher.dispatch(baseContext, CallMediaEvent.AudioDeviceSet, updated.toBundle())
+        core.notifyConnectionEvent(CallMediaEvent.AudioDeviceSet, updated.toBundle())
     }
 
     private fun handleAudioDeviceSet(metadata: CallMetadata) {
@@ -361,7 +353,7 @@ class StandaloneCallService : Service() {
                 audioDevice = device,
             )
         callMetadataMap[metadata.callId] = updated
-        dispatcher.dispatch(baseContext, CallMediaEvent.AudioDeviceSet, updated.toBundle())
+        core.notifyConnectionEvent(CallMediaEvent.AudioDeviceSet, updated.toBundle())
     }
 
     private fun handleSyncAudioState() {
@@ -373,7 +365,7 @@ class StandaloneCallService : Service() {
         Log.i(TAG, "handleSyncConnectionState: re-emitting AnswerCall for answered calls")
         answeredCallIds.forEach { callId ->
             val meta = callMetadataMap[callId] ?: CallMetadata(callId = callId)
-            dispatcher.dispatch(baseContext, CallLifecycleEvent.AnswerCall, meta.toBundle())
+            core.notifyConnectionEvent(CallLifecycleEvent.AnswerCall, meta.toBundle())
         }
     }
 
@@ -412,8 +404,8 @@ class StandaloneCallService : Service() {
         val currentDevice = metadata.audioDevice ?: AudioDevice(AudioDeviceType.EARPIECE)
         val updated = metadata.copy(audioDevices = availableDevices, audioDevice = currentDevice)
         callMetadataMap[callId] = updated
-        dispatcher.dispatch(baseContext, CallMediaEvent.AudioDevicesUpdate, updated.toBundle())
-        dispatcher.dispatch(baseContext, CallMediaEvent.AudioDeviceSet, updated.toBundle())
+        core.notifyConnectionEvent(CallMediaEvent.AudioDevicesUpdate, updated.toBundle())
+        core.notifyConnectionEvent(CallMediaEvent.AudioDeviceSet, updated.toBundle())
     }
 
     private fun endCall(metadata: CallMetadata) {
@@ -533,10 +525,7 @@ class StandaloneCallService : Service() {
                 // Synthesise a TearDownComplete ack so ForegroundService.tearDown() does not
                 // block on a timeout when the service is no longer alive.
                 if (action == StandaloneServiceAction.TearDownConnections) {
-                    ConnectionServicePerformBroadcaster.handle.dispatch(
-                        context,
-                        CallCommandEvent.TearDownComplete,
-                    )
+                    CallkeepCore.instance.notifyConnectionEvent(CallCommandEvent.TearDownComplete)
                 }
             }
         }

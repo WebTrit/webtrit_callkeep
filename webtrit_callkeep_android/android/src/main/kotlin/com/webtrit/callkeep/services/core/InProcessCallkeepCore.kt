@@ -16,6 +16,7 @@ import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
@@ -45,6 +46,10 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
     private val listeners = CopyOnWriteArrayList<ConnectionEventListener>()
     private var globalReceiver: BroadcastReceiver? = null
     private val receiverLock = Any()
+
+    // Tracks per-call receivers registered via registerConnectionEvents so that
+    // notifyConnectionEvent can deliver events in-process without going through AMS.
+    private val inProcessReceivers = ConcurrentHashMap<BroadcastReceiver, List<String>>()
 
     override fun addConnectionEventListener(listener: ConnectionEventListener) {
         listeners.add(listener)
@@ -165,12 +170,36 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
         events: List<ConnectionEvent>,
         receiver: BroadcastReceiver,
         exported: Boolean,
-    ): IntentFilter = ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(events, context, receiver, exported)
+    ): IntentFilter {
+        inProcessReceivers[receiver] = events.map { it.name }
+        return ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(events, context, receiver, exported)
+    }
 
     override fun unregisterConnectionEvents(
         context: Context,
         receiver: BroadcastReceiver,
-    ) = ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(context, receiver)
+    ) {
+        inProcessReceivers.remove(receiver)
+        ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(context, receiver)
+    }
+
+    override fun notifyConnectionEvent(
+        event: ConnectionEvent,
+        data: Bundle?,
+    ) {
+        val actionName = event.name
+        val intent = Intent(actionName).apply { data?.let { putExtras(it) } }
+
+        // Deliver to global listeners (ForegroundService, IncomingCallService, etc.)
+        listeners.forEach { it.onConnectionEvent(event, data) }
+
+        // Deliver to per-call dynamic receivers (OngoingCall, TearDownComplete, etc.)
+        inProcessReceivers.entries.toList().forEach { (receiver, actions) ->
+            if (actionName in actions) {
+                receiver.onReceive(context, intent)
+            }
+        }
+    }
 
     // -------------------------------------------------------------------------
     // CS commands

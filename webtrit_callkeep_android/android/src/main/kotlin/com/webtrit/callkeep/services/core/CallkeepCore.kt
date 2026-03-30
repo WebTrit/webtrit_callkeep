@@ -157,6 +157,22 @@ interface CallkeepCore {
         receiver: BroadcastReceiver,
     )
 
+    /**
+     * Delivers [event] directly to all registered [ConnectionEventListener]s and any
+     * per-call receivers registered via [registerConnectionEvents], without going through
+     * [android.app.ActivityManager] broadcast dispatch.
+     *
+     * Used by [com.webtrit.callkeep.services.services.connection.StandaloneCallService],
+     * which runs in the main process alongside [ForegroundService]. On certain OEM devices
+     * (e.g. Lenovo TB300FU, Android 13) the system ActivityManager suppresses all
+     * [android.content.Context.sendBroadcast] calls originating from the app, so
+     * in-process delivery is required.
+     */
+    fun notifyConnectionEvent(
+        event: ConnectionEvent,
+        data: Bundle? = null,
+    )
+
     // -------------------------------------------------------------------------
     // CS commands
     // -------------------------------------------------------------------------
