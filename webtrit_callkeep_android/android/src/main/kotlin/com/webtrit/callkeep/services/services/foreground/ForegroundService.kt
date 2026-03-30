@@ -190,6 +190,12 @@ class ForegroundService :
         callback: (Result<Unit>) -> Unit,
     ) {
         logger.i("setUp")
+        if (!TelephonyUtils.isTelecomSupported(baseContext)) {
+            logger.i("setUp: android.software.telecom not available on this device — skipping phone account registration, using standalone call mode")
+            applySetupOptions(options)
+            callback(Result.success(Unit))
+            return
+        }
         registerPhoneAccountWithRetry(options, callback, attempt = 0)
     }
 
@@ -216,6 +222,12 @@ class ForegroundService :
 
         logger.i("setUp: registerPhoneAccount succeeded${if (attempt > 0) " on attempt ${attempt + 1}" else ""}")
 
+        applySetupOptions(options)
+
+        callback.invoke(Result.success(Unit))
+    }
+
+    private fun applySetupOptions(options: POptions) {
         runCatching {
             // Registers all necessary notification channels for the application.
             // This includes channels for active calls, incoming calls, missed calls, and foreground calls.
@@ -230,8 +242,6 @@ class ForegroundService :
             options.android.ringbackSound?.let { StorageDelegate.Sound.initRingbackPath(baseContext, it) }
             options.android.incomingCallFullScreen?.let { StorageDelegate.IncomingCall.setFullScreen(baseContext, it) }
         }.onFailure { Log.w("CallKeep", "Android options init failed: ${it.message}", it) }
-
-        callback.invoke(Result.success(Unit))
     }
 
     override fun startCall(

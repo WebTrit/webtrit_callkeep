@@ -16,18 +16,18 @@ import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
-import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * In-process implementation of [CallkeepCore].
  *
  * - **State** is delegated to [MainProcessConnectionTracker] (shadow registry in the main process).
- * - **Commands** are delegated to [PhoneConnectionService] static helpers, which dispatch
- *   explicit `startService` intents or broadcasts to `:callkeep_core`.
+ * - **Commands** are routed through [CallServiceRouter], which selects between
+ *   [com.webtrit.callkeep.services.services.connection.PhoneConnectionService] (Telecom path)
+ *   and [com.webtrit.callkeep.services.services.connection.StandaloneCallService] (no-Telecom path).
  *
- * After the process split, replace this with a broadcast/binder-backed implementation by
- * changing only [CallkeepCore.instance] — no call sites change.
+ * All call sites are unaware of which backend is active — routing is entirely internal to [CallServiceRouter].
  */
 class InProcessCallkeepCore private constructor() : CallkeepCore {
     private val tracker: ConnectionTracker = MainProcessConnectionTracker.instance
@@ -37,6 +37,8 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
     // have been called before any CS command method is invoked (guaranteed by Application.onCreate).
     private val context get() = ContextHolder.context
 
+    private val router: CallServiceRouter by lazy { CallServiceRouter(context) }
+
     // -------------------------------------------------------------------------
     // Listener registry and lazy global BroadcastReceiver
     // -------------------------------------------------------------------------
@@ -44,6 +46,10 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
     private val listeners = CopyOnWriteArrayList<ConnectionEventListener>()
     private var globalReceiver: BroadcastReceiver? = null
     private val receiverLock = Any()
+
+    // Tracks per-call receivers registered via registerConnectionEvents so that
+    // notifyConnectionEvent can deliver events in-process without going through AMS.
+    private val inProcessReceivers = ConcurrentHashMap<BroadcastReceiver, List<String>>()
 
     override fun addConnectionEventListener(listener: ConnectionEventListener) {
         listeners.add(listener)
@@ -164,65 +170,89 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
         events: List<ConnectionEvent>,
         receiver: BroadcastReceiver,
         exported: Boolean,
-    ): IntentFilter = ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(events, context, receiver, exported)
+    ): IntentFilter {
+        inProcessReceivers[receiver] = events.map { it.name }
+        return ConnectionServicePerformBroadcaster.registerConnectionPerformReceiver(events, context, receiver, exported)
+    }
 
     override fun unregisterConnectionEvents(
         context: Context,
         receiver: BroadcastReceiver,
-    ) = ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(context, receiver)
+    ) {
+        inProcessReceivers.remove(receiver)
+        ConnectionServicePerformBroadcaster.unregisterConnectionPerformReceiver(context, receiver)
+    }
+
+    override fun notifyConnectionEvent(
+        event: ConnectionEvent,
+        data: Bundle?,
+    ) {
+        val actionName = event.name
+        val intent = Intent(actionName).apply { data?.let { putExtras(it) } }
+
+        // Deliver to global listeners (ForegroundService, IncomingCallService, etc.)
+        listeners.forEach { it.onConnectionEvent(event, data) }
+
+        // Deliver to per-call dynamic receivers (OngoingCall, TearDownComplete, etc.)
+        inProcessReceivers.entries.toList().forEach { (receiver, actions) ->
+            if (actionName in actions) {
+                receiver.onReceive(context, intent)
+            }
+        }
+    }
 
     // -------------------------------------------------------------------------
     // CS commands
     // -------------------------------------------------------------------------
 
     @RequiresPermission(Manifest.permission.CALL_PHONE)
-    override fun startOutgoingCall(metadata: CallMetadata) = PhoneConnectionService.startOutgoingCall(context, metadata)
+    override fun startOutgoingCall(metadata: CallMetadata) = router.startOutgoingCall(metadata)
 
     override fun startIncomingCall(
         metadata: CallMetadata,
         onSuccess: () -> Unit,
         onError: (PIncomingCallError?) -> Unit,
     ) {
-        // Register as pending before handing off to Telecom so that answerCall() can
+        // Register as pending before handing off to the backend so that answerCall() can
         // find the call via core.isPending() during the broadcast-lag window, regardless
         // of which entry point initiated the incoming call (ForegroundService,
         // SignalingIsolateService, BackgroundPushNotificationIsolateBootstrapApi, etc.).
         // addPending() is idempotent — safe to call even if the caller already did so.
         tracker.addPending(metadata.callId)
-        PhoneConnectionService.startIncomingCall(context, metadata, onSuccess, onError)
+        router.startIncomingCall(metadata, onSuccess, onError)
     }
 
-    override fun startAnswerCall(metadata: CallMetadata) = PhoneConnectionService.startAnswerCall(context, metadata)
+    override fun startAnswerCall(metadata: CallMetadata) = router.startAnswerCall(metadata)
 
-    override fun startDeclineCall(metadata: CallMetadata) = PhoneConnectionService.startDeclineCall(context, metadata)
+    override fun startDeclineCall(metadata: CallMetadata) = router.startDeclineCall(metadata)
 
-    override fun startHungUpCall(metadata: CallMetadata) = PhoneConnectionService.startHungUpCall(context, metadata)
+    override fun startHungUpCall(metadata: CallMetadata) = router.startHungUpCall(metadata)
 
-    override fun startEstablishCall(metadata: CallMetadata) = PhoneConnectionService.startEstablishCall(context, metadata)
+    override fun startEstablishCall(metadata: CallMetadata) = router.startEstablishCall(metadata)
 
-    override fun startUpdateCall(metadata: CallMetadata) = PhoneConnectionService.startUpdateCall(context, metadata)
+    override fun startUpdateCall(metadata: CallMetadata) = router.startUpdateCall(metadata)
 
-    override fun startSendDtmfCall(metadata: CallMetadata) = PhoneConnectionService.startSendDtmfCall(context, metadata)
+    override fun startSendDtmfCall(metadata: CallMetadata) = router.startSendDtmfCall(metadata)
 
-    override fun startMutingCall(metadata: CallMetadata) = PhoneConnectionService.startMutingCall(context, metadata)
+    override fun startMutingCall(metadata: CallMetadata) = router.startMutingCall(metadata)
 
-    override fun startHoldingCall(metadata: CallMetadata) = PhoneConnectionService.startHoldingCall(context, metadata)
+    override fun startHoldingCall(metadata: CallMetadata) = router.startHoldingCall(metadata)
 
-    override fun startSpeaker(metadata: CallMetadata) = PhoneConnectionService.startSpeaker(context, metadata)
+    override fun startSpeaker(metadata: CallMetadata) = router.startSpeaker(metadata)
 
-    override fun setAudioDevice(metadata: CallMetadata) = PhoneConnectionService.setAudioDevice(context, metadata)
+    override fun setAudioDevice(metadata: CallMetadata) = router.setAudioDevice(metadata)
 
-    override fun tearDownService() = PhoneConnectionService.tearDown(context)
+    override fun tearDownService() = router.tearDownService()
 
-    override fun sendTearDownConnections() = PhoneConnectionService.sendTearDownConnections(context)
+    override fun sendTearDownConnections() = router.sendTearDownConnections()
 
-    override fun sendReserveAnswer(callId: String) = PhoneConnectionService.sendReserveAnswer(context, callId)
+    override fun sendReserveAnswer(callId: String) = router.sendReserveAnswer(callId)
 
-    override fun sendCleanConnections() = PhoneConnectionService.sendCleanConnections(context)
+    override fun sendCleanConnections() = router.sendCleanConnections()
 
-    override fun sendSyncAudioState() = PhoneConnectionService.sendSyncAudioState(context)
+    override fun sendSyncAudioState() = router.sendSyncAudioState()
 
-    override fun sendSyncConnectionState() = PhoneConnectionService.sendSyncConnectionState(context)
+    override fun sendSyncConnectionState() = router.sendSyncConnectionState()
 
     companion object {
         val instance: CallkeepCore = InProcessCallkeepCore()

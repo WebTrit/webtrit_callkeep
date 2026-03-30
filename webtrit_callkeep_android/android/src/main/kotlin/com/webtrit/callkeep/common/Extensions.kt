@@ -125,6 +125,7 @@ fun Context.sendInternalBroadcast(
     Intent(action)
         .apply {
             setPackage(packageName)
+            addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
             extras?.let { putExtras(it) }
         }.also { sendBroadcast(it) }
 }
