@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.media.AudioManager
+import android.os.Build
 import android.os.IBinder
 import androidx.annotation.Keep
 import androidx.core.app.NotificationCompat
@@ -162,10 +163,16 @@ class StandaloneCallService : Service() {
      * [android.app.Service.startForeground] requirement. Also called from
      * [handleIncomingCall] and [handleOutgoingCall] as a no-op guard once already promoted.
      *
-     * Uses [ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE] because this service is only
-     * active on devices that do NOT have [android.software.telecom], making the phone-call
-     * foreground type inappropriate. Microphone type is semantically correct for a service
-     * that manages audio call sessions.
+     * Uses [ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE] on API 31+ because this service
+     * is only active on devices that do NOT have [android.software.telecom], making the
+     * phone-call foreground type inappropriate. Microphone type is semantically correct for
+     * a service that manages audio call sessions.
+     *
+     * On API 29-30 the microphone type flag did not exist; passing it to [startForeground]
+     * causes the framework to throw [IllegalArgumentException] because the flag is not
+     * recognised in that API level's manifest type validation. The 2-arg [startForeground]
+     * overload (no type) is used instead, which bypasses the type check entirely and is safe
+     * on all API levels below 31.
      */
     private fun promoteToForeground() {
         if (isForeground) return
@@ -176,12 +183,18 @@ class StandaloneCallService : Service() {
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setOngoing(true)
                 .build()
-        startForegroundServiceCompat(
-            this,
-            NOTIFICATION_ID,
-            placeholder,
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE,
-        )
+        // FOREGROUND_SERVICE_TYPE_MICROPHONE was introduced in API 31 (Android 12).
+        // On API 29-30 the type is unknown to the framework and startForeground() throws
+        // IllegalArgumentException when the requested type does not match the manifest.
+        // Passing null here selects the 2-arg startForeground() fallback in
+        // startForegroundServiceCompat(), which skips type validation on older builds.
+        val foregroundType =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            } else {
+                null
+            }
+        startForegroundServiceCompat(this, NOTIFICATION_ID, placeholder, foregroundType)
         isForeground = true
     }
 
