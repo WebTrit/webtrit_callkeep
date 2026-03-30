@@ -52,16 +52,19 @@
 
         <!--
           Standalone call management service for devices without android.software.telecom.
-          Runs in the :callkeep_core process and dispatches the same ConnectionEvent broadcasts
-          as PhoneConnectionService, allowing the main process and Flutter layer to remain
-          unaware of which call path is active.
+          Runs in the main process (not :callkeep_core) because some OEM devices (e.g. Lenovo
+          TB300FU, Android 13) block foreground service starts for secondary processes,
+          permanently marking the process as "bad" and preventing all subsequent service starts.
+          Since there is no Telecom framework managing the lifecycle of this service, running in
+          the main process is safe and avoids OEM background-start restrictions.
+          Uses microphone foreground service type because phoneCall type requires the Telecom
+          subsystem, which is absent on devices that use this service.
         -->
         <service
             android:name=".services.services.connection.StandaloneCallService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="phoneCall"
-            android:process=":callkeep_core" />
+            android:foregroundServiceType="microphone" />
 
         <service
             android:name=".services.services.signaling.SignalingIsolateService"
