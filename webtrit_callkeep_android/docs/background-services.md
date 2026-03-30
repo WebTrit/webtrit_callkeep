@@ -30,16 +30,17 @@ triggers the callkeep stack to register the call with Telecom.
 
 ### Event Sources (internal)
 
-`SignalingIsolateService` receives two categories of intra-process events via its own
-`BroadcastReceiver` instances (not through `CallkeepCore`):
+`SignalingIsolateService` receives two categories of intra-process state changes via
+`SharedFlow` collection (not through `CallkeepCore` and not via `BroadcastReceiver`):
 
-- `signalingStatusReceiver` — listens for `SignalingStatusBroadcaster` events (e.g., signaling
-  connected/disconnected) and forwards them to the Flutter isolate.
-- `lifecycleEventReceiver` — listens for `ActivityLifecycleBroadcaster` events so the isolate
+- `SignalingStatusState.updates` — emits signaling connected/disconnected status changes;
+  forwarded to the Flutter isolate via `synchronizeSignalingIsolate()`.
+- `ActivityLifecycleState.updates` — emits activity lifecycle events so the isolate
   knows whether the foreground UI is active.
 
-These are intra-process broadcasts and are separate from `:callkeep_core` cross-process events.
-Replacing them with `SharedFlow`/`StateFlow` is deferred to a future iteration.
+Both flows are collected in `serviceScope` (a `CoroutineScope` tied to the service lifetime),
+cancelled in `onDestroy()`. This replaces the previous `sendBroadcast`-based approach, which
+used intra-process broadcasts for communication that never crossed the process boundary.
 
 ### Pigeon Host API: `PHostBackgroundSignalingIsolateApi`
 

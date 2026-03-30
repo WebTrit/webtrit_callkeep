@@ -16,7 +16,7 @@ import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.setShowWhenLockedCompat
 import com.webtrit.callkeep.common.setTurnScreenOnCompat
-import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
+import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleState
 import com.webtrit.callkeep.services.core.CallkeepCore
 import com.webtrit.callkeep.services.services.foreground.ForegroundService
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
@@ -360,7 +360,7 @@ class WebtritCallkeepPlugin :
             TAG,
             "onStateChanged: Lifecycle event received - $event, activity: ${activityPluginBinding?.activity}",
         )
-        ActivityLifecycleBroadcaster.setValue(context, event)
+        ActivityLifecycleState.setValue(event)
 
         /*
          * This block is essential for the incoming call flow on the lock screen.
