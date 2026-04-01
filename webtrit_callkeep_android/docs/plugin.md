@@ -75,5 +75,5 @@ This ensures the incoming-call or in-call UI surfaces even when the device is lo
 ## Related Components
 
 - [foreground-service.md](foreground-service.md) — bound service wired up here
-- [background-services.md](background-services.md) — bootstrap APIs wired to services
+- [background-services.md](background-services.md) — IncomingCallService and ActiveCallService; bootstrap API registered on engine attach
 - [pigeon-apis.md](pigeon-apis.md) — all Pigeon APIs registered here
