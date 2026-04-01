@@ -206,6 +206,28 @@ enum class PIncomingCallErrorEnum(
     FILTERED_BY_DO_NOT_DISTURB(5),
     FILTERED_BY_BLOCK_LIST(6),
     INTERNAL(7),
+
+    /**
+     * Android only.
+     *
+     * Telecom rejected the incoming call registration via
+     * `onCreateIncomingConnectionFailed` (i.e. without ever calling
+     * `onCreateIncomingConnection`).
+     *
+     * **When this happens**: Android does not allow two self-managed calls to be
+     * simultaneously in RINGING state. If a call is already ringing, Telecom
+     * rejects every subsequent incoming self-managed call. This is standard
+     * AOSP behaviour (observed on stock Pixel devices running Android 11+), not
+     * an OEM-specific restriction. Some vendors (Huawei, certain MediaTek OEMs)
+     * apply the same rejection even when the first call is already ACTIVE.
+     *
+     * **Consequences for the app**:
+     * - The call was never confirmed to Flutter, so `performEndCall` will NOT
+     *   fire for this call ID.
+     * - The app must send the appropriate signaling (e.g. SIP BYE) to the
+     *   server itself upon receiving this error, without waiting for
+     *   `performEndCall`.
+     */
     CALL_REJECTED_BY_SYSTEM(8),
     ;
 
@@ -326,21 +348,6 @@ enum class PCallkeepDisconnectCauseType(
 
     companion object {
         fun ofRaw(raw: Int): PCallkeepDisconnectCauseType? = values().firstOrNull { it.raw == raw }
-    }
-}
-
-enum class PCallkeepSignalingStatus(
-    val raw: Int,
-) {
-    DISCONNECTING(0),
-    DISCONNECT(1),
-    CONNECTING(2),
-    CONNECT(3),
-    FAILURE(4),
-    ;
-
-    companion object {
-        fun ofRaw(raw: Int): PCallkeepSignalingStatus? = values().firstOrNull { it.raw == raw }
     }
 }
 
@@ -700,20 +707,17 @@ data class PCallkeepIncomingCallData(
 /** Generated class from Pigeon that represents data sent in messages. */
 data class PCallkeepServiceStatus(
     val lifecycleEvent: PCallkeepLifecycleEvent,
-    val mainSignalingStatus: PCallkeepSignalingStatus? = null,
 ) {
     companion object {
         fun fromList(pigeonVar_list: List<Any?>): PCallkeepServiceStatus {
             val lifecycleEvent = pigeonVar_list[0] as PCallkeepLifecycleEvent
-            val mainSignalingStatus = pigeonVar_list[1] as PCallkeepSignalingStatus?
-            return PCallkeepServiceStatus(lifecycleEvent, mainSignalingStatus)
+            return PCallkeepServiceStatus(lifecycleEvent)
         }
     }
 
     fun toList(): List<Any?> =
         listOf(
             lifecycleEvent,
-            mainSignalingStatus,
         )
 
     override fun equals(other: Any?): Boolean {
@@ -887,84 +891,78 @@ private open class GeneratedPigeonCodec : StandardMessageCodec() {
             }
 
             143.toByte() -> {
-                return (readValue(buffer) as Long?)?.let {
-                    PCallkeepSignalingStatus.ofRaw(it.toInt())
-                }
-            }
-
-            144.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PIOSOptions.fromList(it)
                 }
             }
 
-            145.toByte() -> {
+            144.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PAndroidOptions.fromList(it)
                 }
             }
 
-            146.toByte() -> {
+            145.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     POptions.fromList(it)
                 }
             }
 
-            147.toByte() -> {
+            146.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PAudioDevice.fromList(it)
                 }
             }
 
-            148.toByte() -> {
+            147.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PPermissionResult.fromList(it)
                 }
             }
 
-            149.toByte() -> {
+            148.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PHandle.fromList(it)
                 }
             }
 
-            150.toByte() -> {
+            149.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PEndCallReason.fromList(it)
                 }
             }
 
-            151.toByte() -> {
+            150.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PIncomingCallError.fromList(it)
                 }
             }
 
-            152.toByte() -> {
+            151.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PCallRequestError.fromList(it)
                 }
             }
 
-            153.toByte() -> {
+            152.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PCallkeepIncomingCallData.fromList(it)
                 }
             }
 
-            154.toByte() -> {
+            153.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PCallkeepServiceStatus.fromList(it)
                 }
             }
 
-            155.toByte() -> {
+            154.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PCallkeepDisconnectCause.fromList(it)
                 }
             }
 
-            156.toByte() -> {
+            155.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PCallkeepConnection.fromList(it)
                 }
@@ -1051,281 +1049,73 @@ private open class GeneratedPigeonCodec : StandardMessageCodec() {
                 writeValue(stream, value.raw)
             }
 
-            is PCallkeepSignalingStatus -> {
-                stream.write(143)
-                writeValue(stream, value.raw)
-            }
-
             is PIOSOptions -> {
-                stream.write(144)
+                stream.write(143)
                 writeValue(stream, value.toList())
             }
 
             is PAndroidOptions -> {
-                stream.write(145)
+                stream.write(144)
                 writeValue(stream, value.toList())
             }
 
             is POptions -> {
-                stream.write(146)
+                stream.write(145)
                 writeValue(stream, value.toList())
             }
 
             is PAudioDevice -> {
-                stream.write(147)
+                stream.write(146)
                 writeValue(stream, value.toList())
             }
 
             is PPermissionResult -> {
-                stream.write(148)
+                stream.write(147)
                 writeValue(stream, value.toList())
             }
 
             is PHandle -> {
-                stream.write(149)
+                stream.write(148)
                 writeValue(stream, value.toList())
             }
 
             is PEndCallReason -> {
-                stream.write(150)
+                stream.write(149)
                 writeValue(stream, value.toList())
             }
 
             is PIncomingCallError -> {
-                stream.write(151)
+                stream.write(150)
                 writeValue(stream, value.toList())
             }
 
             is PCallRequestError -> {
-                stream.write(152)
+                stream.write(151)
                 writeValue(stream, value.toList())
             }
 
             is PCallkeepIncomingCallData -> {
-                stream.write(153)
+                stream.write(152)
                 writeValue(stream, value.toList())
             }
 
             is PCallkeepServiceStatus -> {
-                stream.write(154)
+                stream.write(153)
                 writeValue(stream, value.toList())
             }
 
             is PCallkeepDisconnectCause -> {
-                stream.write(155)
+                stream.write(154)
                 writeValue(stream, value.toList())
             }
 
             is PCallkeepConnection -> {
-                stream.write(156)
+                stream.write(155)
                 writeValue(stream, value.toList())
             }
 
             else -> {
                 super.writeValue(stream, value)
-            }
-        }
-    }
-}
-
-/** Generated interface from Pigeon that represents a handler of messages from Flutter. */
-interface PHostBackgroundSignalingIsolateBootstrapApi {
-    fun initializeSignalingServiceCallback(
-        callbackDispatcher: Long,
-        onSync: Long,
-        callback: (Result<Unit>) -> Unit,
-    )
-
-    fun configureSignalingService(
-        androidNotificationName: String?,
-        androidNotificationDescription: String?,
-        callback: (Result<Unit>) -> Unit,
-    )
-
-    fun startService(callback: (Result<Unit>) -> Unit)
-
-    fun stopService(callback: (Result<Unit>) -> Unit)
-
-    companion object {
-        /** The codec used by PHostBackgroundSignalingIsolateBootstrapApi. */
-        val codec: MessageCodec<Any?> by lazy {
-            GeneratedPigeonCodec()
-        }
-
-        /** Sets up an instance of `PHostBackgroundSignalingIsolateBootstrapApi` to handle messages through the `binaryMessenger`. */
-        @JvmOverloads
-        fun setUp(
-            binaryMessenger: BinaryMessenger,
-            api: PHostBackgroundSignalingIsolateBootstrapApi?,
-            messageChannelSuffix: String = "",
-        ) {
-            val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-            run {
-                val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateBootstrapApi.initializeSignalingServiceCallback$separatedMessageChannelSuffix", codec)
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val callbackDispatcherArg = args[0] as Long
-                        val onSyncArg = args[1] as Long
-                        api.initializeSignalingServiceCallback(callbackDispatcherArg, onSyncArg) { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(GeneratedPigeonUtils.wrapError(error))
-                            } else {
-                                reply.reply(GeneratedPigeonUtils.wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateBootstrapApi.configureSignalingService$separatedMessageChannelSuffix", codec)
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val androidNotificationNameArg = args[0] as String?
-                        val androidNotificationDescriptionArg = args[1] as String?
-                        api.configureSignalingService(androidNotificationNameArg, androidNotificationDescriptionArg) { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(GeneratedPigeonUtils.wrapError(error))
-                            } else {
-                                reply.reply(GeneratedPigeonUtils.wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateBootstrapApi.startService$separatedMessageChannelSuffix", codec)
-                if (api != null) {
-                    channel.setMessageHandler { _, reply ->
-                        api.startService { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(GeneratedPigeonUtils.wrapError(error))
-                            } else {
-                                reply.reply(GeneratedPigeonUtils.wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateBootstrapApi.stopService$separatedMessageChannelSuffix", codec)
-                if (api != null) {
-                    channel.setMessageHandler { _, reply ->
-                        api.stopService { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(GeneratedPigeonUtils.wrapError(error))
-                            } else {
-                                reply.reply(GeneratedPigeonUtils.wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-        }
-    }
-}
-
-/** Generated interface from Pigeon that represents a handler of messages from Flutter. */
-interface PHostBackgroundSignalingIsolateApi {
-    fun incomingCall(
-        callId: String,
-        handle: PHandle,
-        displayName: String?,
-        hasVideo: Boolean,
-        callback: (Result<Unit>) -> Unit,
-    )
-
-    fun endCall(
-        callId: String,
-        callback: (Result<Unit>) -> Unit,
-    )
-
-    fun endAllCalls(callback: (Result<Unit>) -> Unit)
-
-    companion object {
-        /** The codec used by PHostBackgroundSignalingIsolateApi. */
-        val codec: MessageCodec<Any?> by lazy {
-            GeneratedPigeonCodec()
-        }
-
-        /** Sets up an instance of `PHostBackgroundSignalingIsolateApi` to handle messages through the `binaryMessenger`. */
-        @JvmOverloads
-        fun setUp(
-            binaryMessenger: BinaryMessenger,
-            api: PHostBackgroundSignalingIsolateApi?,
-            messageChannelSuffix: String = "",
-        ) {
-            val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-            run {
-                val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateApi.incomingCall$separatedMessageChannelSuffix", codec)
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val callIdArg = args[0] as String
-                        val handleArg = args[1] as PHandle
-                        val displayNameArg = args[2] as String?
-                        val hasVideoArg = args[3] as Boolean
-                        api.incomingCall(callIdArg, handleArg, displayNameArg, hasVideoArg) { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(GeneratedPigeonUtils.wrapError(error))
-                            } else {
-                                reply.reply(GeneratedPigeonUtils.wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateApi.endCall$separatedMessageChannelSuffix", codec)
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val callIdArg = args[0] as String
-                        api.endCall(callIdArg) { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(GeneratedPigeonUtils.wrapError(error))
-                            } else {
-                                reply.reply(GeneratedPigeonUtils.wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundSignalingIsolateApi.endAllCalls$separatedMessageChannelSuffix", codec)
-                if (api != null) {
-                    channel.setMessageHandler { _, reply ->
-                        api.endAllCalls { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(GeneratedPigeonUtils.wrapError(error))
-                            } else {
-                                reply.reply(GeneratedPigeonUtils.wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
             }
         }
     }
@@ -2287,11 +2077,6 @@ interface PHostConnectionsApi {
 
     fun cleanConnections(callback: (Result<Unit>) -> Unit)
 
-    fun updateActivitySignalingStatus(
-        status: PCallkeepSignalingStatus,
-        callback: (Result<Unit>) -> Unit,
-    )
-
     companion object {
         /** The codec used by PHostConnectionsApi. */
         val codec: MessageCodec<Any?> by lazy {
@@ -2349,25 +2134,6 @@ interface PHostConnectionsApi {
                 if (api != null) {
                     channel.setMessageHandler { _, reply ->
                         api.cleanConnections { result: Result<Unit> ->
-                            val error = result.exceptionOrNull()
-                            if (error != null) {
-                                reply.reply(GeneratedPigeonUtils.wrapError(error))
-                            } else {
-                                reply.reply(GeneratedPigeonUtils.wrapResult(null))
-                            }
-                        }
-                    }
-                } else {
-                    channel.setMessageHandler(null)
-                }
-            }
-            run {
-                val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostConnectionsApi.updateActivitySignalingStatus$separatedMessageChannelSuffix", codec)
-                if (api != null) {
-                    channel.setMessageHandler { message, reply ->
-                        val args = message as List<Any?>
-                        val statusArg = args[0] as PCallkeepSignalingStatus
-                        api.updateActivitySignalingStatus(statusArg) { result: Result<Unit> ->
                             val error = result.exceptionOrNull()
                             if (error != null) {
                                 reply.reply(GeneratedPigeonUtils.wrapError(error))

@@ -317,33 +317,6 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
-  // updateActivitySignalingStatus rapid transitions (Android only)
-  // -------------------------------------------------------------------------
-
-  group('updateActivitySignalingStatus rapid transitions (Android only)',
-      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
-    testWidgets('rapid updateActivitySignalingStatus calls do not crash', (WidgetTester _) async {
-      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
-        markTestSkipped('Android only');
-        return;
-      }
-      // Sequential calls through all values
-      for (final status in CallkeepSignalingStatus.values) {
-        await CallkeepConnections().updateActivitySignalingStatus(status);
-      }
-
-      // Concurrent rapid-fire calls
-      await Future.wait([
-        CallkeepConnections().updateActivitySignalingStatus(CallkeepSignalingStatus.connect),
-        CallkeepConnections().updateActivitySignalingStatus(CallkeepSignalingStatus.disconnect),
-        CallkeepConnections().updateActivitySignalingStatus(CallkeepSignalingStatus.connecting),
-      ]);
-
-      // Must complete without exception — no assert needed
-    });
-  });
-
-  // -------------------------------------------------------------------------
   // setDelegate(null) in close() pattern (Android only)
   // -------------------------------------------------------------------------
 

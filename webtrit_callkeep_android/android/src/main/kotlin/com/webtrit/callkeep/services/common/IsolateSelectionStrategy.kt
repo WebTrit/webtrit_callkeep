@@ -2,9 +2,7 @@ package com.webtrit.callkeep.services.common
 
 import androidx.lifecycle.Lifecycle
 import com.webtrit.callkeep.common.Log
-import com.webtrit.callkeep.models.SignalingStatus
 import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleState
-import com.webtrit.callkeep.services.broadcaster.SignalingStatusState
 
 enum class IsolateType {
     MAIN,
@@ -13,23 +11,6 @@ enum class IsolateType {
 
 interface IsolateSelectionStrategy {
     fun getIsolateType(): IsolateType
-}
-
-/**
- * SignalingStatusStrategy determines the isolate type based on the current signaling status.
- *
- * If the signaling status is CONNECT or CONNECTING, it returns MAIN isolate type.
- * Otherwise, it returns BACKGROUND isolate type.
- */
-class SignalingStatusStrategy(
-    private val signalingStatus: SignalingStatus?,
-) : IsolateSelectionStrategy {
-    override fun getIsolateType(): IsolateType =
-        if (signalingStatus in listOf(SignalingStatus.CONNECT, SignalingStatus.CONNECTING)) {
-            IsolateType.MAIN
-        } else {
-            IsolateType.BACKGROUND
-        }
 }
 
 /**
@@ -51,7 +32,7 @@ class ActivityStateStrategy : IsolateSelectionStrategy {
 
 /**
  * IsolateSelector is responsible for determining the type of isolate to be used based on the current
- * state of the application and the signaling status.
+ * activity lifecycle state.
  *
  * It provides methods to execute actions based on the isolate type and to check if the current
  * isolate type is background.
@@ -59,13 +40,9 @@ class ActivityStateStrategy : IsolateSelectionStrategy {
 object IsolateSelector {
     private const val TAG = "IsolateSelector"
 
-    private fun getStrategy(): IsolateSelectionStrategy =
-        SignalingStatusState.currentValue?.let { SignalingStatusStrategy(it) }
-            ?: ActivityStateStrategy()
-
-    // Determines the isolate type based on the current strategy
+    // Determines the isolate type based on the current activity lifecycle state
     fun getIsolateType(): IsolateType {
-        val strategy = getStrategy()
+        val strategy = ActivityStateStrategy()
         val isolateType = strategy.getIsolateType()
         Log.i(TAG, "IsolateSelector: $strategy -> $isolateType")
         return isolateType

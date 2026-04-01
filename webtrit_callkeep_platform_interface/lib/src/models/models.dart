@@ -12,7 +12,6 @@ export 'callkeep_options.dart';
 export 'callkeep_permission.dart';
 export 'callkeep_push_notification_status_sync.dart';
 export 'callkeep_service_status.dart';
-export 'callkeep_signaling_status.dart';
 export 'callkeep_special_permission.dart';
 export 'callkeep_special_permission_status.dart';
 export 'callkeep_types.dart';

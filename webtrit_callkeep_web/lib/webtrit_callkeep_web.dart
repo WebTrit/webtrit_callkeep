@@ -246,13 +246,6 @@ class WebtritCallkeepWeb extends WebtritCallkeepPlatform {
   }
 
   // ---------------------------------------------------------------------------
-  // Signaling status
-  // ---------------------------------------------------------------------------
-
-  @override
-  Future<void> updateActivitySignalingStatus(CallkeepSignalingStatus status) async {}
-
-  // ---------------------------------------------------------------------------
   // Permissions (web grants all by default)
   // ---------------------------------------------------------------------------
 
@@ -302,39 +295,6 @@ class WebtritCallkeepWeb extends WebtritCallkeepPlatform {
 
   @override
   Future<void> stopRingbackSound() async {}
-
-  // ---------------------------------------------------------------------------
-  // Android background signaling service (no-op on web)
-  // ---------------------------------------------------------------------------
-
-  @override
-  Future<void> initializeBackgroundSignalingServiceCallback(ForegroundStartServiceHandle onSync) async {}
-
-  @override
-  Future<void> configureBackgroundSignalingService({
-    String? androidNotificationName,
-    String? androidNotificationDescription,
-  }) async {}
-
-  @override
-  void startBackgroundSignalingService() {}
-
-  @override
-  void stopBackgroundSignalingService() {}
-
-  @override
-  Future<dynamic> endCallsBackgroundSignalingService() async {}
-
-  @override
-  Future<dynamic> endCallBackgroundSignalingService(String callId) async {}
-
-  @override
-  Future<dynamic> incomingCallBackgroundSignalingService(
-    String callId,
-    CallkeepHandle handle,
-    String? displayName,
-    bool hasVideo,
-  ) async {}
 
   // ---------------------------------------------------------------------------
   // Android background push notification service (no-op on web)

@@ -162,7 +162,6 @@ class PCallkeepIncomingCallData {
 
 class PCallkeepServiceStatus {
   late PCallkeepLifecycleEvent lifecycleEvent;
-  late PCallkeepSignalingStatus? mainSignalingStatus;
 }
 
 enum PCallkeepConnectionState {
@@ -192,8 +191,6 @@ enum PCallkeepDisconnectCauseType {
   callPulled,
 }
 
-enum PCallkeepSignalingStatus { disconnecting, disconnect, connecting, connect, failure }
-
 class PCallkeepDisconnectCause {
   late PCallkeepDisconnectCauseType type;
   late String? reason;
@@ -203,33 +200,6 @@ class PCallkeepConnection {
   late String callId;
   late PCallkeepConnectionState state;
   late PCallkeepDisconnectCause disconnectCause;
-}
-
-@HostApi()
-abstract class PHostBackgroundSignalingIsolateBootstrapApi {
-  @async
-  void initializeSignalingServiceCallback({required int callbackDispatcher, required int onSync});
-
-  @async
-  void configureSignalingService({String? androidNotificationName, String? androidNotificationDescription});
-
-  @async
-  void startService();
-
-  @async
-  void stopService();
-}
-
-@HostApi()
-abstract class PHostBackgroundSignalingIsolateApi {
-  @async
-  void incomingCall(String callId, PHandle handle, String? displayName, bool hasVideo);
-
-  @async
-  void endCall(String callId);
-
-  @async
-  void endAllCalls();
 }
 
 @HostApi()
@@ -394,9 +364,6 @@ abstract class PHostConnectionsApi {
 
   @async
   void cleanConnections();
-
-  @async
-  void updateActivitySignalingStatus(PCallkeepSignalingStatus status);
 }
 
 @FlutterApi()

@@ -371,37 +371,4 @@ void main() {
       expect(isGone, isTrue);
     });
   });
-
-  // -------------------------------------------------------------------------
-  // CallkeepConnections.updateActivitySignalingStatus (Android only)
-  // -------------------------------------------------------------------------
-
-  group('CallkeepConnections.updateActivitySignalingStatus (Android only)',
-      skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android, () {
-    testWidgets('updateActivitySignalingStatus completes for each enum value', (WidgetTester _) async {
-      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
-        markTestSkipped('Android only');
-        return;
-      }
-      for (final status in CallkeepSignalingStatus.values) {
-        await expectLater(
-          CallkeepConnections().updateActivitySignalingStatus(status),
-          completes,
-        );
-      }
-    });
-
-    testWidgets('updateActivitySignalingStatus after tearDown does not throw', (WidgetTester _) async {
-      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
-        markTestSkipped('Android only');
-        return;
-      }
-      globalTearDownNeeded = false;
-      await callkeep.tearDown();
-      await expectLater(
-        CallkeepConnections().updateActivitySignalingStatus(CallkeepSignalingStatus.disconnect),
-        completes,
-      );
-    });
-  });
 }

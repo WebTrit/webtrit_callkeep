@@ -90,7 +90,6 @@ explicit `startService` intents. Events are grouped by broadcaster:
 |--------------------------|------------------|--------------------------------------------------------------|
 | `PhoneConnectionService` | `:callkeep_core` | Telecom integration; creates/destroys `PhoneConnection`      |
 | `ForegroundService`      | main             | Active call; Pigeon host; mute/hold/speaker/DTMF             |
-| `SignalingService`       | main             | Persistent background signaling isolate (foreground service) |
 | `IncomingCallService`    | main             | One-shot push-notification-triggered call handling           |
 | `ActiveCallService`      | main             | Notification for multiple simultaneous calls                 |
 
@@ -117,8 +116,6 @@ When adding a converter for a new Pigeon type, add an extension in `lib/src/comm
 
 ## Background modes
 
-Two mutually exclusive modes — choose one per app:
-
 ### Push notification isolate (one-shot)
 
 - Entry point: `AndroidCallkeepServices.backgroundPushNotificationBootstrapService`
@@ -127,17 +124,9 @@ Two mutually exclusive modes — choose one per app:
   `Future<void> onCallback(CallkeepPushNotificationSyncStatus, CallkeepIncomingCallMetadata?)`
 - Service: `IncomingCallService`
 
-### Signaling isolate (persistent)
-
-- Entry point: `AndroidCallkeepServices.backgroundSignalingBootstrapService`
-- Triggered by: app lifecycle changes, service start/stop
-- Callback signature:
-  `Future<void> onCallback(CallkeepServiceStatus, CallkeepIncomingCallMetadata?)`
-- Service: `SignalingService`
-
-**Both modes**: the background isolate entry point function **must** be annotated
-`@pragma('vm:entry-point')`. The isolate uses `CallkeepBackgroundServiceDelegate` (
-`performAnswerCall`, `performEndCall`) for native → Dart events.
+The background isolate entry point function **must** be annotated `@pragma('vm:entry-point')`. The
+isolate uses `CallkeepBackgroundServiceDelegate` (`performAnswerCall`, `performEndCall`) for
+native → Dart events.
 
 ---
 
@@ -162,7 +151,6 @@ Two mutually exclusive modes — choose one per app:
 | `requestPermissions` / `checkPermissionsStatus`                        | Runtime permission management    |
 | `getDiagnosticReport`                                                  | Debug diagnostics map            |
 | `getConnection` / `getConnections` / `cleanConnections`                | Connection state queries         |
-| `updateActivitySignalingStatus`                                        | Push signaling status to Telecom |
 | `playRingbackSound` / `stopRingbackSound`                              | Audio control                    |
 
 ---

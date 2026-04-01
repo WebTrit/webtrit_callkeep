@@ -21,8 +21,6 @@ Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
 
       await Permission.notification.request();
 
-      AndroidCallkeepServices.backgroundSignalingBootstrapService.initializeCallback(isolate.onStartForegroundService);
-
       AndroidCallkeepServices.backgroundPushNotificationBootstrapService
           .initializeCallback(isolate.onPushNotificationCallback);
 

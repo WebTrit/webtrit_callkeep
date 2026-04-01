@@ -359,15 +359,6 @@ class ActionsCubit extends Cubit<ActionsState>
     }
   }
 
-  void updateSignalingStatus(CallkeepSignalingStatus status) async {
-    try {
-      await CallkeepConnections().updateActivitySignalingStatus(status);
-      emit(state.log(LogEntry.success('signalingStatus → ${status.name}: ok')));
-    } catch (e) {
-      emit(state.log(LogEntry.error('signalingStatus: $e')));
-    }
-  }
-
   /// Silently fetches the current native connections and updates state.
   /// Does not add a log entry so it can be called frequently without noise.
   Future<void> _syncConnections() async {

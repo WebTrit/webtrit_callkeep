@@ -116,31 +116,6 @@ class _MainScreenState extends State<MainScreen> {
               ),
             ],
           ),
-
-          // Android background services
-          _SectionCard(
-            title: 'Android Background Services',
-            children: [
-              ListTile(
-                dense: true,
-                title: const Text('Signaling Service'),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    OutlinedButton(
-                      onPressed: () => AndroidCallkeepServices.backgroundSignalingBootstrapService.startService(),
-                      child: const Text('Start'),
-                    ),
-                    const SizedBox(width: 6),
-                    OutlinedButton(
-                      onPressed: () => AndroidCallkeepServices.backgroundSignalingBootstrapService.stopService(),
-                      child: const Text('Stop'),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
