@@ -1326,8 +1326,6 @@ abstract class PDelegateBackgroundRegisterFlutterApi {
     PCallkeepIncomingCallData? callData,
   );
 
-  Future<void> onApplicationStatusChanged(int applicationStatusCallbackHandle, PCallkeepServiceStatus status);
-
   Future<void> onNotificationSync(
     int pushNotificationSyncStatusHandle,
     PCallkeepPushNotificationSyncStatus status,
@@ -1368,44 +1366,6 @@ abstract class PDelegateBackgroundRegisterFlutterApi {
           final PCallkeepIncomingCallData? arg_callData = (args[2] as PCallkeepIncomingCallData?);
           try {
             await api.onWakeUpBackgroundHandler(arg_userCallbackHandle!, arg_status!, arg_callData);
-            return wrapResponse(empty: true);
-          } on PlatformException catch (e) {
-            return wrapResponse(error: e);
-          } catch (e) {
-            return wrapResponse(
-              error: PlatformException(code: 'error', message: e.toString()),
-            );
-          }
-        });
-      }
-    }
-    {
-      final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-        'dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onApplicationStatusChanged$messageChannelSuffix',
-        pigeonChannelCodec,
-        binaryMessenger: binaryMessenger,
-      );
-      if (api == null) {
-        pigeonVar_channel.setMessageHandler(null);
-      } else {
-        pigeonVar_channel.setMessageHandler((Object? message) async {
-          assert(
-            message != null,
-            'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onApplicationStatusChanged was null.',
-          );
-          final List<Object?> args = (message as List<Object?>?)!;
-          final int? arg_applicationStatusCallbackHandle = (args[0] as int?);
-          assert(
-            arg_applicationStatusCallbackHandle != null,
-            'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onApplicationStatusChanged was null, expected non-null int.',
-          );
-          final PCallkeepServiceStatus? arg_status = (args[1] as PCallkeepServiceStatus?);
-          assert(
-            arg_status != null,
-            'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onApplicationStatusChanged was null, expected non-null PCallkeepServiceStatus.',
-          );
-          try {
-            await api.onApplicationStatusChanged(arg_applicationStatusCallbackHandle!, arg_status!);
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);

@@ -18,10 +18,3 @@ typedef ForegroundStartServiceHandle =
 /// Returns a [Future] that completes after handling the status change.
 typedef CallKeepPushNotificationSyncStatusHandle =
     Future<void> Function(CallkeepPushNotificationSyncStatus status, CallkeepIncomingCallMetadata? metadata);
-
-/// A callback function that gets triggered when there is a change in the lifecycle of the foreground service.
-///
-/// [callkeepServiceStatus] - Provides the current status of the Callkeep service when the lifecycle changes.
-///
-/// Returns a [Future] that completes after handling the lifecycle change.
-typedef ForegroundChangeLifecycleHandle = Future<void> Function(CallkeepServiceStatus callkeepServiceStatus);

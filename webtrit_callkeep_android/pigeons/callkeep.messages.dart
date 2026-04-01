@@ -269,9 +269,6 @@ abstract class PDelegateBackgroundRegisterFlutterApi {
   );
 
   @async
-  void onApplicationStatusChanged(int applicationStatusCallbackHandle, PCallkeepServiceStatus status);
-
-  @async
   void onNotificationSync(
     int pushNotificationSyncStatusHandle,
     PCallkeepPushNotificationSyncStatus status,

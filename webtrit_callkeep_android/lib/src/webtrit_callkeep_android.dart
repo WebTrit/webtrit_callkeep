@@ -515,14 +515,6 @@ class _BackgroundServiceDelegate implements PDelegateBackgroundRegisterFlutterAp
   }
 
   @override
-  Future<void> onApplicationStatusChanged(int applicationStatusCallbackHandle, PCallkeepServiceStatus status) async {
-    final handle = CallbackHandle.fromRawHandle(applicationStatusCallbackHandle);
-    final closure = PluginUtilities.getCallbackFromHandle(handle)! as ForegroundChangeLifecycleHandle;
-
-    await closure(status.toCallkeep());
-  }
-
-  @override
   Future<void> onNotificationSync(
     int pushNotificationSyncStatusHandle,
     PCallkeepPushNotificationSyncStatus status,
