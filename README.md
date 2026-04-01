@@ -203,6 +203,25 @@ Future<void> onPushNotificationCallback(
 Inside the isolate, use `CallkeepBackgroundServiceDelegate` to receive answer/end events and
 `BackgroundPushNotificationService` to report call outcomes back to the platform.
 
+### Why push-only — no persistent signaling isolate
+
+Earlier versions shipped a second background mode: a persistent foreground service that kept a
+Flutter isolate alive with an open WebSocket connection to the signaling server. This was removed
+for several reasons:
+
+- **OS restrictions.** Android increasingly restricts long-lived background services. Battery
+  optimisation, Doze mode, and Android 14+ foreground service type enforcement make it difficult to
+  keep a persistent service alive reliably across all vendors and OS versions.
+- **Duplicate delivery paths.** When both a push notification and a persistent WebSocket deliver
+  the same incoming call event, the implementation had to deduplicate and arbitrate between two
+  sources — increasing complexity and the risk of race conditions.
+- **Responsibility boundary.** Signaling (SIP, WebSocket, etc.) is application-level logic. The
+  callkeep plugin is responsible for presenting calls to the OS and the user, not for maintaining a
+  signaling connection. Keeping signaling inside the app process simplifies both layers.
+- **Push is sufficient.** FCM high-priority messages reliably wake the device and deliver call
+  data. A one-shot isolate that handles the incoming call and exits is simpler, more battery-
+  friendly, and easier to reason about than a persistent background service.
+
 ---
 
 ## Android: SMS-triggered incoming call
