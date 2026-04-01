@@ -16,7 +16,7 @@ services, broadcast-based IPC, and a Pigeon bridge to the Flutter layer.
 | [phone-connection.md](phone-connection.md)                 | `PhoneConnection` — single call object inside Telecom                      |
 | [connection-manager.md](connection-manager.md)             | `ConnectionManager` — call registry inside `:callkeep_core`                |
 | [ipc-broadcasting.md](ipc-broadcasting.md)                 | `ConnectionServicePerformBroadcaster` — cross-process event bus            |
-| [background-services.md](background-services.md)           | `SignalingIsolateService`, `IncomingCallService`, `ActiveCallService`      |
+| [background-services.md](background-services.md)           | `IncomingCallService`, `ActiveCallService` — background foreground services|
 | [pigeon-apis.md](pigeon-apis.md)                           | All Pigeon host and Flutter API definitions                                |
 | [models.md](models.md)                                     | `CallMetadata`, `CallHandle`, `AudioDevice`, and other data models         |
 | [notifications.md](notifications.md)                       | Notification builders and channel management                               |
@@ -31,15 +31,14 @@ services, broadcast-based IPC, and a Pigeon bridge to the Flutter layer.
 │  Flutter Engine                                                  │
 │    └── WebtritCallkeepPlugin                                     │
 │          ├── Pigeon host APIs (ForegroundService)                │
-│          └── Bootstrap APIs (Signaling / PushNotification)       │
+│          └── Bootstrap APIs (PushNotification)                   │
 │                                                                  │
 │  ForegroundService  (bound, PHostApi)                            │
 │    ├── MainProcessConnectionTracker  (shadow call state)         │
 │    └── CallkeepCore  (facade → :callkeep_core)                   │
 │                                                                  │
-│  SignalingIsolateService  (persistent foreground service)        │
-│  IncomingCallService      (one-shot foreground service)          │
-│  ActiveCallService        (active call foreground service)       │
+│  IncomingCallService   (one-shot foreground service)             │
+│  ActiveCallService     (active call foreground service)          │
 │                                                                  │
 │  ◄── broadcasts ──────────────────────── broadcasts ──►          │
 │  ◄── startService intents ──────────────────────────────►        │

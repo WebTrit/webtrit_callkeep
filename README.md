@@ -163,13 +163,9 @@ terminate the call.
 
 ## Android background modes
 
-Android requires a running service to handle calls when the app is backgrounded. Two mutually
-exclusive modes are supported; choose one per app.
-
-### Push notification isolate (one-shot)
-
-A short-lived Flutter isolate spawned when an FCM (or other) push arrives. Exits after the call
-ends.
+Android requires a running service to handle calls when the app is backgrounded. The plugin
+provides a **push notification isolate** — a short-lived Flutter isolate spawned when an FCM (or
+other) push arrives. It exits after the call ends.
 
 ```dart
 // Register the isolate entry-point once (main isolate, before background activity):
@@ -204,40 +200,8 @@ Future<void> onPushNotificationCallback(
 }
 ```
 
-### Signaling isolate (persistent)
-
-A long-running Flutter isolate that maintains a permanent signaling connection (e.g. WebSocket).
-Survives app background and device reboot (restarted by `ForegroundCallBootReceiver`).
-
-```dart
-// Configure (optional — sets the foreground service notification text):
-await AndroidCallkeepServices.backgroundSignalingBootstrapService.setUp(
-  androidNotificationName: 'My App Calls',
-  androidNotificationDescription: 'Required to receive incoming calls',
-);
-
-// Register the isolate entry-point:
-await AndroidCallkeepServices.backgroundSignalingBootstrapService
-    .initializeCallback(onSignalingCallback);
-
-// Start / stop from the main isolate:
-await AndroidCallkeepServices.backgroundSignalingBootstrapService.startService();
-await AndroidCallkeepServices.backgroundSignalingBootstrapService.stopService();
-
-// The isolate callback:
-@pragma('vm:entry-point')
-Future<void> onSignalingCallback(
-  CallkeepServiceStatus status,
-  CallkeepIncomingCallMetadata? metadata,
-) async {
-  await initializeDependencies();
-  await signalingManager.sync(status);
-}
-```
-
-Inside either isolate, use `CallkeepBackgroundServiceDelegate` to receive answer/end events, and
-`BackgroundSignalingService` / `BackgroundPushNotificationService` to report call outcomes back to
-the platform.
+Inside the isolate, use `CallkeepBackgroundServiceDelegate` to receive answer/end events and
+`BackgroundPushNotificationService` to report call outcomes back to the platform.
 
 ---
 
@@ -292,7 +256,7 @@ The public API is covered by integration tests in
 [`webtrit_callkeep/example/integration_test/`](webtrit_callkeep/example/integration_test/).
 
 Tests cover: lifecycle, incoming/outgoing call scenarios, state machine (hold, mute, DTMF),
-foreground service timing, background service paths (push + signaling), connection queries,
+foreground service timing, push notification background service path, connection queries,
 delegate edge cases, and stress/concurrency scenarios.
 
 ```bash

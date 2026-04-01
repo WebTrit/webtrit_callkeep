@@ -21,9 +21,7 @@ webtrit_callkeep/
 │   └── android/                              # Android-specific services
 │       ├── services/
 │       │   ├── background_push_notification_bootstrap_service.dart
-│       │   ├── background_push_notification_service.dart
-│       │   ├── background_signaling_bootstrap_service.dart
-│       │   └── background_signaling_service.dart
+│       │   └── background_push_notification_service.dart
 │       └── utils/
 └── example/
     └── integration_test/                      # Integration tests for both platforms
@@ -90,15 +88,12 @@ await Callkeep().sendDTMF(callId, '5');
 
 ### Background services
 
-Two mutually exclusive modes for background call handling — see the
+Push notification isolate — see the
 [root README](../README.md#android-background-modes) for full setup instructions.
 
 ```dart
 // Push notification isolate (one-shot)
 AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-
-// Signaling isolate (persistent)
-AndroidCallkeepServices.backgroundSignalingBootstrapService
 ```
 
 ### Connection state queries (`CallkeepConnections`)
@@ -107,7 +102,6 @@ AndroidCallkeepServices.backgroundSignalingBootstrapService
 final conn = await CallkeepConnections.getConnection(callId);
 final all  = await CallkeepConnections.getConnections();
 await CallkeepConnections.cleanConnections();
-await CallkeepConnections.updateActivitySignalingStatus(status);
 ```
 
 ### Permissions and diagnostics

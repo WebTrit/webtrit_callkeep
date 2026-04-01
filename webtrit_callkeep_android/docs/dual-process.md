@@ -6,12 +6,12 @@ The Android implementation intentionally runs in two OS processes to satisfy And
 that `ConnectionService` (which handles phone calls) can be alive and responsive even when the
 application process is killed.
 
-| Property            | `main` process                                       | `:callkeep_core` process            |
-|---------------------|------------------------------------------------------|-------------------------------------|
-| **Host class**      | `ForegroundService`, `SignalingIsolateService`, etc. | `PhoneConnectionService`            |
-| **Flutter engine**  | Yes (foreground, signaling, push isolates)           | No                                  |
-| **Android Telecom** | Indirect (via IPC)                                   | Direct (owns `Connection` objects)  |
-| **Lifetime**        | Tied to app / foreground service                     | Tied to Telecom connection lifetime |
+| Property            | `main` process                                    | `:callkeep_core` process            |
+|---------------------|---------------------------------------------------|-------------------------------------|
+| **Host class**      | `ForegroundService`, `IncomingCallService`, etc.  | `PhoneConnectionService`            |
+| **Flutter engine**  | Yes (foreground, push isolates)                   | No                                  |
+| **Android Telecom** | Indirect (via IPC)                                | Direct (owns `Connection` objects)  |
+| **Lifetime**        | Tied to app / foreground service                  | Tied to Telecom connection lifetime |
 
 The process split is declared in `AndroidManifest.xml`:
 
