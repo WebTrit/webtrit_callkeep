@@ -10,6 +10,7 @@ import androidx.annotation.RequiresPermission
 import com.webtrit.callkeep.PCallkeepConnection
 import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PIncomingCallError
+import com.webtrit.callkeep.PIncomingCallErrorEnum
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
@@ -106,6 +107,20 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
 
     override fun isAnswered(callId: String): Boolean = tracker.isAnswered(callId)
 
+    override fun checkIncomingDuplicate(callId: String): PIncomingCallError? =
+        when {
+            tracker.isAnswered(callId) -> PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED)
+            tracker.exists(callId) -> PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS)
+            else -> null
+        }
+
+    override fun routeAnswerCall(callId: String): AnswerCallRoute =
+        when {
+            tracker.exists(callId) -> AnswerCallRoute.AnswerImmediately
+            tracker.isPending(callId) -> AnswerCallRoute.DeferAnswer
+            else -> AnswerCallRoute.NotFound
+        }
+
     override fun getAll(): List<CallMetadata> = tracker.getAll()
 
     override fun getPendingCallIds(): Set<String> = tracker.getPendingCallIds()
@@ -138,6 +153,11 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
     ) = tracker.markHeld(callId, onHold)
 
     override fun markTerminated(callId: String) = tracker.markTerminated(callId)
+
+    override fun markTerminatedWithEndCall(callId: String): Boolean {
+        tracker.markTerminated(callId)
+        return tracker.markEndCallDispatched(callId)
+    }
 
     override fun reserveAnswer(callId: String) = tracker.reserveAnswer(callId)
 

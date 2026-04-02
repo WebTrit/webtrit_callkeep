@@ -9,8 +9,26 @@ import androidx.annotation.RequiresPermission
 import com.webtrit.callkeep.PCallkeepConnection
 import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PIncomingCallError
+import com.webtrit.callkeep.PIncomingCallErrorEnum
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
+
+/**
+ * Routing result for [CallkeepCore.routeAnswerCall].
+ *
+ * Encodes which action [ForegroundService.answerCall] should take without
+ * leaking state-query details outside the facade.
+ */
+sealed class AnswerCallRoute {
+    /** A live [PhoneConnection] exists — answer via IPC immediately. */
+    object AnswerImmediately : AnswerCallRoute()
+
+    /** Telecom accepted the call but [PhoneConnection] is not yet created — defer via ReserveAnswer. */
+    object DeferAnswer : AnswerCallRoute()
+
+    /** No connection or pending entry found for this callId. */
+    object NotFound : AnswerCallRoute()
+}
 
 /**
  * Receives connection events dispatched by [CallkeepCore].
@@ -55,6 +73,30 @@ interface CallkeepCore {
 
     fun isAnswered(callId: String): Boolean
 
+    /**
+     * Checks whether a new incoming call for [callId] should be rejected due to an
+     * existing active or answered call with the same ID.
+     *
+     * Returns [PIncomingCallError] with [PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED]
+     * if the call was already answered, [PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS] if it is
+     * still ringing/active, or null if the callId is free and the new call may proceed.
+     *
+     * Centralises the duplicate-detection logic from [ForegroundService.reportNewIncomingCall]
+     * so that ForegroundService operates on intent (reject/allow) rather than raw state flags.
+     */
+    fun checkIncomingDuplicate(callId: String): PIncomingCallError?
+
+    /**
+     * Routes an answer request for [callId] based on current shadow state.
+     *
+     * Returns [AnswerCallRoute.AnswerImmediately] if the call is already promoted,
+     * [AnswerCallRoute.DeferAnswer] if it is pending but has no PhoneConnection yet,
+     * or [AnswerCallRoute.NotFound] if the callId is unknown.
+     *
+     * Centralises the routing logic from [ForegroundService.answerCall].
+     */
+    fun routeAnswerCall(callId: String): AnswerCallRoute
+
     fun getAll(): List<CallMetadata>
 
     fun getPendingCallIds(): Set<String>
@@ -88,6 +130,16 @@ interface CallkeepCore {
     )
 
     fun markTerminated(callId: String)
+
+    /**
+     * Atomically marks [callId] as terminated and records that [performEndCall] has been
+     * dispatched for it. Equivalent to calling [markTerminated] then [markEndCallDispatched]
+     * in sequence, but prevents the two from being accidentally split.
+     *
+     * Returns true if this is the first dispatch (i.e. [markEndCallDispatched] returned true),
+     * false if [performEndCall] was already dispatched for this call.
+     */
+    fun markTerminatedWithEndCall(callId: String): Boolean
 
     /** Reserves a deferred answer in the main-process shadow. */
     fun reserveAnswer(callId: String)
