@@ -45,17 +45,24 @@ class ConnectionManager {
      */
     fun checkAndReservePending(callId: String): PIncomingCallErrorEnum? {
         synchronized(connectionResourceLock) {
+            val snapshot = connections.entries.joinToString { (id, c) -> "$id:state=${c.state}" }
+            android.util.Log.i("CK-ConnectionManager", "checkAndReservePending: callId=$callId pending=$pendingCallIds connections=[$snapshot]")
+
             return when {
                 pendingCallIds.contains(callId) -> {
+                    android.util.Log.w("CK-ConnectionManager", "checkAndReservePending: $callId → CALL_ID_ALREADY_EXISTS (in pending)")
                     PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS
                 }
 
                 connections[callId]?.state == Connection.STATE_DISCONNECTED -> {
+                    android.util.Log.w("CK-ConnectionManager", "checkAndReservePending: $callId → CALL_ID_ALREADY_TERMINATED (STATE_DISCONNECTED in :callkeep_core)")
                     PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED
                 }
 
                 connections.containsKey(callId) -> {
-                    if (connections[callId]?.hasAnswered == true) {
+                    val answered = connections[callId]?.hasAnswered == true
+                    android.util.Log.w("CK-ConnectionManager", "checkAndReservePending: $callId → ${if (answered) "CALL_ID_ALREADY_EXISTS_AND_ANSWERED" else "CALL_ID_ALREADY_EXISTS"} (active in :callkeep_core)")
+                    if (answered) {
                         PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED
                     } else {
                         PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS
@@ -64,6 +71,7 @@ class ConnectionManager {
 
                 else -> {
                     pendingCallIds.add(callId)
+                    android.util.Log.i("CK-ConnectionManager", "checkAndReservePending: $callId → reserved as pending (free slot)")
                     null
                 }
             }

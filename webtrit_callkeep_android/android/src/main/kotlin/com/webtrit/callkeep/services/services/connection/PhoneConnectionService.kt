@@ -223,6 +223,7 @@ class PhoneConnectionService : ConnectionService() {
         request: ConnectionRequest,
     ): Connection {
         val metadata = CallMetadata.fromBundle(request.extras)
+        Log.i(TAG, "onCreateIncomingConnection: entry callId=${metadata.callId} account=$connectionManagerPhoneAccount")
 
         // Guard against stale Telecom callbacks that arrive after a tearDown.
         //
@@ -347,9 +348,9 @@ class PhoneConnectionService : ConnectionService() {
         callId?.let { connectionManager.removePending(it) }
 
         val failureContext = "onCreateIncomingConnectionFailed"
-        val failureMessage = "$failureContext: $connectionManagerPhoneAccount $request"
+        val failureMessage = "$failureContext: callId=$callId wasPending=$wasPending account=$connectionManagerPhoneAccount"
 
-        Log.e(TAG, failureMessage)
+        Log.e(TAG, "$failureMessage — Telecom rejected the incoming call registration")
 
         if (wasPending && callId != null) {
             // Notify Flutter that this call ended so it can clean up its call state.
