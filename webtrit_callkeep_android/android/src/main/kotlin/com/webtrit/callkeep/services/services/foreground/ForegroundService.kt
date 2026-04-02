@@ -505,6 +505,30 @@ class ForegroundService :
             return
         }
 
+        // Pre-register the Pigeon callback and safety timeout BEFORE calling startIncomingCall.
+        // DidPushIncomingCall can arrive synchronously — during the addNewIncomingCall Telecom
+        // call inside startIncomingCall — before the IPC onSuccess callback returns to this
+        // process. Without pre-registration, resolvePendingIncomingCallback finds no entry and
+        // the confirmation is lost, causing the 5-second timeout to fire unconditionally.
+        pendingIncomingCallbacks[callId] = callback
+        val timeoutRunnable =
+            Runnable {
+                logger.w("reportNewIncomingCall: Telecom confirmation timeout for callId=$callId, resolving with CALL_REJECTED_BY_SYSTEM")
+                pendingIncomingTimeouts.remove(callId)
+                if (addedPending) core.removePending(callId)
+                // Mark terminated and endCallDispatched so that a late-arriving HungUp
+                // broadcast (after the timeout) does not cause handleCSReportDeclineCall
+                // to fire performEndCall for a call Flutter already got callRejectedBySystem for.
+                core.markTerminated(callId)
+                core.markEndCallDispatched(callId)
+                resolvePendingIncomingCallback(
+                    callId,
+                    Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_REJECTED_BY_SYSTEM)),
+                )
+            }
+        pendingIncomingTimeouts[callId] = timeoutRunnable
+        mainHandler.postDelayed(timeoutRunnable, INCOMING_CALL_CONFIRMATION_TIMEOUT_MS)
+
         core.startIncomingCall(
             metadata = metadata,
             onSuccess = {
@@ -514,38 +538,15 @@ class ForegroundService :
                 // not fire an additional didPushIncomingCall Pigeon call. Flutter already
                 // learns about this call from __onCallSignalingEventIncoming.
                 core.markSignalingRegistered(callId)
-
-                // Defer the Pigeon callback until Telecom confirms via DidPushIncomingCall
-                // (resolve with null) or rejects via HungUp (resolve with CALL_REJECTED_BY_SYSTEM).
-                // This prevents the broken API contract where Flutter receives success from
-                // reportNewIncomingCall and then immediately receives performEndCall — which
-                // happens on OEM devices (e.g. Huawei) that reject the second concurrent
-                // self-managed call in onCreateIncomingConnectionFailed.
-                pendingIncomingCallbacks[callId] = callback
-
-                // Safety timeout: if neither DidPushIncomingCall nor HungUp arrives within
-                // the expected window, resolve with CALL_REJECTED_BY_SYSTEM so the Pigeon
-                // callback is not leaked.
-                val timeoutRunnable =
-                    Runnable {
-                        logger.w("reportNewIncomingCall: Telecom confirmation timeout for callId=$callId, resolving with CALL_REJECTED_BY_SYSTEM")
-                        pendingIncomingTimeouts.remove(callId)
-                        if (addedPending) core.removePending(callId)
-                        // Mark terminated and endCallDispatched so that a late-arriving HungUp
-                        // broadcast (after the timeout) does not cause handleCSReportDeclineCall
-                        // to fire performEndCall for a call Flutter already got
-                        // callRejectedBySystem for.
-                        core.markTerminated(callId)
-                        core.markEndCallDispatched(callId)
-                        resolvePendingIncomingCallback(
-                            callId,
-                            Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_REJECTED_BY_SYSTEM)),
-                        )
-                    }
-                pendingIncomingTimeouts[callId] = timeoutRunnable
-                mainHandler.postDelayed(timeoutRunnable, INCOMING_CALL_CONFIRMATION_TIMEOUT_MS)
+                // pendingIncomingCallbacks and timeout are already registered above.
             },
             onError = { error ->
+                // startIncomingCall failed — cancel the pre-registered timeout and callback
+                // so they do not race with the direct callback invocation below.
+                mainHandler.removeCallbacks(timeoutRunnable)
+                pendingIncomingTimeouts.remove(callId)
+                pendingIncomingCallbacks.remove(callId)
+
                 when (error?.value) {
                     PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS -> {
                         // The callId is still in the main-process ConnectionManager.pendingCallIds
