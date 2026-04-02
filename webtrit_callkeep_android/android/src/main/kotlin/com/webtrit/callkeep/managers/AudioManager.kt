@@ -109,7 +109,10 @@ class AudioManager(
      * Stop playing the ringback sound.
      */
     fun stopRingback() {
-        ringBack?.release()
-        ringBack = null
+        try {
+            ringBack?.release()
+        } finally {
+            ringBack = null
+        }
     }
 }
