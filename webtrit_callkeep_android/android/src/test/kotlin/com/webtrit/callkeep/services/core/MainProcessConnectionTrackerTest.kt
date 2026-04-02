@@ -24,12 +24,14 @@ import org.robolectric.annotation.Config
 @Config(sdk = [Build.VERSION_CODES.UPSIDE_DOWN_CAKE])
 class MainProcessConnectionTrackerTest {
     private lateinit var tracker: MainProcessConnectionTracker
+    private var fakeNow = 0L
 
     private fun metadata(callId: String = "call-1") = CallMetadata(callId = callId)
 
     @Before
     fun setUp() {
-        tracker = MainProcessConnectionTracker()
+        fakeNow = 0L
+        tracker = MainProcessConnectionTracker(clock = { fakeNow })
     }
 
     // -------------------------------------------------------------------------
@@ -589,5 +591,62 @@ class MainProcessConnectionTrackerTest {
 
         val drained = tracker.drainUnconnectedPendingCallIds()
         assertFalse(drained.contains("call-1"))
+    }
+
+    // -------------------------------------------------------------------------
+    // terminatedCallIds TTL (10 s auto-cleanup)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `isTerminated — returns true immediately after markTerminated`() {
+        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
+        tracker.markTerminated("call-1")
+        assertTrue(tracker.isTerminated("call-1"))
+    }
+
+    @Test
+    fun `isTerminated — returns true just before TTL expires`() {
+        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
+        tracker.markTerminated("call-1")
+        fakeNow = 9_999L
+        assertTrue(tracker.isTerminated("call-1"))
+    }
+
+    @Test
+    fun `isTerminated — returns false exactly at TTL boundary`() {
+        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
+        tracker.markTerminated("call-1")
+        fakeNow = 10_000L
+        assertFalse(tracker.isTerminated("call-1"))
+    }
+
+    @Test
+    fun `isTerminated — returns false after TTL has passed`() {
+        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
+        tracker.markTerminated("call-1")
+        fakeNow = 15_000L
+        assertFalse(tracker.isTerminated("call-1"))
+    }
+
+    @Test
+    fun `isTerminated — evicts entry on expiry so repeated calls return false`() {
+        tracker.markTerminated("call-1")
+        fakeNow = 10_000L
+        assertFalse(tracker.isTerminated("call-1"))
+        // Second call must also return false (entry was removed on first expiry read)
+        assertFalse(tracker.isTerminated("call-1"))
+    }
+
+    @Test
+    fun `isTerminated — independent TTLs per call`() {
+        tracker.markTerminated("call-1")
+        fakeNow = 5_000L
+        tracker.markTerminated("call-2")
+
+        fakeNow = 10_000L
+        // call-1 terminated at t=0, now t=10_000 -> expired
+        assertFalse(tracker.isTerminated("call-1"))
+        // call-2 terminated at t=5_000, now t=10_000 -> 5 s elapsed -> still valid
+        assertTrue(tracker.isTerminated("call-2"))
     }
 }

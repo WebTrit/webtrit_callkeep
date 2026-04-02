@@ -25,7 +25,9 @@ import java.util.concurrent.ConcurrentHashMap
  * Call state is mirrored via a combination of main-process updates (pending registration and
  * local guards) and IPC broadcasts from `:callkeep_core` for lifecycle transitions.
  */
-class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
+class MainProcessConnectionTracker internal constructor(
+    private val clock: () -> Long = System::currentTimeMillis,
+) : ConnectionTracker {
     // callId -> metadata for all known, non-terminated calls
     private val connections = ConcurrentHashMap<String, CallMetadata>()
 
@@ -36,7 +38,8 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
     private val answeredCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
     // callIds for which the call has fully terminated (guards duplicate endCall)
-    private val terminatedCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    // Stores termination timestamp; entries are evicted lazily after TERMINATED_TTL_MS.
+    private val terminatedCallIds: ConcurrentHashMap<String, Long> = ConcurrentHashMap()
 
     // callIds for which answerCall was requested before the PhoneConnection was created
     private val pendingAnswers: MutableSet<String> = ConcurrentHashMap.newKeySet()
@@ -145,7 +148,7 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
      * so that [isTerminated] returns true for duplicate endCall guards.
      */
     override fun markTerminated(callId: String) {
-        terminatedCallIds.add(callId)
+        terminatedCallIds[callId] = clock()
         connections.remove(callId)
         answeredCallIds.remove(callId)
         pendingCallIds.remove(callId)
@@ -166,8 +169,15 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
     /** Returns a non-destructive snapshot of all currently pending call IDs. */
     override fun getPendingCallIds(): Set<String> = pendingCallIds.toSet()
 
-    /** Returns true if [callId] has been marked terminated. */
-    override fun isTerminated(callId: String): Boolean = terminatedCallIds.contains(callId)
+    /** Returns true if [callId] has been marked terminated within the last [TERMINATED_TTL_MS] ms. */
+    override fun isTerminated(callId: String): Boolean {
+        val ts = terminatedCallIds[callId] ?: return false
+        if (clock() - ts >= TERMINATED_TTL_MS) {
+            terminatedCallIds.remove(callId)
+            return false
+        }
+        return true
+    }
 
     /** Returns true if [callId] has been answered. */
     override fun isAnswered(callId: String): Boolean = answeredCallIds.contains(callId)
@@ -279,6 +289,10 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
     override fun consumeSignalingRegistered(callId: String): Boolean = signalingRegisteredCallIds.remove(callId)
 
     companion object {
+        // Big enough to cover race conditions in the same session, but small enough to prevent 
+        // stale state from blocking new calls with same id in a future session. e.g transfer back and forth between two apps.
+        private const val TERMINATED_TTL_MS = 10_000L
+
         /**
          * Process-wide singleton. All main-process components ([ForegroundService],
          * [com.webtrit.callkeep.ConnectionsApi], etc.) share this single instance so that
