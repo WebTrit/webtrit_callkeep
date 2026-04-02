@@ -106,7 +106,12 @@ class IncomingCallService :
 
         isolateHandler =
             FlutterIsolateHandler(this@IncomingCallService, this@IncomingCallService) {
-                callLifecycleHandler.flutterApi?.syncPushIsolate(callLifecycleHandler.currentCallData, onSuccess = {}, onFailure = {})
+                Log.d(TAG, "onStart: invoking syncPushIsolate, flutterApi=${callLifecycleHandler.flutterApi != null}, callData=${callLifecycleHandler.currentCallData?.callId}")
+                callLifecycleHandler.flutterApi?.syncPushIsolate(
+                    callLifecycleHandler.currentCallData,
+                    onSuccess = { Log.d(TAG, "syncPushIsolate: success") },
+                    onFailure = { e -> Log.e(TAG, "syncPushIsolate: failed: $e") },
+                ) ?: Log.e(TAG, "syncPushIsolate: flutterApi is null, isolate will not receive call data")
             }
 
         incomingCallHandler =
