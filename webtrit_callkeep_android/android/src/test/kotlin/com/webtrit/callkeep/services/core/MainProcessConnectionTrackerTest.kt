@@ -398,7 +398,8 @@ class MainProcessConnectionTrackerTest {
         assertTrue(tracker.getAll().isEmpty())
         assertFalse(tracker.isPending("call-1"))
         assertFalse(tracker.exists("call-2"))
-        assertFalse(tracker.isTerminated("call-1"))
+        // After clear all sets are empty, so isTerminated returns true (derived: absent from all sets).
+        assertTrue(tracker.isTerminated("call-1"))
         assertFalse(tracker.consumeAnswer("call-3"))
     }
 

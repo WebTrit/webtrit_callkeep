@@ -18,6 +18,11 @@ import java.util.concurrent.ConcurrentHashMap
  *   [com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent.DeclineCall]          -> markTerminated
  * - [com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent.OngoingCall]          -> promote outgoing
  *
+ * Termination is derived: a call is considered terminated when it is absent from all active
+ * tracking sets ([connections], [pendingCallIds], [pendingAnswers], [answeredCallIds]).
+ * No explicit terminated set is maintained, so a call that re-arrives with the same ID
+ * (e.g. transfer back) is never incorrectly blocked.
+ *
  * This allows [ForegroundService] and [com.webtrit.callkeep.ConnectionsApi] to query connection
  * state without crossing a process boundary. The main process never reads
  * [com.webtrit.callkeep.services.services.connection.PhoneConnectionService.connectionManager]
@@ -34,9 +39,6 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
 
     // callIds that have been answered by the user
     private val answeredCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
-
-    // callIds for which the call has fully terminated (guards duplicate endCall)
-    private val terminatedCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
     // callIds for which answerCall was requested before the PhoneConnection was created
     private val pendingAnswers: MutableSet<String> = ConcurrentHashMap.newKeySet()
@@ -83,8 +85,6 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
      */
     override fun addPending(callId: String): Boolean {
         // Reset any stale lifecycle state from a prior use of this callId in the same session.
-        // Without this, isTerminated() / isAnswered() could return true for a genuinely new call.
-        terminatedCallIds.remove(callId)
         answeredCallIds.remove(callId)
         pendingAnswers.remove(callId)
         return pendingCallIds.add(callId)
@@ -104,7 +104,6 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
     ) {
         // Reset stale lifecycle sets in case addPending was not called first (push-path),
         // or in case this callId was reused without going through addPending.
-        terminatedCallIds.remove(callId)
         answeredCallIds.remove(callId)
         pendingAnswers.remove(callId)
         connections[callId] = metadata
@@ -140,12 +139,10 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
     }
 
     /**
-     * Mark [callId] as terminated. Removes it from the active connections map so that
-     * subsequent [exists] / [getAll] calls exclude it, and records it in [terminatedCallIds]
-     * so that [isTerminated] returns true for duplicate endCall guards.
+     * Mark [callId] as terminated. Removes it from all active tracking sets so that
+     * [isTerminated] returns true (derived: absent from all sets = terminated).
      */
     override fun markTerminated(callId: String) {
-        terminatedCallIds.add(callId)
         connections.remove(callId)
         answeredCallIds.remove(callId)
         pendingCallIds.remove(callId)
@@ -166,8 +163,17 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
     /** Returns a non-destructive snapshot of all currently pending call IDs. */
     override fun getPendingCallIds(): Set<String> = pendingCallIds.toSet()
 
-    /** Returns true if [callId] has been marked terminated. */
-    override fun isTerminated(callId: String): Boolean = terminatedCallIds.contains(callId)
+    /**
+     * Returns true if [callId] is not tracked in any active set.
+     * Termination is derived — no explicit terminated set is maintained.
+     * A call that re-arrives with the same ID (e.g. transfer back) is never blocked
+     * once it is added to [pendingCallIds] via [addPending] or [promote].
+     */
+    override fun isTerminated(callId: String): Boolean =
+        !connections.containsKey(callId) &&
+            !pendingCallIds.contains(callId) &&
+            !pendingAnswers.contains(callId) &&
+            !answeredCallIds.contains(callId)
 
     /** Returns true if [callId] has been answered. */
     override fun isAnswered(callId: String): Boolean = answeredCallIds.contains(callId)
@@ -252,7 +258,6 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         connections.clear()
         pendingCallIds.clear()
         answeredCallIds.clear()
-        terminatedCallIds.clear()
         pendingAnswers.clear()
         connectionStates.clear()
         directNotifiedCallIds.clear()
