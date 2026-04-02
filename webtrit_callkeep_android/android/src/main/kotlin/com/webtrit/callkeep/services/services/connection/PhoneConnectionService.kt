@@ -255,6 +255,7 @@ class PhoneConnectionService : ConnectionService() {
         if (connectionManager.isConnectionAlreadyExists(metadata.callId)) {
             // Clean up pending state to avoid leaks — returning a failed Connection
             // does NOT trigger onCreateIncomingConnectionFailed.
+            Log.w(TAG, "onCreateIncomingConnection: callId=${metadata.callId} — connection already exists, returning ERROR")
             connectionManager.removePending(metadata.callId)
             connectionManager.consumeAnswer(metadata.callId)
             return Connection.createFailedConnection(DisconnectCause(DisconnectCause.ERROR))
@@ -265,6 +266,7 @@ class PhoneConnectionService : ConnectionService() {
         if (connectionManager.isExistsIncomingConnection()) {
             // Clean up pending state to avoid leaks — returning a failed Connection
             // does NOT trigger onCreateIncomingConnectionFailed.
+            Log.w(TAG, "onCreateIncomingConnection: callId=${metadata.callId} — another incoming connection already exists, returning BUSY")
             connectionManager.removePending(metadata.callId)
             connectionManager.consumeAnswer(metadata.callId)
             // Notify the main process that this call was rejected so it can clean
