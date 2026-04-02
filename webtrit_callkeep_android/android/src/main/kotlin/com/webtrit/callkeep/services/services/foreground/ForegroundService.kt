@@ -431,24 +431,26 @@ class ForegroundService :
                 ringtonePath = ringtonePath,
             )
 
-        // Query tracker state BEFORE addPending, which resets lifecycle flags (answeredCallIds,
-        // terminatedCallIds). MainProcessConnectionTracker is the authoritative view of call state
-        // in the main process, updated via broadcasts from :callkeep_core. In contrast,
-        // checkAndReservePending (inside startIncomingCall) only checks
-        // PhoneConnectionService.connectionManager, which is isolated from :callkeep_core and
-        // is never updated with answered/terminated transitions — so it cannot detect these states.
+        // Query tracker state BEFORE addPending, which resets lifecycle flags (answeredCallIds).
+        // MainProcessConnectionTracker is the authoritative view of call state in the main process,
+        // updated via broadcasts from :callkeep_core. In contrast, checkAndReservePending (inside
+        // startIncomingCall) only checks PhoneConnectionService.connectionManager, which is isolated
+        // from :callkeep_core and is never updated with answered/terminated transitions.
         //
         // exists() is also checked here to short-circuit duplicate detection without a Telecom
         // round-trip. When DidPushIncomingCall has already been delivered and promoted the call,
         // the second reportNewIncomingCall must return CALL_ID_ALREADY_EXISTS immediately rather
         // than going to Telecom, which would otherwise trigger the CALL_ID_ALREADY_EXISTS adoption
         // path and return null (masking the duplicate from Flutter).
+        //
+        // isTerminated is intentionally NOT checked here. MainProcessConnectionTracker derives
+        // termination from the absence of a callId in all active sets — there is no persistent
+        // terminated list. A call that re-arrives with the same ID (e.g. transfer back) must be
+        // allowed through regardless of timing. If the Telecom connection is genuinely stuck in
+        // DISCONNECTING, ConnectionManager in :callkeep_core will reject via CALL_ID_ALREADY_TERMINATED
+        // during startIncomingCall.
         val trackerError: PIncomingCallError? =
             when {
-                core.isTerminated(callId) -> {
-                    PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED)
-                }
-
                 core.isAnswered(callId) -> {
                     PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED)
                 }
