@@ -140,7 +140,8 @@ class ConnectionManager {
         connection: PhoneConnection,
     ) {
         synchronized(connectionResourceLock) {
-            if (!connections.containsKey(callId)) {
+            val existing = connections[callId]
+            if (existing == null || existing.state == Connection.STATE_DISCONNECTED) {
                 connections[callId] = connection
             }
         }
@@ -164,11 +165,16 @@ class ConnectionManager {
         }
 
     /**
-     * Check if a connection already exists.
+     * Check if a live (non-disconnected) connection already exists for [callId].
+     *
+     * A STATE_DISCONNECTED connection is not considered "existing" because it is
+     * a terminal object left in the map until tearDown. Treating it as live would
+     * block a new incoming call that reuses the same callId (e.g. blind transfer-back).
      */
     fun isConnectionAlreadyExists(callId: String): Boolean {
         synchronized(connectionResourceLock) {
-            return connections.containsKey(callId)
+            val existing = connections[callId] ?: return false
+            return existing.state != Connection.STATE_DISCONNECTED
         }
     }
 
@@ -230,7 +236,8 @@ class ConnectionManager {
         connection: PhoneConnection,
     ): Boolean {
         synchronized(connectionResourceLock) {
-            if (!connections.containsKey(callId)) {
+            val existing = connections[callId]
+            if (existing == null || existing.state == Connection.STATE_DISCONNECTED) {
                 connections[callId] = connection
             }
             return pendingAnswers.remove(callId)
