@@ -139,7 +139,7 @@ interface CallkeepCore {
      * Returns true if this is the first dispatch (i.e. [markEndCallDispatched] returned true),
      * false if [performEndCall] was already dispatched for this call.
      */
-    fun markTerminatedWithEndCall(callId: String): Boolean
+    fun clearAndMarkEndCallDispatched(callId: String): Boolean
 
     /** Reserves a deferred answer in the main-process shadow. */
     fun reserveAnswer(callId: String)

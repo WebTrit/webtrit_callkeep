@@ -154,7 +154,7 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
 
     override fun markTerminated(callId: String) = tracker.markTerminated(callId)
 
-    override fun markTerminatedWithEndCall(callId: String): Boolean {
+    override fun clearAndMarkEndCallDispatched(callId: String): Boolean {
         tracker.markTerminated(callId)
         return tracker.markEndCallDispatched(callId)
     }

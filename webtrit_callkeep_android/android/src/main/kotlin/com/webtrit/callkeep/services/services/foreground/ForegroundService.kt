@@ -507,7 +507,7 @@ class ForegroundService :
                 // Mark terminated and endCallDispatched so that a late-arriving HungUp
                 // broadcast (after the timeout) does not cause handleCSReportDeclineCall
                 // to fire performEndCall for a call Flutter already got callRejectedBySystem for.
-                core.markTerminatedWithEndCall(callId)
+                core.clearAndMarkEndCallDispatched(callId)
                 resolvePendingIncomingCallback(
                     callId,
                     Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_REJECTED_BY_SYSTEM)),
@@ -637,7 +637,7 @@ class ForegroundService :
             logger.w("tearDown: resolving pending incoming callback for callId=$callId with CALL_REJECTED_BY_SYSTEM")
             core.markDirectNotified(callId)
             core.removePending(callId)
-            core.markTerminatedWithEndCall(callId)
+            core.clearAndMarkEndCallDispatched(callId)
             resolvePendingIncomingCallback(
                 callId,
                 Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_REJECTED_BY_SYSTEM)),
@@ -656,7 +656,7 @@ class ForegroundService :
         // startHungUpCall IPC.
         activeCallIds.forEach { callId ->
             core.markDirectNotified(callId)
-            core.markTerminatedWithEndCall(callId)
+            core.clearAndMarkEndCallDispatched(callId)
             flutterDelegateApi?.performEndCall(callId) {}
         }
 
@@ -669,7 +669,7 @@ class ForegroundService :
         // a duplicate startHungUpCall IPC if endCall() arrives during the tearDown window.
         unconnectedPending.forEach { callId ->
             core.markDirectNotified(callId)
-            core.markTerminatedWithEndCall(callId)
+            core.clearAndMarkEndCallDispatched(callId)
             flutterDelegateApi?.performEndCall(callId) {}
         }
 
@@ -1006,7 +1006,7 @@ class ForegroundService :
                 // by Flutter (after receiving callRejectedBySystem) does not re-fire
                 // performEndCall — performEndCall must never fire for a call that was
                 // never confirmed to Flutter.
-                core.markTerminatedWithEndCall(callId)
+                core.clearAndMarkEndCallDispatched(callId)
                 resolvePendingIncomingCallback(
                     callId,
                     Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_REJECTED_BY_SYSTEM)),
@@ -1021,7 +1021,7 @@ class ForegroundService :
             // (before Dart calls endCall), the broadcast fires performEndCall once here
             // AND the endCall re-fire path fires it a second time — producing a duplicate
             // delegate callback.
-            core.markTerminatedWithEndCall(callId)
+            core.clearAndMarkEndCallDispatched(callId)
 
             flutterDelegateApi?.performEndCall(callId) {}
             flutterDelegateApi?.didDeactivateAudioSession {}
@@ -1159,7 +1159,7 @@ class ForegroundService :
             logger.w("onDestroy: resolving pending incoming callback for callId=$callId with CALL_REJECTED_BY_SYSTEM")
             core.markDirectNotified(callId)
             core.removePending(callId)
-            core.markTerminatedWithEndCall(callId)
+            core.clearAndMarkEndCallDispatched(callId)
             resolvePendingIncomingCallback(
                 callId,
                 Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_REJECTED_BY_SYSTEM)),
