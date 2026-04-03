@@ -132,11 +132,9 @@ interface CallkeepCore {
     fun markTerminated(callId: String)
 
     /**
-     * Full teardown for [callId]: cleans up all tracking state and records that
-     * [performEndCall] has been dispatched.
+     * Clears all state for [callId] and records that [performEndCall] has been dispatched.
      *
-     * Returns true if this is the first dispatch, false if [performEndCall] was already
-     * dispatched for this call.
+     * Returns true if this is the first dispatch, false if already dispatched.
      */
     fun clearAndMarkEndCallDispatched(callId: String): Boolean
 
