@@ -15,6 +15,10 @@
     }
   ],
   "useGitignore": true,
+  "ignorePaths": [
+    "callkeep_exceptions_report_*.md",
+    "wip_context.md"
+  ],
   "words": [
     "fluttium",
     "callkeep",
