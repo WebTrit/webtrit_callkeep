@@ -531,11 +531,11 @@ void main() {
       expect(endedId, id);
     });
 
-    /// After a decline the call is terminated. A subsequent reportNewIncomingCall
-    /// with the same ID must return callIdAlreadyTerminated, confirming that
-    /// the full cleanup path (performEndCall → release → releaseResources)
-    /// completed and the ConnectionManager's terminated set was updated.
-    testWidgets('after decline, re-reporting same ID returns callIdAlreadyTerminated', (WidgetTester _) async {
+    /// After a decline the callId can be reused: the stale STATE_DISCONNECTED
+    /// connection is treated as absent and a new incoming call with the same ID
+    /// registers successfully. This matches the blind transfer-back flow where
+    /// the signaling layer reuses the same callId for the returning call.
+    testWidgets('after decline, re-reporting same ID succeeds (callId reuse supported)', (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
         return;
@@ -549,25 +549,21 @@ void main() {
       await callkeep.endCall(id);
       await endCompleter.future.timeout(const Duration(seconds: 5));
 
-      // Poll until the Android side registers the terminated state, rather than
-      // relying on a fixed delay that can be too short on slow devices.
-      CallkeepIncomingCallError? err;
-      final deadline = DateTime.now().add(const Duration(seconds: 5));
-      while (DateTime.now().isBefore(deadline)) {
-        err = await callkeep.reportNewIncomingCall(
-          id,
-          _handle1,
-          displayName: 'Call',
-        );
-        if (err == CallkeepIncomingCallError.callIdAlreadyTerminated) break;
-        await Future.delayed(const Duration(milliseconds: 100));
-      }
+      // After cleanup, re-reporting the same callId must succeed — stale
+      // DISCONNECTED connections are treated as absent (transfer-back support).
+      final err = await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
 
       expect(
         err,
-        CallkeepIncomingCallError.callIdAlreadyTerminated,
-        reason: 'terminated call must be recognised as such, not as a fresh slot',
+        isNull,
+        reason: 'terminated callId can be reused after cleanup (transfer-back support)',
       );
+
+      // Cleanup: end the re-registered call.
+      final endCompleter2 = Completer<String>();
+      delegate.onPerformEndCall = endCompleter2.complete;
+      await callkeep.endCall(id);
+      await endCompleter2.future.timeout(const Duration(seconds: 5));
     });
   });
 

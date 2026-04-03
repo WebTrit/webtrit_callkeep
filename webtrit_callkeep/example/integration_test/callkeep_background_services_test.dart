@@ -476,15 +476,15 @@ void main() {
     });
 
     // -----------------------------------------------------------------------
-    // After push service cleans up, callId is marked as terminated
+    // Transfer-back: same callId reused after the previous call ends
     //
-    // Scenario: push isolate completes its lifecycle (BYE sent, connection
-    // released). Any subsequent reportNewIncomingCall for the same callId
-    // must return callIdAlreadyTerminated, confirming full cleanup.
-    // Matches: IsolateManager close() → endCallsOnService() → releaseResources
+    // Scenario: after a blind transfer the call returns to the originating
+    // device with the same callId.  The stale STATE_DISCONNECTED connection
+    // left in ConnectionManager must be treated as absent so the new
+    // incoming call registers successfully with Telecom.
     // -----------------------------------------------------------------------
 
-    testWidgets('after push service ends a call, re-reporting same id returns callIdAlreadyTerminated',
+    testWidgets('after push service ends a call, re-reporting same id succeeds (transfer-back)',
         (WidgetTester _) async {
       if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
         markTestSkipped('Android only');
@@ -493,6 +493,7 @@ void main() {
 
       final id = _nextId();
 
+      // First call: register → end → wait for delegate notification.
       await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
           .reportNewIncomingCall(id, _handle1, displayName: 'Hank');
 
@@ -500,25 +501,25 @@ void main() {
       delegate.onPerformEndCall = (cid) {
         if (cid == id && !endLatch.isCompleted) endLatch.complete();
       };
-      // IncomingCallService (push isolate) is not available without FCM;
-      // end via main-process callkeep which exercises the same Telecom path.
       await callkeep.endCall(id);
-      await _waitFor(endLatch.future, label: 'performEndCall');
+      await _waitFor(endLatch.future, label: 'performEndCall for first call');
 
-      // Poll until Android registers the terminated state
-      CallkeepIncomingCallError? err;
-      final deadline = DateTime.now().add(const Duration(seconds: 5));
-      while (DateTime.now().isBefore(deadline)) {
-        err = await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Hank');
-        if (err == CallkeepIncomingCallError.callIdAlreadyTerminated) break;
-        await Future.delayed(const Duration(milliseconds: 100));
-      }
+      // Transfer-back: new incoming call reusing the same callId must succeed.
+      final err = await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Hank');
 
       expect(
         err,
-        CallkeepIncomingCallError.callIdAlreadyTerminated,
-        reason: 'fully cleaned-up call must be recognised as terminated',
+        isNull,
+        reason: 'transfer-back reusing a terminated callId must be accepted',
       );
+
+      // Cleanup: end the re-registered call.
+      final endLatch2 = Completer<void>();
+      delegate.onPerformEndCall = (cid) {
+        if (cid == id && !endLatch2.isCompleted) endLatch2.complete();
+      };
+      await callkeep.endCall(id);
+      await _waitFor(endLatch2.future, label: 'performEndCall for transfer-back call');
     });
 
     // -----------------------------------------------------------------------
