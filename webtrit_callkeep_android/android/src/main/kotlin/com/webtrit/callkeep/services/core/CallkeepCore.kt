@@ -74,26 +74,17 @@ interface CallkeepCore {
     fun isAnswered(callId: String): Boolean
 
     /**
-     * Checks whether a new incoming call for [callId] should be rejected due to an
-     * existing active or answered call with the same ID.
-     *
+     * Returns null if [callId] is free and a new incoming call may proceed.
      * Returns [PIncomingCallError] with [PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED]
-     * if the call was already answered, [PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS] if it is
-     * still ringing/active, or null if the callId is free and the new call may proceed.
-     *
-     * Centralises the duplicate-detection logic from [ForegroundService.reportNewIncomingCall]
-     * so that ForegroundService operates on intent (reject/allow) rather than raw state flags.
+     * if already answered, or [PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS] if still ringing/active.
      */
     fun checkIncomingDuplicate(callId: String): PIncomingCallError?
 
     /**
-     * Routes an answer request for [callId] based on current shadow state.
-     *
-     * Returns [AnswerCallRoute.AnswerImmediately] if the call is already promoted,
-     * [AnswerCallRoute.DeferAnswer] if it is pending but has no PhoneConnection yet,
-     * or [AnswerCallRoute.NotFound] if the callId is unknown.
-     *
-     * Centralises the routing logic from [ForegroundService.answerCall].
+     * Returns the action to take for an answer request on [callId]:
+     * [AnswerCallRoute.AnswerImmediately] if a live connection exists,
+     * [AnswerCallRoute.DeferAnswer] if pending but not yet connected,
+     * [AnswerCallRoute.NotFound] if the callId is unknown.
      */
     fun routeAnswerCall(callId: String): AnswerCallRoute
 
@@ -138,7 +129,7 @@ interface CallkeepCore {
      */
     fun clearAndMarkEndCallDispatched(callId: String): Boolean
 
-    /** Reserves a deferred answer in the main-process shadow. */
+    /** Reserves a deferred answer for [callId] so it is applied when the connection is created. */
     fun reserveAnswer(callId: String)
 
     fun consumeAnswer(callId: String): Boolean
@@ -170,13 +161,8 @@ interface CallkeepCore {
     // -------------------------------------------------------------------------
 
     /**
-     * Subscribes [listener] to receive connection events from [ConnectionServicePerformBroadcaster].
-     *
-     * The first registered listener triggers registration of a single global [BroadcastReceiver]
-     * that lives until the last listener unregisters. All subsequent listeners share that receiver.
-     * Safe to call multiple times with the same listener — duplicates are allowed by
-     * [java.util.concurrent.CopyOnWriteArrayList] semantics; callers must balance
-     * add/remove calls.
+     * Subscribes [listener] to receive connection events. Callers must balance every
+     * [addConnectionEventListener] with a corresponding [removeConnectionEventListener].
      */
     fun addConnectionEventListener(listener: ConnectionEventListener)
 
