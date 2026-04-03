@@ -15,10 +15,6 @@
     }
   ],
   "useGitignore": true,
-  "ignorePaths": [
-    "callkeep_exceptions_report_*.md",
-    "wip_context.md"
-  ],
   "words": [
     "fluttium",
     "callkeep",
@@ -29,7 +25,17 @@
     "unmutes",
     "Siri",
     "jsep",
-    "Servicee", 
-    "anwser"
+    "Servicee",
+    "anwser",
+    "logcat",
+    "Logcat",
+    "libwebrtc",
+    "WEBRTC",
+    "Webrtc",
+    "incall",
+    "worktrees",
+    "DLAQ",
+    "bugggggg",
+    "meawbmvvrpupdnmdkhhasiykhulihwdn"
   ]
 }
