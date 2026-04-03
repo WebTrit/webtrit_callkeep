@@ -17,6 +17,7 @@ import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadcaster
+import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -156,6 +157,10 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
 
     override fun clearAndMarkEndCallDispatched(callId: String): Boolean {
         tracker.markTerminated(callId)
+        // Remove the main-process ConnectionManager pending reservation so a subsequent
+        // reportNewIncomingCall with the same callId (e.g. blind transfer-back) is not
+        // permanently blocked by the stale pendingCallIds entry from the original registration.
+        PhoneConnectionService.connectionManager.removePending(callId)
         return tracker.markEndCallDispatched(callId)
     }
 

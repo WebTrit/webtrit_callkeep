@@ -447,9 +447,7 @@ class ForegroundService :
         // isTerminated is intentionally NOT checked here. MainProcessConnectionTracker derives
         // termination from the absence of a callId in all active sets — there is no persistent
         // terminated list. A call that re-arrives with the same ID (e.g. transfer back) must be
-        // allowed through regardless of timing. If the Telecom connection is genuinely stuck in
-        // DISCONNECTING, ConnectionManager in :callkeep_core will reject via CALL_ID_ALREADY_TERMINATED
-        // during startIncomingCall.
+        // allowed through regardless of timing.
         val trackerError: PIncomingCallError? = core.checkIncomingDuplicate(callId)
         if (trackerError != null) {
             if (trackerError.value == PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED) {
