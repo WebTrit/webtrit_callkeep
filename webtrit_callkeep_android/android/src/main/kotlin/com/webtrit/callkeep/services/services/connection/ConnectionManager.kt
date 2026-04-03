@@ -55,8 +55,14 @@ class ConnectionManager {
                 }
 
                 connections[callId]?.state == Connection.STATE_DISCONNECTED -> {
-                    android.util.Log.w("CK-ConnectionManager", "checkAndReservePending: $callId → CALL_ID_ALREADY_TERMINATED (STATE_DISCONNECTED in :callkeep_core)")
-                    PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED
+                    // Align with isConnectionAlreadyExists/addConnection: treat a stale
+                    // STATE_DISCONNECTED entry as absent so the same callId can be reused
+                    // (e.g. blind transfer-back). Remove the old entry and reserve as pending.
+                    android.util.Log.w("CK-ConnectionManager", "checkAndReservePending: $callId has stale STATE_DISCONNECTED connection — allowing reuse, reserving as pending")
+                    connections.remove(callId)
+                    pendingCallIds.add(callId)
+                    android.util.Log.i("CK-ConnectionManager", "checkAndReservePending: $callId → reserved as pending (previous connection was STATE_DISCONNECTED)")
+                    null
                 }
 
                 connections.containsKey(callId) -> {

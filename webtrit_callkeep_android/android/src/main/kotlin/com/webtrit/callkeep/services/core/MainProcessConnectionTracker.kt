@@ -164,13 +164,22 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
     override fun getPendingCallIds(): Set<String> = pendingCallIds.toSet()
 
     /**
-     * Returns true if [callId] is not tracked in any active set.
-     * Termination is derived — no explicit terminated set is maintained.
-     * A call that re-arrives with the same ID (e.g. transfer back) is never blocked
-     * once it is added to [pendingCallIds] via [addPending] or [promote].
+     * Returns true if [callId] was previously observed (i.e. appeared in [connectionStates]
+     * via [addPending] → [markTerminated], [promote], or [markAnswered]) and is no longer
+     * present in any active tracking set.
+     *
+     * Requiring [connectionStates] presence prevents false positives for callIds that were
+     * never tracked: an unknown callId absent from all sets is NOT considered terminated —
+     * it is simply unknown. Without this guard, [ForegroundService.endCall] would
+     * misclassify an unknown callId as terminated and fire a spurious [performEndCall].
+     *
+     * Termination is still derived — no explicit terminated set is maintained — so a call
+     * that re-arrives with the same ID (e.g. transfer back) is never blocked once it
+     * re-enters [pendingCallIds] via [addPending] or [promote].
      */
     override fun isTerminated(callId: String): Boolean =
-        !connections.containsKey(callId) &&
+        connectionStates.containsKey(callId) &&
+            !connections.containsKey(callId) &&
             !pendingCallIds.contains(callId) &&
             !pendingAnswers.contains(callId) &&
             !answeredCallIds.contains(callId)

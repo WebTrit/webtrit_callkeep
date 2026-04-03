@@ -226,21 +226,24 @@ class ConnectionManagerTest {
     }
 
     @Test
-    fun `validateConnectionAddition calls onError TERMINATED for a disconnected callId`() {
+    fun `validateConnectionAddition calls onSuccess for a disconnected callId — reuse allowed`() {
+        // A STATE_DISCONNECTED connection is treated as absent so that the same callId can be
+        // reused for a new incoming call (e.g. blind transfer-back). The stale entry is removed
+        // and the callId is reserved as pending — onSuccess must be called.
         val manager = createManager()
         val conn = createRingingConnection("call-1")
         manager.addConnection("call-1", conn)
         conn.setDisconnected(DisconnectCause(DisconnectCause.LOCAL))
         PhoneConnectionService.connectionManager = manager
 
-        var errorEnum: PIncomingCallErrorEnum? = null
+        var success = false
         ConnectionManager.validateConnectionAddition(
             metadata = CallMetadata(callId = "call-1"),
-            onSuccess = { },
-            onError = { errorEnum = it.value },
+            onSuccess = { success = true },
+            onError = { },
         )
 
-        assertEquals(PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED, errorEnum)
+        assertTrue(success)
     }
 
     @Test
