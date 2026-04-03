@@ -543,6 +543,12 @@ void main() {
       await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
           .reportNewIncomingCall(id, _handle1, displayName: 'Irene');
 
+      // Wait for the push-path call to propagate from :callkeep_core to the
+      // main-process connection tracker via IPC before calling tearDown().
+      // Without this, tearDown() may call getAll() before the call is visible
+      // in the main process and skip the performEndCall dispatch.
+      await _waitForConnection(id);
+
       final latch = Completer<void>();
       delegate.onPerformEndCall = (cid) {
         if (cid == id && !latch.isCompleted) latch.complete();

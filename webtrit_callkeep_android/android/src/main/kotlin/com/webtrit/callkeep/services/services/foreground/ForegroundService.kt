@@ -514,16 +514,19 @@ class ForegroundService :
         pendingIncomingTimeouts[callId] = timeoutRunnable
         mainHandler.postDelayed(timeoutRunnable, INCOMING_CALL_CONFIRMATION_TIMEOUT_MS)
 
+        // Mark this callId as signaling-registered BEFORE calling startIncomingCall so
+        // that the DidPushIncomingCall broadcast (fired by :callkeep_core during the IPC
+        // round-trip) is suppressed even if it arrives before the onSuccess callback runs.
+        // Flutter learns about this call from __onCallSignalingEventIncoming, so the
+        // duplicate push-path didPushIncomingCall must not reach it.
+        core.markSignalingRegistered(callId)
+
         core.startIncomingCall(
             metadata = metadata,
             onSuccess = {
                 logger.d("reportNewIncomingCall: startIncomingCall success callId=$callId")
-                // Mark this callId as signaling-registered so that the DidPushIncomingCall
-                // broadcast (which arrives later via the :callkeep_core IPC round-trip) does
-                // not fire an additional didPushIncomingCall Pigeon call. Flutter already
-                // learns about this call from __onCallSignalingEventIncoming.
-                core.markSignalingRegistered(callId)
                 // pendingIncomingCallbacks and timeout are already registered above.
+                // markSignalingRegistered was already called before startIncomingCall.
             },
             onError = { error ->
                 // startIncomingCall failed — cancel the pre-registered timeout and callback
@@ -552,7 +555,6 @@ class ForegroundService :
                             logger.i("reportNewIncomingCall: adopting already-answered call callId=$callId (CALL_ID_ALREADY_EXISTS + STATE_ACTIVE)")
                             core.promote(callId, metadata, PCallkeepConnectionState.STATE_ACTIVE)
                             core.markAnswered(callId)
-                            core.markSignalingRegistered(callId)
                             flutterDelegateApi?.performAnswerCall(callId) {}
                             callback(Result.success(null))
                         } else {
@@ -565,7 +567,6 @@ class ForegroundService :
                             // reported to Flutter by the push path's didPushIncomingCall callback.
                             logger.i("reportNewIncomingCall: ringing call already in Telecom callId=$callId, promoting and returning callIdAlreadyExists")
                             core.promote(callId, metadata, PCallkeepConnectionState.STATE_RINGING)
-                            core.markSignalingRegistered(callId)
                             callback(
                                 Result.success(
                                     PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS),
@@ -582,16 +583,15 @@ class ForegroundService :
                         logger.i("reportNewIncomingCall: adopting already-answered call callId=$callId")
                         core.promote(callId, metadata, PCallkeepConnectionState.STATE_ACTIVE)
                         core.markAnswered(callId)
-                        core.markSignalingRegistered(callId)
                         flutterDelegateApi?.performAnswerCall(callId) {}
                         callback(Result.success(null))
                     }
 
                     else -> {
                         logger.e("reportNewIncomingCall: startIncomingCall failed callId=$callId, error=$error")
-                        // Roll back the pending entry only if this invocation added it. This avoids
-                        // removing a genuine pending entry registered by a concurrent first invocation
-                        // when a duplicate call's error arrives.
+                        // Roll back the signaling-registered guard and the pending entry so that
+                        // a retry or concurrent push-path registration is not incorrectly suppressed.
+                        core.consumeSignalingRegistered(callId)
                         if (addedPending) core.removePending(callId)
                         callback(Result.success(error))
                     }
