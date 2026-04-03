@@ -84,9 +84,15 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
      * caller's genuine pending entry.
      */
     override fun addPending(callId: String): Boolean {
-        // Reset any stale lifecycle state from a prior use of this callId in the same session.
+        // Reset all per-call lifecycle state from any prior use of this callId (e.g. transfer-back
+        // reusing the same callId). Without this, a reused callId can inherit stale guards from
+        // the previous call — for example, endCallDispatchedCallIds would cause the second
+        // clearAndMarkEndCallDispatched to return false, suppressing the required performEndCall.
         answeredCallIds.remove(callId)
         pendingAnswers.remove(callId)
+        endCallDispatchedCallIds.remove(callId)
+        directNotifiedCallIds.remove(callId)
+        signalingRegisteredCallIds.remove(callId)
         return pendingCallIds.add(callId)
     }
 
@@ -102,10 +108,13 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         metadata: CallMetadata,
         state: PCallkeepConnectionState,
     ) {
-        // Reset stale lifecycle sets in case addPending was not called first (push-path),
-        // or in case this callId was reused without going through addPending.
+        // Reset all per-call lifecycle guards in case addPending was not called first (push-path),
+        // or in case this callId is being reused without going through addPending.
         answeredCallIds.remove(callId)
         pendingAnswers.remove(callId)
+        endCallDispatchedCallIds.remove(callId)
+        directNotifiedCallIds.remove(callId)
+        signalingRegisteredCallIds.remove(callId)
         connections[callId] = metadata
         pendingCallIds.remove(callId)
         connectionStates[callId] = state

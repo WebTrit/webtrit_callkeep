@@ -132,9 +132,13 @@ interface CallkeepCore {
     fun markTerminated(callId: String)
 
     /**
-     * Atomically marks [callId] as terminated and records that [performEndCall] has been
-     * dispatched for it. Equivalent to calling [markTerminated] then [markEndCallDispatched]
-     * in sequence, but prevents the two from being accidentally split.
+     * Marks [callId] as terminated, records that [performEndCall] has been dispatched for it,
+     * and removes any stale pending reservation from the main-process [ConnectionManager].
+     *
+     * The pending-reservation cleanup is needed to allow a subsequent [reportNewIncomingCall]
+     * with the same [callId] (e.g. blind transfer-back) to succeed — without it, the stale
+     * entry in the main-process [ConnectionManager.pendingCallIds] would cause
+     * [ConnectionManager.checkAndReservePending] to return [PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS].
      *
      * Returns true if this is the first dispatch (i.e. [markEndCallDispatched] returned true),
      * false if [performEndCall] was already dispatched for this call.

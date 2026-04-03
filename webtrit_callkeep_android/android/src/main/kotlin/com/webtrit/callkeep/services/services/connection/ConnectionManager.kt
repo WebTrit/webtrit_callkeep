@@ -3,10 +3,12 @@ package com.webtrit.callkeep.services.services.connection
 import android.telecom.Connection
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.PIncomingCallErrorEnum
+import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.models.CallMetadata
 import java.util.concurrent.ConcurrentHashMap
 
 class ConnectionManager {
+    private val logger = Log("ConnectionManager")
     private val connections: ConcurrentHashMap<String, PhoneConnection> = ConcurrentHashMap()
     private val connectionResourceLock = Any()
 
@@ -45,12 +47,9 @@ class ConnectionManager {
      */
     fun checkAndReservePending(callId: String): PIncomingCallErrorEnum? {
         synchronized(connectionResourceLock) {
-            val snapshot = connections.entries.joinToString { (id, c) -> "$id:state=${c.state}" }
-            android.util.Log.i("CK-ConnectionManager", "checkAndReservePending: callId=$callId pending=$pendingCallIds connections=[$snapshot]")
-
             return when {
                 pendingCallIds.contains(callId) -> {
-                    android.util.Log.w("CK-ConnectionManager", "checkAndReservePending: $callId → CALL_ID_ALREADY_EXISTS (in pending)")
+                    logger.w("checkAndReservePending: $callId → CALL_ID_ALREADY_EXISTS (in pending)")
                     PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS
                 }
 
@@ -58,16 +57,17 @@ class ConnectionManager {
                     // Align with isConnectionAlreadyExists/addConnection: treat a stale
                     // STATE_DISCONNECTED entry as absent so the same callId can be reused
                     // (e.g. blind transfer-back). Remove the old entry and reserve as pending.
-                    android.util.Log.w("CK-ConnectionManager", "checkAndReservePending: $callId has stale STATE_DISCONNECTED connection — allowing reuse, reserving as pending")
+                    logger.w("checkAndReservePending: $callId has stale STATE_DISCONNECTED connection — allowing reuse, reserving as pending")
                     connections.remove(callId)
                     pendingCallIds.add(callId)
-                    android.util.Log.i("CK-ConnectionManager", "checkAndReservePending: $callId → reserved as pending (previous connection was STATE_DISCONNECTED)")
+                    logger.i("checkAndReservePending: $callId → reserved as pending (previous connection was STATE_DISCONNECTED)")
                     null
                 }
 
                 connections.containsKey(callId) -> {
                     val answered = connections[callId]?.hasAnswered == true
-                    android.util.Log.w("CK-ConnectionManager", "checkAndReservePending: $callId → ${if (answered) "CALL_ID_ALREADY_EXISTS_AND_ANSWERED" else "CALL_ID_ALREADY_EXISTS"} (active in :callkeep_core)")
+                    val snapshot = connections.entries.joinToString { (id, c) -> "$id:state=${c.state}" }
+                    logger.w("checkAndReservePending: $callId → ${if (answered) "CALL_ID_ALREADY_EXISTS_AND_ANSWERED" else "CALL_ID_ALREADY_EXISTS"} (active in :callkeep_core) connections=[$snapshot]")
                     if (answered) {
                         PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED
                     } else {
@@ -77,7 +77,7 @@ class ConnectionManager {
 
                 else -> {
                     pendingCallIds.add(callId)
-                    android.util.Log.i("CK-ConnectionManager", "checkAndReservePending: $callId → reserved as pending (free slot)")
+                    logger.i("checkAndReservePending: $callId → reserved as pending (free slot)")
                     null
                 }
             }
