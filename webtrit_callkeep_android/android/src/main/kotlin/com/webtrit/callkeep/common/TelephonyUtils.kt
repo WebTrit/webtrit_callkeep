@@ -102,13 +102,35 @@ class TelephonyUtils(
         private val logger = Log(TAG)
 
         /**
-         * Returns true if the device supports the Android Telecom framework
-         * (`android.software.telecom` system feature).
+         * Returns true if the device supports the Android Telecom framework.
          *
-         * Devices without this feature (e.g. some tablets, Android Go builds, certain OEM
-         * configurations) cannot use [TelecomManager] for call management. Callers should
-         * check this before registering a phone account or invoking any Telecom API.
+         * Checks the `android.software.telecom` system feature first. If that flag is absent,
+         * falls back to inspecting [TelephonyManager.getPhoneType]: any device with a GSM,
+         * CDMA, or SIP radio has the Telecom infrastructure available, regardless of whether
+         * the OEM advertises the feature flag.
+         *
+         * This fallback handles known OEM omissions (e.g. ASUS AI2202) where the device is a
+         * fully functional phone with Telecom support but does not declare the feature flag in
+         * its system build.
+         *
+         * Devices that return [TelephonyManager.PHONE_TYPE_NONE] (e.g. Wi-Fi-only tablets,
+         * Android Go builds) do not have Telecom infrastructure and should use the standalone
+         * call path instead.
          */
-        fun isTelecomSupported(context: Context): Boolean = context.packageManager.hasSystemFeature("android.software.telecom")
+        fun isTelecomSupported(context: Context): Boolean {
+            if (context.packageManager.hasSystemFeature("android.software.telecom")) return true
+
+            // Fallback for OEMs that have Telecom infrastructure but omit the feature flag.
+            return try {
+                val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+                val phoneType = tm?.phoneType ?: TelephonyManager.PHONE_TYPE_NONE
+                val supported = phoneType != TelephonyManager.PHONE_TYPE_NONE
+                logger.i("isTelecomSupported: feature flag absent, phoneType=$phoneType — treating Telecom as supported=$supported")
+                supported
+            } catch (e: Exception) {
+                logger.w("isTelecomSupported: fallback check failed (${e.message}), assuming no Telecom support")
+                false
+            }
+        }
     }
 }
