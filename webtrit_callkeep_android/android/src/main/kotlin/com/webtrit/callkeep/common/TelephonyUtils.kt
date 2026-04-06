@@ -99,15 +99,21 @@ class TelephonyUtils(
     companion object {
         private const val TAG = "TelephonyUtils"
 
+        // Equivalent to PackageManager.FEATURE_TELECOM (added in API 34).
+        // Defined as a local constant to avoid a lint InlinedApi warning on minSdk 26.
+        private const val FEATURE_TELECOM = "android.software.telecom"
+
         private val logger = Log(TAG)
 
         /**
          * Returns true if the device supports the Android Telecom framework.
          *
          * Checks the `android.software.telecom` system feature first. If that flag is absent,
-         * falls back to inspecting [TelephonyManager.getPhoneType]: any device with a GSM,
-         * CDMA, or SIP radio has the Telecom infrastructure available, regardless of whether
-         * the OEM advertises the feature flag.
+         * falls back to inspecting [TelephonyManager.getPhoneType]: any device whose phone
+         * type is not [TelephonyManager.PHONE_TYPE_NONE] is treated as having Telecom
+         * infrastructure available, regardless of whether the OEM advertises the feature flag.
+         * This includes common telephony types such as GSM, CDMA, and SIP, and also preserves
+         * support for any other non-NONE phone types reported by the platform.
          *
          * Some OEM devices have full Telecom support but do not declare the feature flag in
          * their system build. The fallback covers this case.
@@ -117,7 +123,7 @@ class TelephonyUtils(
          * call path instead.
          */
         fun isTelecomSupported(context: Context): Boolean {
-            if (context.packageManager.hasSystemFeature("android.software.telecom")) return true
+            if (context.packageManager.hasSystemFeature(FEATURE_TELECOM)) return true
 
             // Fallback for OEMs that have Telecom infrastructure but omit the feature flag.
             return try {
@@ -127,7 +133,7 @@ class TelephonyUtils(
                 logger.i("isTelecomSupported: feature flag absent, phoneType=$phoneType — treating Telecom as supported=$supported")
                 supported
             } catch (e: Exception) {
-                logger.w("isTelecomSupported: fallback check failed (${e.message}), assuming no Telecom support")
+                logger.w("isTelecomSupported: fallback check failed, assuming no Telecom support", e)
                 false
             }
         }
