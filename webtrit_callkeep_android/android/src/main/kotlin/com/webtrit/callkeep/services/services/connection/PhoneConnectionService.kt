@@ -223,6 +223,7 @@ class PhoneConnectionService : ConnectionService() {
         request: ConnectionRequest,
     ): Connection {
         val metadata = CallMetadata.fromBundle(request.extras)
+        Log.i(TAG, "onCreateIncomingConnection: entry callId=${metadata.callId} account=$connectionManagerPhoneAccount")
 
         // Guard against stale Telecom callbacks that arrive after a tearDown.
         //
@@ -254,6 +255,7 @@ class PhoneConnectionService : ConnectionService() {
         if (connectionManager.isConnectionAlreadyExists(metadata.callId)) {
             // Clean up pending state to avoid leaks — returning a failed Connection
             // does NOT trigger onCreateIncomingConnectionFailed.
+            Log.w(TAG, "onCreateIncomingConnection: callId=${metadata.callId} — connection already exists, returning ERROR")
             connectionManager.removePending(metadata.callId)
             connectionManager.consumeAnswer(metadata.callId)
             return Connection.createFailedConnection(DisconnectCause(DisconnectCause.ERROR))
@@ -264,6 +266,7 @@ class PhoneConnectionService : ConnectionService() {
         if (connectionManager.isExistsIncomingConnection()) {
             // Clean up pending state to avoid leaks — returning a failed Connection
             // does NOT trigger onCreateIncomingConnectionFailed.
+            Log.w(TAG, "onCreateIncomingConnection: callId=${metadata.callId} — another incoming connection already exists, returning BUSY")
             connectionManager.removePending(metadata.callId)
             connectionManager.consumeAnswer(metadata.callId)
             // Notify the main process that this call was rejected so it can clean
@@ -347,9 +350,9 @@ class PhoneConnectionService : ConnectionService() {
         callId?.let { connectionManager.removePending(it) }
 
         val failureContext = "onCreateIncomingConnectionFailed"
-        val failureMessage = "$failureContext: $connectionManagerPhoneAccount $request"
+        val failureMessage = "$failureContext: callId=$callId wasPending=$wasPending account=$connectionManagerPhoneAccount"
 
-        Log.e(TAG, failureMessage)
+        Log.e(TAG, "$failureMessage — Telecom rejected the incoming call registration")
 
         if (wasPending && callId != null) {
             // Notify Flutter that this call ended so it can clean up its call state.

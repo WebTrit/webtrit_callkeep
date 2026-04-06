@@ -9,8 +9,26 @@ import androidx.annotation.RequiresPermission
 import com.webtrit.callkeep.PCallkeepConnection
 import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PIncomingCallError
+import com.webtrit.callkeep.PIncomingCallErrorEnum
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
+
+/**
+ * Routing result for [CallkeepCore.routeAnswerCall].
+ *
+ * Encodes which action [ForegroundService.answerCall] should take without
+ * leaking state-query details outside the facade.
+ */
+sealed class AnswerCallRoute {
+    /** A live [PhoneConnection] exists — answer via IPC immediately. */
+    object AnswerImmediately : AnswerCallRoute()
+
+    /** Telecom accepted the call but [PhoneConnection] is not yet created — defer via ReserveAnswer. */
+    object DeferAnswer : AnswerCallRoute()
+
+    /** No connection or pending entry found for this callId. */
+    object NotFound : AnswerCallRoute()
+}
 
 /**
  * Receives connection events dispatched by [CallkeepCore].
@@ -55,6 +73,21 @@ interface CallkeepCore {
 
     fun isAnswered(callId: String): Boolean
 
+    /**
+     * Returns null if [callId] is free and a new incoming call may proceed.
+     * Returns [PIncomingCallError] with [PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED]
+     * if already answered, or [PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS] if still ringing/active.
+     */
+    fun checkIncomingDuplicate(callId: String): PIncomingCallError?
+
+    /**
+     * Returns the action to take for an answer request on [callId]:
+     * [AnswerCallRoute.AnswerImmediately] if a live connection exists,
+     * [AnswerCallRoute.DeferAnswer] if pending but not yet connected,
+     * [AnswerCallRoute.NotFound] if the callId is unknown.
+     */
+    fun routeAnswerCall(callId: String): AnswerCallRoute
+
     fun getAll(): List<CallMetadata>
 
     fun getPendingCallIds(): Set<String>
@@ -89,7 +122,14 @@ interface CallkeepCore {
 
     fun markTerminated(callId: String)
 
-    /** Reserves a deferred answer in the main-process shadow. */
+    /**
+     * Clears all state for [callId] and records that [performEndCall] has been dispatched.
+     *
+     * Returns true if this is the first dispatch, false if already dispatched.
+     */
+    fun clearAndMarkEndCallDispatched(callId: String): Boolean
+
+    /** Reserves a deferred answer for [callId] so it is applied when the connection is created. */
     fun reserveAnswer(callId: String)
 
     fun consumeAnswer(callId: String): Boolean
@@ -121,13 +161,8 @@ interface CallkeepCore {
     // -------------------------------------------------------------------------
 
     /**
-     * Subscribes [listener] to receive connection events from [ConnectionServicePerformBroadcaster].
-     *
-     * The first registered listener triggers registration of a single global [BroadcastReceiver]
-     * that lives until the last listener unregisters. All subsequent listeners share that receiver.
-     * Safe to call multiple times with the same listener — duplicates are allowed by
-     * [java.util.concurrent.CopyOnWriteArrayList] semantics; callers must balance
-     * add/remove calls.
+     * Subscribes [listener] to receive connection events. Callers must balance every
+     * [addConnectionEventListener] with a corresponding [removeConnectionEventListener].
      */
     fun addConnectionEventListener(listener: ConnectionEventListener)
 

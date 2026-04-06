@@ -42,6 +42,7 @@ import com.webtrit.callkeep.services.broadcaster.CallCommandEvent
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
+import com.webtrit.callkeep.services.core.AnswerCallRoute
 import com.webtrit.callkeep.services.core.CallkeepCore
 import com.webtrit.callkeep.services.core.ConnectionEventListener
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallRelease
@@ -431,36 +432,23 @@ class ForegroundService :
                 ringtonePath = ringtonePath,
             )
 
-        // Query tracker state BEFORE addPending, which resets lifecycle flags (answeredCallIds,
-        // terminatedCallIds). MainProcessConnectionTracker is the authoritative view of call state
-        // in the main process, updated via broadcasts from :callkeep_core. In contrast,
-        // checkAndReservePending (inside startIncomingCall) only checks
-        // PhoneConnectionService.connectionManager, which is isolated from :callkeep_core and
-        // is never updated with answered/terminated transitions — so it cannot detect these states.
+        // Query tracker state BEFORE addPending, which resets lifecycle flags (answeredCallIds).
+        // MainProcessConnectionTracker is the authoritative view of call state in the main process,
+        // updated via broadcasts from :callkeep_core. In contrast, checkAndReservePending (inside
+        // startIncomingCall) only checks PhoneConnectionService.connectionManager, which is isolated
+        // from :callkeep_core and is never updated with answered/terminated transitions.
         //
         // exists() is also checked here to short-circuit duplicate detection without a Telecom
         // round-trip. When DidPushIncomingCall has already been delivered and promoted the call,
         // the second reportNewIncomingCall must return CALL_ID_ALREADY_EXISTS immediately rather
         // than going to Telecom, which would otherwise trigger the CALL_ID_ALREADY_EXISTS adoption
         // path and return null (masking the duplicate from Flutter).
-        val trackerError: PIncomingCallError? =
-            when {
-                core.isTerminated(callId) -> {
-                    PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED)
-                }
-
-                core.isAnswered(callId) -> {
-                    PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED)
-                }
-
-                core.exists(callId) -> {
-                    PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS)
-                }
-
-                else -> {
-                    null
-                }
-            }
+        //
+        // isTerminated is intentionally NOT checked here. MainProcessConnectionTracker derives
+        // termination from the absence of a callId in all active sets — there is no persistent
+        // terminated list. A call that re-arrives with the same ID (e.g. transfer back) must be
+        // allowed through regardless of timing.
+        val trackerError: PIncomingCallError? = core.checkIncomingDuplicate(callId)
         if (trackerError != null) {
             if (trackerError.value == PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED) {
                 // Cold-start race: the call was already answered in Telecom (via the notification
@@ -503,47 +491,50 @@ class ForegroundService :
             return
         }
 
+        // Pre-register the Pigeon callback and safety timeout BEFORE calling startIncomingCall.
+        // DidPushIncomingCall can arrive synchronously — during the addNewIncomingCall Telecom
+        // call inside startIncomingCall — before the IPC onSuccess callback returns to this
+        // process. Without pre-registration, resolvePendingIncomingCallback finds no entry and
+        // the confirmation is lost, causing the 5-second timeout to fire unconditionally.
+        pendingIncomingCallbacks[callId] = callback
+        val timeoutRunnable =
+            Runnable {
+                logger.w("reportNewIncomingCall: Telecom confirmation timeout for callId=$callId, resolving with CALL_REJECTED_BY_SYSTEM")
+                pendingIncomingTimeouts.remove(callId)
+                if (addedPending) core.removePending(callId)
+                // Mark terminated and endCallDispatched so that a late-arriving HungUp
+                // broadcast (after the timeout) does not cause handleCSReportDeclineCall
+                // to fire performEndCall for a call Flutter already got callRejectedBySystem for.
+                core.clearAndMarkEndCallDispatched(callId)
+                resolvePendingIncomingCallback(
+                    callId,
+                    Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_REJECTED_BY_SYSTEM)),
+                )
+            }
+        pendingIncomingTimeouts[callId] = timeoutRunnable
+        mainHandler.postDelayed(timeoutRunnable, INCOMING_CALL_CONFIRMATION_TIMEOUT_MS)
+
+        // Mark this callId as signaling-registered BEFORE calling startIncomingCall so
+        // that the DidPushIncomingCall broadcast (fired by :callkeep_core during the IPC
+        // round-trip) is suppressed even if it arrives before the onSuccess callback runs.
+        // Flutter learns about this call from __onCallSignalingEventIncoming, so the
+        // duplicate push-path didPushIncomingCall must not reach it.
+        core.markSignalingRegistered(callId)
+
         core.startIncomingCall(
             metadata = metadata,
             onSuccess = {
                 logger.d("reportNewIncomingCall: startIncomingCall success callId=$callId")
-                // Mark this callId as signaling-registered so that the DidPushIncomingCall
-                // broadcast (which arrives later via the :callkeep_core IPC round-trip) does
-                // not fire an additional didPushIncomingCall Pigeon call. Flutter already
-                // learns about this call from __onCallSignalingEventIncoming.
-                core.markSignalingRegistered(callId)
-
-                // Defer the Pigeon callback until Telecom confirms via DidPushIncomingCall
-                // (resolve with null) or rejects via HungUp (resolve with CALL_REJECTED_BY_SYSTEM).
-                // This prevents the broken API contract where Flutter receives success from
-                // reportNewIncomingCall and then immediately receives performEndCall — which
-                // happens on OEM devices (e.g. Huawei) that reject the second concurrent
-                // self-managed call in onCreateIncomingConnectionFailed.
-                pendingIncomingCallbacks[callId] = callback
-
-                // Safety timeout: if neither DidPushIncomingCall nor HungUp arrives within
-                // the expected window, resolve with CALL_REJECTED_BY_SYSTEM so the Pigeon
-                // callback is not leaked.
-                val timeoutRunnable =
-                    Runnable {
-                        logger.w("reportNewIncomingCall: Telecom confirmation timeout for callId=$callId, resolving with CALL_REJECTED_BY_SYSTEM")
-                        pendingIncomingTimeouts.remove(callId)
-                        if (addedPending) core.removePending(callId)
-                        // Mark terminated and endCallDispatched so that a late-arriving HungUp
-                        // broadcast (after the timeout) does not cause handleCSReportDeclineCall
-                        // to fire performEndCall for a call Flutter already got
-                        // callRejectedBySystem for.
-                        core.markTerminated(callId)
-                        core.markEndCallDispatched(callId)
-                        resolvePendingIncomingCallback(
-                            callId,
-                            Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_REJECTED_BY_SYSTEM)),
-                        )
-                    }
-                pendingIncomingTimeouts[callId] = timeoutRunnable
-                mainHandler.postDelayed(timeoutRunnable, INCOMING_CALL_CONFIRMATION_TIMEOUT_MS)
+                // pendingIncomingCallbacks and timeout are already registered above.
+                // markSignalingRegistered was already called before startIncomingCall.
             },
             onError = { error ->
+                // startIncomingCall failed — cancel the pre-registered timeout and callback
+                // so they do not race with the direct callback invocation below.
+                mainHandler.removeCallbacks(timeoutRunnable)
+                pendingIncomingTimeouts.remove(callId)
+                pendingIncomingCallbacks.remove(callId)
+
                 when (error?.value) {
                     PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS -> {
                         // The callId is still in the main-process ConnectionManager.pendingCallIds
@@ -564,7 +555,6 @@ class ForegroundService :
                             logger.i("reportNewIncomingCall: adopting already-answered call callId=$callId (CALL_ID_ALREADY_EXISTS + STATE_ACTIVE)")
                             core.promote(callId, metadata, PCallkeepConnectionState.STATE_ACTIVE)
                             core.markAnswered(callId)
-                            core.markSignalingRegistered(callId)
                             flutterDelegateApi?.performAnswerCall(callId) {}
                             callback(Result.success(null))
                         } else {
@@ -577,7 +567,6 @@ class ForegroundService :
                             // reported to Flutter by the push path's didPushIncomingCall callback.
                             logger.i("reportNewIncomingCall: ringing call already in Telecom callId=$callId, promoting and returning callIdAlreadyExists")
                             core.promote(callId, metadata, PCallkeepConnectionState.STATE_RINGING)
-                            core.markSignalingRegistered(callId)
                             callback(
                                 Result.success(
                                     PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS),
@@ -594,16 +583,15 @@ class ForegroundService :
                         logger.i("reportNewIncomingCall: adopting already-answered call callId=$callId")
                         core.promote(callId, metadata, PCallkeepConnectionState.STATE_ACTIVE)
                         core.markAnswered(callId)
-                        core.markSignalingRegistered(callId)
                         flutterDelegateApi?.performAnswerCall(callId) {}
                         callback(Result.success(null))
                     }
 
                     else -> {
                         logger.e("reportNewIncomingCall: startIncomingCall failed callId=$callId, error=$error")
-                        // Roll back the pending entry only if this invocation added it. This avoids
-                        // removing a genuine pending entry registered by a concurrent first invocation
-                        // when a duplicate call's error arrives.
+                        // Roll back the signaling-registered guard and the pending entry so that
+                        // a retry or concurrent push-path registration is not incorrectly suppressed.
+                        core.consumeSignalingRegistered(callId)
                         if (addedPending) core.removePending(callId)
                         callback(Result.success(error))
                     }
@@ -647,8 +635,7 @@ class ForegroundService :
             logger.w("tearDown: resolving pending incoming callback for callId=$callId with CALL_REJECTED_BY_SYSTEM")
             core.markDirectNotified(callId)
             core.removePending(callId)
-            core.markTerminated(callId)
-            core.markEndCallDispatched(callId)
+            core.clearAndMarkEndCallDispatched(callId)
             resolvePendingIncomingCallback(
                 callId,
                 Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_REJECTED_BY_SYSTEM)),
@@ -667,8 +654,7 @@ class ForegroundService :
         // startHungUpCall IPC.
         activeCallIds.forEach { callId ->
             core.markDirectNotified(callId)
-            core.markTerminated(callId)
-            core.markEndCallDispatched(callId)
+            core.clearAndMarkEndCallDispatched(callId)
             flutterDelegateApi?.performEndCall(callId) {}
         }
 
@@ -681,8 +667,7 @@ class ForegroundService :
         // a duplicate startHungUpCall IPC if endCall() arrives during the tearDown window.
         unconnectedPending.forEach { callId ->
             core.markDirectNotified(callId)
-            core.markTerminated(callId)
-            core.markEndCallDispatched(callId)
+            core.clearAndMarkEndCallDispatched(callId)
             flutterDelegateApi?.performEndCall(callId) {}
         }
 
@@ -817,17 +802,17 @@ class ForegroundService :
         // moment CS creates the PhoneConnection and the moment the broadcast reaches
         // ForegroundService, core.exists() is false even though the call is live on the
         // CS side. Resolution order:
-        //   1. core.exists()     -> promoted, answer immediately.
-        //   2. core.isPending()  -> PhoneConnection not yet created, defer via ReserveAnswer.
-        //   3. none of the above -> unknown call, return error.
-        when {
-            core.exists(callId) -> {
+        //   1. AnswerImmediately -> promoted, answer via IPC immediately.
+        //   2. DeferAnswer       -> PhoneConnection not yet created, defer via ReserveAnswer.
+        //   3. NotFound          -> unknown call, return error.
+        when (core.routeAnswerCall(callId)) {
+            is AnswerCallRoute.AnswerImmediately -> {
                 logger.i("answerCall $callId: connection exists in core shadow, answering immediately.")
                 core.startAnswerCall(metadata)
                 callback.invoke(Result.success(null))
             }
 
-            core.isPending(callId) -> {
+            is AnswerCallRoute.DeferAnswer -> {
                 // Telecom accepted the call but CS has not yet created the PhoneConnection.
                 // Reserve the answer in the core shadow and send a ReserveAnswer command to CS so
                 // onCreateIncomingConnection can apply it immediately on the :callkeep_core side.
@@ -837,7 +822,7 @@ class ForegroundService :
                 callback.invoke(Result.success(null))
             }
 
-            else -> {
+            is AnswerCallRoute.NotFound -> {
                 logger.e("answerCall: no connection or pending entry for callId=$callId in core shadow or CS")
                 callback.invoke(Result.success(PCallRequestError(PCallRequestErrorEnum.INTERNAL)))
             }
@@ -1015,12 +1000,11 @@ class ForegroundService :
                     "handleCSReportDeclineCall: Telecom rejected callId=$callId before Flutter confirmation — resolving with CALL_REJECTED_BY_SYSTEM",
                 )
                 core.removePending(callId)
-                core.markTerminated(callId)
-                // Mark endCall as already dispatched so that a subsequent endCall()
+                // Mark terminated and endCallDispatched so that a subsequent endCall()
                 // by Flutter (after receiving callRejectedBySystem) does not re-fire
                 // performEndCall — performEndCall must never fire for a call that was
                 // never confirmed to Flutter.
-                core.markEndCallDispatched(callId)
+                core.clearAndMarkEndCallDispatched(callId)
                 resolvePendingIncomingCallback(
                     callId,
                     Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_REJECTED_BY_SYSTEM)),
@@ -1028,16 +1012,14 @@ class ForegroundService :
                 return@let
             }
 
-            // Update tracker: call has ended.
-            core.markTerminated(callId)
-
-            // Mark that performEndCall is being dispatched now, so that a subsequent
-            // endCall() call with isTerminated=true does NOT re-fire performEndCall.
-            // Without this, if onCreateIncomingConnectionFailed fires a HungUp broadcast
-            // while the call is still in the pending window (before Dart calls endCall),
-            // the broadcast fires performEndCall once here AND the endCall re-fire path
-            // fires it a second time — producing a duplicate delegate callback.
-            core.markEndCallDispatched(callId)
+            // Mark terminated and record that performEndCall is being dispatched now,
+            // so that a subsequent endCall() call with isTerminated=true does NOT
+            // re-fire performEndCall. Without this, if onCreateIncomingConnectionFailed
+            // fires a HungUp broadcast while the call is still in the pending window
+            // (before Dart calls endCall), the broadcast fires performEndCall once here
+            // AND the endCall re-fire path fires it a second time — producing a duplicate
+            // delegate callback.
+            core.clearAndMarkEndCallDispatched(callId)
 
             flutterDelegateApi?.performEndCall(callId) {}
             flutterDelegateApi?.didDeactivateAudioSession {}
@@ -1175,8 +1157,7 @@ class ForegroundService :
             logger.w("onDestroy: resolving pending incoming callback for callId=$callId with CALL_REJECTED_BY_SYSTEM")
             core.markDirectNotified(callId)
             core.removePending(callId)
-            core.markTerminated(callId)
-            core.markEndCallDispatched(callId)
+            core.clearAndMarkEndCallDispatched(callId)
             resolvePendingIncomingCallback(
                 callId,
                 Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_REJECTED_BY_SYSTEM)),
