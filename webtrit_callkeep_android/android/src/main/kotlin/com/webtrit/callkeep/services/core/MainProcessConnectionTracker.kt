@@ -92,7 +92,12 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         pendingAnswers.remove(callId)
         endCallDispatchedCallIds.remove(callId)
         directNotifiedCallIds.remove(callId)
-        signalingRegisteredCallIds.remove(callId)
+        // signalingRegisteredCallIds is intentionally NOT cleared here. addPending is called
+        // both by the initial registration site (before markSignalingRegistered) and again
+        // inside InProcessCallkeepCore.startIncomingCall (after markSignalingRegistered). Clearing
+        // it here would erase the guard on the second call and let DidPushIncomingCall through.
+        // The guard is cleared by consumeSignalingRegistered (normal flow) or markTerminated
+        // (call-end cleanup, covers callId reuse).
         return pendingCallIds.add(callId)
     }
 
@@ -114,7 +119,10 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         pendingAnswers.remove(callId)
         endCallDispatchedCallIds.remove(callId)
         directNotifiedCallIds.remove(callId)
-        signalingRegisteredCallIds.remove(callId)
+        // signalingRegisteredCallIds is intentionally NOT cleared here. promote() is called
+        // inside handleCSReportDidPushIncomingCall, immediately before consumeSignalingRegistered
+        // checks the guard. Clearing it here would defeat the suppression and let
+        // didPushIncomingCall reach Flutter for signaling-path calls.
         connections[callId] = metadata
         pendingCallIds.remove(callId)
         connectionStates[callId] = state
@@ -156,6 +164,7 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         answeredCallIds.remove(callId)
         pendingCallIds.remove(callId)
         pendingAnswers.remove(callId)
+        signalingRegisteredCallIds.remove(callId)
         connectionStates[callId] = PCallkeepConnectionState.STATE_DISCONNECTED
     }
 
