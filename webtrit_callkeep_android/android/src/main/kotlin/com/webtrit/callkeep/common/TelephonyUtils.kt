@@ -109,9 +109,8 @@ class TelephonyUtils(
          * CDMA, or SIP radio has the Telecom infrastructure available, regardless of whether
          * the OEM advertises the feature flag.
          *
-         * This fallback handles known OEM omissions (e.g. ASUS AI2202) where the device is a
-         * fully functional phone with Telecom support but does not declare the feature flag in
-         * its system build.
+         * Some OEM devices have full Telecom support but do not declare the feature flag in
+         * their system build. The fallback covers this case.
          *
          * Devices that return [TelephonyManager.PHONE_TYPE_NONE] (e.g. Wi-Fi-only tablets,
          * Android Go builds) do not have Telecom infrastructure and should use the standalone
