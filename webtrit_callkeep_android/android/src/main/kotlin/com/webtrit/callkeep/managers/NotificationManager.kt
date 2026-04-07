@@ -13,12 +13,6 @@ class NotificationManager {
     }
 
     fun cancelIncomingNotification(answered: Boolean) {
-        // Guard against restarting IncomingCallService when it has already been stopped
-        // (e.g. via releaseCall). Without this check, context.startService inside
-        // IncomingCallService.release() would cause Android to create a new service
-        // instance just to handle IC_RELEASE_WITH_DECLINE, resulting in a redundant
-        // lifecycle cycle with no meaningful work.
-        if (!IncomingCallService.isRunning) return
         IncomingCallService.release(
             context,
             if (answered) {

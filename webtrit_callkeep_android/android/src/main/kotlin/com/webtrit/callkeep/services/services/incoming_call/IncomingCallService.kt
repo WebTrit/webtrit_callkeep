@@ -45,6 +45,11 @@ class IncomingCallService :
     // denied). Released in onDestroy() or when the call is answered/declined.
     private var screenWakeLock: PowerManager.WakeLock? = null
 
+    // Set to true only after IC_INITIALIZE is handled. Guards against spurious IC_RELEASE_WITH_DECLINE
+    // intents that restart the service after it has already been stopped (e.g. when releaseCall()
+    // calls stopSelf() and Telecom later triggers PhoneConnection.onDisconnect → startService).
+    private var isInitialized = false
+
     private val timeoutHandler = Handler(Looper.getMainLooper())
     private val stopTimeoutRunnable =
         Runnable {
@@ -147,6 +152,12 @@ class IncomingCallService :
             return START_NOT_STICKY
         }
 
+        if (!isInitialized && action == IncomingCallRelease.IC_RELEASE_WITH_DECLINE.name) {
+            Log.w(TAG, "onStartCommand: IC_RELEASE_WITH_DECLINE received before IC_INITIALIZE — service was restarted after stop, ignoring")
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         return when (action) {
             // Listen foreground service actions
             PushNotificationServiceEnums.IC_INITIALIZE.name -> handleLaunch(metadata!!)
@@ -209,6 +220,7 @@ class IncomingCallService :
 
     // Launches the service with the LAUNCH action and cancels the timeout
     private fun handleLaunch(metadata: CallMetadata): Int {
+        isInitialized = true
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
         timeoutHandler.postDelayed(independentTimeoutRunnable, INDEPENDENT_SERVICE_TIMEOUT_MS)
         callLifecycleHandler.currentCallData = metadata.toPCallkeepIncomingCallData()
