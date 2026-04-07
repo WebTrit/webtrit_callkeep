@@ -131,22 +131,24 @@ class CallLifecycleHandler(
     }
 
     override fun endAllCalls(callback: (Result<Unit>) -> Unit) {
-        flutterApi?.releaseResources(currentCallData) {
-            connectionController.tearDown()
-        }
+        connectionController.tearDown()
         callback(Result.success(Unit))
     }
 
-    // Isolate
+    override fun releaseCall(
+        callId: String,
+        callback: (Result<Unit>) -> Unit,
+    ) {
+        Log.d(TAG, "releaseCall: $callId - terminate connection and stop service")
+        terminateCall(CallMetadata(callId = callId), DeclineSource.SERVER)
+        stopService()
+        callback(Result.success(Unit))
+    }
+
     fun release(onComplete: (() -> Unit)? = null) {
         Log.d(TAG, "Resources released")
-        flutterApi?.releaseResources(currentCallData) {
-            onComplete?.invoke()
-            stopServiceWithDelay()
-        } ?: run {
-            onComplete?.invoke()
-            stopService()
-        }
+        onComplete?.invoke()
+        stopServiceWithDelay()
     }
 
     private fun stopServiceWithDelay() {

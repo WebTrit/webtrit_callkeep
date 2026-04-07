@@ -529,26 +529,6 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // PCallkeepPushNotificationSyncStatusConverter
-  // ---------------------------------------------------------------------------
-
-  group('PCallkeepPushNotificationSyncStatusConverter.toCallkeep()', () {
-    test('synchronizeCallStatus', () {
-      expect(
-        PCallkeepPushNotificationSyncStatus.synchronizeCallStatus.toCallkeep(),
-        CallkeepPushNotificationSyncStatus.synchronizeCallStatus,
-      );
-    });
-
-    test('releaseResources', () {
-      expect(
-        PCallkeepPushNotificationSyncStatus.releaseResources.toCallkeep(),
-        CallkeepPushNotificationSyncStatus.releaseResources,
-      );
-    });
-  });
-
-  // ---------------------------------------------------------------------------
   // PCallkeepIncomingCallDataConverter
   // ---------------------------------------------------------------------------
 

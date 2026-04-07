@@ -206,6 +206,28 @@ enum class PIncomingCallErrorEnum(
     FILTERED_BY_DO_NOT_DISTURB(5),
     FILTERED_BY_BLOCK_LIST(6),
     INTERNAL(7),
+
+    /**
+     * Android only.
+     *
+     * Telecom rejected the incoming call registration via
+     * `onCreateIncomingConnectionFailed` (i.e. without ever calling
+     * `onCreateIncomingConnection`).
+     *
+     * **When this happens**: Android does not allow two self-managed calls to be
+     * simultaneously in RINGING state. If a call is already ringing, Telecom
+     * rejects every subsequent incoming self-managed call. This is standard
+     * AOSP behaviour (observed on stock Pixel devices running Android 11+), not
+     * an OEM-specific restriction. Some vendors (Huawei, certain MediaTek OEMs)
+     * apply the same rejection even when the first call is already ACTIVE.
+     *
+     * **Consequences for the app**:
+     * - The call was never confirmed to Flutter, so `performEndCall` will NOT
+     *   fire for this call ID.
+     * - The app must send the appropriate signaling (e.g. SIP BYE) to the
+     *   server itself upon receiving this error, without waiting for
+     *   `performEndCall`.
+     */
     CALL_REJECTED_BY_SYSTEM(8),
     ;
 
@@ -273,18 +295,6 @@ enum class PCallkeepLifecycleEvent(
 
     companion object {
         fun ofRaw(raw: Int): PCallkeepLifecycleEvent? = values().firstOrNull { it.raw == raw }
-    }
-}
-
-enum class PCallkeepPushNotificationSyncStatus(
-    val raw: Int,
-) {
-    SYNCHRONIZE_CALL_STATUS(0),
-    RELEASE_RESOURCES(1),
-    ;
-
-    companion object {
-        fun ofRaw(raw: Int): PCallkeepPushNotificationSyncStatus? = values().firstOrNull { it.raw == raw }
     }
 }
 
@@ -870,101 +880,95 @@ private open class GeneratedPigeonCodec : StandardMessageCodec() {
 
             140.toByte() -> {
                 return (readValue(buffer) as Long?)?.let {
-                    PCallkeepPushNotificationSyncStatus.ofRaw(it.toInt())
+                    PCallkeepConnectionState.ofRaw(it.toInt())
                 }
             }
 
             141.toByte() -> {
                 return (readValue(buffer) as Long?)?.let {
-                    PCallkeepConnectionState.ofRaw(it.toInt())
+                    PCallkeepDisconnectCauseType.ofRaw(it.toInt())
                 }
             }
 
             142.toByte() -> {
                 return (readValue(buffer) as Long?)?.let {
-                    PCallkeepDisconnectCauseType.ofRaw(it.toInt())
-                }
-            }
-
-            143.toByte() -> {
-                return (readValue(buffer) as Long?)?.let {
                     PCallkeepSignalingStatus.ofRaw(it.toInt())
                 }
             }
 
-            144.toByte() -> {
+            143.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PIOSOptions.fromList(it)
                 }
             }
 
-            145.toByte() -> {
+            144.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PAndroidOptions.fromList(it)
                 }
             }
 
-            146.toByte() -> {
+            145.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     POptions.fromList(it)
                 }
             }
 
-            147.toByte() -> {
+            146.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PAudioDevice.fromList(it)
                 }
             }
 
-            148.toByte() -> {
+            147.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PPermissionResult.fromList(it)
                 }
             }
 
-            149.toByte() -> {
+            148.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PHandle.fromList(it)
                 }
             }
 
-            150.toByte() -> {
+            149.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PEndCallReason.fromList(it)
                 }
             }
 
-            151.toByte() -> {
+            150.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PIncomingCallError.fromList(it)
                 }
             }
 
-            152.toByte() -> {
+            151.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PCallRequestError.fromList(it)
                 }
             }
 
-            153.toByte() -> {
+            152.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PCallkeepIncomingCallData.fromList(it)
                 }
             }
 
-            154.toByte() -> {
+            153.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PCallkeepServiceStatus.fromList(it)
                 }
             }
 
-            155.toByte() -> {
+            154.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PCallkeepDisconnectCause.fromList(it)
                 }
             }
 
-            156.toByte() -> {
+            155.toByte() -> {
                 return (readValue(buffer) as? List<Any?>)?.let {
                     PCallkeepConnection.fromList(it)
                 }
@@ -1036,88 +1040,83 @@ private open class GeneratedPigeonCodec : StandardMessageCodec() {
                 writeValue(stream, value.raw)
             }
 
-            is PCallkeepPushNotificationSyncStatus -> {
+            is PCallkeepConnectionState -> {
                 stream.write(140)
                 writeValue(stream, value.raw)
             }
 
-            is PCallkeepConnectionState -> {
+            is PCallkeepDisconnectCauseType -> {
                 stream.write(141)
                 writeValue(stream, value.raw)
             }
 
-            is PCallkeepDisconnectCauseType -> {
+            is PCallkeepSignalingStatus -> {
                 stream.write(142)
                 writeValue(stream, value.raw)
             }
 
-            is PCallkeepSignalingStatus -> {
-                stream.write(143)
-                writeValue(stream, value.raw)
-            }
-
             is PIOSOptions -> {
-                stream.write(144)
+                stream.write(143)
                 writeValue(stream, value.toList())
             }
 
             is PAndroidOptions -> {
-                stream.write(145)
+                stream.write(144)
                 writeValue(stream, value.toList())
             }
 
             is POptions -> {
-                stream.write(146)
+                stream.write(145)
                 writeValue(stream, value.toList())
             }
 
             is PAudioDevice -> {
-                stream.write(147)
+                stream.write(146)
                 writeValue(stream, value.toList())
             }
 
             is PPermissionResult -> {
-                stream.write(148)
+                stream.write(147)
                 writeValue(stream, value.toList())
             }
 
             is PHandle -> {
-                stream.write(149)
+                stream.write(148)
                 writeValue(stream, value.toList())
             }
 
             is PEndCallReason -> {
-                stream.write(150)
+                stream.write(149)
                 writeValue(stream, value.toList())
             }
 
             is PIncomingCallError -> {
-                stream.write(151)
+                stream.write(150)
                 writeValue(stream, value.toList())
             }
 
             is PCallRequestError -> {
-                stream.write(152)
+                stream.write(151)
                 writeValue(stream, value.toList())
             }
 
             is PCallkeepIncomingCallData -> {
-                stream.write(153)
+                stream.write(152)
                 writeValue(stream, value.toList())
             }
 
             is PCallkeepServiceStatus -> {
-                stream.write(154)
+                stream.write(153)
                 writeValue(stream, value.toList())
             }
 
             is PCallkeepDisconnectCause -> {
-                stream.write(155)
+                stream.write(154)
                 writeValue(stream, value.toList())
             }
 
             is PCallkeepConnection -> {
-                stream.write(156)
+                stream.write(155)
                 writeValue(stream, value.toList())
             }
 
@@ -1441,6 +1440,11 @@ interface PHostBackgroundPushNotificationIsolateApi {
 
     fun endAllCalls(callback: (Result<Unit>) -> Unit)
 
+    fun releaseCall(
+        callId: String,
+        callback: (Result<Unit>) -> Unit,
+    )
+
     companion object {
         /** The codec used by PHostBackgroundPushNotificationIsolateApi. */
         val codec: MessageCodec<Any?> by lazy {
@@ -1479,6 +1483,25 @@ interface PHostBackgroundPushNotificationIsolateApi {
                 if (api != null) {
                     channel.setMessageHandler { _, reply ->
                         api.endAllCalls { result: Result<Unit> ->
+                            val error = result.exceptionOrNull()
+                            if (error != null) {
+                                reply.reply(GeneratedPigeonUtils.wrapError(error))
+                            } else {
+                                reply.reply(GeneratedPigeonUtils.wrapResult(null))
+                            }
+                        }
+                    }
+                } else {
+                    channel.setMessageHandler(null)
+                }
+            }
+            run {
+                val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundPushNotificationIsolateApi.releaseCall$separatedMessageChannelSuffix", codec)
+                if (api != null) {
+                    channel.setMessageHandler { message, reply ->
+                        val args = message as List<Any?>
+                        val callIdArg = args[0] as String
+                        api.releaseCall(callIdArg) { result: Result<Unit> ->
                             val error = result.exceptionOrNull()
                             if (error != null) {
                                 reply.reply(GeneratedPigeonUtils.wrapError(error))
@@ -1798,14 +1821,13 @@ class PDelegateBackgroundRegisterFlutterApi(
 
     fun onNotificationSync(
         pushNotificationSyncStatusHandleArg: Long,
-        statusArg: PCallkeepPushNotificationSyncStatus,
         callDataArg: PCallkeepIncomingCallData?,
         callback: (Result<Unit>) -> Unit,
     ) {
         val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
         val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onNotificationSync$separatedMessageChannelSuffix"
         val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(listOf(pushNotificationSyncStatusHandleArg, statusArg, callDataArg)) {
+        channel.send(listOf(pushNotificationSyncStatusHandleArg, callDataArg)) {
             if (it is List<*>) {
                 if (it.size > 1) {
                     callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))

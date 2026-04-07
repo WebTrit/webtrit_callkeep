@@ -52,6 +52,12 @@ class IncomingCallService :
             stopSelf()
         }
 
+    private val independentTimeoutRunnable =
+        Runnable {
+            Log.w(TAG, "Independent service timeout ($INDEPENDENT_SERVICE_TIMEOUT_MS ms) reached. Stopping forcefully.")
+            stopSelf()
+        }
+
     private lateinit var incomingCallHandler: IncomingCallHandler
     private lateinit var isolateHandler: FlutterIsolateHandler
     private lateinit var callLifecycleHandler: CallLifecycleHandler
@@ -163,9 +169,9 @@ class IncomingCallService :
     override fun onDestroy() {
         Log.d(TAG, "onDestroy called")
 
-        // Cancel the safety-net timeout so it does not fire after a graceful stop and
-        // report a false-alarm to Crashlytics.
+        // Cancel both safety-net timeouts so they do not fire after a graceful stop.
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
+        timeoutHandler.removeCallbacks(independentTimeoutRunnable)
 
         setRunning(false)
         releaseScreenWakeLock()
@@ -204,6 +210,7 @@ class IncomingCallService :
     // Launches the service with the LAUNCH action and cancels the timeout
     private fun handleLaunch(metadata: CallMetadata): Int {
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
+        timeoutHandler.postDelayed(independentTimeoutRunnable, INDEPENDENT_SERVICE_TIMEOUT_MS)
         callLifecycleHandler.currentCallData = metadata.toPCallkeepIncomingCallData()
         acquireScreenWakeLockIfNeeded()
         incomingCallHandler.handle(metadata)
@@ -222,6 +229,7 @@ class IncomingCallService :
         // onDestroy() keeps the lock as a final safety net in case this path is skipped.
         releaseScreenWakeLock()
         incomingCallHandler.releaseIncomingCallNotification(answered)
+        timeoutHandler.removeCallbacks(independentTimeoutRunnable)
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
         timeoutHandler.postDelayed(stopTimeoutRunnable, SERVICE_TIMEOUT_MS)
         if (answered) {
@@ -302,6 +310,7 @@ class IncomingCallService :
         private const val TAG = "IncomingCallService"
 
         private const val SERVICE_TIMEOUT_MS = 2_000L
+        private const val INDEPENDENT_SERVICE_TIMEOUT_MS = 60_000L
         private const val WAKELOCK_TIMEOUT_MS = 30_000L
         private const val WAKELOCK_TAG = "com.webtrit.callkeep:IncomingCallWakeLock"
 
