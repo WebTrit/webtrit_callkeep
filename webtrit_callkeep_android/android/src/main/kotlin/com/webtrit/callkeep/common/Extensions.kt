@@ -22,7 +22,6 @@ import androidx.lifecycle.Lifecycle
 import com.webtrit.callkeep.PCallkeepIncomingCallData
 import com.webtrit.callkeep.PCallkeepLifecycleEvent
 import com.webtrit.callkeep.PCallkeepPermission
-import com.webtrit.callkeep.PCallkeepSignalingStatus
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PPermissionResult
 import com.webtrit.callkeep.PSpecialPermissionStatusTypeEnum
