@@ -2,6 +2,7 @@ package com.webtrit.callkeep.services.services.incoming_call
 
 import android.content.Context
 import android.os.Build
+import android.os.Looper
 import com.webtrit.callkeep.PCallkeepIncomingCallData
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.SignalingStatus
@@ -17,14 +18,15 @@ import org.mockito.Mockito.mock
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowLooper
 
 /**
  * Unit tests for [CallLifecycleHandler].
  *
- * Focuses on the decline teardown ordering fix:
- *   performEndCall() must invoke the Flutter-side BYE *before* release() triggers
- *   releaseResources (WebSocket teardown). The old behaviour called release() directly
- *   from handleRelease(answered=false), closing the WebSocket before BYE could be sent.
+ * Verifies the decline teardown ordering: performEndCall() must invoke the Flutter-side
+ * BYE *before* release() stops the service. In the new design, releaseResources is no
+ * longer part of FlutterIsolateCommunicator — the Dart isolate manages its own resource
+ * cleanup. release() now calls stopServiceWithDelay() directly.
  *
  * Uses hand-written fakes for [FlutterIsolateCommunicator] to record call order without
  * requiring the mockito-kotlin extension library.
@@ -47,7 +49,6 @@ class CallLifecycleHandlerTest {
 
         val events = mutableListOf<String>()
         var lastPerformEndCallId: String? = null
-        var releaseResourcesCallCount = 0
 
         override fun performAnswer(
             callId: String,
@@ -78,15 +79,6 @@ class CallLifecycleHandlerTest {
         ) {
             events.add("syncPushIsolate")
             onSuccess()
-        }
-
-        override fun releaseResources(
-            callData: com.webtrit.callkeep.PCallkeepIncomingCallData?,
-            onComplete: () -> Unit,
-        ) {
-            events.add("releaseResources")
-            releaseResourcesCallCount++
-            onComplete()
         }
     }
 
@@ -152,35 +144,50 @@ class CallLifecycleHandlerTest {
     }
 
     // -------------------------------------------------------------------------
-    // performEndCall — ordering: BYE first, release after
+    // performEndCall — ordering: BYE first, stopService after delay
     // -------------------------------------------------------------------------
 
     /**
-     * Regression: performEndCall must emit "performEndCall" BEFORE "releaseResources".
-     * If the order were reversed, the WebSocket would close before the SIP BYE is sent.
+     * Regression: performEndCall must emit "performEndCall" before triggering
+     * release() → stopServiceWithDelay(). The service must not stop before the
+     * SIP BYE is sent.
      */
     @Test
-    fun `performEndCall fires performEndCall before releaseResources on success`() {
+    fun `performEndCall fires performEndCall before stopService on success`() {
         handler.performEndCall(CallMetadata(callId = "call-1"))
 
+        assertTrue(
+            "performEndCall must be forwarded to Flutter before service stops",
+            communicator.events.contains("performEndCall"),
+        )
+
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
+
         assertEquals(
-            "performEndCall must precede releaseResources",
-            listOf("performEndCall", "releaseResources"),
-            communicator.events,
+            "stopService must be called after performEndCall succeeds",
+            1,
+            stopServiceCalls.size,
         )
     }
 
     @Test
-    fun `performEndCall fires performEndCall before releaseResources on failure`() {
+    fun `performEndCall fires performEndCall before stopService on failure`() {
         communicator = FakeCommunicator(FakeCommunicator.EndCallResult.FAILURE)
         handler.flutterApi = communicator
 
         handler.performEndCall(CallMetadata(callId = "call-1"))
 
+        assertTrue(
+            "performEndCall must be forwarded to Flutter even on failure",
+            communicator.events.contains("performEndCall"),
+        )
+
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
+
         assertEquals(
-            "releaseResources must still fire even when BYE fails",
-            listOf("performEndCall", "releaseResources"),
-            communicator.events,
+            "stopService must still be called when BYE fails",
+            1,
+            stopServiceCalls.size,
         )
     }
 
@@ -192,30 +199,32 @@ class CallLifecycleHandlerTest {
     }
 
     @Test
-    fun `performEndCall triggers releaseResources exactly once on success`() {
+    fun `performEndCall triggers stopService exactly once on success`() {
         handler.performEndCall(CallMetadata(callId = "call-1"))
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
 
-        assertEquals(1, communicator.releaseResourcesCallCount)
+        assertEquals(1, stopServiceCalls.size)
     }
 
     @Test
-    fun `performEndCall triggers releaseResources exactly once on failure`() {
+    fun `performEndCall triggers stopService exactly once on failure`() {
         communicator = FakeCommunicator(FakeCommunicator.EndCallResult.FAILURE)
         handler.flutterApi = communicator
 
         handler.performEndCall(CallMetadata(callId = "call-1"))
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
 
-        assertEquals(1, communicator.releaseResourcesCallCount)
+        assertEquals(1, stopServiceCalls.size)
     }
 
     // -------------------------------------------------------------------------
-    // release — answered path: skips performEndCall, goes straight to releaseResources
+    // release — answered path: skips performEndCall, calls stopServiceWithDelay
     // -------------------------------------------------------------------------
 
     /**
      * release() is used for answered-call teardown (handleRelease(answered=true)).
      * It must NOT call performEndCall — the main process handles active-call signaling.
-     * It goes directly to releaseResources.
+     * It goes directly to stopServiceWithDelay().
      */
     @Test
     fun `release does not call performEndCall`() {
@@ -228,20 +237,23 @@ class CallLifecycleHandlerTest {
     }
 
     @Test
-    fun `release calls releaseResources`() {
+    fun `release calls stopService after delay`() {
         handler.release()
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
 
-        assertTrue(
-            "release() must call releaseResources",
-            communicator.events.contains("releaseResources"),
+        assertEquals(
+            "release() must call stopService via stopServiceWithDelay",
+            1,
+            stopServiceCalls.size,
         )
     }
 
     @Test
-    fun `release calls releaseResources exactly once`() {
+    fun `release calls stopService exactly once`() {
         handler.release()
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
 
-        assertEquals(1, communicator.releaseResourcesCallCount)
+        assertEquals(1, stopServiceCalls.size)
     }
 
     // -------------------------------------------------------------------------
@@ -249,12 +261,12 @@ class CallLifecycleHandlerTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `performEndCall with null flutterApi calls release and stopService`() {
+    fun `performEndCall with null flutterApi calls stopService`() {
         handler.flutterApi = null
 
         handler.performEndCall(CallMetadata(callId = "call-1"))
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
 
-        // release() falls through to stopService() when flutterApi is null
         assertEquals(1, stopServiceCalls.size)
     }
 
@@ -263,6 +275,7 @@ class CallLifecycleHandlerTest {
         handler.flutterApi = null
 
         handler.release()
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
 
         assertEquals(1, stopServiceCalls.size)
     }
@@ -281,8 +294,6 @@ class CallLifecycleHandlerTest {
     fun `performAnswerCall does not call connectionController answer on success`() {
         handler.performAnswerCall(CallMetadata(callId = "call-1"))
 
-        // Confirm the background path actually ran (Flutter was notified) so the
-        // answerCallCount == 0 assertion is not trivially satisfied by a no-op.
         assertTrue(
             "performAnswer must be forwarded to Flutter to confirm the background path ran",
             communicator.events.contains("performAnswer"),
@@ -326,12 +337,6 @@ class CallLifecycleHandlerTest {
                     callData: PCallkeepIncomingCallData?,
                     onSuccess: () -> Unit,
                     onFailure: (Throwable) -> Unit,
-                ) {
-                }
-
-                override fun releaseResources(
-                    callData: PCallkeepIncomingCallData?,
-                    onComplete: () -> Unit,
                 ) {}
             }
         handler.flutterApi = failingCommunicator
@@ -347,7 +352,6 @@ class CallLifecycleHandlerTest {
 
         handler.performAnswerCall(CallMetadata(callId = "call-1"))
 
-        // No Flutter notification, no teardown, no crash -- graceful degradation.
         assertEquals(0, fakeController.answerCallCount)
         assertEquals(0, fakeController.tearDownCallCount)
     }
