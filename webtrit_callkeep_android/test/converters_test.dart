@@ -471,64 +471,6 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // PCallkeepSignalingStatusConverter
-  // ---------------------------------------------------------------------------
-
-  group('PCallkeepSignalingStatusConverter.toCallkeep()', () {
-    test('disconnecting', () {
-      expect(PCallkeepSignalingStatus.disconnecting.toCallkeep(), CallkeepSignalingStatus.disconnecting);
-    });
-
-    test('disconnect', () {
-      expect(PCallkeepSignalingStatus.disconnect.toCallkeep(), CallkeepSignalingStatus.disconnect);
-    });
-
-    test('connecting', () {
-      expect(PCallkeepSignalingStatus.connecting.toCallkeep(), CallkeepSignalingStatus.connecting);
-    });
-
-    test('connect', () {
-      expect(PCallkeepSignalingStatus.connect.toCallkeep(), CallkeepSignalingStatus.connect);
-    });
-
-    test('failure', () {
-      expect(PCallkeepSignalingStatus.failure.toCallkeep(), CallkeepSignalingStatus.failure);
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // CallkeepSignalingStatusConverter
-  // ---------------------------------------------------------------------------
-
-  group('CallkeepSignalingStatusConverter.toPigeon()', () {
-    test('disconnecting', () {
-      expect(CallkeepSignalingStatus.disconnecting.toPigeon(), PCallkeepSignalingStatus.disconnecting);
-    });
-
-    test('disconnect', () {
-      expect(CallkeepSignalingStatus.disconnect.toPigeon(), PCallkeepSignalingStatus.disconnect);
-    });
-
-    test('connecting', () {
-      expect(CallkeepSignalingStatus.connecting.toPigeon(), PCallkeepSignalingStatus.connecting);
-    });
-
-    test('connect', () {
-      expect(CallkeepSignalingStatus.connect.toPigeon(), PCallkeepSignalingStatus.connect);
-    });
-
-    test('failure', () {
-      expect(CallkeepSignalingStatus.failure.toPigeon(), PCallkeepSignalingStatus.failure);
-    });
-
-    test('round-trip for all values', () {
-      for (final status in CallkeepSignalingStatus.values) {
-        expect(status.toPigeon().toCallkeep(), status);
-      }
-    });
-  });
-
-  // ---------------------------------------------------------------------------
   // PCallkeepIncomingCallDataConverter
   // ---------------------------------------------------------------------------
 
