@@ -19,7 +19,7 @@ import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 // The tests exercise the *callkeep layer* side of those services:
 //   - Call registration / deduplication between isolate and main process.
 //   - performEndCall / performAnswerCall delegate routing.
-//   - endCall / endCalls clean-up triggered by signaling events
+//   - releaseCall clean-up triggered by signaling events
 //     (_onHangupCall, _onSignalingError, _onNoActiveLines, _onUnregistered).
 //   - Lifecycle management: startService / stopService without crash.
 // ---------------------------------------------------------------------------
@@ -284,17 +284,16 @@ void main() {
     });
 
     // -----------------------------------------------------------------------
-    // endCalls — all-calls cleanup
+    // Multi-call cleanup
     //
     // Scenario: signaling error / unregistered event while multiple calls are
-    // active. IsolateManager._onSignalingError / _onUnregistered calls
-    // endCallsOnService() which must trigger performEndCall for every active
-    // call.
-    // Matches: IsolateManager._onSignalingError → endCallsOnService()
-    //          IsolateManager._onUnregistered   → endCallsOnService()
+    // active. IsolateManager calls releaseCall(callId) for each terminal path
+    // which must trigger performEndCall for every active call.
+    // Matches: IsolateManager._onSignalingError → releaseCall(callId)
+    //          IsolateManager._onUnregistered   → releaseCall(callId)
     // -----------------------------------------------------------------------
 
-    // Note: BackgroundPushNotificationService.endCalls() requires
+    // Note: releaseCall(callId) targets a specific call and requires
     // IncomingCallService (push isolate), which is only started by FCM.
     // We use callkeep.endCall() per call instead to end Telecom connections
     // and verify performEndCall fires for each one.
