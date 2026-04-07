@@ -180,7 +180,7 @@ void main() {
     // Scenario: push isolate calls reportNewIncomingCall first; then the main
     // process CallBloc (after receiving the signaling offer) also calls it.
     // The second report must be recognised as a duplicate, not a new call.
-    // Matches: IsolateManager.launchSignaling → push path registration,
+    // Matches: IsolateManager.run → push path registration,
     //          CallBloc._onCallPushEventIncoming vs _onCallSignalingEventIncoming
     // -----------------------------------------------------------------------
 
