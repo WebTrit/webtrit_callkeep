@@ -227,6 +227,7 @@ class IncomingCallService :
     private fun handleLaunch(metadata: CallMetadata): Int {
         isInitialized = true
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
+        timeoutHandler.removeCallbacks(independentTimeoutRunnable)
         timeoutHandler.postDelayed(independentTimeoutRunnable, INDEPENDENT_SERVICE_TIMEOUT_MS)
         callLifecycleHandler.currentCallData = metadata.toPCallkeepIncomingCallData()
         acquireScreenWakeLockIfNeeded()
