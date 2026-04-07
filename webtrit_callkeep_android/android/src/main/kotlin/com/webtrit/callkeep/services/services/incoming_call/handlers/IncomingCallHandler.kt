@@ -7,9 +7,11 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationManagerCompat
+import androidx.lifecycle.Lifecycle
 import com.webtrit.callkeep.common.startForegroundServiceCompat
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
+import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleState
 
 /**
  * Handles the lifecycle of an incoming call within a foreground Service:
@@ -87,6 +89,22 @@ class IncomingCallHandler(
     }
 
     private fun maybeInitBackgroundHandling() {
+        // Skip isolate launch when the main Flutter app is active (foreground or recently
+        // backgrounded). In that state the main SignalingModule already has an open WebSocket
+        // and handles the incoming call. Starting a second background isolate would open a
+        // duplicate signaling connection, causing both sides to receive IncomingCallEvent and
+        // fight over the same Telecom slot — resulting in callRejectedBySystem and a decline
+        // loop. When the app is not active (killed / not yet started) the state is null or
+        // ON_DESTROY, so the isolate launches normally.
+        val state = ActivityLifecycleState.currentValue
+        val isAppActive =
+            state == Lifecycle.Event.ON_RESUME ||
+                state == Lifecycle.Event.ON_PAUSE ||
+                state == Lifecycle.Event.ON_STOP
+        if (isAppActive) {
+            Log.d(TAG, "maybeInitBackgroundHandling: app is active (state=$state), skipping isolate launch")
+            return
+        }
         Log.d(TAG, "Launching isolate for callId: ${lastMetadata?.callId}")
         isolateInitializer.start()
     }
