@@ -298,18 +298,6 @@ enum class PCallkeepLifecycleEvent(
     }
 }
 
-enum class PCallkeepPushNotificationSyncStatus(
-    val raw: Int,
-) {
-    SYNCHRONIZE_CALL_STATUS(0),
-    RELEASE_RESOURCES(1),
-    ;
-
-    companion object {
-        fun ofRaw(raw: Int): PCallkeepPushNotificationSyncStatus? = values().firstOrNull { it.raw == raw }
-    }
-}
-
 enum class PCallkeepConnectionState(
     val raw: Int,
 ) {
@@ -874,19 +862,19 @@ private open class GeneratedPigeonCodec : StandardMessageCodec() {
 
             140.toByte() -> {
                 return (readValue(buffer) as Long?)?.let {
-                    PCallkeepPushNotificationSyncStatus.ofRaw(it.toInt())
+                    PCallkeepConnectionState.ofRaw(it.toInt())
                 }
             }
 
             141.toByte() -> {
                 return (readValue(buffer) as Long?)?.let {
-                    PCallkeepConnectionState.ofRaw(it.toInt())
+                    PCallkeepDisconnectCauseType.ofRaw(it.toInt())
                 }
             }
 
             142.toByte() -> {
                 return (readValue(buffer) as Long?)?.let {
-                    PCallkeepDisconnectCauseType.ofRaw(it.toInt())
+                    PCallkeepSignalingStatus.ofRaw(it.toInt())
                 }
             }
 
@@ -1034,17 +1022,17 @@ private open class GeneratedPigeonCodec : StandardMessageCodec() {
                 writeValue(stream, value.raw)
             }
 
-            is PCallkeepPushNotificationSyncStatus -> {
+            is PCallkeepConnectionState -> {
                 stream.write(140)
                 writeValue(stream, value.raw)
             }
 
-            is PCallkeepConnectionState -> {
+            is PCallkeepDisconnectCauseType -> {
                 stream.write(141)
                 writeValue(stream, value.raw)
             }
 
-            is PCallkeepDisconnectCauseType -> {
+            is PCallkeepSignalingStatus -> {
                 stream.write(142)
                 writeValue(stream, value.raw)
             }
@@ -1231,6 +1219,11 @@ interface PHostBackgroundPushNotificationIsolateApi {
 
     fun endAllCalls(callback: (Result<Unit>) -> Unit)
 
+    fun releaseCall(
+        callId: String,
+        callback: (Result<Unit>) -> Unit,
+    )
+
     companion object {
         /** The codec used by PHostBackgroundPushNotificationIsolateApi. */
         val codec: MessageCodec<Any?> by lazy {
@@ -1269,6 +1262,25 @@ interface PHostBackgroundPushNotificationIsolateApi {
                 if (api != null) {
                     channel.setMessageHandler { _, reply ->
                         api.endAllCalls { result: Result<Unit> ->
+                            val error = result.exceptionOrNull()
+                            if (error != null) {
+                                reply.reply(GeneratedPigeonUtils.wrapError(error))
+                            } else {
+                                reply.reply(GeneratedPigeonUtils.wrapResult(null))
+                            }
+                        }
+                    }
+                } else {
+                    channel.setMessageHandler(null)
+                }
+            }
+            run {
+                val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundPushNotificationIsolateApi.releaseCall$separatedMessageChannelSuffix", codec)
+                if (api != null) {
+                    channel.setMessageHandler { message, reply ->
+                        val args = message as List<Any?>
+                        val callIdArg = args[0] as String
+                        api.releaseCall(callIdArg) { result: Result<Unit> ->
                             val error = result.exceptionOrNull()
                             if (error != null) {
                                 reply.reply(GeneratedPigeonUtils.wrapError(error))
@@ -1567,14 +1579,13 @@ class PDelegateBackgroundRegisterFlutterApi(
 
     fun onNotificationSync(
         pushNotificationSyncStatusHandleArg: Long,
-        statusArg: PCallkeepPushNotificationSyncStatus,
         callDataArg: PCallkeepIncomingCallData?,
         callback: (Result<Unit>) -> Unit,
     ) {
         val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
         val channelName = "dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onNotificationSync$separatedMessageChannelSuffix"
         val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-        channel.send(listOf(pushNotificationSyncStatusHandleArg, statusArg, callDataArg)) {
+        channel.send(listOf(pushNotificationSyncStatusHandleArg, callDataArg)) {
             if (it is List<*>) {
                 if (it.size > 1) {
                     callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))

@@ -50,13 +50,13 @@ class _PigeonCodec extends StandardMessageCodec {
     } else if (value is PCallkeepLifecycleEvent) {
       buffer.putUint8(139);
       writeValue(buffer, value.index);
-    } else if (value is PCallkeepPushNotificationSyncStatus) {
+    } else if (value is PCallkeepConnectionState) {
       buffer.putUint8(140);
       writeValue(buffer, value.index);
-    } else if (value is PCallkeepConnectionState) {
+    } else if (value is PCallkeepDisconnectCauseType) {
       buffer.putUint8(141);
       writeValue(buffer, value.index);
-    } else if (value is PCallkeepDisconnectCauseType) {
+    } else if (value is PCallkeepSignalingStatus) {
       buffer.putUint8(142);
       writeValue(buffer, value.index);
     } else if (value is PIOSOptions) {
@@ -141,13 +141,13 @@ class _PigeonCodec extends StandardMessageCodec {
         return value == null ? null : PCallkeepLifecycleEvent.values[value];
       case 140:
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : PCallkeepPushNotificationSyncStatus.values[value];
+        return value == null ? null : PCallkeepConnectionState.values[value];
       case 141:
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : PCallkeepConnectionState.values[value];
+        return value == null ? null : PCallkeepDisconnectCauseType.values[value];
       case 142:
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : PCallkeepDisconnectCauseType.values[value];
+        return value == null ? null : PCallkeepSignalingStatus.values[value];
       case 143:
         return PIOSOptions.decode(readValue(buffer)!);
       case 144:

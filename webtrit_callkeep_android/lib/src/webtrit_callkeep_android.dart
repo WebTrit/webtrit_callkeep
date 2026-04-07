@@ -303,6 +303,11 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     return _backgroundPushNotificationIsolateApi.endCall(callId);
   }
 
+  @override
+  Future<dynamic> releaseCallBackgroundPushNotificationService(String callId) {
+    return _backgroundPushNotificationIsolateApi.releaseCall(callId);
+  }
+
   // ------------------------------------------------------------------------------------------------
   // Android background push notification service
 
@@ -515,13 +520,17 @@ class _BackgroundServiceDelegate implements PDelegateBackgroundRegisterFlutterAp
   }
 
   @override
-  Future<void> onNotificationSync(
-    int pushNotificationSyncStatusHandle,
-    PCallkeepPushNotificationSyncStatus status,
-    PCallkeepIncomingCallData? callData,
-  ) async {
+  Future<void> onApplicationStatusChanged(int applicationStatusCallbackHandle, PCallkeepServiceStatus status) async {
+    final handle = CallbackHandle.fromRawHandle(applicationStatusCallbackHandle);
+    final closure = PluginUtilities.getCallbackFromHandle(handle)! as ForegroundChangeLifecycleHandle;
+
+    await closure(status.toCallkeep());
+  }
+
+  @override
+  Future<void> onNotificationSync(int pushNotificationSyncStatusHandle, PCallkeepIncomingCallData? callData) async {
     final handle = CallbackHandle.fromRawHandle(pushNotificationSyncStatusHandle);
     final closure = PluginUtilities.getCallbackFromHandle(handle)! as CallKeepPushNotificationSyncStatusHandle;
-    await closure(status.toCallkeep(), callData?.toCallkeep());
+    await closure(callData?.toCallkeep());
   }
 }

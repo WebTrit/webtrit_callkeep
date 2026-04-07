@@ -151,8 +151,6 @@ class PCallRequestError {
 
 enum PCallkeepLifecycleEvent { onCreate, onStart, onResume, onPause, onStop, onDestroy, onAny }
 
-enum PCallkeepPushNotificationSyncStatus { synchronizeCallStatus, releaseResources }
-
 class PCallkeepIncomingCallData {
   late String callId;
   late PHandle? handle;
@@ -221,6 +219,9 @@ abstract class PHostBackgroundPushNotificationIsolateApi {
 
   @async
   void endAllCalls();
+
+  @async
+  void releaseCall(String callId);
 }
 
 @HostApi()
@@ -269,11 +270,10 @@ abstract class PDelegateBackgroundRegisterFlutterApi {
   );
 
   @async
-  void onNotificationSync(
-    int pushNotificationSyncStatusHandle,
-    PCallkeepPushNotificationSyncStatus status,
-    PCallkeepIncomingCallData? callData,
-  );
+  void onApplicationStatusChanged(int applicationStatusCallbackHandle, PCallkeepServiceStatus status);
+
+  @async
+  void onNotificationSync(int pushNotificationSyncStatusHandle, PCallkeepIncomingCallData? callData);
 }
 
 @HostApi()
