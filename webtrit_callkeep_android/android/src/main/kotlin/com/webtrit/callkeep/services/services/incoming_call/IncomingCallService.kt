@@ -27,7 +27,6 @@ import com.webtrit.callkeep.models.toPCallkeepIncomingCallData
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
-import com.webtrit.callkeep.services.common.DefaultIsolateLaunchPolicy
 import com.webtrit.callkeep.services.core.CallkeepCore
 import com.webtrit.callkeep.services.core.ConnectionEventListener
 import com.webtrit.callkeep.services.services.incoming_call.handlers.CallLifecycleHandler
@@ -129,7 +128,6 @@ class IncomingCallService :
             IncomingCallHandler(
                 service = this,
                 notificationBuilder = incomingCallNotificationBuilder,
-                isolateLaunchPolicy = DefaultIsolateLaunchPolicy(this),
                 isolateInitializer = isolateHandler,
             )
 

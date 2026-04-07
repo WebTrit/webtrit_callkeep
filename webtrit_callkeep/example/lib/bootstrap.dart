@@ -24,9 +24,6 @@ Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
       AndroidCallkeepServices.backgroundPushNotificationBootstrapService
           .initializeCallback(isolate.onPushNotificationCallback);
 
-      AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .configurePushNotificationSignalingService(launchBackgroundIsolateEvenIfAppIsOpen: true);
-
       // Configures how incoming SMS messages should be parsed on the Android side.
       //
       // Parameters:

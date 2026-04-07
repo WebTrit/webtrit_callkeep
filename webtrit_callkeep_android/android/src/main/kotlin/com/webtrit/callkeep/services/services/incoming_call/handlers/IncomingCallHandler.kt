@@ -10,7 +10,6 @@ import androidx.core.app.NotificationManagerCompat
 import com.webtrit.callkeep.common.startForegroundServiceCompat
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
-import com.webtrit.callkeep.services.common.IsolateLaunchPolicy
 
 /**
  * Handles the lifecycle of an incoming call within a foreground Service:
@@ -26,7 +25,6 @@ import com.webtrit.callkeep.services.common.IsolateLaunchPolicy
 class IncomingCallHandler(
     private val service: Service,
     private val notificationBuilder: IncomingCallNotificationBuilder,
-    private val isolateLaunchPolicy: IsolateLaunchPolicy,
     private val isolateInitializer: IsolateInitializer,
 ) {
     private var lastMetadata: CallMetadata? = null
@@ -89,17 +87,8 @@ class IncomingCallHandler(
     }
 
     private fun maybeInitBackgroundHandling() {
-        val shouldLaunch = isolateLaunchPolicy.shouldLaunch()
-        if (shouldLaunch) {
-            val callId = lastMetadata?.callId
-            Log.d(TAG, "Launching isolate for callId: $callId")
-            isolateInitializer.start()
-        } else {
-            Log.d(
-                TAG,
-                "Skipped launching isolate.initializer=$isolateInitializer",
-            )
-        }
+        Log.d(TAG, "Launching isolate for callId: ${lastMetadata?.callId}")
+        isolateInitializer.start()
     }
 
     /**
