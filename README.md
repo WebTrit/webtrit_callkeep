@@ -206,7 +206,7 @@ Inside the isolate, use `CallkeepBackgroundServiceDelegate` to receive answer/en
 Earlier versions also included a persistent signaling isolate — a long-lived foreground service
 that kept a Flutter isolate running with an open WebSocket connection to the signaling server. It
 was removed because Android increasingly restricts persistent background services (battery
-optimisation, Doze mode, vendor-specific kill policies), making reliable long-running isolates
+optimization, Doze mode, vendor-specific kill policies), making reliable long-running isolates
 impractical. Signaling is also application-level responsibility: the plugin is concerned with
 presenting calls to the OS, not maintaining a connection. FCM high-priority push is the
 recommended and sufficient mechanism to wake the device for an incoming call.
