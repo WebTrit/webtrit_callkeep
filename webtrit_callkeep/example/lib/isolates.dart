@@ -1,7 +1,6 @@
 import 'package:logging/logging.dart';
 import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 
-import 'app/constants.dart';
 import 'bootstrap.dart';
 
 final _log = Logger('Isolates');
