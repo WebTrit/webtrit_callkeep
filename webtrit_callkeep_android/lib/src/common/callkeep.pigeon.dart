@@ -123,8 +123,6 @@ enum PCallRequestErrorEnum {
 
 enum PCallkeepLifecycleEvent { onCreate, onStart, onResume, onPause, onStop, onDestroy, onAny }
 
-enum PCallkeepPushNotificationSyncStatus { synchronizeCallStatus, releaseResources }
-
 enum PCallkeepConnectionState {
   stateInitializing,
   stateNew,
@@ -750,53 +748,50 @@ class _PigeonCodec extends StandardMessageCodec {
     } else if (value is PCallkeepLifecycleEvent) {
       buffer.putUint8(139);
       writeValue(buffer, value.index);
-    } else if (value is PCallkeepPushNotificationSyncStatus) {
+    } else if (value is PCallkeepConnectionState) {
       buffer.putUint8(140);
       writeValue(buffer, value.index);
-    } else if (value is PCallkeepConnectionState) {
+    } else if (value is PCallkeepDisconnectCauseType) {
       buffer.putUint8(141);
       writeValue(buffer, value.index);
-    } else if (value is PCallkeepDisconnectCauseType) {
-      buffer.putUint8(142);
-      writeValue(buffer, value.index);
     } else if (value is PIOSOptions) {
-      buffer.putUint8(143);
+      buffer.putUint8(142);
       writeValue(buffer, value.encode());
     } else if (value is PAndroidOptions) {
-      buffer.putUint8(144);
+      buffer.putUint8(143);
       writeValue(buffer, value.encode());
     } else if (value is POptions) {
-      buffer.putUint8(145);
+      buffer.putUint8(144);
       writeValue(buffer, value.encode());
     } else if (value is PAudioDevice) {
-      buffer.putUint8(146);
+      buffer.putUint8(145);
       writeValue(buffer, value.encode());
     } else if (value is PPermissionResult) {
-      buffer.putUint8(147);
+      buffer.putUint8(146);
       writeValue(buffer, value.encode());
     } else if (value is PHandle) {
-      buffer.putUint8(148);
+      buffer.putUint8(147);
       writeValue(buffer, value.encode());
     } else if (value is PEndCallReason) {
-      buffer.putUint8(149);
+      buffer.putUint8(148);
       writeValue(buffer, value.encode());
     } else if (value is PIncomingCallError) {
-      buffer.putUint8(150);
+      buffer.putUint8(149);
       writeValue(buffer, value.encode());
     } else if (value is PCallRequestError) {
-      buffer.putUint8(151);
+      buffer.putUint8(150);
       writeValue(buffer, value.encode());
     } else if (value is PCallkeepIncomingCallData) {
-      buffer.putUint8(152);
+      buffer.putUint8(151);
       writeValue(buffer, value.encode());
     } else if (value is PCallkeepServiceStatus) {
-      buffer.putUint8(153);
+      buffer.putUint8(152);
       writeValue(buffer, value.encode());
     } else if (value is PCallkeepDisconnectCause) {
-      buffer.putUint8(154);
+      buffer.putUint8(153);
       writeValue(buffer, value.encode());
     } else if (value is PCallkeepConnection) {
-      buffer.putUint8(155);
+      buffer.putUint8(154);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -841,38 +836,35 @@ class _PigeonCodec extends StandardMessageCodec {
         return value == null ? null : PCallkeepLifecycleEvent.values[value];
       case 140:
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : PCallkeepPushNotificationSyncStatus.values[value];
+        return value == null ? null : PCallkeepConnectionState.values[value];
       case 141:
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : PCallkeepConnectionState.values[value];
-      case 142:
-        final int? value = readValue(buffer) as int?;
         return value == null ? null : PCallkeepDisconnectCauseType.values[value];
-      case 143:
+      case 142:
         return PIOSOptions.decode(readValue(buffer)!);
-      case 144:
+      case 143:
         return PAndroidOptions.decode(readValue(buffer)!);
-      case 145:
+      case 144:
         return POptions.decode(readValue(buffer)!);
-      case 146:
+      case 145:
         return PAudioDevice.decode(readValue(buffer)!);
-      case 147:
+      case 146:
         return PPermissionResult.decode(readValue(buffer)!);
-      case 148:
+      case 147:
         return PHandle.decode(readValue(buffer)!);
-      case 149:
+      case 148:
         return PEndCallReason.decode(readValue(buffer)!);
-      case 150:
+      case 149:
         return PIncomingCallError.decode(readValue(buffer)!);
-      case 151:
+      case 150:
         return PCallRequestError.decode(readValue(buffer)!);
-      case 152:
+      case 151:
         return PCallkeepIncomingCallData.decode(readValue(buffer)!);
-      case 153:
+      case 152:
         return PCallkeepServiceStatus.decode(readValue(buffer)!);
-      case 154:
+      case 153:
         return PCallkeepDisconnectCause.decode(readValue(buffer)!);
-      case 155:
+      case 154:
         return PCallkeepConnection.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -1028,6 +1020,29 @@ class PHostBackgroundPushNotificationIsolateApi {
       binaryMessenger: pigeonVar_binaryMessenger,
     );
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final List<Object?>? pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else {
+      return;
+    }
+  }
+
+  Future<void> releaseCall(String callId) async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundPushNotificationIsolateApi.releaseCall$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[callId]);
     final List<Object?>? pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
     if (pigeonVar_replyList == null) {
       throw _createConnectionError(pigeonVar_channelName);
@@ -1326,11 +1341,9 @@ abstract class PDelegateBackgroundRegisterFlutterApi {
     PCallkeepIncomingCallData? callData,
   );
 
-  Future<void> onNotificationSync(
-    int pushNotificationSyncStatusHandle,
-    PCallkeepPushNotificationSyncStatus status,
-    PCallkeepIncomingCallData? callData,
-  );
+  Future<void> onApplicationStatusChanged(int applicationStatusCallbackHandle, PCallkeepServiceStatus status);
+
+  Future<void> onNotificationSync(int pushNotificationSyncStatusHandle, PCallkeepIncomingCallData? callData);
 
   static void setUp(
     PDelegateBackgroundRegisterFlutterApi? api, {
@@ -1379,6 +1392,44 @@ abstract class PDelegateBackgroundRegisterFlutterApi {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+        'dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onApplicationStatusChanged$messageChannelSuffix',
+        pigeonChannelCodec,
+        binaryMessenger: binaryMessenger,
+      );
+      if (api == null) {
+        pigeonVar_channel.setMessageHandler(null);
+      } else {
+        pigeonVar_channel.setMessageHandler((Object? message) async {
+          assert(
+            message != null,
+            'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onApplicationStatusChanged was null.',
+          );
+          final List<Object?> args = (message as List<Object?>?)!;
+          final int? arg_applicationStatusCallbackHandle = (args[0] as int?);
+          assert(
+            arg_applicationStatusCallbackHandle != null,
+            'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onApplicationStatusChanged was null, expected non-null int.',
+          );
+          final PCallkeepServiceStatus? arg_status = (args[1] as PCallkeepServiceStatus?);
+          assert(
+            arg_status != null,
+            'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onApplicationStatusChanged was null, expected non-null PCallkeepServiceStatus.',
+          );
+          try {
+            await api.onApplicationStatusChanged(arg_applicationStatusCallbackHandle!, arg_status!);
+            return wrapResponse(empty: true);
+          } on PlatformException catch (e) {
+            return wrapResponse(error: e);
+          } catch (e) {
+            return wrapResponse(
+              error: PlatformException(code: 'error', message: e.toString()),
+            );
+          }
+        });
+      }
+    }
+    {
+      final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
         'dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onNotificationSync$messageChannelSuffix',
         pigeonChannelCodec,
         binaryMessenger: binaryMessenger,
@@ -1397,14 +1448,9 @@ abstract class PDelegateBackgroundRegisterFlutterApi {
             arg_pushNotificationSyncStatusHandle != null,
             'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onNotificationSync was null, expected non-null int.',
           );
-          final PCallkeepPushNotificationSyncStatus? arg_status = (args[1] as PCallkeepPushNotificationSyncStatus?);
-          assert(
-            arg_status != null,
-            'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateBackgroundRegisterFlutterApi.onNotificationSync was null, expected non-null PCallkeepPushNotificationSyncStatus.',
-          );
-          final PCallkeepIncomingCallData? arg_callData = (args[2] as PCallkeepIncomingCallData?);
+          final PCallkeepIncomingCallData? arg_callData = (args[1] as PCallkeepIncomingCallData?);
           try {
-            await api.onNotificationSync(arg_pushNotificationSyncStatusHandle!, arg_status!, arg_callData);
+            await api.onNotificationSync(arg_pushNotificationSyncStatusHandle!, arg_callData);
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);

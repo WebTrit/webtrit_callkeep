@@ -320,6 +320,9 @@ class WebtritCallkeepWeb extends WebtritCallkeepPlatform {
   @override
   Future<dynamic> endCallBackgroundPushNotificationService(String callId) async {}
 
+  @override
+  Future<dynamic> releaseCallBackgroundPushNotificationService(String callId) async {}
+
   // ---------------------------------------------------------------------------
   // Android SMS reception (no-op on web)
   // ---------------------------------------------------------------------------

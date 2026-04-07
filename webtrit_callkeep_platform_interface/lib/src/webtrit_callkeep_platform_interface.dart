@@ -307,6 +307,10 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('hungUpAndroidService() has not been implemented.');
   }
 
+  Future<dynamic> releaseCallBackgroundPushNotificationService(String callId) {
+    throw UnimplementedError('releaseCallBackgroundPushNotificationService() has not been implemented.');
+  }
+
   // ------------------------------------------------------------------------------------------------
   // Android SMS reception section
   // ------------------------------------------------------------------------------------------------

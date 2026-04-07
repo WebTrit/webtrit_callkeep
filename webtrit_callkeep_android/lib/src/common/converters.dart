@@ -250,17 +250,6 @@ extension CallkeepLifecycleTypeConverter on CallkeepLifecycleEvent {
   }
 }
 
-extension PCallkeepPushNotificationSyncStatusConverter on PCallkeepPushNotificationSyncStatus {
-  CallkeepPushNotificationSyncStatus toCallkeep() {
-    switch (this) {
-      case PCallkeepPushNotificationSyncStatus.synchronizeCallStatus:
-        return CallkeepPushNotificationSyncStatus.synchronizeCallStatus;
-      case PCallkeepPushNotificationSyncStatus.releaseResources:
-        return CallkeepPushNotificationSyncStatus.releaseResources;
-    }
-  }
-}
-
 extension PCallkeepIncomingCallDataConverter on PCallkeepIncomingCallData {
   CallkeepIncomingCallMetadata toCallkeep() {
     return CallkeepIncomingCallMetadata(

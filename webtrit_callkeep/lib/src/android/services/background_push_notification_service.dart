@@ -30,8 +30,22 @@ class BackgroundPushNotificationService {
   }
 
   /// Ends all background calls (Android only).
+  ///
+  /// Deprecated: use [releaseCall] with a specific callId instead.
+  /// [endCalls] routes through a teardown path that does not stop
+  /// [IncomingCallService], leaving the incoming call notification visible.
+  @Deprecated('Use releaseCall(callId) instead')
   Future<dynamic> endCalls() {
     if (kIsWeb || !Platform.isAndroid) return Future.value();
     return platform.endCallsBackgroundPushNotificationService();
+  }
+
+  /// Unconditionally releases the incoming call service for [callId] (Android only).
+  ///
+  /// Call this after all isolate work is done (notifications shown, logs written).
+  /// Stops [IncomingCallService] regardless of Telecom connection state.
+  Future<dynamic> releaseCall(String callId) {
+    if (kIsWeb || !Platform.isAndroid) return Future.value();
+    return platform.releaseCallBackgroundPushNotificationService(callId);
   }
 }
