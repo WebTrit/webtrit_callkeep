@@ -27,7 +27,6 @@ import com.webtrit.callkeep.models.toPCallkeepIncomingCallData
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
-import com.webtrit.callkeep.services.common.DefaultIsolateLaunchPolicy
 import com.webtrit.callkeep.services.core.CallkeepCore
 import com.webtrit.callkeep.services.core.ConnectionEventListener
 import com.webtrit.callkeep.services.services.incoming_call.handlers.CallLifecycleHandler
@@ -129,7 +128,6 @@ class IncomingCallService :
             IncomingCallHandler(
                 service = this,
                 notificationBuilder = incomingCallNotificationBuilder,
-                isolateLaunchPolicy = DefaultIsolateLaunchPolicy(this),
                 isolateInitializer = isolateHandler,
             )
 
@@ -225,6 +223,16 @@ class IncomingCallService :
 
     // Launches the service with the LAUNCH action and cancels the timeout
     private fun handleLaunch(metadata: CallMetadata): Int {
+        // The service handles one call at a time. If IC_INITIALIZE arrives while we are
+        // still in the teardown window of a previous call (stopTimeoutRunnable pending),
+        // accepting it would cancel the stop timer, overwrite currentCallData, and start
+        // a second Flutter isolate on the same engine — causing FlutterEngine conflicts and
+        // callRejectedBySystem from Telecom. Reject the duplicate; it will be delivered to
+        // a fresh service instance once the current one stops.
+        if (isInitialized) {
+            Log.w(TAG, "handleLaunch: already initialized for ${callLifecycleHandler.currentCallData?.callId}, ignoring IC_INITIALIZE for ${metadata.callId}")
+            return START_NOT_STICKY
+        }
         isInitialized = true
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
         timeoutHandler.removeCallbacks(independentTimeoutRunnable)

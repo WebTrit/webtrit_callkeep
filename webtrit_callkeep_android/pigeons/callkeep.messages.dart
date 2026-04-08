@@ -206,9 +206,6 @@ abstract class PHostBackgroundPushNotificationIsolateBootstrapApi {
   void initializePushNotificationCallback({required int callbackDispatcher, required int onNotificationSync});
 
   @async
-  void configureSignalingService({bool launchBackgroundIsolateEvenIfAppIsOpen = false});
-
-  @async
   PIncomingCallError? reportNewIncomingCall(String callId, PHandle handle, String? displayName, bool hasVideo);
 }
 

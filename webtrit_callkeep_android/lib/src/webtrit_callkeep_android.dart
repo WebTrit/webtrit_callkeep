@@ -275,13 +275,6 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<void> configurePushNotificationSignalingService({bool launchBackgroundIsolateEvenIfAppIsOpen = false}) async {
-    await _backgroundPushNotificationIsolateBootstrapApi.configureSignalingService(
-      launchBackgroundIsolateEvenIfAppIsOpen: launchBackgroundIsolateEvenIfAppIsOpen,
-    );
-  }
-
-  @override
   Future<CallkeepIncomingCallError?> incomingCallPushNotificationService(
     String callId,
     CallkeepHandle handle,
