@@ -16,8 +16,6 @@ lib/src/
 └── android/
     ├── services/
     │   ├── android_callkeep_services.dart          # AndroidCallkeepServices — static service registry
-    │   ├── background_signaling_bootstrap_service.dart
-    │   ├── background_signaling_service.dart
     │   ├── background_push_notification_bootstrap_service.dart
     │   └── background_push_notification_service.dart
     └── utils/
@@ -43,8 +41,6 @@ lib/src/
 
 Entry point for Android background modes. Always use these static singletons:
 
-- `backgroundSignalingBootstrapService` — configure + start/stop persistent signaling service
-- `backgroundSignalingService` — report incoming calls / end calls from signaling isolate
 - `backgroundPushNotificationBootstrapService` — configure + trigger push-notification-based calls
 - `backgroundPushNotificationService` — end calls from push notification isolate
 - `smsReceptionConfig` — **deprecated**, use `AndroidCallkeepUtils.smsReceptionConfig` instead
@@ -59,7 +55,6 @@ Entry point for Android background modes. Always use these static singletons:
 ### `CallkeepConnections` (singleton, Android only)
 
 - `getConnection(callId)` / `getConnections()` / `cleanConnections()`
-- `updateActivitySignalingStatus(CallkeepSignalingStatus)`
 - All methods are no-ops on non-Android platforms (return `null` / empty list)
 
 ---

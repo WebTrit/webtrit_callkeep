@@ -77,12 +77,11 @@ Implemented by: `PermissionsApi`
 
 Implemented by: `ConnectionsApi`
 
-| Method                                  | Description                                                  |
-|-----------------------------------------|--------------------------------------------------------------|
-| `getConnection(callId)`                 | Return `CallMetadata` for a specific call                    |
-| `getConnections()`                      | Return all active `CallMetadata` records                     |
-| `updateActivitySignalingStatus(status)` | Notify signaling layer of connection status change           |
-| `cleanConnections()`                    | Clear all connections without hanging up (for tearDown race) |
+| Method                  | Description                                                  |
+|-------------------------|--------------------------------------------------------------|
+| `getConnection(callId)` | Return `CallMetadata` for a specific call                    |
+| `getConnections()`      | Return all active `CallMetadata` records                     |
+| `cleanConnections()`    | Clear all connections without hanging up (for tearDown race) |
 
 ---
 
@@ -104,19 +103,6 @@ Implemented by: `SoundApi`
 |-----------------------------|---------------------------------------|
 | `playRingbackSound(callId)` | Start ringback tone for outgoing call |
 | `stopRingbackSound(callId)` | Stop ringback tone                    |
-
----
-
-### `PHostBackgroundSignalingIsolateBootstrapApi`
-
-Implemented by: `BackgroundSignalingIsolateBootstrapApi`
-
-| Method                                       | Description                     |
-|----------------------------------------------|---------------------------------|
-| `initializeSignalingServiceCallback(handle)` | Store Dart isolate entry-point  |
-| `configureSignalingService(config)`          | Persist service config          |
-| `startService()`                             | Start `SignalingIsolateService` |
-| `stopService()`                              | Stop `SignalingIsolateService`  |
 
 ---
 
@@ -169,7 +155,6 @@ Kotlin calls these methods on the Dart delegate to notify of call events.
 | `PCallHandle`              | Phone number or SIP URI                                             |
 | `PAudioDevice`             | Audio device descriptor (earpiece, speaker, Bluetooth, etc.)        |
 | `PCallkeepConnectionState` | Telecom state enum: RINGING, DIALING, ACTIVE, HOLDING, DISCONNECTED |
-| `PSignalingStatus`         | Signaling layer connection status                                   |
 | `PFailureMetaData`         | Structured failure info (reason, code)                              |
 
 ---

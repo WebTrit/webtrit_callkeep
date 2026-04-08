@@ -151,8 +151,6 @@ class PCallRequestError {
 
 enum PCallkeepLifecycleEvent { onCreate, onStart, onResume, onPause, onStop, onDestroy, onAny }
 
-enum PCallkeepPushNotificationSyncStatus { synchronizeCallStatus, releaseResources }
-
 class PCallkeepIncomingCallData {
   late String callId;
   late PHandle? handle;
@@ -162,7 +160,6 @@ class PCallkeepIncomingCallData {
 
 class PCallkeepServiceStatus {
   late PCallkeepLifecycleEvent lifecycleEvent;
-  late PCallkeepSignalingStatus? mainSignalingStatus;
 }
 
 enum PCallkeepConnectionState {
@@ -192,8 +189,6 @@ enum PCallkeepDisconnectCauseType {
   callPulled,
 }
 
-enum PCallkeepSignalingStatus { disconnecting, disconnect, connecting, connect, failure }
-
 class PCallkeepDisconnectCause {
   late PCallkeepDisconnectCauseType type;
   late String? reason;
@@ -206,39 +201,9 @@ class PCallkeepConnection {
 }
 
 @HostApi()
-abstract class PHostBackgroundSignalingIsolateBootstrapApi {
-  @async
-  void initializeSignalingServiceCallback({required int callbackDispatcher, required int onSync});
-
-  @async
-  void configureSignalingService({String? androidNotificationName, String? androidNotificationDescription});
-
-  @async
-  void startService();
-
-  @async
-  void stopService();
-}
-
-@HostApi()
-abstract class PHostBackgroundSignalingIsolateApi {
-  @async
-  void incomingCall(String callId, PHandle handle, String? displayName, bool hasVideo);
-
-  @async
-  void endCall(String callId);
-
-  @async
-  void endAllCalls();
-}
-
-@HostApi()
 abstract class PHostBackgroundPushNotificationIsolateBootstrapApi {
   @async
   void initializePushNotificationCallback({required int callbackDispatcher, required int onNotificationSync});
-
-  @async
-  void configureSignalingService({bool launchBackgroundIsolateEvenIfAppIsOpen = false});
 
   @async
   PIncomingCallError? reportNewIncomingCall(String callId, PHandle handle, String? displayName, bool hasVideo);
@@ -251,6 +216,9 @@ abstract class PHostBackgroundPushNotificationIsolateApi {
 
   @async
   void endAllCalls();
+
+  @async
+  void releaseCall(String callId);
 }
 
 @HostApi()
@@ -302,11 +270,7 @@ abstract class PDelegateBackgroundRegisterFlutterApi {
   void onApplicationStatusChanged(int applicationStatusCallbackHandle, PCallkeepServiceStatus status);
 
   @async
-  void onNotificationSync(
-    int pushNotificationSyncStatusHandle,
-    PCallkeepPushNotificationSyncStatus status,
-    PCallkeepIncomingCallData? callData,
-  );
+  void onNotificationSync(int pushNotificationSyncStatusHandle, PCallkeepIncomingCallData? callData);
 }
 
 @HostApi()
@@ -394,9 +358,6 @@ abstract class PHostConnectionsApi {
 
   @async
   void cleanConnections();
-
-  @async
-  void updateActivitySignalingStatus(PCallkeepSignalingStatus status);
 }
 
 @FlutterApi()

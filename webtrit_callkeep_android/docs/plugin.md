@@ -20,7 +20,6 @@ Called once when the Flutter engine attaches:
 - Initializes `AssetCacheManager` (copies ringtones from the Flutter asset bundle to device
   storage so services can access them without a Flutter engine).
 - Registers bootstrap APIs for background isolates:
-  - `BackgroundSignalingIsolateBootstrapApi` (signaling WebSocket service)
   - `BackgroundPushNotificationIsolateBootstrapApi` (push-triggered incoming call service)
   - `SmsReceptionConfigBootstrapApi` (optional SMS fallback)
 - Registers `PHostDiagnosticsApi`, `PHostPermissionsApi`, `PHostActivityControlApi`,
@@ -33,8 +32,6 @@ Called when an `Activity` is available:
 - Saves `ActivityHolder.activity`.
 - Adds a `LifecycleObserver` to receive `ON_START` / `ON_STOP` events.
 - Binds `ForegroundService` (see below).
-- On Android 14+ (`API >= 34`), launches `SignalingIsolateService` if a callback has already been
-  registered.
 
 ### `onDetachedFromActivity()` / `onDetachedFromActivityForConfigChanges()`
 
@@ -78,5 +75,5 @@ This ensures the incoming-call or in-call UI surfaces even when the device is lo
 ## Related Components
 
 - [foreground-service.md](foreground-service.md) — bound service wired up here
-- [background-services.md](background-services.md) — `SignalingIsolateService` launched here
+- [background-services.md](background-services.md) — IncomingCallService and ActiveCallService; bootstrap API registered on engine attach
 - [pigeon-apis.md](pigeon-apis.md) — all Pigeon APIs registered here

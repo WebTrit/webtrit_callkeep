@@ -512,14 +512,6 @@ class _HelperDrawer extends StatelessWidget {
                     ],
                   ),
 
-                  // --- Signaling Status ---
-                  _Section(
-                    title: 'Signaling Status',
-                    children: CallkeepSignalingStatus.values
-                        .map((s) => _Btn('→ ${s.name}', () => cubit.updateSignalingStatus(s)))
-                        .toList(),
-                  ),
-
                   // --- Permissions ---
                   _Section(
                     title: 'Permissions',

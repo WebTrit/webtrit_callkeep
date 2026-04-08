@@ -629,7 +629,7 @@ void main() {
   // -------------------------------------------------------------------------
   // Regression - endCall / tearDown callback timing
   //
-  // Covers the fix in SignalingIsolateService.endCall and endAllCalls:
+  // Covers the fix in endCall and endAllCalls:
   // both methods now wait for a HungUp/DeclineCall broadcast confirmation
   // from PhoneConnectionService before resolving the Dart Future, ensuring
   // Flutter is not notified before Telecom has actually torn down the call.
@@ -696,9 +696,9 @@ void main() {
       );
     });
 
-    /// The 5-second timeout in SignalingIsolateService.endCall guarantees that
-    /// the Future always resolves even if the broadcast confirmation never
-    /// arrives (e.g. callkeep_core process killed). Verify no indefinite hang.
+    /// The 5-second timeout in endCall helps prevent an indefinite hang
+    /// if the broadcast confirmation never arrives (e.g. callkeep_core process
+    /// killed). Verify no indefinite hang.
     testWidgets('endCall future always resolves within timeout', (WidgetTester _) async {
       final id = _nextId();
       await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');

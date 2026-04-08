@@ -21,13 +21,8 @@ Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
 
       await Permission.notification.request();
 
-      AndroidCallkeepServices.backgroundSignalingBootstrapService.initializeCallback(isolate.onStartForegroundService);
-
       AndroidCallkeepServices.backgroundPushNotificationBootstrapService
           .initializeCallback(isolate.onPushNotificationCallback);
-
-      AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .configurePushNotificationSignalingService(launchBackgroundIsolateEvenIfAppIsOpen: true);
 
       // Configures how incoming SMS messages should be parsed on the Android side.
       //

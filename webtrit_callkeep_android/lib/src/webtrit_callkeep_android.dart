@@ -14,11 +14,9 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   // APIs for initializing the background service isolates to be used in the main isolate.
-  final _backgroundSignalingIsolateBootstrapApi = PHostBackgroundSignalingIsolateBootstrapApi();
   final _backgroundPushNotificationIsolateBootstrapApi = PHostBackgroundPushNotificationIsolateBootstrapApi();
 
   // APIs for working with the background service isolates.
-  final _backgroundSignalingIsolateApi = PHostBackgroundSignalingIsolateApi();
   final _backgroundPushNotificationIsolateApi = PHostBackgroundPushNotificationIsolateApi();
   final _pHostSmsReceptionApi = PHostSmsReceptionConfigApi();
 
@@ -29,10 +27,8 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   final _connectionsApi = PHostConnectionsApi();
   final _activityControlApi = PHostActivityControlApi();
 
-  int? _signalingIsolatePluginCallbackHandle;
   int? _pushNotificationIsolatePluginCallbackHandle;
 
-  int? _onSignalingServiceStartHandle;
   int? _onPushNotificationNotificationSync;
 
   final _permissionsApi = PHostPermissionsApi();
@@ -258,76 +254,6 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     return _connectionsApi.getConnections().then((value) => value.map((it) => it.toCallkeep()).toList());
   }
 
-  @override
-  Future<void> updateActivitySignalingStatus(CallkeepSignalingStatus status) {
-    return _connectionsApi.updateActivitySignalingStatus(status.toPigeon());
-  }
-
-  // Android background signaling service
-  // ------------------------------------------------------------------------------------------------
-
-  @override
-  Future<void> initializeBackgroundSignalingServiceCallback(ForegroundStartServiceHandle? onSync) async {
-    // Initialization callback handle for the isolate plugin only once;
-    _signalingIsolatePluginCallbackHandle =
-        _signalingIsolatePluginCallbackHandle ??
-        PluginUtilities.getCallbackHandle(_isolatePluginCallbackDispatcher)?.toRawHandle();
-
-    _onSignalingServiceStartHandle =
-        _onSignalingServiceStartHandle ?? PluginUtilities.getCallbackHandle(onSync!)?.toRawHandle();
-
-    if (_signalingIsolatePluginCallbackHandle != null && _onSignalingServiceStartHandle != null) {
-      await _backgroundSignalingIsolateBootstrapApi.initializeSignalingServiceCallback(
-        callbackDispatcher: _signalingIsolatePluginCallbackHandle!,
-        onSync: _onSignalingServiceStartHandle!,
-      );
-    }
-  }
-
-  @override
-  Future<void> configureBackgroundSignalingService({
-    String? androidNotificationName,
-    String? androidNotificationDescription,
-  }) async {
-    await _backgroundSignalingIsolateBootstrapApi.configureSignalingService(
-      androidNotificationName: androidNotificationName,
-      androidNotificationDescription: androidNotificationDescription,
-    );
-  }
-
-  @override
-  Future<dynamic> startBackgroundSignalingService() {
-    return _backgroundSignalingIsolateBootstrapApi.startService();
-  }
-
-  @override
-  Future<dynamic> stopBackgroundSignalingService() {
-    return _backgroundSignalingIsolateBootstrapApi.stopService();
-  }
-
-  @override
-  Future<dynamic> incomingCallBackgroundSignalingService(
-    String callId,
-    CallkeepHandle handle,
-    String? displayName,
-    bool hasVideo,
-  ) {
-    return _backgroundSignalingIsolateApi.incomingCall(callId, handle.toPigeon(), displayName, hasVideo);
-  }
-
-  @override
-  Future<dynamic> endCallsBackgroundSignalingService() {
-    return _backgroundSignalingIsolateApi.endAllCalls();
-  }
-
-  @override
-  Future<dynamic> endCallBackgroundSignalingService(String callId) {
-    return _backgroundSignalingIsolateApi.endCall(callId);
-  }
-
-  // ------------------------------------------------------------------------------------------------
-  // Android background signaling service
-
   // Android background push notification service
   // ------------------------------------------------------------------------------------------------
   @override
@@ -346,13 +272,6 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
         onNotificationSync: _onPushNotificationNotificationSync!,
       );
     }
-  }
-
-  @override
-  Future<void> configurePushNotificationSignalingService({bool launchBackgroundIsolateEvenIfAppIsOpen = false}) async {
-    await _backgroundPushNotificationIsolateBootstrapApi.configureSignalingService(
-      launchBackgroundIsolateEvenIfAppIsOpen: launchBackgroundIsolateEvenIfAppIsOpen,
-    );
   }
 
   @override
@@ -375,6 +294,11 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   @override
   Future<dynamic> endCallBackgroundPushNotificationService(String callId) {
     return _backgroundPushNotificationIsolateApi.endCall(callId);
+  }
+
+  @override
+  Future<dynamic> releaseCallBackgroundPushNotificationService(String callId) {
+    return _backgroundPushNotificationIsolateApi.releaseCall(callId);
   }
 
   // ------------------------------------------------------------------------------------------------
@@ -597,13 +521,9 @@ class _BackgroundServiceDelegate implements PDelegateBackgroundRegisterFlutterAp
   }
 
   @override
-  Future<void> onNotificationSync(
-    int pushNotificationSyncStatusHandle,
-    PCallkeepPushNotificationSyncStatus status,
-    PCallkeepIncomingCallData? callData,
-  ) async {
+  Future<void> onNotificationSync(int pushNotificationSyncStatusHandle, PCallkeepIncomingCallData? callData) async {
     final handle = CallbackHandle.fromRawHandle(pushNotificationSyncStatusHandle);
     final closure = PluginUtilities.getCallbackFromHandle(handle)! as CallKeepPushNotificationSyncStatusHandle;
-    await closure(status.toCallkeep(), callData?.toCallkeep());
+    await closure(callData?.toCallkeep());
   }
 }

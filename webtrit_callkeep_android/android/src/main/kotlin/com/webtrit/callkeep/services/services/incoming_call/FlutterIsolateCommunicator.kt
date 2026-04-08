@@ -2,10 +2,8 @@ package com.webtrit.callkeep.services.services.incoming_call
 
 import android.content.Context
 import com.webtrit.callkeep.PCallkeepIncomingCallData
-import com.webtrit.callkeep.PCallkeepPushNotificationSyncStatus
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
-import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.syncPushIsolate
 
 interface FlutterIsolateCommunicator {
@@ -25,11 +23,6 @@ interface FlutterIsolateCommunicator {
         callData: PCallkeepIncomingCallData?,
         onSuccess: () -> Unit,
         onFailure: (Throwable) -> Unit,
-    )
-
-    fun releaseResources(
-        callData: PCallkeepIncomingCallData?,
-        onComplete: () -> Unit,
     )
 }
 
@@ -66,18 +59,5 @@ class DefaultFlutterIsolateCommunicator(
         registerApi?.syncPushIsolate(context, callData) { result ->
             result.onSuccess { onSuccess() }.onFailure { onFailure(it) }
         } ?: onFailure(IllegalStateException("Register API unavailable"))
-    }
-
-    override fun releaseResources(
-        callData: PCallkeepIncomingCallData?,
-        onComplete: () -> Unit,
-    ) {
-        registerApi?.onNotificationSync(
-            StorageDelegate.IncomingCallService.getOnNotificationSync(context),
-            PCallkeepPushNotificationSyncStatus.RELEASE_RESOURCES,
-            callData,
-        ) {
-            onComplete()
-        } ?: onComplete()
     }
 }

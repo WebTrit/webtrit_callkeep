@@ -27,7 +27,6 @@ import com.webtrit.callkeep.models.toPCallkeepIncomingCallData
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
-import com.webtrit.callkeep.services.common.DefaultIsolateLaunchPolicy
 import com.webtrit.callkeep.services.core.CallkeepCore
 import com.webtrit.callkeep.services.core.ConnectionEventListener
 import com.webtrit.callkeep.services.services.incoming_call.handlers.CallLifecycleHandler
@@ -45,10 +44,21 @@ class IncomingCallService :
     // denied). Released in onDestroy() or when the call is answered/declined.
     private var screenWakeLock: PowerManager.WakeLock? = null
 
+    // Set to true only after IC_INITIALIZE is handled. Guards against spurious IC_RELEASE_WITH_DECLINE
+    // intents that restart the service after it has already been stopped (e.g. when releaseCall()
+    // calls stopSelf() and Telecom later triggers PhoneConnection.onDisconnect → startService).
+    private var isInitialized = false
+
     private val timeoutHandler = Handler(Looper.getMainLooper())
     private val stopTimeoutRunnable =
         Runnable {
             Log.w(TAG, "Service stop timeout ($SERVICE_TIMEOUT_MS ms) reached. Stopping forcefully.")
+            stopSelf()
+        }
+
+    private val independentTimeoutRunnable =
+        Runnable {
+            Log.w(TAG, "Independent service timeout ($INDEPENDENT_SERVICE_TIMEOUT_MS ms) reached. Stopping forcefully.")
             stopSelf()
         }
 
@@ -106,14 +116,18 @@ class IncomingCallService :
 
         isolateHandler =
             FlutterIsolateHandler(this@IncomingCallService, this@IncomingCallService) {
-                callLifecycleHandler.flutterApi?.syncPushIsolate(callLifecycleHandler.currentCallData, onSuccess = {}, onFailure = {})
+                Log.d(TAG, "onStart: invoking syncPushIsolate, flutterApi=${callLifecycleHandler.flutterApi != null}, callData=${callLifecycleHandler.currentCallData?.callId}")
+                callLifecycleHandler.flutterApi?.syncPushIsolate(
+                    callLifecycleHandler.currentCallData,
+                    onSuccess = { Log.d(TAG, "syncPushIsolate: success") },
+                    onFailure = { e -> Log.e(TAG, "syncPushIsolate: failed: $e") },
+                ) ?: Log.e(TAG, "syncPushIsolate: flutterApi is null, isolate will not receive call data")
             }
 
         incomingCallHandler =
             IncomingCallHandler(
                 service = this,
                 notificationBuilder = incomingCallNotificationBuilder,
-                isolateLaunchPolicy = DefaultIsolateLaunchPolicy(this),
                 isolateInitializer = isolateHandler,
             )
 
@@ -141,6 +155,12 @@ class IncomingCallService :
             return START_NOT_STICKY
         }
 
+        if (!isInitialized && action == IncomingCallRelease.IC_RELEASE_WITH_DECLINE.name) {
+            Log.w(TAG, "onStartCommand: IC_RELEASE_WITH_DECLINE received before IC_INITIALIZE — service was restarted after stop, ignoring")
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         return when (action) {
             // Listen foreground service actions
             PushNotificationServiceEnums.IC_INITIALIZE.name -> handleLaunch(metadata!!)
@@ -163,9 +183,9 @@ class IncomingCallService :
     override fun onDestroy() {
         Log.d(TAG, "onDestroy called")
 
-        // Cancel the safety-net timeout so it does not fire after a graceful stop and
-        // report a false-alarm to Crashlytics.
+        // Cancel both safety-net timeouts so they do not fire after a graceful stop.
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
+        timeoutHandler.removeCallbacks(independentTimeoutRunnable)
 
         setRunning(false)
         releaseScreenWakeLock()
@@ -203,7 +223,20 @@ class IncomingCallService :
 
     // Launches the service with the LAUNCH action and cancels the timeout
     private fun handleLaunch(metadata: CallMetadata): Int {
+        // The service handles one call at a time. If IC_INITIALIZE arrives while we are
+        // still in the teardown window of a previous call (stopTimeoutRunnable pending),
+        // accepting it would cancel the stop timer, overwrite currentCallData, and start
+        // a second Flutter isolate on the same engine — causing FlutterEngine conflicts and
+        // callRejectedBySystem from Telecom. Reject the duplicate; it will be delivered to
+        // a fresh service instance once the current one stops.
+        if (isInitialized) {
+            Log.w(TAG, "handleLaunch: already initialized for ${callLifecycleHandler.currentCallData?.callId}, ignoring IC_INITIALIZE for ${metadata.callId}")
+            return START_NOT_STICKY
+        }
+        isInitialized = true
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
+        timeoutHandler.removeCallbacks(independentTimeoutRunnable)
+        timeoutHandler.postDelayed(independentTimeoutRunnable, INDEPENDENT_SERVICE_TIMEOUT_MS)
         callLifecycleHandler.currentCallData = metadata.toPCallkeepIncomingCallData()
         acquireScreenWakeLockIfNeeded()
         incomingCallHandler.handle(metadata)
@@ -222,6 +255,7 @@ class IncomingCallService :
         // onDestroy() keeps the lock as a final safety net in case this path is skipped.
         releaseScreenWakeLock()
         incomingCallHandler.releaseIncomingCallNotification(answered)
+        timeoutHandler.removeCallbacks(independentTimeoutRunnable)
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
         timeoutHandler.postDelayed(stopTimeoutRunnable, SERVICE_TIMEOUT_MS)
         if (answered) {
@@ -302,6 +336,7 @@ class IncomingCallService :
         private const val TAG = "IncomingCallService"
 
         private const val SERVICE_TIMEOUT_MS = 2_000L
+        private const val INDEPENDENT_SERVICE_TIMEOUT_MS = 60_000L
         private const val WAKELOCK_TIMEOUT_MS = 30_000L
         private const val WAKELOCK_TAG = "com.webtrit.callkeep:IncomingCallWakeLock"
 
