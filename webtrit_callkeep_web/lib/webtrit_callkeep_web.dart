@@ -304,9 +304,6 @@ class WebtritCallkeepWeb extends WebtritCallkeepPlatform {
   Future<void> initializePushNotificationCallback(CallKeepPushNotificationSyncStatusHandle onSync) async {}
 
   @override
-  Future<void> configurePushNotificationSignalingService({bool launchBackgroundIsolateEvenIfAppIsOpen = false}) async {}
-
-  @override
   Future<CallkeepIncomingCallError?> incomingCallPushNotificationService(
     String callId,
     CallkeepHandle handle,

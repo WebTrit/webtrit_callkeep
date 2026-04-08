@@ -16,7 +16,7 @@ import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleState
 /**
  * Handles the lifecycle of an incoming call within a foreground Service:
  *  - shows the initial high-priority incoming-call notification
- *  - optionally launches background handling (isolate) according to policy
+ *  - launches background handling (isolate) unless the main app is already active
  *  - transitions the notification to silent (ring muted) or releases it after answer
  *
  * This class is intentionally side-effectful and **does not** own Service lifecycle;
@@ -34,7 +34,7 @@ class IncomingCallHandler(
 
     /**
      * Entry point to process a fresh incoming call.
-     * Shows the ringing notification and (if policy permits) starts background handling.
+     * Shows the ringing notification and starts background handling unless the main app is active.
      */
     fun handle(metadata: CallMetadata) {
         Log.d(
