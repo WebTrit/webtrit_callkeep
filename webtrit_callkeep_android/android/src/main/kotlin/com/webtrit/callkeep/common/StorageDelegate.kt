@@ -85,7 +85,7 @@ object StorageDelegate {
     object Timeout {
         private const val INCOMING_CALL_TIMEOUT_MS = "INCOMING_CALL_TIMEOUT_MS"
         private const val OUTGOING_CALL_TIMEOUT_MS = "OUTGOING_CALL_TIMEOUT_MS"
-        private const val DEFAULT_TIMEOUT_MS = 35_000L
+        private const val DEFAULT_TIMEOUT_MS = 60_000L
 
         fun setIncomingCallTimeoutMs(
             context: Context,
