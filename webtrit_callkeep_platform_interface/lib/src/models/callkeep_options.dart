@@ -69,12 +69,12 @@ class CallkeepAndroidOptions extends Equatable {
   final bool? incomingCallFullScreen;
 
   /// Timeout in milliseconds before an unanswered incoming call (STATE_RINGING)
-  /// is automatically disconnected. When null the native default (60 000 ms) is used.
-  final int? incomingCallTimeoutMs;
+  /// is automatically disconnected. Defaults to `60000` ms.
+  final int incomingCallTimeoutMs;
 
   /// Timeout in milliseconds before an unanswered outgoing call (STATE_DIALING)
-  /// is automatically disconnected. When null the native default (60 000 ms) is used.
-  final int? outgoingCallTimeoutMs;
+  /// is automatically disconnected. Defaults to `60000` ms.
+  final int outgoingCallTimeoutMs;
 
   @override
   List<Object?> get props => [
