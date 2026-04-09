@@ -52,7 +52,13 @@ class CallkeepIOSOptions extends Equatable {
 }
 
 class CallkeepAndroidOptions extends Equatable {
-  const CallkeepAndroidOptions({this.ringtoneSound, this.ringbackSound, this.incomingCallFullScreen});
+  const CallkeepAndroidOptions({
+    this.ringtoneSound,
+    this.ringbackSound,
+    this.incomingCallFullScreen,
+    this.incomingCallTimeoutMs,
+    this.outgoingCallTimeoutMs,
+  });
 
   final String? ringtoneSound;
   final String? ringbackSound;
@@ -62,6 +68,20 @@ class CallkeepAndroidOptions extends Equatable {
   /// when not specified. Pass `false` to show a heads-up notification instead.
   final bool? incomingCallFullScreen;
 
+  /// Timeout in milliseconds before an unanswered incoming call (STATE_RINGING)
+  /// is automatically disconnected. When null the native default (35 000 ms) is used.
+  final int? incomingCallTimeoutMs;
+
+  /// Timeout in milliseconds before an unanswered outgoing call (STATE_DIALING)
+  /// is automatically disconnected. When null the native default (35 000 ms) is used.
+  final int? outgoingCallTimeoutMs;
+
   @override
-  List<Object?> get props => [ringtoneSound, ringbackSound, incomingCallFullScreen];
+  List<Object?> get props => [
+    ringtoneSound,
+    ringbackSound,
+    incomingCallFullScreen,
+    incomingCallTimeoutMs,
+    outgoingCallTimeoutMs,
+  ];
 }

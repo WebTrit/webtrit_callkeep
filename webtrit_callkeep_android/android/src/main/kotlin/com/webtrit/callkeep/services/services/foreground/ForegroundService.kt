@@ -242,6 +242,8 @@ class ForegroundService :
             options.android.ringtoneSound?.let { StorageDelegate.Sound.initRingtonePath(baseContext, it) }
             options.android.ringbackSound?.let { StorageDelegate.Sound.initRingbackPath(baseContext, it) }
             options.android.incomingCallFullScreen?.let { StorageDelegate.IncomingCall.setFullScreen(baseContext, it) }
+            options.android.incomingCallTimeoutMs?.let { StorageDelegate.Timeout.setIncomingCallTimeoutMs(baseContext, it) }
+            options.android.outgoingCallTimeoutMs?.let { StorageDelegate.Timeout.setOutgoingCallTimeoutMs(baseContext, it) }
         }.onFailure { Log.w("CallKeep", "Android options init failed: ${it.message}", it) }
     }
 

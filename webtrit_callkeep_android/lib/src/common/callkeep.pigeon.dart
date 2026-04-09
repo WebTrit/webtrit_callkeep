@@ -247,7 +247,13 @@ class PIOSOptions {
 }
 
 class PAndroidOptions {
-  PAndroidOptions({this.ringtoneSound, this.ringbackSound, this.incomingCallFullScreen});
+  PAndroidOptions({
+    this.ringtoneSound,
+    this.ringbackSound,
+    this.incomingCallFullScreen,
+    this.incomingCallTimeoutMs,
+    this.outgoingCallTimeoutMs,
+  });
 
   String? ringtoneSound;
 
@@ -255,8 +261,22 @@ class PAndroidOptions {
 
   bool? incomingCallFullScreen;
 
+  /// Timeout in milliseconds before an unanswered incoming call (STATE_RINGING) is
+  /// automatically disconnected. When null the native default is used.
+  int? incomingCallTimeoutMs;
+
+  /// Timeout in milliseconds before an unanswered outgoing call (STATE_DIALING) is
+  /// automatically disconnected. When null the native default is used.
+  int? outgoingCallTimeoutMs;
+
   List<Object?> _toList() {
-    return <Object?>[ringtoneSound, ringbackSound, incomingCallFullScreen];
+    return <Object?>[
+      ringtoneSound,
+      ringbackSound,
+      incomingCallFullScreen,
+      incomingCallTimeoutMs,
+      outgoingCallTimeoutMs,
+    ];
   }
 
   Object encode() {
@@ -269,6 +289,8 @@ class PAndroidOptions {
       ringtoneSound: result[0] as String?,
       ringbackSound: result[1] as String?,
       incomingCallFullScreen: result[2] as bool?,
+      incomingCallTimeoutMs: result[3] as int?,
+      outgoingCallTimeoutMs: result[4] as int?,
     );
   }
 

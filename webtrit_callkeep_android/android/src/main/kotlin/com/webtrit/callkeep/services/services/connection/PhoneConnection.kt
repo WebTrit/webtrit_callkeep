@@ -18,6 +18,7 @@ import androidx.core.net.toUri
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.Platform
+import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.managers.AudioManager
 import com.webtrit.callkeep.managers.NotificationManager
 import com.webtrit.callkeep.models.AudioDevice
@@ -761,7 +762,7 @@ class PhoneConnection internal constructor(
             dispatcher = dispatcher,
             metadata = metadata,
             onDisconnectCallback = onDisconnect,
-            timeout = ConnectionTimeout.createIncomingConnectionTimeout(),
+            timeout = ConnectionTimeout.createIncomingConnectionTimeout(context),
         ).apply {
             setInitialized()
             setRinging()
@@ -780,7 +781,7 @@ class PhoneConnection internal constructor(
             dispatcher = dispatcher,
             metadata = metadata,
             onDisconnectCallback = onDisconnect,
-            timeout = ConnectionTimeout.createOutgoingConnectionTimeout(),
+            timeout = ConnectionTimeout.createOutgoingConnectionTimeout(context),
         ).apply {
             setDialing()
             setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
@@ -820,11 +821,6 @@ class ConnectionTimeout(
 
     companion object {
         /**
-         * Duration in milliseconds before a call in a transient state is automatically disconnected.
-         */
-        private const val TIMEOUT_DURATION_MS = 35000L
-
-        /**
          * Telecom states that trigger the timeout for incoming calls.
          */
         private val DEFAULT_INCOMING_STATES = listOf(Connection.STATE_NEW, Connection.STATE_RINGING)
@@ -836,12 +832,14 @@ class ConnectionTimeout(
 
         /**
          * Creates a timeout configuration for outgoing dialing.
+         * The duration is read from [StorageDelegate.Timeout] so it can be configured via [CallkeepAndroidOptions].
          */
-        fun createOutgoingConnectionTimeout() = ConnectionTimeout(TIMEOUT_DURATION_MS, DEFAULT_OUTGOING_STATES)
+        fun createOutgoingConnectionTimeout(context: Context) = ConnectionTimeout(StorageDelegate.Timeout.getOutgoingCallTimeoutMs(context), DEFAULT_OUTGOING_STATES)
 
         /**
          * Creates a timeout configuration for incoming ringing.
+         * The duration is read from [StorageDelegate.Timeout] so it can be configured via [CallkeepAndroidOptions].
          */
-        fun createIncomingConnectionTimeout() = ConnectionTimeout(TIMEOUT_DURATION_MS, DEFAULT_INCOMING_STATES)
+        fun createIncomingConnectionTimeout(context: Context) = ConnectionTimeout(StorageDelegate.Timeout.getIncomingCallTimeoutMs(context), DEFAULT_INCOMING_STATES)
     }
 }

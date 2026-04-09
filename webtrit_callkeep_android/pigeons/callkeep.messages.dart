@@ -29,6 +29,14 @@ class PAndroidOptions {
   late String? ringtoneSound;
   late String? ringbackSound;
   late bool? incomingCallFullScreen;
+
+  /// Timeout in milliseconds before an unanswered incoming call (STATE_RINGING) is
+  /// automatically disconnected. When null the native default is used.
+  late int? incomingCallTimeoutMs;
+
+  /// Timeout in milliseconds before an unanswered outgoing call (STATE_DIALING) is
+  /// automatically disconnected. When null the native default is used.
+  late int? outgoingCallTimeoutMs;
 }
 
 class POptions {
