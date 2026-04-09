@@ -56,8 +56,8 @@ class CallkeepAndroidOptions extends Equatable {
     this.ringtoneSound,
     this.ringbackSound,
     this.incomingCallFullScreen,
-    this.incomingCallTimeoutMs,
-    this.outgoingCallTimeoutMs,
+    this.incomingCallTimeoutMs = 60000,
+    this.outgoingCallTimeoutMs = 60000,
   });
 
   final String? ringtoneSound;
