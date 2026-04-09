@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:ui';
 
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show BackgroundIsolateBinaryMessenger;
+import 'package:flutter/services.dart' show BackgroundIsolateBinaryMessenger, BinaryMessenger;
+import 'package:flutter/widgets.dart' show WidgetsFlutterBinding;
 
 import 'package:webtrit_callkeep_android/src/common/common.dart';
 import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
@@ -492,19 +492,27 @@ class _CallkeepBackgroundServiceDelegateRelay implements PDelegateBackgroundServ
 
 @pragma('vm:entry-point')
 void _isolatePluginCallbackDispatcher() {
-  // Use BackgroundIsolateBinaryMessenger when the RootIsolateToken is available
-  // (background Flutter engine root isolate) to avoid initialising the full
-  // rendering stack (RendererBinding / Impeller / Vulkan). Falls back to
-  // WidgetsFlutterBinding when the token is unexpectedly absent.
+  final messenger = _ensureBinaryMessengerInitialized();
+  PDelegateBackgroundRegisterFlutterApi.setUp(_BackgroundServiceDelegate(), binaryMessenger: messenger);
+}
+
+/// Initialises a [BinaryMessenger] for platform channels in this background
+/// isolate without touching the full Flutter rendering stack.
+///
+/// Returns [BackgroundIsolateBinaryMessenger.instance] when
+/// [RootIsolateToken.instance] is available (background Flutter engine root
+/// isolate), avoiding RendererBinding / Impeller / Vulkan initialisation.
+/// Falls back to [WidgetsFlutterBinding] and returns `null` (Pigeon uses the
+/// binding's default messenger) when the token is unexpectedly absent.
+BinaryMessenger? _ensureBinaryMessengerInitialized() {
   final token = RootIsolateToken.instance;
   if (token != null) {
     BackgroundIsolateBinaryMessenger.ensureInitialized(token);
+    return BackgroundIsolateBinaryMessenger.instance;
   } else {
     WidgetsFlutterBinding.ensureInitialized();
+    return null;
   }
-
-  // Set up the Pigeon API for the background service.
-  PDelegateBackgroundRegisterFlutterApi.setUp(_BackgroundServiceDelegate());
 }
 
 class _BackgroundServiceDelegate implements PDelegateBackgroundRegisterFlutterApi {
