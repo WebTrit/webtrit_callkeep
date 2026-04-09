@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show BackgroundIsolateBinaryMessenger;
 
 import 'package:webtrit_callkeep_android/src/common/common.dart';
 import 'package:webtrit_callkeep_platform_interface/webtrit_callkeep_platform_interface.dart';
@@ -491,10 +492,17 @@ class _CallkeepBackgroundServiceDelegateRelay implements PDelegateBackgroundServ
 
 @pragma('vm:entry-point')
 void _isolatePluginCallbackDispatcher() {
-  // Initialize the Flutter framework necessary for method channels and Pigeon.
-  WidgetsFlutterBinding.ensureInitialized();
+  // Use BackgroundIsolateBinaryMessenger when the RootIsolateToken is available
+  // (background Flutter engine root isolate) to avoid initialising the full
+  // rendering stack (RendererBinding / Impeller / Vulkan). Falls back to
+  // WidgetsFlutterBinding when the token is unexpectedly absent.
+  final token = RootIsolateToken.instance;
+  if (token != null) {
+    BackgroundIsolateBinaryMessenger.ensureInitialized(token);
+  } else {
+    WidgetsFlutterBinding.ensureInitialized();
+  }
 
-  // WebtritCallkeepAndroid().wakeUpBackgroundHandler();
   // Set up the Pigeon API for the background service.
   PDelegateBackgroundRegisterFlutterApi.setUp(_BackgroundServiceDelegate());
 }
