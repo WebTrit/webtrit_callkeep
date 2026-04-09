@@ -198,7 +198,16 @@ class PhoneConnection internal constructor(
      * Orchestrates logical transitions based on the underlying Telecom state.
      */
     override fun onStateChanged(state: Int) {
-        logger.v("Connection state changed to: $state for callId: $callId")
+        val stateText = when (state) {
+            STATE_NEW -> "NEW"
+            STATE_DIALING -> "DIALING"
+            STATE_RINGING -> "RINGING"
+            STATE_HOLDING -> "HOLDING"
+            STATE_ACTIVE -> "ACTIVE"
+            STATE_DISCONNECTED -> "DISCONNECTED"
+            else -> "UNKNOWN($state)"
+        }
+        logger.v("Connection state is now: $stateText for callId: $callId")
         super.onStateChanged(state)
         handleConnectionTimeout(state)
 
@@ -240,8 +249,7 @@ class PhoneConnection internal constructor(
         val audioDevices = state?.supportedRouteMask?.let(::mapSupportedRoutes) ?: emptyList()
         dispatcher(CallMediaEvent.AudioDevicesUpdate, metadata.copy(audioDevices = audioDevices))
 
-        val currentDevice =
-            state?.route?.let(::mapRouteToAudioDevice) ?: AudioDevice(AudioDeviceType.UNKNOWN)
+        val currentDevice = state?.route?.let(::mapRouteToAudioDevice) ?: AudioDevice(AudioDeviceType.UNKNOWN)
         dispatcher(CallMediaEvent.AudioDeviceSet, metadata.copy(audioDevice = currentDevice))
     }
 
@@ -253,8 +261,42 @@ class PhoneConnection internal constructor(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             updateModernAudioState()
         } else {
-            callAudioState?.let(::onCallAudioStateChanged)
+            val state = callAudioState
+            if (state != null) {
+                onCallAudioStateChanged(state)
+            } else {
+                // Fallback for OEM Telecom implementations (e.g. MIUI Android 12) that do not
+                // call setCallAudioState for outgoing self-managed calls. On AOSP, the
+                // CallAudioRouteStateMachine.resendSystemAudioState() seeds this during call
+                // setup; MIUI's MiuiCallsManager skips that step for outgoing calls.
+                dispatchFallbackAudioState()
+            }
         }
+    }
+
+    /**
+     * Builds and dispatches audio device information from [android.media.AudioManager] directly.
+     *
+     * Used as a fallback when [callAudioState] was never set by the Telecom framework (e.g.
+     * on MIUI Android 12 for outgoing calls). Earpiece and Speaker are always present on a
+     * phone; wired and Bluetooth headsets are detected via input-device availability.
+     */
+    private fun dispatchFallbackAudioState() {
+        logger.w("dispatchFallbackAudioState: callAudioState not set by system — building device list from AudioManager")
+        val supportedDevices = buildList {
+            add(AudioDevice(AudioDeviceType.EARPIECE))
+            add(AudioDevice(AudioDeviceType.SPEAKER))
+            if (audioManager.isWiredHeadsetConnected()) add(AudioDevice(AudioDeviceType.WIRED_HEADSET))
+            if (audioManager.isBluetoothConnected()) add(AudioDevice(AudioDeviceType.BLUETOOTH))
+        }
+        dispatcher(CallMediaEvent.AudioDevicesUpdate, metadata.copy(audioDevices = supportedDevices))
+
+        val currentDevice = when {
+            audioManager.isBluetoothConnected() -> AudioDevice(AudioDeviceType.BLUETOOTH)
+            audioManager.isWiredHeadsetConnected() -> AudioDevice(AudioDeviceType.WIRED_HEADSET)
+            else -> AudioDevice(AudioDeviceType.EARPIECE)
+        }
+        dispatcher(CallMediaEvent.AudioDeviceSet, metadata.copy(audioDevice = currentDevice))
     }
 
     /**
@@ -294,8 +336,7 @@ class PhoneConnection internal constructor(
              * any "sticky" speaker state without risking a crash.
              */
             if (isFirstLoad && !hasVideo) {
-                val earpiece =
-                    callEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_EARPIECE }
+                val earpiece = callEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_EARPIECE }
                 if (earpiece != null) {
                     logger.i("Startup: Preemptively forcing EARPIECE to clear sticky state.")
                     performEndpointChange(earpiece)
@@ -354,10 +395,9 @@ class PhoneConnection internal constructor(
                 return
             }
 
-            val endpoint =
-                availableCallEndpoints.firstOrNull {
-                    it.identifier == ParcelUuid.fromString(deviceId)
-                }
+            val endpoint = availableCallEndpoints.firstOrNull {
+                it.identifier == ParcelUuid.fromString(deviceId)
+            }
 
             if (endpoint != null) {
                 performEndpointChange(endpoint)
@@ -368,6 +408,21 @@ class PhoneConnection internal constructor(
             }
         } else {
             setAudioRoute(mapDeviceTypeToRoute(device.type))
+
+            if (callAudioState == null) {
+                logger.w("callAudioState is null after setAudioRoute.")
+                // MIUI Android 12 (and similar OEM Telecom implementations) silently ignores
+                // setAudioRoute() for self-managed outgoing calls — the hardware never switches.
+                // Bypass Telecom and route audio directly via AudioManager so the device actually
+                // changes. On AOSP, setAudioRoute() works and onCallAudioStateChanged fires
+                // authoritatively; the direct call is redundant but idempotent there.
+                directRouteAudioDevice(device.type)
+
+                // Proactively dispatch AudioDeviceSet because onCallAudioStateChanged never fires
+                // on MIUI. On AOSP, the callback fires and overrides this — idempotent.
+                dispatcher(CallMediaEvent.AudioDeviceSet, metadata.copy(audioDevice = device))
+                isHasSpeaker = device.type == AudioDeviceType.SPEAKER
+            }
         }
     }
 
@@ -531,6 +586,16 @@ class PhoneConnection internal constructor(
         }
 
         enforceVideoSpeakerLogic()
+
+        // Proactively emit audio device state for OEM Telecom implementations that do not
+        // call setCallAudioState for outgoing calls (e.g. MIUI Android 12). On AOSP,
+        // CallAudioRouteStateMachine.resendSystemAudioState() fires during call setup and
+        // triggers onCallAudioStateChanged; on MIUI that step is skipped for outgoing calls,
+        // leaving callAudioState null and audio devices undiscovered until the next routing
+        // event. forceUpdateAudioState() falls back to AudioManager enumeration when null.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            forceUpdateAudioState()
+        }
     }
 
     /**
@@ -592,36 +657,32 @@ class PhoneConnection internal constructor(
      * Converts a [CallEndpoint] into a domain [AudioDevice] model.
      */
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-    private fun mapEndpointToAudioDevice(endpoint: CallEndpoint) =
-        AudioDevice(
-            type =
-                when (endpoint.endpointType) {
-                    CallEndpoint.TYPE_EARPIECE -> AudioDeviceType.EARPIECE
-                    CallEndpoint.TYPE_SPEAKER -> AudioDeviceType.SPEAKER
-                    CallEndpoint.TYPE_BLUETOOTH -> AudioDeviceType.BLUETOOTH
-                    CallEndpoint.TYPE_WIRED_HEADSET -> AudioDeviceType.WIRED_HEADSET
-                    CallEndpoint.TYPE_STREAMING -> AudioDeviceType.STREAMING
-                    else -> AudioDeviceType.UNKNOWN
-                },
-            name = endpoint.endpointName.toString(),
-            id = endpoint.identifier.toString(),
-        )
+    private fun mapEndpointToAudioDevice(endpoint: CallEndpoint) = AudioDevice(
+        type = when (endpoint.endpointType) {
+            CallEndpoint.TYPE_EARPIECE -> AudioDeviceType.EARPIECE
+            CallEndpoint.TYPE_SPEAKER -> AudioDeviceType.SPEAKER
+            CallEndpoint.TYPE_BLUETOOTH -> AudioDeviceType.BLUETOOTH
+            CallEndpoint.TYPE_WIRED_HEADSET -> AudioDeviceType.WIRED_HEADSET
+            CallEndpoint.TYPE_STREAMING -> AudioDeviceType.STREAMING
+            else -> AudioDeviceType.UNKNOWN
+        },
+        name = endpoint.endpointName.toString(),
+        id = endpoint.identifier.toString(),
+    )
 
     /**
      * Converts a [CallAudioState] route into a domain [AudioDevice] model.
      */
-    private fun mapRouteToAudioDevice(route: Int) =
-        AudioDevice(
-            type =
-                when (route) {
-                    CallAudioState.ROUTE_EARPIECE -> AudioDeviceType.EARPIECE
-                    CallAudioState.ROUTE_SPEAKER -> AudioDeviceType.SPEAKER
-                    CallAudioState.ROUTE_BLUETOOTH -> AudioDeviceType.BLUETOOTH
-                    CallAudioState.ROUTE_WIRED_HEADSET -> AudioDeviceType.WIRED_HEADSET
-                    CallAudioState.ROUTE_STREAMING -> AudioDeviceType.STREAMING
-                    else -> AudioDeviceType.UNKNOWN
-                },
-        )
+    private fun mapRouteToAudioDevice(route: Int) = AudioDevice(
+        type = when (route) {
+            CallAudioState.ROUTE_EARPIECE -> AudioDeviceType.EARPIECE
+            CallAudioState.ROUTE_SPEAKER -> AudioDeviceType.SPEAKER
+            CallAudioState.ROUTE_BLUETOOTH -> AudioDeviceType.BLUETOOTH
+            CallAudioState.ROUTE_WIRED_HEADSET -> AudioDeviceType.WIRED_HEADSET
+            CallAudioState.ROUTE_STREAMING -> AudioDeviceType.STREAMING
+            else -> AudioDeviceType.UNKNOWN
+        },
+    )
 
     /**
      * Parses the supported route mask into a list of [AudioDevice] models.
@@ -646,6 +707,54 @@ class PhoneConnection internal constructor(
             AudioDeviceType.WIRED_HEADSET -> CallAudioState.ROUTE_WIRED_HEADSET
             else -> CallAudioState.ROUTE_WIRED_OR_EARPIECE
         }
+
+    /**
+     * Routes audio hardware directly via [android.media.AudioManager], bypassing Telecom.
+     *
+     * Required for OEM Telecom implementations (e.g. MIUI Android 12) that silently ignore
+     * [Connection.setAudioRoute] for self-managed calls.
+     *
+     * [android.media.AudioManager.setCommunicationDevice] (API 31+) only routes audio when the
+     * stack is in [android.media.AudioManager.MODE_IN_COMMUNICATION] (VoIP). On MIUI Android 12,
+     * outgoing self-managed calls are misclassified as cellular (`IS_IPCALL=false` in the
+     * ConnectionRequest extras), so MIUI runs audio in [android.media.AudioManager.MODE_IN_CALL]
+     * instead — making [android.media.AudioManager.setCommunicationDevice] a no-op.
+     *
+     * [android.media.AudioManager.isSpeakerphoneOn] works in both
+     * [android.media.AudioManager.MODE_IN_CALL] and
+     * [android.media.AudioManager.MODE_IN_COMMUNICATION] and is used as the reliable fallback.
+     */
+    private fun directRouteAudioDevice(type: AudioDeviceType) {
+        val sysAm = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+        val mode = sysAm.mode
+        logger.d("directRouteAudioDevice: type=$type, audioMode=$mode")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && mode == android.media.AudioManager.MODE_IN_COMMUNICATION) {
+            val targetType = when (type) {
+                AudioDeviceType.SPEAKER -> android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+                AudioDeviceType.EARPIECE -> android.media.AudioDeviceInfo.TYPE_BUILTIN_EARPIECE
+                AudioDeviceType.BLUETOOTH -> android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+                AudioDeviceType.WIRED_HEADSET -> android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET
+                else -> {
+                    logger.w("directRouteAudioDevice: unsupported type=$type, skipping")
+                    return
+                }
+            }
+            val deviceInfo = sysAm.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS).firstOrNull { it.type == targetType }
+            if (deviceInfo != null && sysAm.setCommunicationDevice(deviceInfo)) {
+                logger.d("directRouteAudioDevice: setCommunicationDevice succeeded for type=$type")
+                return
+            }
+            logger.w("directRouteAudioDevice: setCommunicationDevice failed for type=$type, falling back")
+        }
+
+        // setSpeakerphoneOn works in both MODE_IN_CALL and MODE_IN_COMMUNICATION.
+        // It is deprecated since API 31 but remains the correct fallback when MIUI
+        // misclassifies the outgoing self-managed call as cellular (MODE_IN_CALL).
+        @Suppress("DEPRECATION")
+        sysAm.isSpeakerphoneOn = (type == AudioDeviceType.SPEAKER)
+        logger.d("directRouteAudioDevice: setSpeakerphoneOn=${type == AudioDeviceType.SPEAKER}")
+    }
 
     /**
      * Locates the best matching endpoint for a requested speaker state.
@@ -783,11 +892,11 @@ class PhoneConnection internal constructor(
             onDisconnectCallback = onDisconnect,
             timeout = ConnectionTimeout.createOutgoingConnectionTimeout(context),
         ).apply {
-            setDialing()
             setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
             if (!Build.MANUFACTURER.equals("Samsung", ignoreCase = true)) {
                 setInitialized()
             }
+            setDialing()
         }
     }
 }
