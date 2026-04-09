@@ -82,6 +82,30 @@ object StorageDelegate {
         fun getCallbackDispatcher(context: Context): Long = sharedPreferences(context).getLong(INCOMING_CALL_HANDLER, -1)
     }
 
+    object Timeout {
+        private const val INCOMING_CALL_TIMEOUT_MS = "INCOMING_CALL_TIMEOUT_MS"
+        private const val OUTGOING_CALL_TIMEOUT_MS = "OUTGOING_CALL_TIMEOUT_MS"
+        private const val DEFAULT_TIMEOUT_MS = 60_000L
+
+        fun setIncomingCallTimeoutMs(
+            context: Context,
+            ms: Long,
+        ) {
+            sharedPreferences(context).edit().putLong(INCOMING_CALL_TIMEOUT_MS, ms).apply()
+        }
+
+        fun getIncomingCallTimeoutMs(context: Context): Long = sharedPreferences(context).getLong(INCOMING_CALL_TIMEOUT_MS, DEFAULT_TIMEOUT_MS)
+
+        fun setOutgoingCallTimeoutMs(
+            context: Context,
+            ms: Long,
+        ) {
+            sharedPreferences(context).edit().putLong(OUTGOING_CALL_TIMEOUT_MS, ms).apply()
+        }
+
+        fun getOutgoingCallTimeoutMs(context: Context): Long = sharedPreferences(context).getLong(OUTGOING_CALL_TIMEOUT_MS, DEFAULT_TIMEOUT_MS)
+    }
+
     object IncomingCallSmsConfig {
         private const val SMS_PREFIX = "SMS_PREFIX"
         private const val SMS_REGEX_PATTERN = "SMS_REGEX_PATTERN"

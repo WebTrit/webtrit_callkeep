@@ -175,6 +175,8 @@ extension CallkeepAndroidOptionsConverter on CallkeepAndroidOptions {
       ringtoneSound: ringtoneSound,
       ringbackSound: ringbackSound,
       incomingCallFullScreen: incomingCallFullScreen,
+      incomingCallTimeoutMs: incomingCallTimeoutMs,
+      outgoingCallTimeoutMs: outgoingCallTimeoutMs,
     );
   }
 }

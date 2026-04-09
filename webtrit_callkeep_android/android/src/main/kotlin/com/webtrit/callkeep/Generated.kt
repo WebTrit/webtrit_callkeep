@@ -406,13 +406,25 @@ data class PAndroidOptions(
     val ringtoneSound: String? = null,
     val ringbackSound: String? = null,
     val incomingCallFullScreen: Boolean? = null,
+    /**
+     * Timeout in milliseconds before an unanswered incoming call (STATE_RINGING) is
+     * automatically disconnected. When null the native default is used.
+     */
+    val incomingCallTimeoutMs: Long? = null,
+    /**
+     * Timeout in milliseconds before an unanswered outgoing call (STATE_DIALING) is
+     * automatically disconnected. When null the native default is used.
+     */
+    val outgoingCallTimeoutMs: Long? = null,
 ) {
     companion object {
         fun fromList(pigeonVar_list: List<Any?>): PAndroidOptions {
             val ringtoneSound = pigeonVar_list[0] as String?
             val ringbackSound = pigeonVar_list[1] as String?
             val incomingCallFullScreen = pigeonVar_list[2] as Boolean?
-            return PAndroidOptions(ringtoneSound, ringbackSound, incomingCallFullScreen)
+            val incomingCallTimeoutMs = pigeonVar_list[3] as Long?
+            val outgoingCallTimeoutMs = pigeonVar_list[4] as Long?
+            return PAndroidOptions(ringtoneSound, ringbackSound, incomingCallFullScreen, incomingCallTimeoutMs, outgoingCallTimeoutMs)
         }
     }
 
@@ -421,6 +433,8 @@ data class PAndroidOptions(
             ringtoneSound,
             ringbackSound,
             incomingCallFullScreen,
+            incomingCallTimeoutMs,
+            outgoingCallTimeoutMs,
         )
 
     override fun equals(other: Any?): Boolean {
