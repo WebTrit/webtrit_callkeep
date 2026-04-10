@@ -5,6 +5,7 @@ on:
   pull_request:
     branches:
       - develop
+      - main
     paths:
       - "webtrit_callkeep/**"
       - "webtrit_callkeep_android/**"
