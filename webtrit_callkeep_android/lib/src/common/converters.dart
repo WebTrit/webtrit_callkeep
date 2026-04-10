@@ -36,10 +36,7 @@ extension PLogTypeEnumConverter on PLogTypeEnum {
 
 extension PHandleConverter on PHandle {
   CallkeepHandle toCallkeep() {
-    return CallkeepHandle(
-      type: type.toCallkeep(),
-      value: value,
-    );
+    return CallkeepHandle(type: type.toCallkeep(), value: value);
   }
 }
 
@@ -62,6 +59,8 @@ extension PIncomingCallErrorEnumConverter on PIncomingCallErrorEnum {
         return CallkeepIncomingCallError.filteredByBlockList;
       case PIncomingCallErrorEnum.internal:
         return CallkeepIncomingCallError.internal;
+      case PIncomingCallErrorEnum.callRejectedBySystem:
+        return CallkeepIncomingCallError.callRejectedBySystem;
     }
   }
 }
@@ -85,6 +84,8 @@ extension PCallRequestErrorEnumConverter on PCallRequestErrorEnum {
         return CallkeepCallRequestError.emergencyNumber;
       case PCallRequestErrorEnum.selfManagedPhoneAccountNotRegistered:
         return CallkeepCallRequestError.selfManagedPhoneAccountNotRegistered;
+      case PCallRequestErrorEnum.timeout:
+        return CallkeepCallRequestError.timeout;
     }
   }
 }
@@ -121,10 +122,7 @@ extension CallkeepHandleTypeConverter on CallkeepHandleType {
 
 extension CallkeepHandleConverter on CallkeepHandle {
   PHandle toPigeon() {
-    return PHandle(
-      type: type.toPigeon(),
-      value: value,
-    );
+    return PHandle(type: type.toPigeon(), value: value);
   }
 }
 
@@ -149,10 +147,7 @@ extension CallkeepEndCallReasonConverter on CallkeepEndCallReason {
 
 extension CallkeepOptionsConverter on CallkeepOptions {
   POptions toPigeon() {
-    return POptions(
-      ios: ios.toPigeon(),
-      android: android.toPigeon(),
-    );
+    return POptions(ios: ios.toPigeon(), android: android.toPigeon());
   }
 }
 
@@ -179,6 +174,7 @@ extension CallkeepAndroidOptionsConverter on CallkeepAndroidOptions {
     return PAndroidOptions(
       ringtoneSound: ringtoneSound,
       ringbackSound: ringbackSound,
+      incomingCallFullScreen: incomingCallFullScreen,
     );
   }
 }
@@ -190,6 +186,30 @@ extension PSpecialPermissionStatusTypeEnumConverter on PSpecialPermissionStatusT
         return CallkeepSpecialPermissionStatus.denied;
       case PSpecialPermissionStatusTypeEnum.granted:
         return CallkeepSpecialPermissionStatus.granted;
+      case PSpecialPermissionStatusTypeEnum.unknown:
+        return CallkeepSpecialPermissionStatus.unknown;
+    }
+  }
+}
+
+extension CallkeepPermissionConverter on CallkeepPermission {
+  PCallkeepPermission toPigeon() {
+    switch (this) {
+      case CallkeepPermission.readPhoneState:
+        return PCallkeepPermission.readPhoneState;
+      case CallkeepPermission.readPhoneNumbers:
+        return PCallkeepPermission.readPhoneNumbers;
+    }
+  }
+}
+
+extension PCallkeepPermissionConverter on PCallkeepPermission {
+  CallkeepPermission toCallkeep() {
+    switch (this) {
+      case PCallkeepPermission.readPhoneState:
+        return CallkeepPermission.readPhoneState;
+      case PCallkeepPermission.readPhoneNumbers:
+        return CallkeepPermission.readPhoneNumbers;
     }
   }
 }
@@ -275,6 +295,17 @@ extension PCallkeepPushNotificationSyncStatusConverter on PCallkeepPushNotificat
   }
 }
 
+extension PCallkeepIncomingCallDataConverter on PCallkeepIncomingCallData {
+  CallkeepIncomingCallMetadata toCallkeep() {
+    return CallkeepIncomingCallMetadata(
+      callId: callId,
+      handle: handle?.toCallkeep(),
+      displayName: displayName,
+      hasVideo: hasVideo,
+    );
+  }
+}
+
 extension PCallkeepLifecycleTypeConverter on PCallkeepLifecycleEvent {
   CallkeepLifecycleEvent toCallkeep() {
     switch (this) {
@@ -307,9 +338,7 @@ extension PCallkeepServiceStatusConverter on PCallkeepServiceStatus {
 
 extension CallkeepServiceStatusConverter on CallkeepServiceStatus {
   PCallkeepServiceStatus toPigeon() {
-    return PCallkeepServiceStatus(
-      lifecycleEvent: lifecycleEvent.toPigeon(),
-    );
+    return PCallkeepServiceStatus(lifecycleEvent: lifecycleEvent.toPigeon());
   }
 }
 
@@ -371,19 +400,12 @@ extension PCallkeepDisconnectCauseTypeConverter on PCallkeepDisconnectCauseType 
 
 extension PCallkeepDisconnectCauseConverter on PCallkeepDisconnectCause {
   CallkeepDisconnectCause toCallkeep() {
-    return CallkeepDisconnectCause(
-      type: type.toCallkeep(),
-      reason: reason,
-    );
+    return CallkeepDisconnectCause(type: type.toCallkeep(), reason: reason);
   }
 }
 
 extension PCallkeepConnectionConverter on PCallkeepConnection {
   CallkeepConnection toCallkeep() {
-    return CallkeepConnection(
-      callId: callId,
-      state: state.toCallkeep(),
-      disconnectCause: disconnectCause.toCallkeep(),
-    );
+    return CallkeepConnection(callId: callId, state: state.toCallkeep(), disconnectCause: disconnectCause.toCallkeep());
   }
 }

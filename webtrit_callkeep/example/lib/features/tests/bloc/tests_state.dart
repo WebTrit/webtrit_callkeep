@@ -1,24 +1,19 @@
 part of 'tests_cubit.dart';
 
-@immutable
 class TestsState {
-  final List<String> actions;
+  const TestsState({this.entries = const [], this.isRunning = false});
 
-  const TestsState(this.actions);
+  final List<LogEntry> entries;
+  final bool isRunning;
 
-  TestsUpdate get update => TestsUpdate(actions);
-}
-
-class TestsUpdate extends TestsState {
-  const TestsUpdate(super.actions);
-
-  TestsUpdate addAction({
-    required String action,
-  }) {
-    return TestsUpdate(
-      [...actions, action],
+  TestsState copyWith({List<LogEntry>? entries, bool? isRunning}) {
+    return TestsState(
+      entries: entries ?? this.entries,
+      isRunning: isRunning ?? this.isRunning,
     );
   }
 
-  String get lastAction => actions.last;
+  TestsState log(LogEntry entry) => copyWith(entries: [...entries, entry]);
+
+  TestsState clearLog() => copyWith(entries: []);
 }

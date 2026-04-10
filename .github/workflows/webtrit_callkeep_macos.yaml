@@ -4,17 +4,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# macOS is a stub platform — CI disabled until actively supported.
+# To re-enable: restore the pull_request and push triggers below.
 on:
-  pull_request:
-    paths:
-      - ".github/workflows/webtrit_callkeep_macos.yaml"
-      - "webtrit_callkeep_macos/**"
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/webtrit_callkeep_macos.yaml"
-      - "webtrit_callkeep_macos/**"
+  workflow_dispatch:
 
 jobs:
   build:

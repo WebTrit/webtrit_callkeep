@@ -211,7 +211,6 @@ extern void SetUpWTPHostApiWithSuffix(id<FlutterBinaryMessenger> binaryMessenger
 - (void)performEndCall:(NSString *)uuidString completion:(void (^)(NSNumber *_Nullable, FlutterError *_Nullable))completion;
 - (void)performSetHeld:(NSString *)uuidString onHold:(BOOL)onHold completion:(void (^)(NSNumber *_Nullable, FlutterError *_Nullable))completion;
 - (void)performSetMuted:(NSString *)uuidString muted:(BOOL)muted completion:(void (^)(NSNumber *_Nullable, FlutterError *_Nullable))completion;
-- (void)performSetSpeaker:(NSString *)uuidString enabled:(BOOL)enabled completion:(void (^)(NSNumber *_Nullable, FlutterError *_Nullable))completion;
 - (void)performSendDTMF:(NSString *)uuidString key:(NSString *)key completion:(void (^)(NSNumber *_Nullable, FlutterError *_Nullable))completion;
 - (void)didActivateAudioSession:(void (^)(FlutterError *_Nullable))completion;
 - (void)didDeactivateAudioSession:(void (^)(FlutterError *_Nullable))completion;

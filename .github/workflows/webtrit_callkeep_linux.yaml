@@ -4,17 +4,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Linux is a stub platform — CI disabled until actively supported.
+# To re-enable: restore the pull_request and push triggers below.
 on:
-  pull_request:
-    paths:
-      - ".github/workflows/webtrit_callkeep_linux.yaml"
-      - "webtrit_callkeep_linux/**"
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/webtrit_callkeep_linux.yaml"
-      - "webtrit_callkeep_linux/**"
+  workflow_dispatch:
 
 jobs:
   build:

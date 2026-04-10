@@ -27,17 +27,44 @@
         android:name="android.hardware.telephony"
         android:required="false" />
 
+    <!--
+        Declare android.software.telecom as optional so Play Store filters and device
+        compatibility checks correctly reflect that the app works without the Telecom
+        subsystem. On devices where this feature is absent, StandaloneCallService is used
+        instead of PhoneConnectionService for call management.
+    -->
+    <uses-feature
+        android:name="android.software.telecom"
+        android:required="false" />
+
     <application>
         <service
             android:name=".services.services.connection.PhoneConnectionService"
             android:enabled="true"
             android:exported="false"
             android:label="PhoneConnectionService"
+            android:process=":callkeep_core"
             android:permission="android.permission.BIND_TELECOM_CONNECTION_SERVICE">
             <intent-filter>
                 <action android:name="android.telecom.ConnectionService" />
             </intent-filter>
         </service>
+
+        <!--
+          Standalone call management service for devices without android.software.telecom.
+          Runs in the main process (not :callkeep_core) because some OEM devices (e.g. Lenovo
+          TB300FU, Android 13) block foreground service starts for secondary processes,
+          permanently marking the process as "bad" and preventing all subsequent service starts.
+          Since there is no Telecom framework managing the lifecycle of this service, running in
+          the main process is safe and avoids OEM background-start restrictions.
+          Uses microphone foreground service type because phoneCall type requires the Telecom
+          subsystem, which is absent on devices that use this service.
+        -->
+        <service
+            android:name=".services.services.connection.StandaloneCallService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
 
         <service
             android:name=".services.services.signaling.SignalingIsolateService"

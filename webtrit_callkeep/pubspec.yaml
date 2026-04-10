@@ -1,6 +1,6 @@
 name: webtrit_callkeep
 description: Flutter WebTrit CallKeep plugin
-version: 0.3.0+0
+version: 0.5.0+0
 publish_to: none
 
 environment:
@@ -45,4 +45,4 @@ dev_dependencies:
     sdk: flutter
   mocktail: ^1.0.4
   plugin_platform_interface: ^2.1.8
-  very_good_analysis: ^10.0.0
+  flutter_lints: ^6.0.0

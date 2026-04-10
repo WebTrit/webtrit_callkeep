@@ -1,14 +1,115 @@
 # webtrit_callkeep_platform_interface
 
-[![style: very good analysis][very_good_analysis_badge]][very_good_analysis_link]
+The common platform interface for the `webtrit_callkeep` federated plugin. Defines the abstract
+API contract, all shared data models, and delegate interfaces that every platform implementation
+must satisfy.
 
-A common platform interface for the `webtrit_callkeep` plugin.
+---
 
-This interface allows platform-specific implementations of the `webtrit_callkeep` plugin, as well as the plugin itself, to ensure they are supporting the same interface.
+## Purpose
 
-# Usage
+This package exists so that:
 
-To implement a new platform-specific implementation of `webtrit_callkeep`, extend `WebtritCallkeepPlatform` with an implementation that performs the platform-specific behavior.
+- Platform implementations (`webtrit_callkeep_android`, `webtrit_callkeep_ios`) implement a
+  consistent interface without depending on each other.
+- The aggregator package (`webtrit_callkeep`) programs against a single abstract type.
+- Third-party platform implementations can extend `WebtritCallkeepPlatform` without forking the
+  plugin.
 
-[very_good_analysis_badge]: https://img.shields.io/badge/style-very_good_analysis-B22C89.svg
-[very_good_analysis_link]: https://pub.dev/packages/very_good_analysis
+---
+
+## Package structure
+
+```text
+lib/src/
+├── webtrit_callkeep_platform_interface.dart  # WebtritCallkeepPlatform abstract class
+├── models/
+│   ├── callkeep_options.dart
+│   ├── callkeep_handle.dart
+│   ├── callkeep_connection.dart
+│   ├── callkeep_audio_device.dart
+│   ├── callkeep_end_call_reason.dart
+│   ├── callkeep_incoming_call_metadata.dart
+│   ├── callkeep_incoming_call_error.dart
+│   ├── callkeep_call_request_error.dart
+│   ├── callkeep_permission.dart
+│   ├── callkeep_special_permission.dart
+│   ├── callkeep_special_permission_status.dart
+│   ├── callkeep_android_battery_mode.dart
+│   ├── callkeep_lifecycle_event.dart
+│   ├── callkeep_service_status.dart
+│   ├── callkeep_signaling_status.dart
+│   ├── callkeep_push_notification_status_sync.dart
+│   └── callkeep_log_type.dart
+├── delegate/
+│   ├── callkeep_delegate.dart                 # Main call event callbacks
+│   ├── callkeep_push_registry_delegate.dart   # iOS PushKit VoIP token/push (iOS only)
+│   ├── callkeep_android_service_delegate.dart # Background isolate callbacks (Android only)
+│   └── callkeep_logs_delegate.dart            # Native log forwarding
+├── helpers/
+├── annotation/
+└── consts/
+```
+
+---
+
+## Key types
+
+### `CallkeepHandle`
+
+```dart
+CallkeepHandle.number('+15551234567')
+CallkeepHandle.sip('user@example.com')
+```
+
+### `CallkeepDelegate`
+
+| Callback | When it fires |
+| --- | --- |
+| `didPushIncomingCall` | Platform registered the incoming call (or reports an error) |
+| `performAnswerCall` | User answered from system UI |
+| `performEndCall` | User ended from system UI or system terminated the call |
+| `performStartCall` | User initiated outgoing call from system UI |
+| `continueStartCallIntent` | System confirmed outgoing call intent |
+| `performSetHeld` | Hold toggled from system UI |
+| `performSetMuted` | Mute toggled from system UI |
+| `performSendDTMF` | DTMF sent from system dial pad |
+| `performSetSpeaker` | Speaker toggled from system UI |
+| `didActivateAudioSession` | System activated the audio session |
+| `didDeactivateAudioSession` | System deactivated the audio session |
+| `didReset` | System reset all call state |
+
+`perform*` methods return `Future<bool>`. Return `false` to signal failure — the platform
+terminates the call.
+
+### `CallkeepEndCallReason`
+
+`failed`, `remoteEnded`, `unanswered`, `answeredElsewhere`, `declinedElsewhere`, `missed`
+
+### `CallkeepConnection`
+
+Snapshot of a single call's state (Android only). Contains `callId`, `state`
+(`CallkeepConnectionState`), and `metadata`.
+
+---
+
+## Implementing a new platform
+
+```dart
+class WebtritCallkeepCustom extends WebtritCallkeepPlatform {
+  static void registerWith() {
+    WebtritCallkeepPlatform.instance = WebtritCallkeepCustom();
+  }
+  // override all abstract methods
+}
+```
+
+---
+
+## Related packages
+
+| Package | Description |
+| --- | --- |
+| [`webtrit_callkeep`](../webtrit_callkeep/README.md) | Public API aggregator |
+| [`webtrit_callkeep_android`](../webtrit_callkeep_android/README.md) | Android implementation |
+| [`webtrit_callkeep_ios`](../webtrit_callkeep_ios/README.md) | iOS implementation |

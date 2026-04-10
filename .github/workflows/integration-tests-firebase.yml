@@ -13,12 +13,14 @@ on:
       - ".github/workflows/integration-tests-firebase.yml"
 
 jobs:
-  integration-tests:
-    name: Integration Tests (Firebase Test Lab)
+  # ── Job 1: discover test files + build all APKs in one runner ────────────────
+  setup:
+    name: Build all APKs
     runs-on: ubuntu-latest
-    # Skip fork PRs: secrets are not available for forks, so auth steps would fail.
-    # workflow_dispatch always runs (no fork context).
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+
+    outputs:
+      tests: ${{ steps.discover.outputs.tests }}
 
     steps:
       - name: Checkout repository
@@ -40,6 +42,86 @@ jobs:
         run: flutter pub get
         working-directory: webtrit_callkeep/example
 
+      # Read test order from run_integration_tests.sh — single source of truth.
+      # When a test is added/reordered in the script it is automatically
+      # reflected in CI without touching this workflow.
+      - name: Discover integration test files
+        id: discover
+        run: |
+          ORDERED=$(grep -E '^\s+integration_test/.*_test\.dart' run_integration_tests.sh \
+            | sed 's|.*integration_test/||; s|\.dart.*||; s|[[:space:]]||g' \
+            | grep -v '^#' \
+            | jq -R . | jq -sc .)
+          echo "tests=$ORDERED" >> "$GITHUB_OUTPUT"
+        working-directory: webtrit_callkeep/example
+
+      # Build one app APK per test file. All builds run on the same runner so
+      # every app APK and the test APK share the same debug signing key.
+      - name: Build app APKs (one per test file)
+        run: |
+          TESTS=$(grep -E '^\s+integration_test/.*_test\.dart' run_integration_tests.sh \
+            | sed 's|.*integration_test/||; s|\.dart.*||; s|[[:space:]]||g' \
+            | grep -v '^#')
+          for TEST in $TESTS; do
+            flutter build apk --debug --target "integration_test/${TEST}.dart"
+            mkdir -p "$GITHUB_WORKSPACE/ci-artifacts/${TEST}"
+            cp build/app/outputs/apk/debug/app-debug.apk \
+               "$GITHUB_WORKSPACE/ci-artifacts/${TEST}/app-debug.apk"
+          done
+        working-directory: webtrit_callkeep/example
+
+      # Flutter build must run before assembleAndroidTest so the
+      # integration_test plugin is registered in the test APK.
+      - name: Build instrumented test APK
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleAndroidTest
+        working-directory: webtrit_callkeep/example/android
+
+      - name: Collect test APK
+        run: |
+          cp webtrit_callkeep/example/build/app/outputs/apk/androidTest/debug/app-debug-androidTest.apk \
+             ci-artifacts/app-debug-androidTest.apk
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: apks
+          path: ci-artifacts/
+          retention-days: 1
+
+  # ── Job 2: run each test file sequentially on Firebase Test Lab ─────────────
+  run-test:
+    name: "${{ matrix.test }}"
+    needs: setup
+    runs-on: ubuntu-latest
+
+    permissions:
+      checks: write
+      contents: read
+
+    strategy:
+      max-parallel: 1        # sequential — Telecom state must drain between files
+      fail-fast: false       # run all files even if one fails
+      matrix:
+        test: ${{ fromJson(needs.setup.outputs.tests) }}
+
+    env:
+      APP_APK: apks/${{ matrix.test }}/app-debug.apk
+      TEST_APK: apks/app-debug-androidTest.apk
+      DEVICE: model=redfin,version=30,locale=en,orientation=portrait
+      RESULTS_BUCKET: webtrit-app-ci-test-results
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download APKs
+        uses: actions/download-artifact@v4
+        with:
+          name: apks
+          path: apks
+
       - name: Authenticate with Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -48,30 +130,31 @@ jobs:
       - name: Set up Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Build debug APK
-        run: flutter build apk --debug
-        working-directory: webtrit_callkeep/example
-
-      - name: Build instrumented test APK
-        run: ./gradlew :app:assembleAndroidTest
-        working-directory: webtrit_callkeep/example/android
-
-      - name: Run tests on Firebase Test Lab
+      - name: Run on Firebase Test Lab
         run: |
           gcloud firebase test android run \
             --type instrumentation \
-            --app webtrit_callkeep/example/build/app/outputs/apk/debug/app-debug.apk \
-            --test webtrit_callkeep/example/build/app/outputs/apk/androidTest/debug/app-debug-androidTest.apk \
-            --device model=Pixel6,version=33,locale=en,orientation=portrait \
+            --app ${{ env.APP_APK }} \
+            --test ${{ env.TEST_APK }} \
+            --device ${{ env.DEVICE }} \
             --timeout 10m \
+            --results-bucket ${{ env.RESULTS_BUCKET }} \
+            --results-dir ${{ github.run_id }}/${{ matrix.test }} \
             --project ${{ secrets.FIREBASE_PROJECT_ID }}
 
-      - name: Upload build artifacts and test APKs
+      - name: Download JUnit results from GCS
         if: always()
-        uses: actions/upload-artifact@v4
+        run: |
+          mkdir -p test-results
+          gsutil -m cp -r \
+            "gs://${{ env.RESULTS_BUCKET }}/${{ github.run_id }}/${{ matrix.test }}/**/test_result_1.xml" \
+            test-results/ || true
+
+      - name: Report test results
+        if: always()
+        uses: dorny/test-reporter@v1
         with:
-          name: firebase-test-apks-${{ github.run_number }}
-          path: |
-            webtrit_callkeep/example/build/app/outputs/apk/debug/app-debug.apk
-            webtrit_callkeep/example/build/app/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-          retention-days: 14
+          name: "${{ matrix.test }}"
+          path: "test-results/*.xml"
+          reporter: java-junit
+          fail-on-error: false

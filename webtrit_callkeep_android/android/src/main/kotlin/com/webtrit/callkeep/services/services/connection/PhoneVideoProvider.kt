@@ -27,7 +27,10 @@ class PhoneVideoProvider : Connection.VideoProvider() {
         Log.d(LOG_TAG, "onSetZoom")
     }
 
-    override fun onSendSessionModifyRequest(p0: VideoProfile?, p1: VideoProfile?) {
+    override fun onSendSessionModifyRequest(
+        p0: VideoProfile?,
+        p1: VideoProfile?,
+    ) {
         Log.d(LOG_TAG, "onSendSessionModifyRequest")
     }
 

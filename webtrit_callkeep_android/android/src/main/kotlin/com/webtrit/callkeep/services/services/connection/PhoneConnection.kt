@@ -23,40 +23,71 @@ import com.webtrit.callkeep.managers.NotificationManager
 import com.webtrit.callkeep.models.AudioDevice
 import com.webtrit.callkeep.models.AudioDeviceType
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
+import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
+import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
 import com.webtrit.callkeep.services.services.connection.models.PerformDispatchHandle
 import java.util.concurrent.Executors
 
 /**
- * Represents a phone connection for handling telephony calls.
- *
- * @param context The Android application context.
- * @param metadata The metadata associated with the call.
+ * Manages an individual phone connection, handling state transitions and audio routing.
  */
 class PhoneConnection internal constructor(
     private val context: Context,
     private val dispatcher: PerformDispatchHandle,
-    var metadata: CallMetadata,
-    var timeout: ConnectionTimeout? = null,
+    private var metadata: CallMetadata,
     var onDisconnectCallback: (connection: PhoneConnection) -> Unit,
+    var timeout: ConnectionTimeout? = null,
 ) : Connection() {
-    /**
-     * Indicates whether the call's outgoing audio is currently muted.
-     *
-     * This property reflects only the application's internal mute state in
-     * self-managed calls. It may not match the global microphone mute state
-     * reported by the system, as it is not synchronized with
-     * {@link android.media.AudioManager#isMicrophoneMute()}.
-     */
     private var isMute = false
     private var isHasSpeaker = false
-    private var answer = false
-    private var disconnected = false
-    private var avaliablecallEndpoints: List<CallEndpoint> = emptyList()
 
+    /**
+     * Tracks whether the speaker was manually disabled by the user.
+     * Prevents automatic re-enabling during video calls.
+     */
+    private var isSpeakerManuallyDisabled = false
+
+    /**
+     * Prevents automatic speaker enforcement if the call originally started as audio-only.
+     * This ensures mid-call video upgrades from the remote party do not force the speaker on.
+     */
+    private var preventAutoSpeakerEnforcement = false
+
+    /**
+     * Tracks a pending [CallEndpoint] change request, ensuring only one is active at a time.
+     */
+    @Volatile
+    private var pendingEndpointRequest: CallEndpoint? = null
+    private var availableCallEndpoints: List<CallEndpoint> = emptyList()
     private val notificationManager = NotificationManager()
     private val audioManager = AudioManager(context)
 
+    val callId: String
+        get() = metadata.callId
+
+    val displayName: String?
+        get() = metadata.displayName
+
+    val handle: com.webtrit.callkeep.models.CallHandle?
+        get() = metadata.handle
+
+    val hasVideo: Boolean
+        get() = metadata.hasVideo ?: false
+
+    val isSpeakerOnVideoEnabled: Boolean
+        get() = metadata.speakerOnVideo ?: true
+
+    val proximityEnabled: Boolean
+        get() = metadata.proximityEnabled ?: false
+
+    val hasMute: Boolean
+        get() = isMute
+
+    val hasHold: Boolean
+        get() = state == STATE_HOLDING
+
+    var hasAnswered: Boolean = false
+        private set
 
     init {
         audioModeIsVoip = true
@@ -67,164 +98,108 @@ class PhoneConnection internal constructor(
         updateData(metadata)
     }
 
-    val id: String
-        get() = this.metadata.callId
-
     /**
-     * Checks if user press answer before.
-     * @return true if user has been answered, false otherwise.
-     */
-    fun isAnswered(): Boolean {
-        return answer
-    }
-
-    /**
-     * Called when the caller begins communication.
+     * Transitions the connection to an active state and ensures the UI is visible.
      */
     fun establish() {
-        Log.d(TAG, "PhoneConnection:establish")
-        // Launch the activity if, for example, an outgoing call was started and an answer happened while the activity was hidden
-        // This ensures that the user interface is properly displayed and active
+        logger.d("Establishing connection for callId: $callId")
         context.startActivity(Platform.getLaunchActivity(context))
         setActive()
     }
 
     /**
-     * Changes the mute state of the call.
-     *
-     * This method updates the internal mute flag and notifies the application about
-     * the change. For self-managed calls, this does not affect the system-wide
-     * microphone state; mute should be applied directly in the media engine
-     * (e.g., disabling the WebRTC audio track). The method is used to keep the UI
-     * and application state in sync with the actual mute status of the call's audio.
-     *
-     * @param isMute True to mute the call's outgoing audio, false to unmute it.
+     * Synchronizes the internal mute state and notifies the application.
      */
-    fun changeMuteState(isMute: Boolean) {
-        this.isMute = isMute
-        dispatcher(ConnectionPerform.AudioMuting, metadata.copy(hasMute = this.isMute))
+    fun changeMuteState(muted: Boolean) {
+        logger.d("Changing mute state to: $muted for callId: $callId")
+        this.isMute = muted
+        dispatcher(CallMediaEvent.AudioMuting, metadata.copy(hasMute = this.isMute))
     }
 
     /**
-     * Called when the incoming call UI should be displayed.
+     * Invoked by the system when the incoming call interface should be displayed.
      */
     override fun onShowIncomingCallUi() {
+        logger.d("Showing incoming call UI for callId: $callId")
         notificationManager.showIncomingCallNotification(metadata)
-        this@PhoneConnection.audioManager.startRingtone(metadata.ringtonePath)
+        audioManager.startRingtone(metadata.ringtonePath)
+        dispatcher(CallLifecycleEvent.DidPushIncomingCall, metadata)
     }
 
     /**
-     * Callback method invoked when an incoming call is answered.
-     *
-     * This method is called when the user answers an incoming call. It handles several tasks, including
-     * marking the call as answered, updating the UI, and notifying the system. It sets the connection
-     * as active immediately, even before receiving the 200 OK response from the other side. This is
-     * because the ringing and notifications are no longer needed once the call is answered, and
-     * waiting for the 200 OK could introduce unnecessary delays.
-     *
-     * The method also cancels any incoming call notifications, stops the ringtone, and notifies
-     * the system that the call has been answered. If the video state is not relevant for your use case,
-     * you can use this overload without worrying about video-related processing.
+     * Handles the transition when a user accepts an incoming call.
      */
     override fun onAnswer() {
+        logger.i("Answering call: $metadata")
         super.onAnswer()
-        answer = true
-        Log.i(TAG, "onAnswer: $metadata")
-        // Set connection as active without waiting for the 200 OK response
-        // as ringing and notifications are no longer needed once the call is answered
+        hasAnswered = true
         setActive()
-
-        // Notify the  activity about the answered call, if app is in the foreground
-        dispatcher(ConnectionPerform.AnswerCall, metadata)
-
-        // Start the activity for the answered call if the app is in the background
+        dispatcher(CallLifecycleEvent.AnswerCall, metadata)
         ActivityHolder.start(context)
     }
 
     /**
-     * Called when the user rejects the incoming call.
-     *
-     * This method sets the call's disconnect cause to "Rejected" and initiates the call disconnect process.
+     * Handles the transition when a user rejects an incoming call.
      */
     override fun onReject() {
-        Log.i(TAG, "onReject: $metadata")
+        logger.i("Rejecting call: $callId")
         super.onReject()
         setDisconnected(DisconnectCause(DisconnectCause.REJECTED))
     }
 
     /**
-     * Called when the call is disconnected.
-     *
-     * This method stops the call ringtone, removes the call from the phone connection service,
-     * cancels any active notifications, notifies the application about the declined call,
-     * and performs cleanup tasks.
+     * Performs final cleanup when the connection is terminated.
      */
     override fun onDisconnect() {
+        logger.i("Disconnecting call: $callId")
         super.onDisconnect()
-        Log.i(TAG, "onDisconnect: ${metadata.callId}")
 
-        notificationManager.cancelIncomingNotification(isAnswered())
-        notificationManager.cancelActiveCallNotification(id)
+        timeout?.cancel()
+        notificationManager.cancelIncomingNotification(hasAnswered)
+        notificationManager.cancelActiveCallNotification(callId)
         audioManager.stopRingtone()
 
-        val event = when (disconnectCause?.code) {
-            DisconnectCause.REMOTE -> ConnectionPerform.DeclineCall
-            else -> ConnectionPerform.HungUp
-        }
-        dispatcher(event, metadata)
-
+        dispatcher(eventForDisconnectCause(disconnectCause), metadata)
         onDisconnectCallback.invoke(this)
         destroy()
     }
 
     /**
-     * Called when the call is put on hold.
-     *
-     * This method updates the call's state to "On Hold" and notifies the application about the holding status change.
+     * Updates the internal state to reflect a held call.
      */
     override fun onHold() {
+        logger.d("Putting call on hold: $callId")
         super.onHold()
         setOnHold()
-        dispatcher(ConnectionPerform.ConnectionHolding, metadata.copy(hasHold = true))
+        dispatcher(CallMediaEvent.ConnectionHolding, metadata.copy(hasHold = true))
     }
 
     /**
-     * Called when the call is taken off hold.
-     *
-     * This method sets the call back to the "Active" state and notifies the application about the holding status change.
+     * Resumes the call from a held state.
      */
     override fun onUnhold() {
+        logger.d("Taking call off hold: $callId")
         super.onUnhold()
         setActive()
-        dispatcher(ConnectionPerform.ConnectionHolding, metadata.copy(hasHold = false))
+        dispatcher(CallMediaEvent.ConnectionHolding, metadata.copy(hasHold = false))
     }
 
     /**
-     * Called when a Dual-Tone Multi-Frequency (DTMF) tone is played during the call.
-     *
-     * This method notifies the application about the DTMF tone that was played.
-     *
-     * @param c The DTMF tone character that was played.
+     * Dispatches a DTMF tone event to the application.
      */
     override fun onPlayDtmfTone(c: Char) {
+        logger.d("Playing DTMF tone: $c for callId: $callId")
         super.onPlayDtmfTone(c)
-        dispatcher(ConnectionPerform.SentDTMF, metadata.copy(dualToneMultiFrequency = c))
+        dispatcher(CallMediaEvent.SentDTMF, metadata.copy(dualToneMultiFrequency = c))
     }
 
     /**
-     * Called when the state of the call changes.
-     *
-     * This method handles state changes and triggers specific actions based on the new call state.
-     * It can be called when the call is dialing or when it becomes active.
-     *
-     * @param state The new state of the call.
+     * Orchestrates logical transitions based on the underlying Telecom state.
      */
     override fun onStateChanged(state: Int) {
+        logger.v("Connection state changed to: $state for callId: $callId")
         super.onStateChanged(state)
-
-        Log.i(TAG, "onStateChanged: $state")
-        // Handle timeout for the specific state
-        handleIncomingTimeout(state)
+        handleConnectionTimeout(state)
 
         when (state) {
             STATE_DIALING -> onDialing()
@@ -232,384 +207,568 @@ class PhoneConnection internal constructor(
         }
     }
 
-    private fun handleIncomingTimeout(state: Int) {
-        Log.i(TAG, "handleIncomingTimeout: $state")
+    /**
+     * Manages automatic disconnection logic if the call stays in transient states too long.
+     */
+    private fun handleConnectionTimeout(state: Int) {
         if (state in timeout?.states.orEmpty()) {
-            // Start the timeout if the current state is in the allowed states
-            timeout?.start {
-                Log.i(TAG, "Timeout reached for callId: ${metadata.callId} in state: $state")
-
-                // Disconnect the call with an appropriate cause
-                setDisconnected(
-                    DisconnectCause(
-                        DisconnectCause.CANCELED, "Timeout in state: $state"
-                    )
-                )
-
-                // Trigger the disconnect logic
-                onDisconnect()
-            }
+            timeout?.start(::onTimeoutTriggered)
         } else {
-            // Cancel the timeout if the state is not in the allowed states
             timeout?.cancel()
         }
     }
 
     /**
-     * Called when the audio route of the call changes.
-     *
-     * For SELF_MANAGED connections we ignore {@code state.isMuted} entirely,
-     * since mute state is managed internally by our own audio engine and
-     * {@link CallAudioState} is not a reliable source of truth on any API level.
-     *
-     * This method now only handles audio route changes (e.g., earpiece ↔ speaker)
-     * and dispatches them to the application.
-     *
-     * Note: As of API 34, {@link #onCallAudioStateChanged} is deprecated in favor of
-     * {@link #onCallEndpointChanged(CallEndpoint)} and {@link #onMuteStateChanged(boolean)}.
-     *
-     * @param state The new audio state of the call, may be {@code null}.
+     * Executed when the [ConnectionTimeout] timer elapses.
+     */
+    private fun onTimeoutTriggered() {
+        logger.w("Timeout reached for callId: $callId")
+        setDisconnected(DisconnectCause(DisconnectCause.CANCELED, "Timeout reached"))
+        onDisconnect()
+    }
+
+    /**
+     * Handles audio routing changes for Android versions below API 34.
      */
     @Deprecated("Deprecated in Java")
     override fun onCallAudioStateChanged(state: CallAudioState?) {
         super.onCallAudioStateChanged(state)
-        Log.i(TAG, "onCallAudioStateChanged: $state")
-
-        // If the device is running Android version higher than UPSIDE_DOWN_CAKE (Android 14)
-        // skip further processing as this will be handled by the new CallEndpoint API.
-        // see onAvailableCallEndpointsChanged, onCallEndpointChanged, and onMuteStateChanged.
+        logger.d("Legacy audio state changed: $state")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
 
-        state?.route?.let {
-            this.isHasSpeaker = it == CallAudioState.ROUTE_SPEAKER
-            dispatcher(
-                ConnectionPerform.ConnectionHasSpeaker,
-                metadata.copy(hasSpeaker = this.isHasSpeaker)
-            )
-        }
+        val audioDevices = state?.supportedRouteMask?.let(::mapSupportedRoutes) ?: emptyList()
+        dispatcher(CallMediaEvent.AudioDevicesUpdate, metadata.copy(audioDevices = audioDevices))
 
-        val audioDevices = state?.supportedRouteMask?.let { mask ->
-            listOfNotNull(
-                if (mask and CallAudioState.ROUTE_EARPIECE != 0) AudioDevice(
-                    type = AudioDeviceType.EARPIECE
-                ) else null, if (mask and CallAudioState.ROUTE_SPEAKER != 0) AudioDevice(
-                    type = AudioDeviceType.SPEAKER
-                ) else null, if (mask and CallAudioState.ROUTE_BLUETOOTH != 0) AudioDevice(
-                    type = AudioDeviceType.BLUETOOTH
-                ) else null, if (mask and CallAudioState.ROUTE_WIRED_HEADSET != 0) AudioDevice(
-                    type = AudioDeviceType.WIRED_HEADSET
-                ) else null, if (mask and CallAudioState.ROUTE_STREAMING != 0) AudioDevice(
-                    type = AudioDeviceType.STREAMING
-                ) else null
-            )
-        } ?: emptyList()
-        dispatcher(
-            ConnectionPerform.AudioDevicesUpdate, metadata.copy(audioDevices = audioDevices)
-        )
-
-        val audioDevice = state?.route.let { route ->
-            when (route) {
-                CallAudioState.ROUTE_EARPIECE -> AudioDevice(AudioDeviceType.EARPIECE)
-                CallAudioState.ROUTE_SPEAKER -> AudioDevice(AudioDeviceType.SPEAKER)
-                CallAudioState.ROUTE_BLUETOOTH -> AudioDevice(AudioDeviceType.BLUETOOTH)
-                CallAudioState.ROUTE_WIRED_HEADSET -> AudioDevice(AudioDeviceType.WIRED_HEADSET)
-                CallAudioState.ROUTE_STREAMING -> AudioDevice(AudioDeviceType.STREAMING)
-                else -> AudioDevice(AudioDeviceType.UNKNOWN)
-            }
-        }
-        dispatcher(ConnectionPerform.AudioDeviceSet, metadata.copy(audioDevice = audioDevice))
+        val currentDevice =
+            state?.route?.let(::mapRouteToAudioDevice) ?: AudioDevice(AudioDeviceType.UNKNOWN)
+        dispatcher(CallMediaEvent.AudioDeviceSet, metadata.copy(audioDevice = currentDevice))
     }
 
     /**
-     * Called when the available call endpoints change.
+     * Refreshes the audio state and endpoints for the application layer.
+     */
+    fun forceUpdateAudioState() {
+        logger.d("Force updating audio state for callId: $callId")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            updateModernAudioState()
+        } else {
+            callAudioState?.let(::onCallAudioStateChanged)
+        }
+    }
+
+    /**
+     * Triggers modern endpoint updates for API 34+.
+     */
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    private fun updateModernAudioState() {
+        val endpoint = currentCallEndpoint ?: return
+        onCallEndpointChanged(endpoint)
+        if (availableCallEndpoints.isNotEmpty()) {
+            onAvailableCallEndpointsChanged(availableCallEndpoints)
+        }
+        dispatcher(CallMediaEvent.AudioMuting, metadata.copy(hasMute = isMute))
+    }
+
+    /**
+     * Updates available audio destinations for API 34+.
      *
-     * This method is triggered when the list of available call endpoints changes, such as when
-     * new audio devices become available or existing ones are removed. It updates the metadata
-     * with the new list of audio devices and notifies the application about the change.
+     * This method intercepts the initial hardware report to resolve the "Sticky Speaker State."
+     * On some devices, the Telecom Framework caches the last used route. By forcing the
+     * EARPIECE during the first load of an audio-only call, we override this behavior.
      */
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     override fun onAvailableCallEndpointsChanged(callEndpoints: List<CallEndpoint>) {
+        val isFirstLoad = availableCallEndpoints.isEmpty()
         super.onAvailableCallEndpointsChanged(callEndpoints)
-        Log.i(TAG, "onAvailableCallEndpointsChanged: $callEndpoints")
+        logger.d("Available call endpoints changed: $callEndpoints")
+        availableCallEndpoints = callEndpoints
 
-        avaliablecallEndpoints = callEndpoints
-        dispatcher(
-            ConnectionPerform.AudioDevicesUpdate, metadata.copy(
-                audioDevices = callEndpoints.map { callEndpoint ->
-                    AudioDevice(
-                        type = when (callEndpoint.endpointType) {
-                            CallEndpoint.TYPE_EARPIECE -> AudioDeviceType.EARPIECE
-                            CallEndpoint.TYPE_SPEAKER -> AudioDeviceType.SPEAKER
-                            CallEndpoint.TYPE_BLUETOOTH -> AudioDeviceType.BLUETOOTH
-                            CallEndpoint.TYPE_WIRED_HEADSET -> AudioDeviceType.WIRED_HEADSET
-                            CallEndpoint.TYPE_STREAMING -> AudioDeviceType.STREAMING
-                            CallEndpoint.TYPE_UNKNOWN -> AudioDeviceType.UNKNOWN
-                            else -> AudioDeviceType.UNKNOWN
-                        },
-                        name = callEndpoint.endpointName.toString(),
-                        id = callEndpoint.identifier.toString()
-                    )
-                })
-        )
+        val devices = callEndpoints.map(::mapEndpointToAudioDevice)
+        dispatcher(CallMediaEvent.AudioDevicesUpdate, metadata.copy(audioDevices = devices))
+
+        try {
+            /*
+             * Core Fix: Force EARPIECE on initialization for audio-only calls.
+             * By forcing the switch blindly on the first load, we preemptively correct
+             * any "sticky" speaker state without risking a crash.
+             */
+            if (isFirstLoad && !hasVideo) {
+                val earpiece =
+                    callEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_EARPIECE }
+                if (earpiece != null) {
+                    logger.i("Startup: Preemptively forcing EARPIECE to clear sticky state.")
+                    performEndpointChange(earpiece)
+                }
+            }
+        } catch (e: Exception) {
+            /*
+             * Defensive logging: Ensures the call remains active even if
+             * the platform-specific routing request fails.
+             */
+            logger.w("Failed to perform initial audio endpoint correction: ${e.message}", e)
+        }
+
+        enforceVideoSpeakerLogic()
     }
 
     /**
-     * Called when the call endpoint changes.
-     *
-     * This method is triggered when the current call endpoint changes, such as when the user switches
-     * audio devices during a call. It updates the metadata with the new audio device and notifies
-     * the application about the change.
+     * Updates the currently active audio destination for API 34+.
      */
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     override fun onCallEndpointChanged(callEndpoint: CallEndpoint) {
         super.onCallEndpointChanged(callEndpoint)
-        Log.i(TAG, "onCallEndpointChanged: $callEndpoint")
+        logger.i("Call endpoint changed to: $callEndpoint")
+        val device = mapEndpointToAudioDevice(callEndpoint)
+        dispatcher(CallMediaEvent.AudioDeviceSet, metadata.copy(audioDevice = device))
 
-        val device = AudioDevice(
-            type = when (callEndpoint.endpointType) {
-                CallEndpoint.TYPE_EARPIECE -> AudioDeviceType.EARPIECE
-                CallEndpoint.TYPE_SPEAKER -> AudioDeviceType.SPEAKER
-                CallEndpoint.TYPE_BLUETOOTH -> AudioDeviceType.BLUETOOTH
-                CallEndpoint.TYPE_WIRED_HEADSET -> AudioDeviceType.WIRED_HEADSET
-                CallEndpoint.TYPE_STREAMING -> AudioDeviceType.STREAMING
-                CallEndpoint.TYPE_UNKNOWN -> AudioDeviceType.UNKNOWN
-                else -> return // Unsupported endpoint type
-            }, name = callEndpoint.endpointName.toString(), id = callEndpoint.identifier.toString()
-        )
-        dispatcher(ConnectionPerform.AudioDeviceSet, metadata.copy(audioDevice = device))
-
-        // TODO: Remove with deprecated changeSpeakerState
-        this.isHasSpeaker = callEndpoint.endpointType == CallEndpoint.TYPE_SPEAKER
-        dispatcher(
-            ConnectionPerform.ConnectionHasSpeaker, metadata.copy(hasSpeaker = this.isHasSpeaker)
-        )
+        isHasSpeaker = callEndpoint.endpointType == CallEndpoint.TYPE_SPEAKER
+        // Guard against the system automatically switching back to Earpiece/Wired.
+        // If the system forces a switch during a video call, we force it back.
+        enforceVideoSpeakerLogic()
     }
 
     /**
-     * Called when the mute state of the call changes.
-     *
-     * This method is triggered when the mute state of the call changes, such as when the user
-     * mutes or unmutes the call. It updates the metadata with the new mute state and notifies
-     * the application about the change.
+     * Syncs system mute state changes for API 34+.
      */
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     override fun onMuteStateChanged(isMuted: Boolean) {
         super.onMuteStateChanged(isMuted)
-        Log.i(TAG, "onMuteStateChanged: $isMuted")
-
-        this.isMute = isMuted
-        dispatcher(ConnectionPerform.AudioMuting, metadata.copy(hasMute = this.isMute))
+        logger.d("Mute state changed via system: $isMuted")
+        isMute = isMuted
+        dispatcher(CallMediaEvent.AudioMuting, metadata.copy(hasMute = isMute))
     }
 
     /**
-     * Set the audio device for the call.
-     *
-     * This method changes the audio device used for the call based on the provided AudioDevice.
-     * It handles both pre-Android 14 and post-Android 14 scenarios, using CallEndpoint API for
-     * Android 14 and above, and CallAudioState for earlier versions.
-     *
-     * @param device The audio device to set for the call.
+     * Requests a change to a specific audio device.
      */
     fun setAudioDevice(device: AudioDevice) {
-        Log.i(TAG, "setAudioDevice: $device")
+        logger.i("Setting audio device: $device for callId: $callId")
+
+        isSpeakerManuallyDisabled = device.type != AudioDeviceType.SPEAKER
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            val callEndpoint =
-                avaliablecallEndpoints.firstOrNull { it.identifier == ParcelUuid.fromString(device.id!!) }
-            if (callEndpoint == null) {
-                Log.e(TAG, "No suitable call endpoint found for the current audio state.")
+            val deviceId = device.id
+            if (deviceId == null) {
+                logger.e("Cannot set audio device: null device id. Requested device: $device, callId: $callId")
                 return
             }
-            val executor = Executors.newSingleThreadExecutor()
-            val callback = object : OutcomeReceiver<Void, CallEndpointException> {
-                override fun onResult(p0: Void?) {
-                    Log.d(TAG, "Call endpoint changed successfully to: $callEndpoint")
+
+            val endpoint =
+                availableCallEndpoints.firstOrNull {
+                    it.identifier == ParcelUuid.fromString(deviceId)
                 }
 
-                override fun onError(error: CallEndpointException) {
-                    Log.e(TAG, "Failed to change call endpoint: ${error.message}")
-                }
+            if (endpoint != null) {
+                performEndpointChange(endpoint)
+            } else {
+                logger.e(
+                    "No suitable call endpoint found for the current audio state. Requested device: $device, callId: $callId",
+                )
             }
-            requestCallEndpointChange(callEndpoint, executor, callback)
-
         } else {
-            when (device.type) {
-                AudioDeviceType.EARPIECE -> setAudioRoute(CallAudioState.ROUTE_EARPIECE)
-                AudioDeviceType.SPEAKER -> setAudioRoute(CallAudioState.ROUTE_SPEAKER)
-                AudioDeviceType.BLUETOOTH -> setAudioRoute(CallAudioState.ROUTE_BLUETOOTH)
-                AudioDeviceType.WIRED_HEADSET -> setAudioRoute(CallAudioState.ROUTE_WIRED_HEADSET)
-                else -> setAudioRoute(CallAudioState.ROUTE_WIRED_OR_EARPIECE)
-            }
-        }
-
-    }
-
-    /**
-     * Change the speaker state of the call.
-     *
-     * @param isActive True if the speaker is active, false otherwise.
-     */
-    @Deprecated("Use setAudioDevice instead")
-    fun changeSpeakerState(isActive: Boolean) {
-        Log.i(TAG, "changeSpeakerState: $isActive")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            val callEndpoint =
-                if (isActive && avaliablecallEndpoints.any { it.endpointType == CallEndpoint.TYPE_SPEAKER }) {
-                    avaliablecallEndpoints.first { it.endpointType == CallEndpoint.TYPE_SPEAKER }
-                } else if (avaliablecallEndpoints.any { it.endpointType == CallEndpoint.TYPE_BLUETOOTH }) {
-                    avaliablecallEndpoints.first { it.endpointType == CallEndpoint.TYPE_BLUETOOTH }
-                } else if (avaliablecallEndpoints.any { it.endpointType == CallEndpoint.TYPE_WIRED_HEADSET }) {
-                    avaliablecallEndpoints.first { it.endpointType == CallEndpoint.TYPE_WIRED_HEADSET }
-                } else if (avaliablecallEndpoints.any { it.endpointType == CallEndpoint.TYPE_STREAMING }) {
-                    avaliablecallEndpoints.first { it.endpointType == CallEndpoint.TYPE_STREAMING }
-                } else {
-                    avaliablecallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_EARPIECE }
-                }
-
-            if (callEndpoint == null) {
-                Log.e(TAG, "No suitable call endpoint found for the current audio state.")
-                return
-            }
-            val executor = Executors.newSingleThreadExecutor()
-            val callback = object : OutcomeReceiver<Void, CallEndpointException> {
-                override fun onResult(p0: Void?) {
-                    Log.d(TAG, "Call endpoint changed successfully to: $callEndpoint")
-                }
-
-                override fun onError(error: CallEndpointException) {
-                    Log.e(TAG, "Failed to change call endpoint: ${error.message}")
-                }
-            }
-            requestCallEndpointChange(callEndpoint, executor, callback)
-        } else {
-            var routeState = CallAudioState.ROUTE_EARPIECE
-            if (isActive) {
-                this@PhoneConnection.audioManager.isBluetoothConnected()
-                routeState = CallAudioState.ROUTE_SPEAKER
-            } else if (this@PhoneConnection.audioManager.isBluetoothConnected()) {
-                routeState = CallAudioState.ROUTE_BLUETOOTH
-            } else if (this@PhoneConnection.audioManager.isWiredHeadsetConnected()) {
-                routeState = CallAudioState.ROUTE_WIRED_HEADSET
-            }
-            setAudioRoute(routeState)
+            setAudioRoute(mapDeviceTypeToRoute(device.type))
         }
     }
 
     /**
-     * Update the call metadata with new data.
+     * Toggles the speakerphone state.
      *
-     * This method updates the metadata associated with the call, including the caller's information,
-     * number, and video state. It also sets the address and caller display name based on the metadata.
-     *
-     * @param metadata The updated call metadata.
+     * Consolidates logic for selecting the appropriate audio device based on whether
+     * the speaker is being enabled or disabled, handling both Legacy and Modern (API 34+) paths.
      */
-    fun updateData(metadata: CallMetadata) {
-        this.metadata = this.metadata.mergeWith(metadata)
-        this.extras = metadata.toBundle()
+    fun toggleSpeaker(isActive: Boolean) {
+        logger.d("Toggling speaker state: $isActive for callId: $callId")
+
+        isSpeakerManuallyDisabled = !isActive
+
+        val targetDevice: AudioDevice? =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                findSpeakerEndpoint(isActive)?.let(::mapEndpointToAudioDevice)
+            } else {
+                val route = determineLegacyRoute(isActive)
+                mapRouteToAudioDevice(route)
+            }
+
+        if (targetDevice != null) {
+            setAudioDevice(targetDevice)
+        } else {
+            logger.w("Could not resolve target device for speaker state: $isActive")
+        }
+    }
+
+    /**
+     * Centralized logic to enforce speakerphone for video calls.
+     * Checks requirements: Video enabled, not ringing, and NO Bluetooth connected.
+     */
+    private fun enforceVideoSpeakerLogic() {
+        logger.d(
+            "enforceVideoSpeakerLogic: CHECKING... [hasVideo=$hasVideo, state=$state, isSpeakerOnVideoEnabled=$isSpeakerOnVideoEnabled, isHasSpeaker=$isHasSpeaker]",
+        )
+
+        // Exit immediately if this behavior is disabled in metadata
+        if (!isSpeakerOnVideoEnabled) {
+            logger.d("enforceVideoSpeakerLogic: SKIP -> Feature disabled in metadata (isSpeakerOnVideoEnabled=false)")
+            return
+        }
+
+        // Must be video, must not be just ringing (incoming)
+        if (!hasVideo || state == STATE_RINGING) {
+            logger.d(
+                "enforceVideoSpeakerLogic: SKIP -> Condition failed: hasVideo=$hasVideo (needs true) OR state=$state (needs != STATE_RINGING/2)",
+            )
+            return
+        }
+
+        // Prevent log warning on API 34 if endpoints aren't loaded yet
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && availableCallEndpoints.isEmpty()) {
+            logger.d("enforceVideoSpeakerLogic: SKIP -> API 34+ and endpoints not loaded yet")
+            return
+        }
+
+        // Bluetooth Guard: If Bluetooth is available/connected, prefer it over Speaker.
+        if (isBluetoothAvailable()) {
+            logger.d("enforceVideoSpeakerLogic: SKIP -> Bluetooth device detected.")
+            return
+        }
+
+        // Guard: If the call originally started as an audio-only session, we must not
+        // abruptly switch to the speakerphone when a remote video upgrade occurs.
+        // The user is likely still holding the phone to their ear.
+        if (preventAutoSpeakerEnforcement) {
+            logger.d("enforceVideoSpeakerLogic: SKIP -> Call started as audio. Ignoring mid-call video upgrade.")
+            return
+        }
+
+        if (isSpeakerManuallyDisabled) {
+            logger.d("enforceVideoSpeakerLogic: SKIP -> User manually disabled speaker")
+            return
+        }
+
+        if (!isHasSpeaker) {
+            logger.i("enforceVideoSpeakerLogic: ACTION -> Enforcing speaker for video call. State: $state")
+            toggleSpeaker(true)
+        } else {
+            logger.d("enforceVideoSpeakerLogic: SKIP -> Speaker is already active (isHasSpeaker=true)")
+        }
+    }
+
+    /**
+     * Helper to detect if a Bluetooth audio device is available/connected.
+     */
+    private fun isBluetoothAvailable(): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            // API 34+: Check if any endpoint is Bluetooth
+            availableCallEndpoints.any { it.endpointType == CallEndpoint.TYPE_BLUETOOTH }
+        } else {
+            // Legacy: Check supported routes from CallAudioState
+            val supportedMask = callAudioState?.supportedRouteMask ?: 0
+            (supportedMask and CallAudioState.ROUTE_BLUETOOTH) != 0
+        }
+
+    /**
+     * Updates call identity and visual parameters.
+     */
+    fun updateData(requestCallMetadata: CallMetadata) {
+        logger.d(
+            "updateData called with: hasVideo=${requestCallMetadata.hasVideo}, speakerOnVideo=${requestCallMetadata.speakerOnVideo}",
+        )
+
+        val previousHasVideo = metadata.hasVideo
+
+        metadata = metadata.mergeWith(requestCallMetadata)
+        extras = metadata.toBundle()
+
         setAddress(metadata.number.toUri(), TelecomManager.PRESENTATION_ALLOWED)
         setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
-        changeVideoState(metadata.hasVideo)
+
+        if (previousHasVideo != metadata.hasVideo) {
+            metadata.hasVideo?.let { applyVideoState(it) }
+        }
     }
 
     /**
-     * Decline the call.
+     * Terminates the connection from the local side before acceptance.
      */
     fun declineCall() {
-        Log.d(TAG, "declineCall")
-        if (state == STATE_RINGING) {
-            notificationManager.showMissedCallNotification(metadata)
-            dispatcher(ConnectionPerform.MissedCall, metadata)
-        }
-
+        logger.d("Local decline for callId: $callId")
         terminateWithCause(DisconnectCause(DisconnectCause.REMOTE))
     }
 
     /**
-     * Hang up the call.
+     * Terminates the active connection.
      */
     fun hungUp() {
-        Log.d(TAG, "hungUp callId: ${metadata.callId}")
-
-        val metadata = metadata.copy(hasMute = this.isMute)
-
-        dispatcher(ConnectionPerform.AudioMuting, metadata)
-
+        logger.d("Local hang up for callId: $callId")
+        dispatcher(CallMediaEvent.AudioMuting, metadata.copy(hasMute = isMute))
         terminateWithCause(DisconnectCause(DisconnectCause.LOCAL))
     }
 
     /**
-     * Handle actions when the connection becomes active.
+     * Logic triggered when the call enters an active talking state.
      */
     private fun onActiveConnection() {
-        this@PhoneConnection.audioManager.stopRingtone()
+        logger.i("Connection became active for callId: $callId")
+        audioManager.stopRingtone()
+        // IncomingCallService release (IC_RELEASE_WITH_ANSWER) is intentionally NOT triggered
+        // here from :callkeep_core. ForegroundService.handleCSReportAnswerCall() owns that
+        // trigger and sets pendingReleaseCallback before firing it, ensuring performAnswerCall
+        // reaches the main Flutter engine only after the background isolate confirms its
+        // signaling WebSocket is closed. Triggering release from both places would race and
+        // risk pendingReleaseCallback being null when the isolate acks.
+        notificationManager.showActiveCallNotification(callId, metadata)
 
-        // Cancel incoming call notification and missed call notification
-        notificationManager.cancelIncomingNotification(true)
-        notificationManager.cancelMissedCall(metadata)
-
-        notificationManager.showActiveCallNotification(id, metadata)
         if (Build.VERSION.SDK_INT == Build.VERSION_CODES.O_MR1) {
-            val metadata = metadata.copy(hasMute = this.isMute, hasSpeaker = this.isHasSpeaker)
-            dispatcher(ConnectionPerform.AudioMuting, metadata)
-            dispatcher(ConnectionPerform.ConnectionHasSpeaker, metadata)
+            val update = metadata.copy(hasMute = isMute)
+            dispatcher(CallMediaEvent.AudioMuting, update)
         }
+
+        // If the incoming call is answered as audio-only, we set a flag to prevent
+        // the speaker from turning on automatically if the remote party adds video later.
+        // This prevents blasting audio into the user's ear.
+        if (!hasVideo) {
+            preventAutoSpeakerEnforcement = true
+        }
+
+        enforceVideoSpeakerLogic()
     }
 
     /**
-     * Handle actions when the call is in the dialing state.
+     * Logic triggered when the local side starts dialing.
      */
     private fun onDialing() {
-        dispatcher(ConnectionPerform.OngoingCall, metadata)
+        logger.i("Dialing callId: $callId")
+        dispatcher(CallLifecycleEvent.OngoingCall, metadata)
+
+        // If the outgoing call is initiated as audio-only, we prevent the speaker
+        // from being forced on if the remote party answers with video or upgrades mid-call.
+        if (!hasVideo) {
+            preventAutoSpeakerEnforcement = true
+        }
+
+        enforceVideoSpeakerLogic()
     }
 
     /**
-     * Change the video state of the call.
-     *
-     * @param hasVideo True if the call has video, false otherwise.
+     * Updates the video provider and profile based on session requirements.
      */
-    private fun changeVideoState(hasVideo: Boolean) {
+    private fun applyVideoState(hasVideo: Boolean) {
         if (hasVideo) {
             videoProvider = PhoneVideoProvider()
             videoState = VideoProfile.STATE_BIDIRECTIONAL
+
+            // Immediately enforce speaker if the user upgrades to video during an active call.
+            enforceVideoSpeakerLogic()
         } else {
             videoProvider = null
             videoState = VideoProfile.STATE_AUDIO_ONLY
         }
     }
 
-    override fun toString(): String {
-        return "PhoneConnection(metadata=$metadata, isMute=$isMute, isHasSpeaker=$isHasSpeaker, answer=$answer, id='$id')"
+    /**
+     * Executes an asynchronous endpoint switch for API 34+.
+     *
+     * Prevents duplicate requests and potential race conditions by tracking the
+     * [pendingEndpointRequest] and ensuring only one active transition per
+     * endpoint occurs at a time.
+     */
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    private fun performEndpointChange(endpoint: CallEndpoint) {
+        synchronized(this) {
+            if (pendingEndpointRequest?.identifier == endpoint.identifier) {
+                logger.d("Skipping duplicate endpoint change request for endpoint: ${endpoint.identifier}")
+                return
+            }
+            pendingEndpointRequest = endpoint
+        }
+        requestCallEndpointChange(
+            endpoint,
+            audioEndpointChangeExecutor,
+            EndpointChangeReceiver(endpoint),
+        )
+    }
+
+    /**
+     * Converts a [CallEndpoint] into a domain [AudioDevice] model.
+     */
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    private fun mapEndpointToAudioDevice(endpoint: CallEndpoint) =
+        AudioDevice(
+            type =
+                when (endpoint.endpointType) {
+                    CallEndpoint.TYPE_EARPIECE -> AudioDeviceType.EARPIECE
+                    CallEndpoint.TYPE_SPEAKER -> AudioDeviceType.SPEAKER
+                    CallEndpoint.TYPE_BLUETOOTH -> AudioDeviceType.BLUETOOTH
+                    CallEndpoint.TYPE_WIRED_HEADSET -> AudioDeviceType.WIRED_HEADSET
+                    CallEndpoint.TYPE_STREAMING -> AudioDeviceType.STREAMING
+                    else -> AudioDeviceType.UNKNOWN
+                },
+            name = endpoint.endpointName.toString(),
+            id = endpoint.identifier.toString(),
+        )
+
+    /**
+     * Converts a [CallAudioState] route into a domain [AudioDevice] model.
+     */
+    private fun mapRouteToAudioDevice(route: Int) =
+        AudioDevice(
+            type =
+                when (route) {
+                    CallAudioState.ROUTE_EARPIECE -> AudioDeviceType.EARPIECE
+                    CallAudioState.ROUTE_SPEAKER -> AudioDeviceType.SPEAKER
+                    CallAudioState.ROUTE_BLUETOOTH -> AudioDeviceType.BLUETOOTH
+                    CallAudioState.ROUTE_WIRED_HEADSET -> AudioDeviceType.WIRED_HEADSET
+                    CallAudioState.ROUTE_STREAMING -> AudioDeviceType.STREAMING
+                    else -> AudioDeviceType.UNKNOWN
+                },
+        )
+
+    /**
+     * Parses the supported route mask into a list of [AudioDevice] models.
+     */
+    private fun mapSupportedRoutes(mask: Int) =
+        listOfNotNull(
+            if (mask and CallAudioState.ROUTE_EARPIECE != 0) AudioDevice(AudioDeviceType.EARPIECE) else null,
+            if (mask and CallAudioState.ROUTE_SPEAKER != 0) AudioDevice(AudioDeviceType.SPEAKER) else null,
+            if (mask and CallAudioState.ROUTE_BLUETOOTH != 0) AudioDevice(AudioDeviceType.BLUETOOTH) else null,
+            if (mask and CallAudioState.ROUTE_WIRED_HEADSET != 0) AudioDevice(AudioDeviceType.WIRED_HEADSET) else null,
+            if (mask and CallAudioState.ROUTE_STREAMING != 0) AudioDevice(AudioDeviceType.STREAMING) else null,
+        )
+
+    /**
+     * Maps domain device types back to Telecom route integers.
+     */
+    private fun mapDeviceTypeToRoute(type: AudioDeviceType) =
+        when (type) {
+            AudioDeviceType.EARPIECE -> CallAudioState.ROUTE_EARPIECE
+            AudioDeviceType.SPEAKER -> CallAudioState.ROUTE_SPEAKER
+            AudioDeviceType.BLUETOOTH -> CallAudioState.ROUTE_BLUETOOTH
+            AudioDeviceType.WIRED_HEADSET -> CallAudioState.ROUTE_WIRED_HEADSET
+            else -> CallAudioState.ROUTE_WIRED_OR_EARPIECE
+        }
+
+    /**
+     * Locates the best matching endpoint for a requested speaker state.
+     */
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    private fun findSpeakerEndpoint(isActive: Boolean): CallEndpoint? {
+        if (isActive) {
+            return availableCallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_SPEAKER }
+        }
+
+        // Fallback priority: Bluetooth -> Wired -> Streaming -> Earpiece
+        return availableCallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_BLUETOOTH }
+            ?: availableCallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_WIRED_HEADSET }
+            ?: availableCallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_STREAMING }
+            ?: availableCallEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_EARPIECE }
+    }
+
+    /**
+     * Logic to determine the correct audio route on legacy devices.
+     */
+    private fun determineLegacyRoute(isActive: Boolean): Int {
+        if (isActive) return CallAudioState.ROUTE_SPEAKER
+
+        // Fallback priority: Bluetooth -> Wired -> Earpiece
+        return when {
+            audioManager.isBluetoothConnected() -> CallAudioState.ROUTE_BLUETOOTH
+            audioManager.isWiredHeadsetConnected() -> CallAudioState.ROUTE_WIRED_HEADSET
+            else -> CallAudioState.ROUTE_EARPIECE
+        }
+    }
+
+    /**
+     * Maps a [DisconnectCause] to the corresponding [CallLifecycleEvent] broadcast event.
+     *
+     * [DisconnectCause.REMOTE] maps to [CallLifecycleEvent.DeclineCall].
+     * All other causes (local hang-up, rejection, timeout, etc.) map to [CallLifecycleEvent.HungUp].
+     */
+    private fun eventForDisconnectCause(cause: DisconnectCause?): CallLifecycleEvent =
+        if (cause?.code == DisconnectCause.REMOTE) {
+            CallLifecycleEvent.DeclineCall
+        } else {
+            CallLifecycleEvent.HungUp
+        }
+
+    /**
+     * Terminates the connection with the given [disconnectCause].
+     *
+     * Uses [state] as the guard: if the connection is not yet [STATE_DISCONNECTED], runs
+     * the full cleanup via [setDisconnected] and [onDisconnect]. If already disconnected,
+     * skips cleanup and re-dispatches the broadcast using the stored [disconnectCause] so
+     * late-arriving consumers (e.g. a one-shot endCall confirmation receiver) still receive
+     * teardown confirmation without waiting for a timeout.
+     *
+     * All broadcast consumers are expected to be idempotent.
+     *
+     * @param disconnectCause The reason for disconnection.
+     */
+    fun terminateWithCause(disconnectCause: DisconnectCause) {
+        if (state != STATE_DISCONNECTED) {
+            setDisconnected(disconnectCause)
+            onDisconnect()
+        } else {
+            logger.v("terminateWithCause: already disconnected for callId: $callId, re-dispatching stored cause")
+            dispatcher(eventForDisconnectCause(this.disconnectCause), metadata)
+        }
+    }
+
+    /**
+     * Implementation of [OutcomeReceiver] for monitoring endpoint switches.
+     */
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    private inner class EndpointChangeReceiver(
+        private val endpoint: CallEndpoint,
+    ) : OutcomeReceiver<Void, CallEndpointException> {
+        override fun onResult(p0: Void?) {
+            logger.d("Endpoint successfully changed to: $endpoint")
+            synchronized(this@PhoneConnection) {
+                if (pendingEndpointRequest?.identifier == endpoint.identifier) {
+                    pendingEndpointRequest = null
+                }
+            }
+        }
+
+        override fun onError(error: CallEndpointException) {
+            logger.e("Endpoint change failed for $endpoint: ${error.message}")
+            synchronized(this@PhoneConnection) {
+                if (pendingEndpointRequest?.identifier == endpoint.identifier) {
+                    pendingEndpointRequest = null
+                }
+            }
+        }
     }
 
     companion object {
         private const val TAG = "PhoneConnection"
+        private val logger = Log(TAG)
 
         /**
-         * Create an incoming phone connection.
-         *
-         * @param context The Android application context.
-         * @param metadata The call metadata.
-         * @return The created incoming phone connection.
+         * Shared single-thread executor for handling endpoint changes efficiently across all connections.
+         * Using a shared executor prevents resource exhaustion and ensures sequential execution.
+         */
+        private val audioEndpointChangeExecutor = Executors.newSingleThreadExecutor()
+
+        /**
+         * Factory method for incoming call instances.
          */
         internal fun createIncomingPhoneConnection(
-            context: Context, dispatcher: PerformDispatchHandle,
-            metadata: CallMetadata, onDisconnect: (connection: PhoneConnection) -> Unit,
+            context: Context,
+            dispatcher: PerformDispatchHandle,
+            metadata: CallMetadata,
+            onDisconnect: (connection: PhoneConnection) -> Unit,
         ) = PhoneConnection(
             context = context,
             dispatcher = dispatcher,
             metadata = metadata,
+            onDisconnectCallback = onDisconnect,
             timeout = ConnectionTimeout.createIncomingConnectionTimeout(),
-            onDisconnect
         ).apply {
             setInitialized()
             setRinging()
         }
 
         /**
-         * Create an outgoing phone connection.
-         *
-         * @param context The Android application context.
-         * @param metadata The call metadata.
-         * @return The created outgoing phone connection.
+         * Factory method for outgoing call instances.
          */
         internal fun createOutgoingPhoneConnection(
             context: Context,
@@ -620,66 +779,69 @@ class PhoneConnection internal constructor(
             context = context,
             dispatcher = dispatcher,
             metadata = metadata,
+            onDisconnectCallback = onDisconnect,
             timeout = ConnectionTimeout.createOutgoingConnectionTimeout(),
-            onDisconnect
         ).apply {
             setDialing()
             setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
-            // Weirdly on some Samsung phones (A50, S9...) using `setInitialized` will not display the native UI ...
-            // when making a call from the native Phone application. The call will still be displayed correctly without it.
             if (!Build.MANUFACTURER.equals("Samsung", ignoreCase = true)) {
                 setInitialized()
             }
         }
     }
-
-    // Safely terminate the call with the specified cause.
-    fun terminateWithCause(disconnectCause: DisconnectCause) {
-        if (!disconnected) {
-            disconnected = true
-            setDisconnected(disconnectCause)
-            onDisconnect()
-        } else {
-            Log.d(TAG, "terminateCallWithCause: already disconnected")
-        }
-    }
 }
 
+/**
+ * Handles automated disconnection for calls that remain in transient states too long.
+ */
 class ConnectionTimeout(
-    val timeoutDurationMs: Long, val states: List<Int>
+    val timeoutDurationMs: Long,
+    val states: List<Int>,
 ) {
     private val handler = Handler(Looper.getMainLooper())
     private var timeoutRunnable: Runnable? = null
 
     /**
-     * Starts the timeout with the specified callback.
-     * @param timeoutCallback The callback to invoke when the timeout is reached.
+     * Starts the countdown timer for the current state.
      */
     fun start(timeoutCallback: () -> Unit) {
-        cancel() // Ensure no previous timeout is running
-
-        timeoutRunnable = Runnable { timeoutCallback.invoke() }
+        cancel()
+        timeoutRunnable = Runnable(timeoutCallback)
         handler.postDelayed(timeoutRunnable!!, timeoutDurationMs)
     }
 
     /**
-     * Cancels the timeout.
+     * Stops and clears any pending timeout timers.
      */
     fun cancel() {
-        timeoutRunnable?.let { handler.removeCallbacks(it) }
+        timeoutRunnable?.let(handler::removeCallbacks)
         timeoutRunnable = null
     }
 
     companion object {
+        /**
+         * Duration in milliseconds before a call in a transient state is automatically disconnected.
+         */
+        private const val TIMEOUT_DURATION_MS = 35000L
+
+        /**
+         * Telecom states that trigger the timeout for incoming calls.
+         */
         private val DEFAULT_INCOMING_STATES = listOf(Connection.STATE_NEW, Connection.STATE_RINGING)
+
+        /**
+         * Telecom states that trigger the timeout for outgoing calls.
+         */
         private val DEFAULT_OUTGOING_STATES = listOf(Connection.STATE_DIALING)
 
-        private const val TIMEOUT_DURATION_MS = 35_000L
+        /**
+         * Creates a timeout configuration for outgoing dialing.
+         */
+        fun createOutgoingConnectionTimeout() = ConnectionTimeout(TIMEOUT_DURATION_MS, DEFAULT_OUTGOING_STATES)
 
-        fun createOutgoingConnectionTimeout(
-        ) = ConnectionTimeout(TIMEOUT_DURATION_MS, DEFAULT_OUTGOING_STATES)
-
-        fun createIncomingConnectionTimeout(
-        ) = ConnectionTimeout(TIMEOUT_DURATION_MS, DEFAULT_INCOMING_STATES)
+        /**
+         * Creates a timeout configuration for incoming ringing.
+         */
+        fun createIncomingConnectionTimeout() = ConnectionTimeout(TIMEOUT_DURATION_MS, DEFAULT_INCOMING_STATES)
     }
 }

@@ -12,12 +12,14 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.ContextHolder.context
+import com.webtrit.callkeep.common.PermissionsHelper
+import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.managers.NotificationChannelManager.INCOMING_CALL_NOTIFICATION_CHANNEL_ID
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
 
-class IncomingCallNotificationBuilder() : NotificationBuilder() {
+class IncomingCallNotificationBuilder : NotificationBuilder() {
     private var callMetaData: CallMetadata? = null
 
     fun setCallMetaData(callMetaData: CallMetadata) {
@@ -27,32 +29,46 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
     private fun createCallActionIntent(action: String): PendingIntent {
         requireNotNull(callMetaData) { "Call metadata must be set before creating the intent." }
 
-        val intent = Intent(context, IncomingCallService::class.java).apply {
-            this.action = action
-            putExtras(callMetaData!!.toBundle())
-        }
+        val intent =
+            Intent(context, IncomingCallService::class.java).apply {
+                this.action = action
+                putExtras(callMetaData!!.toBundle())
+            }
         return PendingIntent.getService(
-            context, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
     }
 
-    private fun baseNotificationBuilder(title: String, text: String? = null): Notification.Builder {
-        return Notification.Builder(context, INCOMING_CALL_NOTIFICATION_CHANNEL_ID).apply {
+    private fun baseNotificationBuilder(
+        title: String,
+        text: String? = null,
+    ): Notification.Builder =
+        Notification.Builder(context, INCOMING_CALL_NOTIFICATION_CHANNEL_ID).apply {
             setSmallIcon(R.drawable.ic_notification)
             setCategory(NotificationCompat.CATEGORY_CALL)
             setContentTitle(title)
             text?.let { setContentText(it) }
             setAutoCancel(true)
+            // Explicitly set PUBLIC visibility so the full notification content
+            // is shown on the lock screen (channel-level VISIBILITY_PUBLIC is not
+            // always inherited by individual notifications on MIUI/HyperOS).
+            setVisibility(Notification.VISIBILITY_PUBLIC)
         }
-    }
 
     private fun createNotificationAction(
-        iconRes: Int, textRes: Int, intent: PendingIntent
-    ): Notification.Action {
-        return Notification.Action.Builder(
-            Icon.createWithResource(context, iconRes), context.getString(textRes), intent
-        ).build()
-    }
+        iconRes: Int,
+        textRes: Int,
+        intent: PendingIntent,
+    ): Notification.Action =
+        Notification.Action
+            .Builder(
+                Icon.createWithResource(context, iconRes),
+                context.getString(textRes),
+                intent,
+            ).build()
 
     override fun build(): Notification {
         val meta =
@@ -70,15 +86,34 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
         val answerButton = R.string.answer_call_button_text
         val declineButton = R.string.decline_button_text
 
-        val builder = baseNotificationBuilder(title, description).apply {
-            setOngoing(true)
-            setFullScreenIntent(buildOpenAppIntent(context), true)
-        }
+        val builder =
+            baseNotificationBuilder(title, description).apply {
+                setOngoing(true)
+                // Use full-screen intent only when both the app setting is enabled and the
+                // system permission is granted.  On Android 14+ (API 34) the permission can
+                // be revoked by the user; on MIUI/HyperOS it is denied by default for
+                // third-party apps.  Passing a full-screen intent when the permission is
+                // denied has no effect and produces a log warning, so we skip it and rely on
+                // the WakeLock acquired in IncomingCallService as the fallback wake mechanism.
+                val canUseFullScreen =
+                    StorageDelegate.IncomingCall.isFullScreen(context) &&
+                        PermissionsHelper(context).canUseFullScreenIntent()
+                if (canUseFullScreen) {
+                    setFullScreenIntent(buildOpenAppIntent(context), true)
+                }
+            }
 
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val person = Person.Builder().setName(meta.name).setImportant(true).build()
+            val person =
+                Person
+                    .Builder()
+                    .setName(meta.name)
+                    .setImportant(true)
+                    .build()
             val style = Notification.CallStyle.forIncomingCall(person, declineIntent, answerIntent)
-            builder.setStyle(style).build()
+            builder
+                .setStyle(style)
+                .build()
                 .apply { flags = flags or NotificationCompat.FLAG_INSISTENT }
         } else {
             builder.addAction(createNotificationAction(icDecline, declineButton, declineIntent))
@@ -97,25 +132,39 @@ class IncomingCallNotificationBuilder() : NotificationBuilder() {
         val title = context.getString(R.string.incoming_call_title)
         val description = context.getString(R.string.incoming_call_description, meta.name)
 
-        return NotificationCompat.Builder(context, INCOMING_CALL_NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification).setCategory(NotificationCompat.CATEGORY_CALL)
-            .setContentTitle(title).setContentText(description).setOnlyAlertOnce(true)
-            .setSilent(true).setAutoCancel(false).setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW).setDefaults(0).setSound(null)
-            .setVibrate(null).setFullScreenIntent(null, false).build().apply {
+        return NotificationCompat
+            .Builder(context, INCOMING_CALL_NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setContentTitle(title)
+            .setContentText(description)
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .setAutoCancel(false)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setDefaults(0)
+            .setSound(null)
+            .setVibrate(null)
+            .setFullScreenIntent(null, false)
+            // Explicit PUBLIC visibility so the ongoing call notification remains
+            // visible on the lock screen on MIUI/HyperOS after the ringing phase.
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .build()
+            .apply {
                 flags = flags and Notification.FLAG_INSISTENT.inv()
             }
     }
 
     fun buildReleaseNotification(): Notification {
-        val builder = baseNotificationBuilder(
-            title = context.getString(R.string.incoming_call_declined_title),
-            text = context.getString(R.string.incoming_call_declined_text, callMetaData?.name)
-        ).apply {
-            setFullScreenIntent(null, false)
-            setTimeoutAfter(5_000)
-
-        }
+        val builder =
+            baseNotificationBuilder(
+                title = context.getString(R.string.incoming_call_declined_title),
+                text = context.getString(R.string.incoming_call_declined_text, callMetaData?.name),
+            ).apply {
+                setFullScreenIntent(null, false)
+                setTimeoutAfter(5_000)
+            }
         return builder.build().apply {
             flags = flags or NotificationCompat.FLAG_INSISTENT
         }

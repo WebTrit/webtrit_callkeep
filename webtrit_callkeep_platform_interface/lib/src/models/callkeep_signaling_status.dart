@@ -1,7 +1,1 @@
-enum CallkeepSignalingStatus {
-  disconnecting,
-  disconnect,
-  connecting,
-  connect,
-  failure,
-}
+enum CallkeepSignalingStatus { disconnecting, disconnect, connecting, connect, failure }

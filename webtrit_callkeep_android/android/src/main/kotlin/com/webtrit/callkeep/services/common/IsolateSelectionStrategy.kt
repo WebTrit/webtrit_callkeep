@@ -3,11 +3,12 @@ package com.webtrit.callkeep.services.common
 import androidx.lifecycle.Lifecycle
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.models.SignalingStatus
-import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
-import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
+import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleState
+import com.webtrit.callkeep.services.broadcaster.SignalingStatusState
 
 enum class IsolateType {
-    MAIN, BACKGROUND
+    MAIN,
+    BACKGROUND,
 }
 
 interface IsolateSelectionStrategy {
@@ -20,15 +21,15 @@ interface IsolateSelectionStrategy {
  * If the signaling status is CONNECT or CONNECTING, it returns MAIN isolate type.
  * Otherwise, it returns BACKGROUND isolate type.
  */
-class SignalingStatusStrategy(private val signalingStatus: SignalingStatus?) :
-    IsolateSelectionStrategy {
-    override fun getIsolateType(): IsolateType {
-        return if (signalingStatus in listOf(SignalingStatus.CONNECT, SignalingStatus.CONNECTING)) {
+class SignalingStatusStrategy(
+    private val signalingStatus: SignalingStatus?,
+) : IsolateSelectionStrategy {
+    override fun getIsolateType(): IsolateType =
+        if (signalingStatus in listOf(SignalingStatus.CONNECT, SignalingStatus.CONNECTING)) {
             IsolateType.MAIN
         } else {
             IsolateType.BACKGROUND
         }
-    }
 }
 
 /**
@@ -39,7 +40,7 @@ class SignalingStatusStrategy(private val signalingStatus: SignalingStatus?) :
  */
 class ActivityStateStrategy : IsolateSelectionStrategy {
     override fun getIsolateType(): IsolateType {
-        val state = ActivityLifecycleBroadcaster.currentValue
+        val state = ActivityLifecycleState.currentValue
         return if (state == Lifecycle.Event.ON_RESUME || state == Lifecycle.Event.ON_PAUSE || state == Lifecycle.Event.ON_STOP) {
             IsolateType.MAIN
         } else {
@@ -58,10 +59,9 @@ class ActivityStateStrategy : IsolateSelectionStrategy {
 object IsolateSelector {
     private const val TAG = "IsolateSelector"
 
-    private fun getStrategy(): IsolateSelectionStrategy {
-        return SignalingStatusBroadcaster.currentValue?.let { SignalingStatusStrategy(it) }
+    private fun getStrategy(): IsolateSelectionStrategy =
+        SignalingStatusState.currentValue?.let { SignalingStatusStrategy(it) }
             ?: ActivityStateStrategy()
-    }
 
     // Determines the isolate type based on the current strategy
     fun getIsolateType(): IsolateType {
@@ -73,7 +73,8 @@ object IsolateSelector {
 
     // Executes the action based on the current isolate type
     inline fun executeBasedOnIsolate(
-        mainAction: () -> Unit, backgroundAction: () -> Unit
+        mainAction: () -> Unit,
+        backgroundAction: () -> Unit,
     ) {
         when (getIsolateType()) {
             IsolateType.MAIN -> mainAction()

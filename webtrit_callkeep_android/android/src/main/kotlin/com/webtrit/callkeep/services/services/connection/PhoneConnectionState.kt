@@ -18,5 +18,6 @@ class PhoneConnectionConsts {
     }
 
     fun isUserNear(): Boolean = proximity == ProximityStateEnum.NEAR
+
     fun shouldListenProximity(): Boolean = shouldListenProximity
 }

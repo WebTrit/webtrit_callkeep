@@ -1,0 +1,16 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{kt,kts}]
+indent_size = 4
+max_line_length = off
+# Package names with underscores exist in the codebase (e.g. incoming_call);
+# renaming packages and files are tracked as separate tasks.
+ktlint_standard_package-name = disabled
+ktlint_standard_filename = disabled

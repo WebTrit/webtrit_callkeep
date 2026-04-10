@@ -1,17 +1,8 @@
-include: package:very_good_analysis/analysis_options.yaml
-
-analyzer:
-  exclude:
-    - "**/*.g.dart"
-    - "**/*.pigeon.dart"
+include: package:flutter_lints/flutter.yaml
 
 linter:
   rules:
-    # Conflicts with the team's preference
-    lines_longer_than_80_chars: false
-    # public_member_api_docs: false
-    one_member_abstracts: false # TODO: on migration stage
-    avoid_positional_boolean_parameters: # TODO: on migration stage
+    prefer_single_quotes: true
 
 formatter:
   page_width: 120

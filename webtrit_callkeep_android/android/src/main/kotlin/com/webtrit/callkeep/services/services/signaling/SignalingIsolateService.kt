@@ -3,10 +3,8 @@ package com.webtrit.callkeep.services.services.signaling
 import android.annotation.SuppressLint
 import android.app.NotificationManager
 import android.app.Service
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Build.VERSION.SDK_INT
@@ -22,10 +20,7 @@ import com.webtrit.callkeep.PHostBackgroundSignalingIsolateApi
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.FlutterEngineHelper
 import com.webtrit.callkeep.common.Log
-import com.webtrit.callkeep.common.PermissionsHelper
 import com.webtrit.callkeep.common.StorageDelegate
-import com.webtrit.callkeep.common.fromBundle
-import com.webtrit.callkeep.common.registerReceiverCompat
 import com.webtrit.callkeep.common.startForegroundServiceCompat
 import com.webtrit.callkeep.common.toPCallkeepLifecycleType
 import com.webtrit.callkeep.common.toPCallkeepSignalingStatus
@@ -34,11 +29,15 @@ import com.webtrit.callkeep.models.SignalingStatus
 import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder
 import com.webtrit.callkeep.notifications.ForegroundCallNotificationBuilder.Companion.ACTION_RESTORE_NOTIFICATION
-import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleBroadcaster
-import com.webtrit.callkeep.services.broadcaster.ConnectionPerform
-import com.webtrit.callkeep.services.broadcaster.SignalingStatusBroadcaster
-import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
+import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleState
+import com.webtrit.callkeep.services.broadcaster.SignalingStatusState
+import com.webtrit.callkeep.services.core.CallkeepCore
 import com.webtrit.callkeep.services.services.signaling.workers.SignalingServiceBootWorker
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 /**
  * A foreground service that manages the call state and Flutter background isolate.
@@ -47,9 +46,13 @@ import com.webtrit.callkeep.services.services.signaling.workers.SignalingService
  * Triggers incoming calls, ends calls, ends all calls, and handles lifecycle events.
  */
 @Keep
-class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
+class SignalingIsolateService :
+    Service(),
+    PHostBackgroundSignalingIsolateApi {
     private var latestSignalingStatus: SignalingStatus? = null
-    private var latestLifecycleActivityEvent: Lifecycle.Event? = Lifecycle.Event.ON_DESTROY
+    private var latestLifecycleActivityEvent: Lifecycle.Event = Lifecycle.Event.ON_DESTROY
+
+    private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     private lateinit var notificationBuilder: ForegroundCallNotificationBuilder
     private lateinit var flutterEngineHelper: FlutterEngineHelper
@@ -68,51 +71,28 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
             _isolateCalkeepFlutterApi = value
         }
 
-    private val signalingStatusReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            latestSignalingStatus = SignalingStatus.fromBundle(intent?.extras)
-            synchronizeSignalingIsolate(latestLifecycleActivityEvent!!, latestSignalingStatus)
-
-        }
-    }
-
-    private val lifecycleEventReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            latestLifecycleActivityEvent = Lifecycle.Event.fromBundle(intent?.extras)
-            synchronizeSignalingIsolate(
-                latestLifecycleActivityEvent!!, latestSignalingStatus
-            )
-        }
-    }
-
-    private val connectionServicePerformReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            when (intent?.action) {
-                ConnectionPerform.MissedCall.name -> {
-                    intent.extras?.let { handleMissedCall(CallMetadata.fromBundle(it)) }
-                }
-            }
-        }
-    }
-
     override fun onCreate() {
         super.onCreate()
         ContextHolder.init(applicationContext)
 
         Log.d(TAG, "SignalingIsolateService onCreate")
-        // Register the service to receive signaling status updates
-        latestSignalingStatus = SignalingStatusBroadcaster.currentValue
-        SignalingStatusBroadcaster.register(this, signalingStatusReceiver)
 
-        // Register the service to receive lifecycle events
-        latestLifecycleActivityEvent = ActivityLifecycleBroadcaster.currentValue
-        ActivityLifecycleBroadcaster.register(this, lifecycleEventReceiver)
+        latestSignalingStatus = SignalingStatusState.currentValue
+        latestLifecycleActivityEvent = ActivityLifecycleState.currentValue ?: Lifecycle.Event.ON_DESTROY
 
+        serviceScope.launch {
+            SignalingStatusState.updates.collect { status ->
+                latestSignalingStatus = status
+                synchronizeSignalingIsolate(latestLifecycleActivityEvent, latestSignalingStatus)
+            }
+        }
 
-        // Register the service to receive connection service perform events
-        registerReceiverCompat(
-            connectionServicePerformReceiver, IntentFilter(ConnectionPerform.MissedCall.name)
-        )
+        serviceScope.launch {
+            ActivityLifecycleState.updates.collect { event ->
+                latestLifecycleActivityEvent = event
+                synchronizeSignalingIsolate(latestLifecycleActivityEvent, latestSignalingStatus)
+            }
+        }
 
         notificationBuilder = ForegroundCallNotificationBuilder()
 
@@ -128,23 +108,13 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
     override fun onDestroy() {
         Log.d(TAG, "SignalingIsolateService onDestroy")
 
-        // Unregister the service from receiving signaling status updates
-        SignalingStatusBroadcaster.unregister(this, signalingStatusReceiver)
-        latestSignalingStatus = null
-
-        // Unregister the service from receiving lifecycle events
-        ActivityLifecycleBroadcaster.unregister(baseContext, lifecycleEventReceiver)
-        latestLifecycleActivityEvent = null
-
-        // Unregister the service from receiving connection service perform events
-        unregisterReceiver(connectionServicePerformReceiver)
-
+        serviceScope.cancel()
 
         if (StorageDelegate.SignalingService.isSignalingServiceEnabled(context = applicationContext)) {
             SignalingServiceBootWorker.enqueue(this)
         }
 
-        getLock(applicationContext)?.let { lock ->
+        wakeLock?.let { lock ->
             if (lock.isHeld) {
                 lock.release()
             }
@@ -160,31 +130,35 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
     /**
      * Starts the service in the foreground with a notification.
+     *
+     * startForeground() MUST be called within 5 seconds of startForegroundService() regardless
+     * of POST_NOTIFICATIONS permission status.  Android allows the foreground service to run
+     * even when POST_NOTIFICATIONS has not been granted — the notification is simply not shown
+     * to the user.  Stopping the service here when the permission is missing causes
+     * ForegroundServiceDidNotStartInTimeException on some devices and prevents the background
+     * Flutter engine from registering its command port in test and production environments
+     * where the permission is absent.
      */
     private fun startForegroundService() {
         Log.d(TAG, "Starting foreground service")
         notificationBuilder.setTitle(
             StorageDelegate.SignalingService.getNotificationTitle(
-                applicationContext
-            )
+                applicationContext,
+            ),
         )
         notificationBuilder.setContent(
             StorageDelegate.SignalingService.getNotificationDescription(
-                applicationContext
-            )
+                applicationContext,
+            ),
         )
         val notification = notificationBuilder.build()
 
-        if (PermissionsHelper(baseContext).hasNotificationPermission()) {
-            startForegroundServiceCompat(
-                this,
-                ForegroundCallNotificationBuilder.NOTIFICATION_ID,
-                notification,
-                if (SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL else null
-            )
-        } else {
-            stopSelf()
-        }
+        startForegroundServiceCompat(
+            this,
+            ForegroundCallNotificationBuilder.NOTIFICATION_ID,
+            notification,
+            if (SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL else null,
+        )
     }
 
     /**
@@ -206,7 +180,11 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         return activeNotifications.any { it.id == ForegroundCallNotificationBuilder.NOTIFICATION_ID }
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    override fun onStartCommand(
+        intent: Intent?,
+        flags: Int,
+        startId: Int,
+    ): Int {
         Log.d(TAG, "SignalingIsolateService onStartCommand: $intent")
 
         val action = intent?.action
@@ -220,14 +198,14 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
             ForegroundCallServiceEnums.DECLINE.action -> {
                 metadata?.let {
-                    PhoneConnectionService.startHungUpCall(baseContext, it)
+                    CallkeepCore.instance.startHungUpCall(it)
                     ensureNotification()
                 } ?: Log.w(TAG, "Missing metadata for DECLINE action")
             }
 
             ForegroundCallServiceEnums.ANSWER.action -> {
                 metadata?.let {
-                    PhoneConnectionService.startAnswerCall(baseContext, it)
+                    CallkeepCore.instance.startAnswerCall(it)
                     ensureNotification()
                 } ?: Log.w(TAG, "Missing metadata for ANSWER action")
             }
@@ -237,42 +215,11 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
             }
         }
 
-        getLock(applicationContext)?.acquire(10 * 60 * 1000L)
+        getLock(applicationContext).acquire(10 * 60 * 1000L)
 
         flutterEngineHelper.startOrAttachEngine()
 
         return START_STICKY
-    }
-
-    /**
-     * Records a missed call event when the main isolate is not running.
-     *
-     * @param metadata The missed call information.
-     */
-    private fun handleMissedCall(metadata: CallMetadata) {
-        Log.d(TAG, "handleMissedCall: $metadata")
-
-        isolateCalkeepFlutterApi?.performReceivedCall(
-            metadata.callId,
-            metadata.number,
-            metadata.hasVideo,
-            metadata.createdTime ?: System.currentTimeMillis(),
-            metadata.displayName,
-            null,
-            System.currentTimeMillis()
-        ) { response ->
-            response.onSuccess {
-                // Do not directly invoke PhoneConnectionService.startHungUpCall here. Instead, wait for the signaling
-                // response (RELEASE_RESOURCES). After successful signaling, DeclineSource.USER will be triggered from Flutter.
-                Log.d(TAG, "handleMissedCall success: $it")
-            }
-            response.onFailure {
-                // If signaling fails, directly end the call and close the isolate.
-                Log.e(TAG, "handleMissedCall failure: $it")
-                PhoneConnectionService.startHungUpCall(baseContext, metadata)
-                stopSelf()
-            }
-        }
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
@@ -284,16 +231,19 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
     @Suppress("DEPRECATION")
     private fun synchronizeSignalingIsolate(
-        activityLifecycle: Lifecycle.Event, status: SignalingStatus?
+        activityLifecycle: Lifecycle.Event,
+        status: SignalingStatus?,
     ) {
         val wakeUpHandler = StorageDelegate.SignalingService.getOnSyncHandler(baseContext)
 
-        println("SignalingIsolateService synchronizeSignalingIsolate wakeUpHandler: $status")
+        Log.d(TAG, "SignalingIsolateService synchronizeSignalingIsolate wakeUpHandler: $wakeUpHandler status: $status")
         _isolateSignalingFlutterApi?.onWakeUpBackgroundHandler(
-            wakeUpHandler, PCallkeepServiceStatus(
+            wakeUpHandler,
+            PCallkeepServiceStatus(
                 activityLifecycle.toPCallkeepLifecycleType(),
-                mainSignalingStatus = status?.toPCallkeepSignalingStatus()
-            )
+                mainSignalingStatus = status?.toPCallkeepSignalingStatus(),
+            ),
+            null,
         ) { response -> }
     }
 
@@ -302,43 +252,104 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
         handle: PHandle,
         displayName: String?,
         hasVideo: Boolean,
-        callback: (Result<Unit>) -> Unit
+        callback: (Result<Unit>) -> Unit,
     ) {
         val ringtonePath = StorageDelegate.Sound.getRingtonePath(baseContext)
 
-        val metadata = CallMetadata(
-            callId = callId,
-            handle = handle.toCallHandle(),
-            displayName = displayName,
-            hasVideo = hasVideo,
-            ringtonePath = ringtonePath,
-            createdTime = System.currentTimeMillis()
-        )
+        val metadata =
+            CallMetadata(
+                callId = callId,
+                handle = handle.toCallHandle(),
+                displayName = displayName,
+                hasVideo = hasVideo,
+                ringtonePath = ringtonePath,
+                createdTime = System.currentTimeMillis(),
+            )
 
-        PhoneConnectionService.startIncomingCall(
-            context = baseContext,
+        CallkeepCore.instance.startIncomingCall(
             metadata = metadata,
             onSuccess = { callback(Result.success(Unit)) },
-            onError = { error -> callback(Result.failure(Exception("Incoming call failed with error: $error"))) })
+            onError = { error -> callback(Result.failure(Exception("Incoming call failed with error: $error"))) },
+        )
     }
 
-    override fun endCall(callId: String, callback: (Result<Unit>) -> Unit) {
-        val metadata = CallMetadata(callId = callId)
-        PhoneConnectionService.startHungUpCall(baseContext, metadata)
-        callback.invoke(Result.success(Unit)) // TODO: Ensure proper cleanup of connections
+    /**
+     * Ends a single active call identified by [callId].
+     *
+     * Dispatches a hang-up command to [PhoneConnectionService] and resolves [callback]
+     * immediately. Telecom teardown is asynchronous — [ForegroundService] receives the
+     * resulting HungUp broadcast and notifies the main Flutter isolate
+     * via performEndCall(). The background isolate does not need to
+     * wait for Telecom confirmation before resolving: the signaling layer (WebSocket/SIP)
+     * closes independently through its own lifecycle and does not depend on this callback.
+     */
+    override fun endCall(
+        callId: String,
+        callback: (Result<Unit>) -> Unit,
+    ) {
+        CallkeepCore.instance.startHungUpCall(CallMetadata(callId = callId))
+        callback(Result.success(Unit))
     }
 
+    /**
+     * Tears down all active calls managed by [PhoneConnectionService].
+     *
+     * When there are active or pending calls, [sendTearDownConnections] is used so that
+     * [PhoneConnectionService] calls hungUp() on every [PhoneConnection], which fires
+     * HungUp broadcasts that [ForegroundService] receives and forwards to the main Flutter
+     * isolate via performEndCall(). When there are no active calls, [tearDownService] resets
+     * service state for the next session.
+     *
+     * The callback is resolved immediately after dispatching the teardown command. The
+     * signaling layer (WebSocket/SIP) closes independently through its own lifecycle and
+     * does not depend on Telecom teardown confirmation.
+     *
+     * @param callback Pigeon-generated callback; receives [Result.success] on completion.
+     */
     override fun endAllCalls(callback: (Result<Unit>) -> Unit) {
-        PhoneConnectionService.tearDown(baseContext)
-        callback.invoke(Result.success(Unit)) // TODO: Ensure proper cleanup of connections
+        val core = CallkeepCore.instance
+        val allCallIds = core.getAll().map { it.callId }.toSet() + core.getPendingCallIds()
+
+        if (allCallIds.isEmpty()) {
+            core.tearDownService()
+        } else {
+            core.sendTearDownConnections()
+        }
+        callback(Result.success(Unit))
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     companion object {
         private const val TAG = "SignalingIsolateService"
+        private const val WAKE_LOCK_TAG = "com.webtrit.callkeep:SignalingIsolateService.Lock"
 
         var isRunning = false
+
+        @Volatile
+        private var wakeLock: PowerManager.WakeLock? = null
+
+        /**
+         * Returns the cached partial wake lock, creating it on first call.
+         * Using a single instance ensures acquire/release operate on the same object.
+         */
+        @Synchronized
+        fun getLock(context: Context): PowerManager.WakeLock =
+            wakeLock ?: run {
+                val mgr = context.applicationContext.getSystemService(Context.POWER_SERVICE) as PowerManager
+                mgr
+                    .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKE_LOCK_TAG)
+                    .apply {
+                        setReferenceCounted(false)
+                    }.also { wakeLock = it }
+            }
+
+        /** Resets the cached wake lock. Intended for use in tests only. */
+        @androidx.annotation.VisibleForTesting(otherwise = androidx.annotation.VisibleForTesting.PRIVATE)
+        internal fun resetWakeLock() {
+            wakeLock?.let { if (it.isHeld) it.release() }
+            wakeLock = null
+        }
 
         /**
          * Communicates with the service by starting it with the specified action and metadata.
@@ -362,24 +373,14 @@ class SignalingIsolateService : Service(), PHostBackgroundSignalingIsolateApi {
 
             context.stopService(Intent(context, SignalingIsolateService::class.java))
         }
-
-        /**
-         * Acquires a partial wake lock to keep the CPU running.
-         */
-        @Synchronized
-        fun getLock(context: Context): PowerManager.WakeLock? {
-            val mgr = context.getSystemService(POWER_SERVICE) as PowerManager
-            val lockName = "com.webtrit.callkeep:ForegroundCallService.Lock"
-            return mgr.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, lockName).apply {
-                setReferenceCounted(false)
-            }
-        }
     }
 }
 
 enum class ForegroundCallServiceEnums {
-    ANSWER, DECLINE;
+    ANSWER,
+    DECLINE,
+    ;
 
     val action: String
-        get() = ContextHolder.appUniqueKey + name + "_foreground_call_service"
+        get() = "callkeep_$name"
 }

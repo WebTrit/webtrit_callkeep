@@ -9,8 +9,65 @@ import com.webtrit.callkeep.common.registerReceiverCompat
 import com.webtrit.callkeep.common.sendInternalBroadcast
 import com.webtrit.callkeep.managers.NotificationManager
 
-enum class ConnectionPerform {
-    AnswerCall, DeclineCall, HungUp, OngoingCall, AudioMuting, ConnectionHolding, SentDTMF, DidPushIncomingCall, ConnectionHasSpeaker, AudioDeviceSet, AudioDevicesUpdate, MissedCall, OutgoingFailure, IncomingFailure, ConnectionNotFound;
+/**
+ * Marker interface for all events dispatched between [PhoneConnectionService] and the main process.
+ *
+ * Implemented by [CallLifecycleEvent] and [CallMediaEvent].
+ * The [name] property is provided by each enum and used as the broadcast action string.
+ */
+sealed interface ConnectionEvent {
+    val name: String
+}
+
+/**
+ * Events that represent call lifecycle transitions reported by [PhoneConnectionService].
+ *
+ * These are emitted when the state of a call connection changes — a call is answered,
+ * hung up, failed to connect, etc.
+ */
+enum class CallLifecycleEvent : ConnectionEvent {
+    AnswerCall,
+    DeclineCall,
+    HungUp,
+    OngoingCall,
+    DidPushIncomingCall,
+    OutgoingFailure,
+    IncomingFailure,
+    ConnectionNotFound,
+}
+
+/**
+ * Events that represent audio/media state changes on an active call, reported by [PhoneConnectionService].
+ *
+ * These are emitted when mute state, hold state, DTMF, or audio device selection changes.
+ */
+enum class CallMediaEvent : ConnectionEvent {
+    AudioMuting,
+    AudioDeviceSet,
+    AudioDevicesUpdate,
+    SentDTMF,
+    ConnectionHolding,
+}
+
+/**
+ * Commands sent from the main process to the `:callkeep_core` process (or received back as acks).
+ *
+ * Direction:
+ * - [TearDownConnections] — Main -> `:callkeep_core`: call [PhoneConnection.hungUp] on all
+ *   active connections and [ConnectionManager.cleanConnections].
+ * - [TearDownComplete]    — `:callkeep_core` -> Main: ack that [TearDownConnections] completed.
+ * - [ReserveAnswer]       — Main -> `:callkeep_core`: deferred answer reservation for a callId
+ *   before its [PhoneConnection] is created (payload: [com.webtrit.callkeep.common.CallDataConst.CALL_ID]).
+ * - [CleanConnections]    — Main -> `:callkeep_core`: clear all connections without [PhoneConnection.hungUp].
+ *
+ * Using a dedicated enum (rather than adding to [CallLifecycleEvent]) makes the IPC direction
+ * explicit and keeps report events separate from command events.
+ */
+enum class CallCommandEvent : ConnectionEvent {
+    TearDownConnections,
+    TearDownComplete,
+    ReserveAnswer,
+    CleanConnections,
 }
 
 /**
@@ -20,44 +77,57 @@ object ConnectionServicePerformBroadcaster {
     private val notificationManager = NotificationManager()
 
     fun registerConnectionPerformReceiver(
-        performActions: List<ConnectionPerform>, context: Context, receiver: BroadcastReceiver
-    ): IntentFilter {
-        return createIntentFilter(performActions).also { filter ->
-            context.registerReceiverCompat(receiver, filter)
+        events: List<ConnectionEvent>,
+        context: Context,
+        receiver: BroadcastReceiver,
+        exported: Boolean = true,
+    ): IntentFilter =
+        createIntentFilter(events).also { filter ->
+            context.registerReceiverCompat(receiver, filter, exported)
         }
-    }
 
-    private fun createIntentFilter(performActions: List<ConnectionPerform>): IntentFilter {
-        return IntentFilter().apply { performActions.forEach { addAction(it.name) } }
-    }
+    private fun createIntentFilter(events: List<ConnectionEvent>): IntentFilter = IntentFilter().apply { events.forEach { addAction(it.name) } }
 
-    fun unregisterConnectionPerformReceiver(context: Context, receiver: BroadcastReceiver) {
+    fun unregisterConnectionPerformReceiver(
+        context: Context,
+        receiver: BroadcastReceiver,
+    ) {
         context.unregisterReceiver(receiver)
     }
 
     interface DispatchHandle {
-        fun dispatch(context: Context, report: ConnectionPerform, data: Bundle? = null)
+        fun dispatch(
+            context: Context,
+            report: ConnectionEvent,
+            data: Bundle? = null,
+        )
     }
 
     /**
      * Singleton instance that dispatches connection reports via broadcast.
      */
-    val handle: DispatchHandle = object : DispatchHandle {
-        override fun dispatch(context: Context, report: ConnectionPerform, data: Bundle?) {
-            val appContext = context.applicationContext
+    val handle: DispatchHandle =
+        object : DispatchHandle {
+            override fun dispatch(
+                context: Context,
+                report: ConnectionEvent,
+                data: Bundle?,
+            ) {
+                val appContext = context.applicationContext
 
-            // When connection is not found, we need to cancel the notification if it exists and send action for finishing call
-            if (report == ConnectionPerform.ConnectionNotFound) {
-                data?.getString(CallDataConst.CALL_ID)?.let {
-                    notificationManager.cancelActiveCallNotification(it)
-                } ?: notificationManager.tearDown()
+                // When connection is not found, cancel any visible notification and synthesise a HungUp
+                // so that subscribers waiting for a termination event are not left hanging.
+                if (report == CallLifecycleEvent.ConnectionNotFound) {
+                    data?.getString(CallDataConst.CALL_ID)?.let {
+                        notificationManager.cancelActiveCallNotification(it)
+                    } ?: notificationManager.tearDown()
 
-                notificationManager.cancelIncomingNotification(true)
-                appContext.sendInternalBroadcast(ConnectionPerform.HungUp.name, data)
-                return
+                    notificationManager.cancelIncomingNotification(true)
+                    appContext.sendInternalBroadcast(CallLifecycleEvent.HungUp.name, data)
+                    return
+                }
+
+                appContext.sendInternalBroadcast(report.name, data)
             }
-
-            appContext.sendInternalBroadcast(report.name, data)
         }
-    }
 }

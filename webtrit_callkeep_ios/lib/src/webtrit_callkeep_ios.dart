@@ -187,11 +187,7 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
 }
 
 class _CallkeepDelegateRelay implements PDelegateFlutterApi {
-  const _CallkeepDelegateRelay(
-    this._delegate,
-    this._uuidToCallIdMapping,
-    this._callkeepActionHistory,
-  );
+  const _CallkeepDelegateRelay(this._delegate, this._uuidToCallIdMapping, this._callkeepActionHistory);
 
   final CallkeepDelegate _delegate;
 
@@ -217,12 +213,7 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
   }
 
   @override
-  Future<bool> performStartCall(
-    String uuid,
-    PHandle handle,
-    String? displayNameOrContactIdentifier,
-    bool video,
-  ) async {
+  Future<bool> performStartCall(String uuid, PHandle handle, String? displayNameOrContactIdentifier, bool video) async {
     return _delegate.performStartCall(
       _uuidToCallIdMapping.getCallId(uuid: uuid),
       handle.toCallkeep(),
@@ -276,11 +267,6 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
   void didReset() {
     _delegate.didReset();
   }
-
-  @override
-  Future<bool> performSetSpeaker(String uuid, bool enabled) async {
-    return _delegate.performSetSpeaker(_uuidToCallIdMapping.getCallId(uuid: uuid), enabled);
-  }
 }
 
 class _PushRegistryDelegateRelay implements PPushRegistryDelegateFlutterApi {
@@ -303,9 +289,7 @@ class _UUIDToCallIdMapping {
 
   // Retrieves the UUID associated with the given Call ID.
   // Throws a StateError if the Call ID is not found in the mapping.
-  String getUUID({
-    required String callId,
-  }) {
+  String getUUID({required String callId}) {
     final uuid = _mapping.entries
         .firstWhere((entry) => entry.value == callId, orElse: () => throw StateError('Call ID not found'))
         .key;
@@ -314,9 +298,7 @@ class _UUIDToCallIdMapping {
 
   // Retrieves the Call ID associated with the given UUID.
   // Throws a StateError if the UUID is not found in the mapping.
-  String getCallId({
-    required String uuid,
-  }) {
+  String getCallId({required String uuid}) {
     final callId = _mapping[uuid.toLowerCase()];
     if (callId == null) {
       throw StateError('UUID not found');
@@ -326,9 +308,7 @@ class _UUIDToCallIdMapping {
 
   // Generates a UUID from the provided [callId] using a version 5 UUID algorithm.
   // Stores the mapping of the generated UUID (in lowercase) and the provided [callId].
-  String put({
-    required String callId,
-  }) {
+  String put({required String callId}) {
     final uuid = _callIdToUUID(callId);
     _mapping[uuid.toLowerCase()] = callId;
     return uuid;
@@ -336,10 +316,7 @@ class _UUIDToCallIdMapping {
 
   // Stores the mapping of Call ID and UUID directly.
   // Throws an ArgumentError if the conversion does not match the specified UUID.
-  void add({
-    required String callId,
-    required String uuid,
-  }) {
+  void add({required String callId, required String uuid}) {
     final originalUUID = _callIdToUUID(callId);
     if (originalUUID.toLowerCase() != uuid.toLowerCase()) {
       throw ArgumentError('The provided callId does not match the specified UUID.');
@@ -348,9 +325,7 @@ class _UUIDToCallIdMapping {
   }
 
   // Deletes the mapping of the given UUID.
-  void delete({
-    required String uuid,
-  }) {
+  void delete({required String uuid}) {
     _mapping.remove(uuid.toLowerCase());
   }
 
@@ -366,26 +341,18 @@ class _CallkeepActionHistory {
   final Map<String, List<_CallkeepAction>> _history = {};
 
   // Stores the action associated with the given UUID
-  void add({
-    required String uuid,
-    required _CallkeepAction action,
-  }) {
+  void add({required String uuid, required _CallkeepAction action}) {
     _history.putIfAbsent(uuid.toLowerCase(), () => []).add(action);
   }
 
   // Checks if the given UUID contains the specified action.
-  bool contain({
-    required String uuid,
-    required _CallkeepAction action,
-  }) {
+  bool contain({required String uuid, required _CallkeepAction action}) {
     final actions = _history[uuid.toLowerCase()];
     return actions?.contains(action) ?? false;
   }
 
   // Deletes the history of the given UUID.
-  void delete({
-    required String uuid,
-  }) {
+  void delete({required String uuid}) {
     _history.remove(uuid.toLowerCase());
   }
 }

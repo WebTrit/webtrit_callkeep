@@ -1,5 +1,6 @@
-import 'package:webtrit_callkeep/src/android/utils/activity_control.dart';
-import 'package:webtrit_callkeep/src/android/utils/sms_bootstrap_reception_config.dart';
+import 'activity_control.dart';
+import 'sms_bootstrap_reception_config.dart';
+import 'callkeep_diagnostics.dart';
 
 /// Provides access to various Android Callkeep **utilities and helpers**.
 ///
@@ -18,4 +19,10 @@ abstract class AndroidCallkeepUtils {
   /// This includes methods for managing behavior over the lock screen,
   /// waking the screen, moving the task to the back, and checking the device lock state.
   static final activityControl = ActivityControl();
+
+  /// Provides access to system diagnostics and reporting tools.
+  ///
+  /// Use this to generate diagnostic reports containing device state,
+  /// service status, and recent call failures.
+  static final diagnostics = CallkeepDiagnostics();
 }

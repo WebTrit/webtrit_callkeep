@@ -24,9 +24,7 @@ class BackgroundPushNotificationBootstrapService {
   }
 
   /// Configures the push notification signaling service (Android only).
-  Future<void> configurePushNotificationSignalingService({
-    bool launchBackgroundIsolateEvenIfAppIsOpen = false,
-  }) async {
+  Future<void> configurePushNotificationSignalingService({bool launchBackgroundIsolateEvenIfAppIsOpen = false}) async {
     if (kIsWeb || !Platform.isAndroid) return Future.value();
     return platform.configurePushNotificationSignalingService(
       launchBackgroundIsolateEvenIfAppIsOpen: launchBackgroundIsolateEvenIfAppIsOpen,

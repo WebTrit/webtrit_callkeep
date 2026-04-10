@@ -8,9 +8,11 @@ import android.content.pm.PackageManager
 import android.os.Build
 import io.flutter.Log
 
-class PermissionsHelper(private val context: Context) {
-    fun canUseFullScreenIntent(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+class PermissionsHelper(
+    private val context: Context,
+) {
+    fun canUseFullScreenIntent(): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             val notificationManager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.canUseFullScreenIntent()
@@ -18,19 +20,20 @@ class PermissionsHelper(private val context: Context) {
             Log.i(TAG, "Can't check full screen intent permission on this device")
             true
         }
-    }
 
     fun launchFullScreenIntentSettings() {
-        val intent = Intent("android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENT").apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
+        val intent =
+            Intent("android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENT").apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
         context.startActivity(intent)
     }
 
     fun launchSettings() {
-        val intent = Intent(android.provider.Settings.ACTION_SETTINGS).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
+        val intent =
+            Intent(android.provider.Settings.ACTION_SETTINGS).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
         context.startActivity(intent)
     }
 
@@ -39,16 +42,21 @@ class PermissionsHelper(private val context: Context) {
         return cameraPermission == PackageManager.PERMISSION_GRANTED
     }
 
+    fun hasMicrophonePermission(): Boolean {
+        val microphonePermission =
+            context.checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+        return microphonePermission == PackageManager.PERMISSION_GRANTED
+    }
+
     /**
      * Checks if notification permission is granted on Android 13+ (API level 33).
      */
-    fun hasNotificationPermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+    fun hasNotificationPermission(): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
         } else {
             true
         }
-    }
 
     companion object {
         private const val TAG = "PermissionsHelper"

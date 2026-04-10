@@ -37,21 +37,22 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
 
   final _permissionsApi = PHostPermissionsApi();
 
+  final _diagnosticsApi = PHostDiagnosticsApi();
+
   @override
-  void setDelegate(
-    CallkeepDelegate? delegate,
-  ) {
+  void setDelegate(CallkeepDelegate? delegate) {
     if (delegate != null) {
       PDelegateFlutterApi.setUp(_CallkeepDelegateRelay(delegate));
     } else {
       PDelegateFlutterApi.setUp(null);
     }
+
+    // Notify the Pigeon API that the delegate has been set.
+    _api.onDelegateSet();
   }
 
   @override
-  void setPushRegistryDelegate(
-    PushRegistryDelegate? delegate,
-  ) {
+  void setPushRegistryDelegate(PushRegistryDelegate? delegate) {
     if (delegate != null) {
       PPushRegistryDelegateFlutterApi.setUp(_PushRegistryDelegateRelay(delegate));
     } else {
@@ -60,9 +61,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  void setLogsDelegate(
-    CallkeepLogsDelegate? delegate,
-  ) {
+  void setLogsDelegate(CallkeepLogsDelegate? delegate) {
     if (delegate != null) {
       PDelegateLogsFlutterApi.setUp(_LogsDelegateRelay(delegate));
     } else {
@@ -81,9 +80,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<void> setUp(
-    CallkeepOptions options,
-  ) {
+  Future<void> setUp(CallkeepOptions options) {
     return _api.setUp(options.toPigeon());
   }
 
@@ -105,16 +102,12 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<void> reportConnectingOutgoingCall(
-    String callId,
-  ) {
+  Future<void> reportConnectingOutgoingCall(String callId) {
     return _api.reportConnectingOutgoingCall(callId);
   }
 
   @override
-  Future<void> reportConnectedOutgoingCall(
-    String callId,
-  ) {
+  Future<void> reportConnectedOutgoingCall(String callId) {
     return _api.reportConnectedOutgoingCall(callId);
   }
 
@@ -130,11 +123,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<void> reportEndCall(
-    String callId,
-    String displayName,
-    CallkeepEndCallReason reason,
-  ) {
+  Future<void> reportEndCall(String callId, String displayName, CallkeepEndCallReason reason) {
     return _api.reportEndCall(callId, displayName, PEndCallReason(value: reason.toPigeon()));
   }
 
@@ -152,72 +141,47 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<CallkeepCallRequestError?> answerCall(
-    String callId,
-  ) {
+  Future<CallkeepCallRequestError?> answerCall(String callId) {
     return _api.answerCall(callId).then((value) => value?.value.toCallkeep());
   }
 
   @override
-  Future<CallkeepCallRequestError?> endCall(
-    String callId,
-  ) {
+  Future<CallkeepCallRequestError?> endCall(String callId) {
     return _api.endCall(callId).then((value) => value?.value.toCallkeep());
   }
 
   @override
-  Future<CallkeepCallRequestError?> setHeld(
-    String callId,
-    bool onHold,
-  ) {
+  Future<CallkeepCallRequestError?> setHeld(String callId, bool onHold) {
     return _api.setHeld(callId, onHold).then((value) => value?.value.toCallkeep());
   }
 
   @override
-  Future<CallkeepCallRequestError?> setMuted(
-    String callId,
-    bool muted,
-  ) {
+  Future<CallkeepCallRequestError?> setMuted(String callId, bool muted) {
     return _api.setMuted(callId, muted).then((value) => value?.value.toCallkeep());
   }
 
   @override
-  Future<CallkeepCallRequestError?> setSpeaker(
-    String callId,
-    bool enabled,
-  ) {
+  Future<CallkeepCallRequestError?> setSpeaker(String callId, bool enabled) {
     return _api.setSpeaker(callId, enabled).then((value) => value?.value.toCallkeep());
   }
 
   @override
-  Future<CallkeepCallRequestError?> setAudioDevice(
-    String callId,
-    CallkeepAudioDevice device,
-  ) {
+  Future<CallkeepCallRequestError?> setAudioDevice(String callId, CallkeepAudioDevice device) {
     return _api
         .setAudioDevice(
           callId,
-          PAudioDevice(
-            type: PAudioDeviceType.values.byName(device.type.name),
-            id: device.id,
-            name: device.name,
-          ),
+          PAudioDevice(type: PAudioDeviceType.values.byName(device.type.name), id: device.id, name: device.name),
         )
         .then((value) => value?.value.toCallkeep());
   }
 
   @override
-  Future<CallkeepCallRequestError?> sendDTMF(
-    String callId,
-    String key,
-  ) {
+  Future<CallkeepCallRequestError?> sendDTMF(String callId, String key) {
     return _api.sendDTMF(callId, key).then((value) => value?.value.toCallkeep());
   }
 
   @override
-  void setBackgroundServiceDelegate(
-    CallkeepBackgroundServiceDelegate? delegate,
-  ) {
+  void setBackgroundServiceDelegate(CallkeepBackgroundServiceDelegate? delegate) {
     if (delegate != null) {
       PDelegateBackgroundServiceFlutterApi.setUp(_CallkeepBackgroundServiceDelegateRelay(delegate));
     } else {
@@ -243,6 +207,30 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   @override
   Future<CallkeepAndroidBatteryMode> getBatteryMode() {
     return _permissionsApi.getBatteryMode().then((value) => value.toCallkeep());
+  }
+
+  @override
+  Future<Map<String, dynamic>> getDiagnosticReport() async {
+    final rawData = await _diagnosticsApi.getDiagnosticReport();
+    return rawData.cast<String, dynamic>();
+  }
+
+  @override
+  Future<Map<CallkeepPermission, CallkeepSpecialPermissionStatus>> requestPermissions(
+    List<CallkeepPermission> permissions,
+  ) async {
+    final pigeonList = permissions.map((e) => e.toPigeon()).toList();
+    final results = await _permissionsApi.requestPermissions(pigeonList);
+    return {for (final result in results) result.permission.toCallkeep(): result.status.toCallkeep()};
+  }
+
+  @override
+  Future<Map<CallkeepPermission, CallkeepSpecialPermissionStatus>> checkPermissionsStatus(
+    List<CallkeepPermission> permissions,
+  ) async {
+    final pigeonList = permissions.map((e) => e.toPigeon()).toList();
+    final results = await _permissionsApi.checkPermissionsStatus(pigeonList);
+    return {for (final result in results) result.permission.toCallkeep(): result.status.toCallkeep()};
   }
 
   @override
@@ -283,15 +271,10 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     // Initialization callback handle for the isolate plugin only once;
     _signalingIsolatePluginCallbackHandle =
         _signalingIsolatePluginCallbackHandle ??
-        PluginUtilities.getCallbackHandle(
-          _isolatePluginCallbackDispatcher,
-        )?.toRawHandle();
+        PluginUtilities.getCallbackHandle(_isolatePluginCallbackDispatcher)?.toRawHandle();
 
     _onSignalingServiceStartHandle =
-        _onSignalingServiceStartHandle ??
-        PluginUtilities.getCallbackHandle(
-          onSync!,
-        )?.toRawHandle();
+        _onSignalingServiceStartHandle ?? PluginUtilities.getCallbackHandle(onSync!)?.toRawHandle();
 
     if (_signalingIsolatePluginCallbackHandle != null && _onSignalingServiceStartHandle != null) {
       await _backgroundSignalingIsolateBootstrapApi.initializeSignalingServiceCallback(
@@ -329,12 +312,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     String? displayName,
     bool hasVideo,
   ) {
-    return _backgroundSignalingIsolateApi.incomingCall(
-      callId,
-      handle.toPigeon(),
-      displayName,
-      hasVideo,
-    );
+    return _backgroundSignalingIsolateApi.incomingCall(callId, handle.toPigeon(), displayName, hasVideo);
   }
 
   @override
@@ -343,9 +321,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<dynamic> endCallBackgroundSignalingService(
-    String callId,
-  ) {
+  Future<dynamic> endCallBackgroundSignalingService(String callId) {
     return _backgroundSignalingIsolateApi.endCall(callId);
   }
 
@@ -359,15 +335,10 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     // Initialization callback handle for the isolate plugin only once;
     _pushNotificationIsolatePluginCallbackHandle =
         _pushNotificationIsolatePluginCallbackHandle ??
-        PluginUtilities.getCallbackHandle(
-          _isolatePluginCallbackDispatcher,
-        )?.toRawHandle();
+        PluginUtilities.getCallbackHandle(_isolatePluginCallbackDispatcher)?.toRawHandle();
 
     _onPushNotificationNotificationSync =
-        _onPushNotificationNotificationSync ??
-        PluginUtilities.getCallbackHandle(
-          onSync,
-        )?.toRawHandle();
+        _onPushNotificationNotificationSync ?? PluginUtilities.getCallbackHandle(onSync)?.toRawHandle();
 
     if (_pushNotificationIsolatePluginCallbackHandle != null && _onPushNotificationNotificationSync != null) {
       await _backgroundPushNotificationIsolateBootstrapApi.initializePushNotificationCallback(
@@ -378,9 +349,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  Future<void> configurePushNotificationSignalingService({
-    bool launchBackgroundIsolateEvenIfAppIsOpen = false,
-  }) async {
+  Future<void> configurePushNotificationSignalingService({bool launchBackgroundIsolateEvenIfAppIsOpen = false}) async {
     await _backgroundPushNotificationIsolateBootstrapApi.configureSignalingService(
       launchBackgroundIsolateEvenIfAppIsOpen: launchBackgroundIsolateEvenIfAppIsOpen,
     );
@@ -429,10 +398,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     /// Regex pattern with 4 capture groups: callId, handle, displayName, hasVideo
     required String regexPattern,
   }) {
-    return _pHostSmsReceptionApi.initializeSmsReception(
-      messagePrefix: messagePrefix,
-      regexPattern: regexPattern,
-    );
+    return _pHostSmsReceptionApi.initializeSmsReception(messagePrefix: messagePrefix, regexPattern: regexPattern);
   }
 
   // ------------------------------------------------------------------------------------------------
@@ -480,86 +446,47 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
   final CallkeepDelegate _delegate;
 
   @override
-  void continueStartCallIntent(
-    PHandle handle,
-    String? displayName,
-    bool video,
-  ) {
+  void continueStartCallIntent(PHandle handle, String? displayName, bool video) {
     _delegate.continueStartCallIntent(handle.toCallkeep(), displayName, video);
   }
 
   @override
-  void didPushIncomingCall(
-    PHandle handle,
-    String? displayName,
-    bool video,
-    String callId,
-    PIncomingCallError? error,
-  ) {
+  void didPushIncomingCall(PHandle handle, String? displayName, bool video, String callId, PIncomingCallError? error) {
     _delegate.didPushIncomingCall(handle.toCallkeep(), displayName, video, callId, error?.value.toCallkeep());
   }
 
   @override
-  Future<bool> performStartCall(
-    String callId,
-    PHandle handle,
-    String? displayNameOrContactIdentifier,
-    bool video,
-  ) {
+  Future<bool> performStartCall(String callId, PHandle handle, String? displayNameOrContactIdentifier, bool video) {
     return _delegate.performStartCall(callId, handle.toCallkeep(), displayNameOrContactIdentifier, video);
   }
 
   @override
-  Future<bool> performAnswerCall(
-    String callId,
-  ) {
+  Future<bool> performAnswerCall(String callId) {
     return _delegate.performAnswerCall(callId);
   }
 
   @override
-  Future<bool> performEndCall(
-    String callId,
-  ) {
+  Future<bool> performEndCall(String callId) {
     return _delegate.performEndCall(callId);
   }
 
   @override
-  Future<bool> performSetHeld(
-    String callId,
-    bool onHold,
-  ) {
+  Future<bool> performSetHeld(String callId, bool onHold) {
     return _delegate.performSetHeld(callId, onHold);
   }
 
   @override
-  Future<bool> performSetMuted(
-    String callId,
-    bool muted,
-  ) {
+  Future<bool> performSetMuted(String callId, bool muted) {
     return _delegate.performSetMuted(callId, muted);
   }
 
   @override
-  Future<bool> performSendDTMF(
-    String callId,
-    String key,
-  ) {
+  Future<bool> performSendDTMF(String callId, String key) {
     return _delegate.performSendDTMF(callId, key);
   }
 
   @override
-  Future<bool> performSetSpeaker(
-    String callId,
-    bool enabled,
-  ) {
-    return _delegate.performSetSpeaker(callId, enabled);
-  }
-
-  @override
-  Future<bool> performAudioDeviceSet(
-    String callId,
-    PAudioDevice device,
-  ) {
+  Future<bool> performAudioDeviceSet(String callId, PAudioDevice device) {
     return _delegate.performAudioDeviceSet(
       callId,
       CallkeepAudioDevice(
@@ -571,10 +498,7 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
   }
 
   @override
-  Future<bool> performAudioDevicesUpdate(
-    String callId,
-    List<PAudioDevice> devices,
-  ) {
+  Future<bool> performAudioDevicesUpdate(String callId, List<PAudioDevice> devices) {
     return _delegate.performAudioDevicesUpdate(
       callId,
       devices.map((device) {
@@ -609,9 +533,7 @@ class _PushRegistryDelegateRelay implements PPushRegistryDelegateFlutterApi {
   final PushRegistryDelegate _delegate;
 
   @override
-  void didUpdatePushTokenForPushTypeVoIP(
-    String? token,
-  ) {
+  void didUpdatePushTokenForPushTypeVoIP(String? token) {
     _delegate.didUpdatePushTokenForPushTypeVoIP(token);
   }
 }
@@ -633,31 +555,8 @@ class _CallkeepBackgroundServiceDelegateRelay implements PDelegateBackgroundServ
   final CallkeepBackgroundServiceDelegate _delegate;
 
   @override
-  Future<void> performEndCall(
-    String callId,
-  ) async {
+  Future<void> performEndCall(String callId) async {
     return _delegate.performEndCall(callId);
-  }
-
-  @override
-  Future<void> performReceivedCall(
-    String callId,
-    String number,
-    bool video,
-    int createdTime,
-    String? displayName,
-    int? acceptedTime,
-    int? hungUpTime,
-  ) async {
-    return _delegate.performReceivedCall(
-      callId,
-      number,
-      DateTime.fromMillisecondsSinceEpoch(createdTime),
-      displayName,
-      acceptedTime != null ? DateTime.fromMillisecondsSinceEpoch(acceptedTime) : null,
-      hungUpTime != null ? DateTime.fromMillisecondsSinceEpoch(hungUpTime) : null,
-      video: video,
-    );
   }
 
   @override
@@ -681,18 +580,16 @@ class _BackgroundServiceDelegate implements PDelegateBackgroundRegisterFlutterAp
   Future<void> onWakeUpBackgroundHandler(
     int userCallbackHandle,
     PCallkeepServiceStatus status,
+    PCallkeepIncomingCallData? callData,
   ) async {
     final handle = CallbackHandle.fromRawHandle(userCallbackHandle);
     final closure = PluginUtilities.getCallbackFromHandle(handle)! as ForegroundStartServiceHandle;
 
-    await closure(status.toCallkeep());
+    await closure(status.toCallkeep(), callData?.toCallkeep());
   }
 
   @override
-  Future<void> onApplicationStatusChanged(
-    int applicationStatusCallbackHandle,
-    PCallkeepServiceStatus status,
-  ) async {
+  Future<void> onApplicationStatusChanged(int applicationStatusCallbackHandle, PCallkeepServiceStatus status) async {
     final handle = CallbackHandle.fromRawHandle(applicationStatusCallbackHandle);
     final closure = PluginUtilities.getCallbackFromHandle(handle)! as ForegroundChangeLifecycleHandle;
 
@@ -703,9 +600,10 @@ class _BackgroundServiceDelegate implements PDelegateBackgroundRegisterFlutterAp
   Future<void> onNotificationSync(
     int pushNotificationSyncStatusHandle,
     PCallkeepPushNotificationSyncStatus status,
+    PCallkeepIncomingCallData? callData,
   ) async {
     final handle = CallbackHandle.fromRawHandle(pushNotificationSyncStatusHandle);
     final closure = PluginUtilities.getCallbackFromHandle(handle)! as CallKeepPushNotificationSyncStatusHandle;
-    await closure(status.toCallkeep());
+    await closure(status.toCallkeep(), callData?.toCallkeep());
   }
 }

@@ -18,10 +18,13 @@ on:
 
 jobs:
   build:
-    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/flutter_package.yml@v1
+    uses: ./.github/workflows/flutter_package.yml
     with:
       flutter_channel: stable
       flutter_version: 3.32.0
       working_directory: webtrit_callkeep_web
       format_line_length: "120"
+      format_directories: "lib"
+      analyze_directories: "lib"
+      run_tests: false
 

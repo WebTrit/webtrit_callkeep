@@ -11,9 +11,7 @@ import com.webtrit.callkeep.R
  * Singleton that manages the creation and registration of notification channels.
  */
 object NotificationChannelManager {
-
     // Constants for notification channel IDs
-    const val MISSED_CALL_NOTIFICATION_CHANNEL_ID = "MISSED_CALL_NOTIFICATION_CHANNEL_ID"
     const val INCOMING_CALL_NOTIFICATION_CHANNEL_ID = "INCOMING_CALL_NOTIFICATION_CHANNEL_ID"
     const val FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID = "FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID"
     const val NOTIFICATION_ACTIVE_CALL_CHANNEL_ID = "NOTIFICATION_ACTIVE_CALL_CHANNEL_ID"
@@ -29,7 +27,6 @@ object NotificationChannelManager {
     fun registerNotificationChannels(context: Context) {
         registerActiveCallChannel(context)
         registerIncomingCallChannel(context)
-        registerMissedCallChannel(context)
         registerForegroundCallChannel(context)
     }
 
@@ -46,7 +43,7 @@ object NotificationChannelManager {
             channelId = NOTIFICATION_ACTIVE_CALL_CHANNEL_ID,
             title = context.getString(R.string.push_notification_active_call_channel_title),
             description = context.getString(R.string.push_notification_active_call_channel_description),
-            importance = NotificationManager.IMPORTANCE_DEFAULT
+            importance = NotificationManager.IMPORTANCE_DEFAULT,
         )
     }
 
@@ -66,24 +63,7 @@ object NotificationChannelManager {
             importance = NotificationManager.IMPORTANCE_HIGH,
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC,
             customSound = true,
-            showBadge = true
-        )
-    }
-
-    /**
-     * Registers the notification channel for missed calls.
-     *
-     * This channel is used for notifications related to missed calls.
-     *
-     * @param context The context used to access system services and resources.
-     */
-    private fun registerMissedCallChannel(context: Context) {
-        registerNotificationChannel(
-            context,
-            channelId = MISSED_CALL_NOTIFICATION_CHANNEL_ID,
-            title = context.getString(R.string.push_notification_missed_call_channel_title),
-            description = context.getString(R.string.push_notification_missed_call_channel_description),
-            importance = NotificationManager.IMPORTANCE_LOW
+            showBadge = true,
         )
     }
 
@@ -100,10 +80,9 @@ object NotificationChannelManager {
             channelId = FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID,
             title = context.getString(R.string.push_notification_foreground_call_service_title),
             description = context.getString(R.string.push_notification_foreground_call_service_description),
-            importance = NotificationManager.IMPORTANCE_LOW
+            importance = NotificationManager.IMPORTANCE_LOW,
         )
     }
-
 
     /**
      * Registers a notification channel with the provided parameters.
@@ -124,17 +103,21 @@ object NotificationChannelManager {
         importance: Int,
         showBadge: Boolean = true,
         customSound: Boolean = false,
-        lockscreenVisibility: Int = Notification.VISIBILITY_PUBLIC
+        lockscreenVisibility: Int = Notification.VISIBILITY_PUBLIC,
     ) {
-        val notificationChannel = NotificationChannel(
-            channelId, title, importance
-        ).apply {
-            this.description = description
-            this.lockscreenVisibility = lockscreenVisibility
-            setShowBadge(showBadge)
-            if (customSound) setSound(null, null)
-        }
-        NotificationManagerCompat.from(context)
+        val notificationChannel =
+            NotificationChannel(
+                channelId,
+                title,
+                importance,
+            ).apply {
+                this.description = description
+                this.lockscreenVisibility = lockscreenVisibility
+                setShowBadge(showBadge)
+                if (customSound) setSound(null, null)
+            }
+        NotificationManagerCompat
+            .from(context)
             .createNotificationChannel(notificationChannel)
     }
 }

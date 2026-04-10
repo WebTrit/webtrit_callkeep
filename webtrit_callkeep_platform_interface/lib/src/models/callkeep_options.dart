@@ -52,17 +52,16 @@ class CallkeepIOSOptions extends Equatable {
 }
 
 class CallkeepAndroidOptions extends Equatable {
-  const CallkeepAndroidOptions({
-    this.ringtoneSound,
-    this.ringbackSound,
-  });
+  const CallkeepAndroidOptions({this.ringtoneSound, this.ringbackSound, this.incomingCallFullScreen});
 
   final String? ringtoneSound;
   final String? ringbackSound;
 
+  /// Whether incoming call notifications should use a full-screen intent to
+  /// wake the device on lock screen. Defaults to `true` on the Kotlin side
+  /// when not specified. Pass `false` to show a heads-up notification instead.
+  final bool? incomingCallFullScreen;
+
   @override
-  List<Object?> get props => [
-    ringtoneSound,
-    ringbackSound,
-  ];
+  List<Object?> get props => [ringtoneSound, ringbackSound, incomingCallFullScreen];
 }
