@@ -20,6 +20,7 @@ import com.webtrit.callkeep.managers.NotificationChannelManager
 import com.webtrit.callkeep.models.AudioDevice
 import com.webtrit.callkeep.models.AudioDeviceType
 import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.notifications.StandaloneIncomingCallNotificationBuilder
 import com.webtrit.callkeep.services.broadcaster.CallCommandEvent
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
@@ -203,6 +204,15 @@ class StandaloneCallService : Service() {
         promoteToForeground()
         callMetadataMap[metadata.callId] = metadata
         answeredCallIds.remove(metadata.callId)
+
+        // Replace the placeholder foreground notification (posted by promoteToForeground) with
+        // a full incoming call notification — including Answer/Decline buttons and CallStyle on
+        // API 31+.  The placeholder uses FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID (low importance)
+        // only to satisfy the 5-second startForeground() ANR window; this call switches to
+        // INCOMING_CALL_NOTIFICATION_CHANNEL_ID (high importance) so the system treats it as a
+        // ringing call rather than a silent ongoing service notification.
+        showIncomingCallNotification(metadata)
+
         // Notify the main process that the call has been registered. ForegroundService listens
         // for this broadcast to resolve its pendingIncomingCallbacks entry and promote the call
         // into the core shadow state, matching the PhoneConnectionService.onCreateIncomingConnection
@@ -214,6 +224,17 @@ class StandaloneCallService : Service() {
         if (pendingAnswers.remove(metadata.callId)) {
             handleAnswerCall(metadata)
         }
+    }
+
+    private fun showIncomingCallNotification(metadata: CallMetadata) {
+        val notification = StandaloneIncomingCallNotificationBuilder().build(metadata)
+        val foregroundType =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            } else {
+                null
+            }
+        startForegroundServiceCompat(this, NOTIFICATION_ID, notification, foregroundType)
     }
 
     private fun handleOutgoingCall(metadata: CallMetadata) {
