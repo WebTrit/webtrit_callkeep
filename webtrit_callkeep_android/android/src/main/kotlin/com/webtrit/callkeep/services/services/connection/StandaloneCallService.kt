@@ -146,6 +146,7 @@ class StandaloneCallService : Service() {
 
     override fun onDestroy() {
         Log.i(TAG, "onDestroy")
+        ringtoneManager.stopRingtone()
         isRunning = false
         isForeground = false
         stopForeground(STOP_FOREGROUND_REMOVE)
