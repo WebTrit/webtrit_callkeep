@@ -54,6 +54,19 @@ class StandaloneCallService : Service() {
     // notification when there is no call in progress.
     private var isForeground = false
 
+    // FOREGROUND_SERVICE_TYPE_MICROPHONE was introduced in API 31 (Android 12).
+    // On API 29-30 the type is unknown to the framework and startForeground() throws
+    // IllegalArgumentException when the requested type does not match the manifest.
+    // Passing null selects the 2-arg startForeground() fallback in startForegroundServiceCompat(),
+    // which skips type validation on older builds.
+    private val foregroundServiceType: Int?
+        get() =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            } else {
+                null
+            }
+
     override fun onCreate() {
         super.onCreate()
         ContextHolder.init(applicationContext)
@@ -184,18 +197,7 @@ class StandaloneCallService : Service() {
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setOngoing(true)
                 .build()
-        // FOREGROUND_SERVICE_TYPE_MICROPHONE was introduced in API 31 (Android 12).
-        // On API 29-30 the type is unknown to the framework and startForeground() throws
-        // IllegalArgumentException when the requested type does not match the manifest.
-        // Passing null here selects the 2-arg startForeground() fallback in
-        // startForegroundServiceCompat(), which skips type validation on older builds.
-        val foregroundType =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-            } else {
-                null
-            }
-        startForegroundServiceCompat(this, NOTIFICATION_ID, placeholder, foregroundType)
+        startForegroundServiceCompat(this, NOTIFICATION_ID, placeholder, foregroundServiceType)
         isForeground = true
     }
 
@@ -227,14 +229,11 @@ class StandaloneCallService : Service() {
     }
 
     private fun showIncomingCallNotification(metadata: CallMetadata) {
-        val notification = StandaloneIncomingCallNotificationBuilder().build(metadata)
-        val foregroundType =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-            } else {
-                null
-            }
-        startForegroundServiceCompat(this, NOTIFICATION_ID, notification, foregroundType)
+        val notification =
+            StandaloneIncomingCallNotificationBuilder()
+                .apply { setCallMetaData(metadata) }
+                .build()
+        startForegroundServiceCompat(this, NOTIFICATION_ID, notification, foregroundServiceType)
     }
 
     private fun handleOutgoingCall(metadata: CallMetadata) {

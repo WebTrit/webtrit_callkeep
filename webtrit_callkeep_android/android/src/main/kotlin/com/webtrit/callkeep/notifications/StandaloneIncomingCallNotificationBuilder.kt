@@ -21,12 +21,19 @@ import com.webtrit.callkeep.services.services.connection.StandaloneServiceAction
  * Builds an incoming call notification for the standalone call path — used on devices that do
  * not expose the [android.software.telecom] system feature.
  *
- * Mirrors the logic of [IncomingCallNotificationBuilder] but routes Answer/Decline
- * [PendingIntent]s directly to [StandaloneCallService] via [StandaloneServiceAction], so the
- * user can answer or decline from the notification without the Telecom-backed
+ * Extends [NotificationBuilder] to reuse [buildOpenAppIntent] and keep behaviour consistent with
+ * [IncomingCallNotificationBuilder]. Answer/Decline [PendingIntent]s are routed directly to
+ * [StandaloneCallService] via [StandaloneServiceAction] so the user can interact with the
+ * notification without the Telecom-backed
  * [com.webtrit.callkeep.services.services.incoming_call.IncomingCallService] being involved.
  */
-internal class StandaloneIncomingCallNotificationBuilder {
+internal class StandaloneIncomingCallNotificationBuilder : NotificationBuilder() {
+    private var callMetaData: CallMetadata? = null
+
+    fun setCallMetaData(callMetaData: CallMetadata) {
+        this.callMetaData = callMetaData
+    }
+
     private fun createActionIntent(
         metadata: CallMetadata,
         action: StandaloneServiceAction,
@@ -61,20 +68,28 @@ internal class StandaloneIncomingCallNotificationBuilder {
             setVisibility(Notification.VISIBILITY_PUBLIC)
         }
 
-    fun build(metadata: CallMetadata): Notification {
-        val answerIntent = createActionIntent(metadata, StandaloneServiceAction.AnswerCall)
-        val declineIntent = createActionIntent(metadata, StandaloneServiceAction.DeclineCall)
+    override fun build(): Notification {
+        val meta =
+            requireNotNull(callMetaData) { "Call metadata must be set before building the notification." }
+
+        val answerIntent = createActionIntent(meta, StandaloneServiceAction.AnswerCall)
+        val declineIntent = createActionIntent(meta, StandaloneServiceAction.DeclineCall)
 
         val title = context.getString(R.string.incoming_call_title)
-        val text = context.getString(R.string.incoming_call_description, metadata.name)
+        val text = context.getString(R.string.incoming_call_description, meta.name)
 
         val builder =
             baseBuilder(title, text).apply {
+                // Guard against a null launch intent before calling buildOpenAppIntent: if no
+                // launchable activity exists, PendingIntent.getActivity() would receive a null
+                // Intent and behave unpredictably on some API levels.
+                val launchIntent = Platform.getLaunchActivity(context)
                 val canUseFullScreen =
-                    StorageDelegate.IncomingCall.isFullScreen(context) &&
+                    launchIntent != null &&
+                        StorageDelegate.IncomingCall.isFullScreen(context) &&
                         PermissionsHelper(context).canUseFullScreenIntent()
                 if (canUseFullScreen) {
-                    setFullScreenIntent(buildOpenAppIntent(), true)
+                    setFullScreenIntent(buildOpenAppIntent(context), true)
                 }
             }
 
@@ -82,7 +97,7 @@ internal class StandaloneIncomingCallNotificationBuilder {
             val person =
                 Person
                     .Builder()
-                    .setName(metadata.name)
+                    .setName(meta.name)
                     .setImportant(true)
                     .build()
             builder
@@ -108,18 +123,5 @@ internal class StandaloneIncomingCallNotificationBuilder {
                 ).build()
                 .apply { flags = flags or NotificationCompat.FLAG_INSISTENT }
         }
-    }
-
-    private fun buildOpenAppIntent(): PendingIntent {
-        val intent =
-            Platform.getLaunchActivity(context)?.apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            }
-        return PendingIntent.getActivity(
-            context,
-            R.integer.notification_incoming_call_id,
-            intent,
-            PendingIntent.FLAG_IMMUTABLE,
-        )
     }
 }
