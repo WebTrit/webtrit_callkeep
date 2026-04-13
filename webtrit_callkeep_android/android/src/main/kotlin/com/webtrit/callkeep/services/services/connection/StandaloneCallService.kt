@@ -25,6 +25,7 @@ import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
 import com.webtrit.callkeep.services.core.CallkeepCore
 import java.util.concurrent.ConcurrentHashMap
+import com.webtrit.callkeep.managers.AudioManager as CallkeepAudioManager
 
 /**
  * Standalone call management service for devices that do not expose the
@@ -46,6 +47,7 @@ import java.util.concurrent.ConcurrentHashMap
 class StandaloneCallService : Service() {
     private val core get() = CallkeepCore.instance
     private val audioManager by lazy { getSystemService(AUDIO_SERVICE) as AudioManager }
+    private val ringtoneManager by lazy { CallkeepAudioManager(applicationContext) }
 
     // Tracks whether startForeground() has been called in this service instance.
     // startForeground() is deferred until an actual call is handled so that lifecycle-only
@@ -144,6 +146,7 @@ class StandaloneCallService : Service() {
 
     override fun onDestroy() {
         Log.i(TAG, "onDestroy")
+        ringtoneManager.stopRingtone()
         isRunning = false
         isForeground = false
         stopForeground(STOP_FOREGROUND_REMOVE)
@@ -203,6 +206,7 @@ class StandaloneCallService : Service() {
         promoteToForeground()
         callMetadataMap[metadata.callId] = metadata
         answeredCallIds.remove(metadata.callId)
+        ringtoneManager.startRingtone(metadata.ringtonePath)
         // Notify the main process that the call has been registered. ForegroundService listens
         // for this broadcast to resolve its pendingIncomingCallbacks entry and promote the call
         // into the core shadow state, matching the PhoneConnectionService.onCreateIncomingConnection
@@ -229,6 +233,7 @@ class StandaloneCallService : Service() {
 
     private fun handleEstablishCall(metadata: CallMetadata) {
         Log.i(TAG, "handleEstablishCall: callId=${metadata.callId}")
+        ringtoneManager.stopRingtone()
         val full = (callMetadataMap[metadata.callId] ?: metadata).mergeWith(metadata)
         callMetadataMap[metadata.callId] = full.copy(acceptedTime = System.currentTimeMillis())
         answeredCallIds.add(metadata.callId)
@@ -242,6 +247,7 @@ class StandaloneCallService : Service() {
 
     private fun handleAnswerCall(metadata: CallMetadata) {
         Log.i(TAG, "handleAnswerCall: callId=${metadata.callId}")
+        ringtoneManager.stopRingtone()
         val full = (callMetadataMap[metadata.callId] ?: metadata).mergeWith(metadata)
         callMetadataMap[metadata.callId] = full.copy(acceptedTime = System.currentTimeMillis())
         answeredCallIds.add(metadata.callId)
@@ -255,12 +261,14 @@ class StandaloneCallService : Service() {
 
     private fun handleDeclineCall(metadata: CallMetadata) {
         Log.i(TAG, "handleDeclineCall: callId=${metadata.callId}")
+        ringtoneManager.stopRingtone()
         endCall(metadata)
         core.notifyConnectionEvent(CallLifecycleEvent.HungUp, metadata.toBundle())
     }
 
     private fun handleHungUpCall(metadata: CallMetadata) {
         Log.i(TAG, "handleHungUpCall: callId=${metadata.callId}")
+        ringtoneManager.stopRingtone()
         endCall(metadata)
         core.notifyConnectionEvent(CallLifecycleEvent.HungUp, metadata.toBundle())
     }
@@ -294,6 +302,7 @@ class StandaloneCallService : Service() {
 
     private fun handleTearDownConnections() {
         Log.i(TAG, "handleTearDownConnections: cleaning up ${callMetadataMap.size} calls")
+        ringtoneManager.stopRingtone()
         callMetadataMap.keys.toList().forEach { callId ->
             val meta = callMetadataMap[callId] ?: CallMetadata(callId = callId)
             core.notifyConnectionEvent(CallLifecycleEvent.HungUp, meta.toBundle())
