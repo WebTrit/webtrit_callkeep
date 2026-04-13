@@ -16,15 +16,7 @@ abstract class NotificationBuilder {
         val hostAppActivity =
             Platform.getLaunchActivity(context)?.apply {
                 data = uri
-                // FLAG_TURN_SCREEN_ON and FLAG_SHOW_WHEN_LOCKED allow the Activity to
-                // wake the screen and display over the keyguard when launched via a
-                // full-screen intent. Without these flags the Activity may be started
-                // silently behind the lock screen on Android 14+ and HyperOS devices.
-                flags =
-                    Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                    Intent.FLAG_TURN_SCREEN_ON or
-                    Intent.FLAG_SHOW_WHEN_LOCKED
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             }
 
         return PendingIntent.getActivity(
