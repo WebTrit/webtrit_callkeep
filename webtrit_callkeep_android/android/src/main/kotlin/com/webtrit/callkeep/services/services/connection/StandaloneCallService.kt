@@ -20,6 +20,7 @@ import com.webtrit.callkeep.managers.NotificationChannelManager
 import com.webtrit.callkeep.models.AudioDevice
 import com.webtrit.callkeep.models.AudioDeviceType
 import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.notifications.StandaloneIncomingCallNotificationBuilder
 import com.webtrit.callkeep.services.broadcaster.CallCommandEvent
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
@@ -54,6 +55,19 @@ class StandaloneCallService : Service() {
     // commands (SyncConnectionState, SyncAudioState, etc.) do not post a foreground
     // notification when there is no call in progress.
     private var isForeground = false
+
+    // FOREGROUND_SERVICE_TYPE_MICROPHONE was introduced in API 31 (Android 12).
+    // On API 29-30 the type is unknown to the framework and startForeground() throws
+    // IllegalArgumentException when the requested type does not match the manifest.
+    // Passing null selects the 2-arg startForeground() fallback in startForegroundServiceCompat(),
+    // which skips type validation on older builds.
+    private val foregroundServiceType: Int?
+        get() =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            } else {
+                null
+            }
 
     override fun onCreate() {
         super.onCreate()
@@ -186,18 +200,7 @@ class StandaloneCallService : Service() {
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setOngoing(true)
                 .build()
-        // FOREGROUND_SERVICE_TYPE_MICROPHONE was introduced in API 31 (Android 12).
-        // On API 29-30 the type is unknown to the framework and startForeground() throws
-        // IllegalArgumentException when the requested type does not match the manifest.
-        // Passing null here selects the 2-arg startForeground() fallback in
-        // startForegroundServiceCompat(), which skips type validation on older builds.
-        val foregroundType =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-            } else {
-                null
-            }
-        startForegroundServiceCompat(this, NOTIFICATION_ID, placeholder, foregroundType)
+        startForegroundServiceCompat(this, NOTIFICATION_ID, placeholder, foregroundServiceType)
         isForeground = true
     }
 
@@ -207,6 +210,15 @@ class StandaloneCallService : Service() {
         callMetadataMap[metadata.callId] = metadata
         answeredCallIds.remove(metadata.callId)
         ringtoneManager.startRingtone(metadata.ringtonePath)
+
+        // Replace the placeholder foreground notification (posted by promoteToForeground) with
+        // a full incoming call notification — including Answer/Decline buttons and CallStyle on
+        // API 31+.  The placeholder uses FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID (low importance)
+        // only to satisfy the 5-second startForeground() ANR window; this call switches to
+        // INCOMING_CALL_NOTIFICATION_CHANNEL_ID (high importance) so the system treats it as a
+        // ringing call rather than a silent ongoing service notification.
+        showIncomingCallNotification(metadata)
+
         // Notify the main process that the call has been registered. ForegroundService listens
         // for this broadcast to resolve its pendingIncomingCallbacks entry and promote the call
         // into the core shadow state, matching the PhoneConnectionService.onCreateIncomingConnection
@@ -218,6 +230,14 @@ class StandaloneCallService : Service() {
         if (pendingAnswers.remove(metadata.callId)) {
             handleAnswerCall(metadata)
         }
+    }
+
+    private fun showIncomingCallNotification(metadata: CallMetadata) {
+        val notification =
+            StandaloneIncomingCallNotificationBuilder()
+                .apply { setCallMetaData(metadata) }
+                .build()
+        startForegroundServiceCompat(this, NOTIFICATION_ID, notification, foregroundServiceType)
     }
 
     private fun handleOutgoingCall(metadata: CallMetadata) {
