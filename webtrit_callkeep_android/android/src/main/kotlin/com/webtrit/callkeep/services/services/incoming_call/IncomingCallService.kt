@@ -294,10 +294,16 @@ class IncomingCallService :
     /**
      * Acquires a wake lock that turns on the screen when an incoming call arrives.
      *
-     * This is a fallback for devices (MIUI/HyperOS) where USE_FULL_SCREEN_INTENT is
-     * denied by default and the full-screen intent cannot wake the display. When
-     * full-screen intent is available and enabled, the system handles screen wake via
-     * the full-screen intent itself, so no wake lock is needed.
+     * SCREEN_BRIGHT_WAKE_LOCK | ACQUIRE_CAUSES_WAKEUP is required to physically turn the
+     * screen on via PowerManager. This is complementary to the full-screen intent — the
+     * intent launches the incoming call UI; the wake lock turns the screen on so the UI
+     * is visible. They must both be used together.
+     *
+     * The two mechanisms are NOT mutually exclusive. When the app is in the foreground
+     * with the screen locked (Activity state ON_STOP), Android may suppress the
+     * full-screen intent Activity launch because the app is already "visible". In that
+     * case only the wake lock can turn the screen on. Skipping it when full-screen intent
+     * is available causes the ringtone to play on a dark screen with no call UI shown.
      *
      * The lock expires automatically after WAKELOCK_TIMEOUT_MS to prevent battery
      * drain if the release path is skipped.
@@ -305,12 +311,6 @@ class IncomingCallService :
     @Suppress("DEPRECATION") // SCREEN_BRIGHT_WAKE_LOCK is deprecated but is the correct flag
     // for waking the screen; the modern alternative (FLAG_TURN_SCREEN_ON) requires an Activity.
     private fun acquireScreenWakeLockIfNeeded() {
-        val fullScreenEnabled = StorageDelegate.IncomingCall.isFullScreen(this)
-        val canUseFullScreenIntent = PermissionsHelper(this).canUseFullScreenIntent()
-        if (fullScreenEnabled && canUseFullScreenIntent) {
-            Log.d(TAG, "Screen wake lock skipped: full-screen intent is available")
-            return
-        }
         if (screenWakeLock?.isHeld == true) return
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
         screenWakeLock =
