@@ -38,6 +38,7 @@ class PhoneConnection internal constructor(
     private var metadata: CallMetadata,
     var onDisconnectCallback: (connection: PhoneConnection) -> Unit,
     var timeout: ConnectionTimeout? = null,
+    private val audioManager: AudioManager = AudioManager(context),
 ) : Connection() {
     private var isMute = false
     private var isHasSpeaker = false
@@ -61,7 +62,6 @@ class PhoneConnection internal constructor(
     private var pendingEndpointRequest: CallEndpoint? = null
     private var availableCallEndpoints: List<CallEndpoint> = emptyList()
     private val notificationManager = NotificationManager()
-    private val audioManager = AudioManager(context)
 
     val callId: String
         get() = metadata.callId
@@ -125,6 +125,19 @@ class PhoneConnection internal constructor(
         notificationManager.showIncomingCallNotification(metadata)
         audioManager.startRingtone(metadata.ringtonePath)
         dispatcher(CallLifecycleEvent.DidPushIncomingCall, metadata)
+    }
+
+    /**
+     * Invoked by Telecom when the user presses a volume key during an incoming call.
+     *
+     * For self-managed calls, Telecom does not control the ringtone directly — it delegates
+     * silence requests to the app via this callback. Without this override the ringtone keeps
+     * playing regardless of volume key presses (confirmed on Xiaomi/MIUI and Samsung/One UI,
+     * Android 11, WT-1300).
+     */
+    override fun onSilence() {
+        logger.d("Silencing ringtone for callId: $callId")
+        audioManager.stopRingtone()
     }
 
     /**
@@ -198,15 +211,16 @@ class PhoneConnection internal constructor(
      * Orchestrates logical transitions based on the underlying Telecom state.
      */
     override fun onStateChanged(state: Int) {
-        val stateText = when (state) {
-            STATE_NEW -> "NEW"
-            STATE_DIALING -> "DIALING"
-            STATE_RINGING -> "RINGING"
-            STATE_HOLDING -> "HOLDING"
-            STATE_ACTIVE -> "ACTIVE"
-            STATE_DISCONNECTED -> "DISCONNECTED"
-            else -> "UNKNOWN($state)"
-        }
+        val stateText =
+            when (state) {
+                STATE_NEW -> "NEW"
+                STATE_DIALING -> "DIALING"
+                STATE_RINGING -> "RINGING"
+                STATE_HOLDING -> "HOLDING"
+                STATE_ACTIVE -> "ACTIVE"
+                STATE_DISCONNECTED -> "DISCONNECTED"
+                else -> "UNKNOWN($state)"
+            }
         logger.v("Connection state is now: $stateText for callId: $callId")
         super.onStateChanged(state)
         handleConnectionTimeout(state)
@@ -283,19 +297,21 @@ class PhoneConnection internal constructor(
      */
     private fun dispatchFallbackAudioState() {
         logger.w("dispatchFallbackAudioState: callAudioState not set by system — building device list from AudioManager")
-        val supportedDevices = buildList {
-            add(AudioDevice(AudioDeviceType.EARPIECE))
-            add(AudioDevice(AudioDeviceType.SPEAKER))
-            if (audioManager.isWiredHeadsetConnected()) add(AudioDevice(AudioDeviceType.WIRED_HEADSET))
-            if (audioManager.isBluetoothConnected()) add(AudioDevice(AudioDeviceType.BLUETOOTH))
-        }
+        val supportedDevices =
+            buildList {
+                add(AudioDevice(AudioDeviceType.EARPIECE))
+                add(AudioDevice(AudioDeviceType.SPEAKER))
+                if (audioManager.isWiredHeadsetConnected()) add(AudioDevice(AudioDeviceType.WIRED_HEADSET))
+                if (audioManager.isBluetoothConnected()) add(AudioDevice(AudioDeviceType.BLUETOOTH))
+            }
         dispatcher(CallMediaEvent.AudioDevicesUpdate, metadata.copy(audioDevices = supportedDevices))
 
-        val currentDevice = when {
-            audioManager.isBluetoothConnected() -> AudioDevice(AudioDeviceType.BLUETOOTH)
-            audioManager.isWiredHeadsetConnected() -> AudioDevice(AudioDeviceType.WIRED_HEADSET)
-            else -> AudioDevice(AudioDeviceType.EARPIECE)
-        }
+        val currentDevice =
+            when {
+                audioManager.isBluetoothConnected() -> AudioDevice(AudioDeviceType.BLUETOOTH)
+                audioManager.isWiredHeadsetConnected() -> AudioDevice(AudioDeviceType.WIRED_HEADSET)
+                else -> AudioDevice(AudioDeviceType.EARPIECE)
+            }
         dispatcher(CallMediaEvent.AudioDeviceSet, metadata.copy(audioDevice = currentDevice))
     }
 
@@ -395,9 +411,10 @@ class PhoneConnection internal constructor(
                 return
             }
 
-            val endpoint = availableCallEndpoints.firstOrNull {
-                it.identifier == ParcelUuid.fromString(deviceId)
-            }
+            val endpoint =
+                availableCallEndpoints.firstOrNull {
+                    it.identifier == ParcelUuid.fromString(deviceId)
+                }
 
             if (endpoint != null) {
                 performEndpointChange(endpoint)
@@ -657,32 +674,36 @@ class PhoneConnection internal constructor(
      * Converts a [CallEndpoint] into a domain [AudioDevice] model.
      */
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-    private fun mapEndpointToAudioDevice(endpoint: CallEndpoint) = AudioDevice(
-        type = when (endpoint.endpointType) {
-            CallEndpoint.TYPE_EARPIECE -> AudioDeviceType.EARPIECE
-            CallEndpoint.TYPE_SPEAKER -> AudioDeviceType.SPEAKER
-            CallEndpoint.TYPE_BLUETOOTH -> AudioDeviceType.BLUETOOTH
-            CallEndpoint.TYPE_WIRED_HEADSET -> AudioDeviceType.WIRED_HEADSET
-            CallEndpoint.TYPE_STREAMING -> AudioDeviceType.STREAMING
-            else -> AudioDeviceType.UNKNOWN
-        },
-        name = endpoint.endpointName.toString(),
-        id = endpoint.identifier.toString(),
-    )
+    private fun mapEndpointToAudioDevice(endpoint: CallEndpoint) =
+        AudioDevice(
+            type =
+                when (endpoint.endpointType) {
+                    CallEndpoint.TYPE_EARPIECE -> AudioDeviceType.EARPIECE
+                    CallEndpoint.TYPE_SPEAKER -> AudioDeviceType.SPEAKER
+                    CallEndpoint.TYPE_BLUETOOTH -> AudioDeviceType.BLUETOOTH
+                    CallEndpoint.TYPE_WIRED_HEADSET -> AudioDeviceType.WIRED_HEADSET
+                    CallEndpoint.TYPE_STREAMING -> AudioDeviceType.STREAMING
+                    else -> AudioDeviceType.UNKNOWN
+                },
+            name = endpoint.endpointName.toString(),
+            id = endpoint.identifier.toString(),
+        )
 
     /**
      * Converts a [CallAudioState] route into a domain [AudioDevice] model.
      */
-    private fun mapRouteToAudioDevice(route: Int) = AudioDevice(
-        type = when (route) {
-            CallAudioState.ROUTE_EARPIECE -> AudioDeviceType.EARPIECE
-            CallAudioState.ROUTE_SPEAKER -> AudioDeviceType.SPEAKER
-            CallAudioState.ROUTE_BLUETOOTH -> AudioDeviceType.BLUETOOTH
-            CallAudioState.ROUTE_WIRED_HEADSET -> AudioDeviceType.WIRED_HEADSET
-            CallAudioState.ROUTE_STREAMING -> AudioDeviceType.STREAMING
-            else -> AudioDeviceType.UNKNOWN
-        },
-    )
+    private fun mapRouteToAudioDevice(route: Int) =
+        AudioDevice(
+            type =
+                when (route) {
+                    CallAudioState.ROUTE_EARPIECE -> AudioDeviceType.EARPIECE
+                    CallAudioState.ROUTE_SPEAKER -> AudioDeviceType.SPEAKER
+                    CallAudioState.ROUTE_BLUETOOTH -> AudioDeviceType.BLUETOOTH
+                    CallAudioState.ROUTE_WIRED_HEADSET -> AudioDeviceType.WIRED_HEADSET
+                    CallAudioState.ROUTE_STREAMING -> AudioDeviceType.STREAMING
+                    else -> AudioDeviceType.UNKNOWN
+                },
+        )
 
     /**
      * Parses the supported route mask into a list of [AudioDevice] models.
@@ -730,16 +751,29 @@ class PhoneConnection internal constructor(
         logger.d("directRouteAudioDevice: type=$type, audioMode=$mode")
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && mode == android.media.AudioManager.MODE_IN_COMMUNICATION) {
-            val targetType = when (type) {
-                AudioDeviceType.SPEAKER -> android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
-                AudioDeviceType.EARPIECE -> android.media.AudioDeviceInfo.TYPE_BUILTIN_EARPIECE
-                AudioDeviceType.BLUETOOTH -> android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO
-                AudioDeviceType.WIRED_HEADSET -> android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET
-                else -> {
-                    logger.w("directRouteAudioDevice: unsupported type=$type, skipping")
-                    return
+            val targetType =
+                when (type) {
+                    AudioDeviceType.SPEAKER -> {
+                        android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+                    }
+
+                    AudioDeviceType.EARPIECE -> {
+                        android.media.AudioDeviceInfo.TYPE_BUILTIN_EARPIECE
+                    }
+
+                    AudioDeviceType.BLUETOOTH -> {
+                        android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+                    }
+
+                    AudioDeviceType.WIRED_HEADSET -> {
+                        android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET
+                    }
+
+                    else -> {
+                        logger.w("directRouteAudioDevice: unsupported type=$type, skipping")
+                        return
+                    }
                 }
-            }
             val deviceInfo = sysAm.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS).firstOrNull { it.type == targetType }
             if (deviceInfo != null && sysAm.setCommunicationDevice(deviceInfo)) {
                 logger.d("directRouteAudioDevice: setCommunicationDevice succeeded for type=$type")
