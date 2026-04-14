@@ -133,7 +133,7 @@ class PhoneConnection internal constructor(
      * For self-managed calls, Telecom does not control the ringtone directly — it delegates
      * silence requests to the app via this callback. Without this override the ringtone keeps
      * playing regardless of volume key presses (confirmed on Xiaomi/MIUI and Samsung/One UI,
-     * Android 11, WT-1300).
+     * Android 11).
      */
     override fun onSilence() {
         logger.i("Silencing ringtone for callId: $callId")
