@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import android.os.ParcelUuid
 import android.telecom.CallEndpoint
+import com.webtrit.callkeep.managers.AudioManager
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.services.connection.models.PerformDispatchHandle
 import org.junit.Test
@@ -40,6 +41,14 @@ class PhoneConnectionTest {
         val realConnection = PhoneConnection(context, dispatcher, metadata, onDisconnect)
         return spy(realConnection)
     }
+
+    /**
+     * Helper to create a PhoneConnection with a mock [AudioManager] injected.
+     */
+    private fun createConnectionWithAudioManager(
+        metadata: CallMetadata,
+        audioManager: AudioManager,
+    ): PhoneConnection = PhoneConnection(context, dispatcher, metadata, onDisconnect, audioManager = audioManager)
 
     /**
      * Helper to populate [PhoneConnection.availableCallEndpoints] so the
@@ -177,5 +186,45 @@ class PhoneConnectionTest {
         connection.updateData(update)
 
         verify(connection, never()).toggleSpeaker(true)
+    }
+
+    // -------------------------------------------------------------------------
+    // onSilence
+    // -------------------------------------------------------------------------
+
+    /**
+     * When Telecom sends a silence request (volume key pressed during RINGING),
+     * the ringtone must stop. The call stays in RINGING state — only audio stops.
+     */
+    @Test
+    fun `onSilence stops the ringtone`() {
+        val mockAudioManager = mock(AudioManager::class.java)
+        val connection =
+            createConnectionWithAudioManager(
+                metadata = CallMetadata(callId = "test-silence"),
+                audioManager = mockAudioManager,
+            )
+
+        connection.onSilence()
+
+        verify(mockAudioManager).stopRingtone()
+    }
+
+    /**
+     * Telecom fires onSilence() repeatedly while the volume key is held.
+     * Each call must stop the ringtone without side effects.
+     */
+    @Test
+    fun `onSilence called multiple times stops ringtone each time`() {
+        val mockAudioManager = mock(AudioManager::class.java)
+        val connection =
+            createConnectionWithAudioManager(
+                metadata = CallMetadata(callId = "test-silence-repeat"),
+                audioManager = mockAudioManager,
+            )
+
+        repeat(5) { connection.onSilence() }
+
+        verify(mockAudioManager, org.mockito.Mockito.times(5)).stopRingtone()
     }
 }

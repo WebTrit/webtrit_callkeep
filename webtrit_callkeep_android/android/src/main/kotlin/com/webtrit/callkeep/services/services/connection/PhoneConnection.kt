@@ -38,6 +38,7 @@ class PhoneConnection internal constructor(
     private var metadata: CallMetadata,
     var onDisconnectCallback: (connection: PhoneConnection) -> Unit,
     var timeout: ConnectionTimeout? = null,
+    private val audioManager: AudioManager = AudioManager(context),
 ) : Connection() {
     private var isMute = false
     private var isHasSpeaker = false
@@ -61,7 +62,6 @@ class PhoneConnection internal constructor(
     private var pendingEndpointRequest: CallEndpoint? = null
     private var availableCallEndpoints: List<CallEndpoint> = emptyList()
     private val notificationManager = NotificationManager()
-    private val audioManager = AudioManager(context)
 
     val callId: String
         get() = metadata.callId
