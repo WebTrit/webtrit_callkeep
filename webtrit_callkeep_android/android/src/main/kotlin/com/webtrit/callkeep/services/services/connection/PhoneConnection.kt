@@ -119,11 +119,26 @@ class PhoneConnection internal constructor(
 
     /**
      * Invoked by the system when the incoming call interface should be displayed.
+     *
+     * On Android 14+, VoipCallMonitor intercepts FSI delivery for CallStyle notifications.
+     * It fires the FSI only when it can match the notification to a tracked call. Self-managed
+     * connections (PROPERTY_SELF_MANAGED) are excluded from VoipCallMonitor's registry, so for
+     * our calls it never fires the FSI — it suppresses it instead.
+     *
+     * The fix is to start the app activity directly. ConnectionService is granted a
+     * background-activity-start exemption during onShowIncomingCallUi(), so this works reliably
+     * on all API levels regardless of USE_FULL_SCREEN_INTENT permission state.
      */
     override fun onShowIncomingCallUi() {
         logger.d("Showing incoming call UI for callId: $callId")
         notificationManager.showIncomingCallNotification(metadata)
         audioManager.startRingtone(metadata.ringtonePath)
+
+        Platform.getLaunchActivity(context)?.let { launchIntent ->
+            logger.d("onShowIncomingCallUi: starting activity directly for incoming call UI")
+            context.startActivity(launchIntent)
+        } ?: logger.w("onShowIncomingCallUi: no launch activity found, incoming call UI may not appear")
+
         dispatcher(CallLifecycleEvent.DidPushIncomingCall, metadata)
     }
 
