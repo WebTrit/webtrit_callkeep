@@ -136,7 +136,6 @@ class IncomingCallService :
                 connectionController = DefaultCallConnectionController(),
                 stopService = { stopSelf() },
                 isolateHandler = isolateHandler,
-                isCallAnswered = { callId -> CallkeepCore.instance.isAnswered(callId) },
             )
     }
 

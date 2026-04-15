@@ -1031,9 +1031,39 @@ class PHostBackgroundPushNotificationIsolateApi {
     }
   }
 
+  /// Terminates the PhoneConnection and stops IncomingCallService.
+  /// Called when the push isolate is done with an unanswered call
+  /// (missed, declined, server hangup, signaling error).
   Future<void> releaseCall(String callId) async {
     final String pigeonVar_channelName =
         'dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundPushNotificationIsolateApi.releaseCall$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[callId]);
+    final List<Object?>? pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else {
+      return;
+    }
+  }
+
+  /// Stops IncomingCallService without touching the PhoneConnection.
+  /// Called when the push isolate hands off an already-answered call
+  /// to the Activity. The PhoneConnection must stay alive so the
+  /// Activity can adopt it via CALL_ID_ALREADY_EXISTS_AND_ANSWERED.
+  Future<void> handoffCall(String callId) async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundPushNotificationIsolateApi.handoffCall$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,

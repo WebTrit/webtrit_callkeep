@@ -18,10 +18,6 @@ class CallLifecycleHandler(
     private val connectionController: CallConnectionController,
     private val stopService: () -> Unit,
     private var isolateHandler: FlutterIsolateHandler,
-    // Returns true if the call with [callId] has already been answered via the push
-    // notification path. Used by releaseCall() to skip terminateCall() for handoff —
-    // the PhoneConnection must stay alive so the Activity can adopt it.
-    private val isCallAnswered: (callId: String) -> Boolean = { false },
 ) : PHostBackgroundPushNotificationIsolateApi {
     internal var flutterApi: FlutterIsolateCommunicator? = null
 
@@ -134,18 +130,20 @@ class CallLifecycleHandler(
         callId: String,
         callback: (Result<Unit>) -> Unit,
     ) {
-        // releaseCall() means "the push isolate is done with this call".
-        // For unanswered calls (missed, declined, server hangup) this means terminate the
-        // PhoneConnection and stop the service.
-        // For answered calls the PhoneConnection must stay alive — the Activity is about
-        // to adopt it via reportNewIncomingCall → CALL_ID_ALREADY_EXISTS_AND_ANSWERED.
-        // Only stop the service; do not touch the connection.
-        if (!isCallAnswered(callId)) {
-            Log.d(TAG, "releaseCall: $callId — not answered, terminating connection")
-            terminateCall(CallMetadata(callId = callId), DeclineSource.SERVER)
-        } else {
-            Log.d(TAG, "releaseCall: $callId — already answered, skipping terminate (Activity handoff)")
-        }
+        Log.d(TAG, "releaseCall: $callId — unanswered, terminating connection and stopping service")
+        terminateCall(CallMetadata(callId = callId), DeclineSource.SERVER)
+        stopService()
+        callback(Result.success(Unit))
+    }
+
+    override fun handoffCall(
+        callId: String,
+        callback: (Result<Unit>) -> Unit,
+    ) {
+        // The call was answered via push notification and the Activity is taking over.
+        // The PhoneConnection must stay alive for the Activity to adopt it via
+        // reportNewIncomingCall → CALL_ID_ALREADY_EXISTS_AND_ANSWERED.
+        Log.d(TAG, "handoffCall: $callId — answered, stopping service only (Activity handoff)")
         stopService()
         callback(Result.success(Unit))
     }

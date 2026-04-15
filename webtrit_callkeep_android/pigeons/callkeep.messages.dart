@@ -225,8 +225,18 @@ abstract class PHostBackgroundPushNotificationIsolateApi {
   @async
   void endAllCalls();
 
+  /// Terminates the PhoneConnection and stops IncomingCallService.
+  /// Called when the push isolate is done with an unanswered call
+  /// (missed, declined, server hangup, signaling error).
   @async
   void releaseCall(String callId);
+
+  /// Stops IncomingCallService without touching the PhoneConnection.
+  /// Called when the push isolate hands off an already-answered call
+  /// to the Activity. The PhoneConnection must stay alive so the
+  /// Activity can adopt it via CALL_ID_ALREADY_EXISTS_AND_ANSWERED.
+  @async
+  void handoffCall(String callId);
 }
 
 @HostApi()
