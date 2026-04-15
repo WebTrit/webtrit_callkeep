@@ -176,6 +176,19 @@ class WebtritCallkeepPlugin :
     private var delegateLogsFlutterApi: PDelegateLogsFlutterApi? = null
     private var permissionsApi: PermissionsApi? = null
 
+    // The BinaryMessenger that belongs to the Activity's Flutter engine, captured
+    // synchronously in onAttachedToActivity BEFORE bindForegroundService() runs.
+    //
+    // WebtritCallkeepPlugin.messenger is a shared mutable field overwritten by every
+    // onAttachedToEngine() call. Push-notification isolates (IncomingCallService) each
+    // run in their own FlutterEngine and trigger onAttachedToEngine() independently.
+    // If a push isolate's onAttachedToEngine fires BETWEEN onAttachedToActivity() and
+    // the async onServiceConnected() callback, messenger will be pointing to the push
+    // engine's BinaryMessenger when flutterDelegateApi is created — causing
+    // performAnswerCall to be sent to the wrong engine where it is silently dropped.
+    // Capturing the Activity's messenger here, before any async gap, prevents this race.
+    private var activityBinaryMessenger: BinaryMessenger? = null
+
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         // Store binnyMessenger for later use if instance of the flutter engine belongs to main isolate OR call service isolate
         messenger = flutterPluginBinding.binaryMessenger
@@ -234,6 +247,10 @@ class WebtritCallkeepPlugin :
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         Log.i(TAG, "onAttachedToActivity id:${binding.hashCode()}")
         this.activityPluginBinding = binding
+        // Capture Activity's messenger before bindForegroundService() to prevent the race
+        // where a push-isolate onAttachedToEngine() overwrites messenger before
+        // onServiceConnected() fires and reads it to create flutterDelegateApi.
+        activityBinaryMessenger = messenger
 
         ActivityHolder.setActivity(binding.activity)
 
@@ -257,6 +274,7 @@ class WebtritCallkeepPlugin :
 
     override fun onDetachedFromActivity() {
         Log.i(TAG, "onDetachedFromActivity id:${activityPluginBinding?.hashCode()}")
+        activityBinaryMessenger = null
         ActivityHolder.setActivity(null)
 
         permissionsApi?.let {
@@ -381,7 +399,11 @@ class WebtritCallkeepPlugin :
                     Log.i(TAG, "ForegroundService connected: ${service?.javaClass?.name}")
                     val binder = service as ForegroundService.LocalBinder
                     foregroundService = binder.getService()
-                    foregroundService?.flutterDelegateApi = PDelegateFlutterApi(messenger)
+                    // Use activityBinaryMessenger (captured synchronously in onAttachedToActivity)
+                    // rather than the shared messenger field which may have been overwritten by a
+                    // push-isolate engine that started after onAttachedToActivity but before this
+                    // async callback fired.
+                    foregroundService?.flutterDelegateApi = PDelegateFlutterApi(activityBinaryMessenger ?: messenger)
                     // Flush any setUp() call that arrived before the service connected.
                     pendingSetUp?.let { (options, callback) ->
                         Log.i(TAG, "ForegroundService connected: replaying queued setUp()")
