@@ -72,15 +72,32 @@ class IncomingCallService :
         event: ConnectionEvent,
         data: Bundle?,
     ) {
-        // Only handle AnswerCall. DeclineCall and HungUp are handled via IC_RELEASE_WITH_DECLINE
-        // intent (triggered from PhoneConnection.onDisconnect -> cancelIncomingNotification).
+        // DidPushIncomingCall: acquire the wake lock here — after Telecom has confirmed the
+        // call and onShowIncomingCallUi() has been called — rather than at IC_INITIALIZE
+        // (FCM transport layer). Acquiring it at the transport layer woke the device before
+        // the FSI notification was posted, causing VoipCallMonitor (Android 14+) to process
+        // the notification on an already-awake device and block FSI delivery.
+        // DidPushIncomingCall travels cross-process from :callkeep_core via
+        // ConnectionServicePerformBroadcaster (system broadcast) and is listed in
+        // GLOBAL_LISTENER_EVENTS, so this listener receives it correctly in the main process.
+        //
+        // DeclineCall and HungUp are handled via IC_RELEASE_WITH_DECLINE intent
+        // (triggered from PhoneConnection.onDisconnect -> cancelIncomingNotification).
         // Handling them here as well would cause a double performEndCall: once from handleRelease
         // and once from this listener, racing to tear down the WebSocket before the SIP BYE is
         // sent. The IC_RELEASE_WITH_DECLINE path is the single authoritative source for decline
         // teardown.
-        if (event == CallLifecycleEvent.AnswerCall) {
-            val metadata = data?.let(CallMetadata::fromBundleOrNull) ?: return
-            performAnswerCall(metadata)
+        when (event) {
+            CallLifecycleEvent.DidPushIncomingCall -> {
+                acquireScreenWakeLockIfNeeded()
+            }
+
+            CallLifecycleEvent.AnswerCall -> {
+                val metadata = data?.let(CallMetadata::fromBundleOrNull) ?: return
+                performAnswerCall(metadata)
+            }
+
+            else -> {}
         }
     }
 
@@ -238,7 +255,6 @@ class IncomingCallService :
         timeoutHandler.removeCallbacks(independentTimeoutRunnable)
         timeoutHandler.postDelayed(independentTimeoutRunnable, INDEPENDENT_SERVICE_TIMEOUT_MS)
         callLifecycleHandler.currentCallData = metadata.toPCallkeepIncomingCallData()
-        acquireScreenWakeLockIfNeeded()
         incomingCallHandler.handle(metadata)
         // START_NOT_STICKY: if the OS kills this service after the incoming call is set up,
         // do not restart it. A restart would deliver a null intent — the current onStartCommand
