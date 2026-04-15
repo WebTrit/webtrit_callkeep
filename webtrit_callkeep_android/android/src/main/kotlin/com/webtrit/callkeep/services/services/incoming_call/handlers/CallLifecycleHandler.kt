@@ -6,6 +6,7 @@ import android.util.Log
 import com.webtrit.callkeep.PCallkeepIncomingCallData
 import com.webtrit.callkeep.PHostBackgroundPushNotificationIsolateApi
 import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.services.core.CallkeepCore
 import com.webtrit.callkeep.services.services.incoming_call.CallConnectionController
 import com.webtrit.callkeep.services.services.incoming_call.FlutterIsolateCommunicator
 
@@ -130,8 +131,29 @@ class CallLifecycleHandler(
         callId: String,
         callback: (Result<Unit>) -> Unit,
     ) {
-        Log.d(TAG, "releaseCall: $callId - terminate connection and stop service")
-        terminateCall(CallMetadata(callId = callId), DeclineSource.SERVER)
+        // releaseCall() is called by the push-notification isolate when it is done with
+        // background processing (signaling sync, missed-call notification, call log).
+        // It must NOT terminate the Telecom connection when the call is still active or
+        // pending — doing so declines a call that the user has not yet interacted with.
+        //
+        // This happens when the push-notification isolate connects to the signaling hub
+        // and receives a handshake with no active lines (e.g. the main-process signaling
+        // session already consumed the IncomingCallEvent, or a duplicate FCM delivery
+        // triggers a second isolate run). In that case _onNoActiveLines() fires and calls
+        // releaseCall(), but Telecom still has the call in RINGING state.
+        //
+        // Guard: if the call is promoted or pending in CallkeepCore, stop the FGS only.
+        // The Telecom connection stays alive and the user can still answer or decline.
+        val core = CallkeepCore.instance
+        val isActiveOrPending =
+            core.getAll().any { it.callId == callId } || core.getPendingCallIds().contains(callId)
+
+        if (isActiveOrPending) {
+            Log.d(TAG, "releaseCall: $callId is active/pending in Telecom — stopping service only, skipping terminate")
+        } else {
+            Log.d(TAG, "releaseCall: $callId - no active connection, terminating and stopping service")
+            terminateCall(CallMetadata(callId = callId), DeclineSource.SERVER)
+        }
         stopService()
         callback(Result.success(Unit))
     }
