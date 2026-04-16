@@ -32,6 +32,15 @@ class IncomingCallHandler(
     private var lastMetadata: CallMetadata? = null
     private val notifier by lazy { NotificationManagerCompat.from(service) }
 
+    // Derived from the current call's ID so each incoming call gets a unique notification ID.
+    // A unique ID guarantees the system treats the notification as new — not an update to a
+    // previous one — which is required for fullScreenIntent to fire on Android 14+.
+    // lastMetadata is always non-null when this property is read: showNotification() sets it
+    // before accessing currentNotificationId, and all other callers are guarded by the
+    // lastMetadata != null check in releaseIncomingCallNotification().
+    private val currentNotificationId: Int
+        get() = IncomingCallNotificationBuilder.notificationId(lastMetadata!!.callId)
+
     /**
      * Entry point to process a fresh incoming call.
      * Shows the ringing notification and starts background handling unless the main app is active.
@@ -71,7 +80,7 @@ class IncomingCallHandler(
     @SuppressLint("MissingPermission")
     fun muteIncomingCallNotification() {
         stopForegroundDetach()
-        notifier.cancel(IncomingCallNotificationBuilder.NOTIFICATION_ID)
+        notifier.cancel(currentNotificationId)
         startForegroundCompat(notificationBuilder.buildSilent())
     }
 
@@ -82,7 +91,7 @@ class IncomingCallHandler(
         val notification = notificationBuilder.apply { setCallMetaData(metadata) }.build()
         service.startForegroundServiceCompat(
             service,
-            IncomingCallNotificationBuilder.NOTIFICATION_ID,
+            currentNotificationId,
             notification,
             ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL,
         )
@@ -115,12 +124,12 @@ class IncomingCallHandler(
     private fun startForegroundCompat(notification: Notification) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             service.startForeground(
-                IncomingCallNotificationBuilder.NOTIFICATION_ID,
+                currentNotificationId,
                 notification,
                 android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL,
             )
         } else {
-            service.startForeground(IncomingCallNotificationBuilder.NOTIFICATION_ID, notification)
+            service.startForeground(currentNotificationId, notification)
         }
     }
 
