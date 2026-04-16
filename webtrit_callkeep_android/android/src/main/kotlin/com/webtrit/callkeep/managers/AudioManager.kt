@@ -7,6 +7,7 @@ import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.Ringtone
 import android.media.RingtoneManager
+import android.os.Build
 import com.webtrit.callkeep.common.AssetCacheManager
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.setLoopingCompat
@@ -24,6 +25,26 @@ class AudioManager(
         return devices.any { it.type == type }
     }
 
+    private fun isOutputDeviceConnected(type: Int): Boolean {
+        val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+        return devices.any { it.type == type }
+    }
+
+    /**
+     * Check if the device supports earpiece.
+     *
+     * @return True if the device supports earpiece, false otherwise.
+     */
+    fun isSupportEarpiese(): Boolean = isOutputDeviceConnected(AudioDeviceInfo.TYPE_BUILTIN_EARPIECE)
+    
+    /**
+     * Check if the device supports speakerphone.
+     *
+     * @return True if the device supports speakerphone, false otherwise.
+     */
+    fun isSupportSpeakerphone(): Boolean = isOutputDeviceConnected(AudioDeviceInfo.TYPE_BUILTIN_SPEAKER)
+
+
     /**
      * Check if a wired headset is connected.
      *
@@ -37,6 +58,19 @@ class AudioManager(
      * @return True if a Bluetooth headset is connected, false otherwise.
      */
     fun isBluetoothConnected(): Boolean = isInputDeviceConnected(AudioDeviceInfo.TYPE_BLUETOOTH_SCO)
+
+
+    /**
+     * Check if the speakerphone is currently on.
+     *
+     * @return True if the speakerphone is on, false otherwise.
+     */
+    fun isSpeakerphoneOn(): Boolean = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        audioManager.communicationDevice?.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+    } else {
+        audioManager.isSpeakerphoneOn
+    }
+
 
     /**
      * Start playing the ringtone.
