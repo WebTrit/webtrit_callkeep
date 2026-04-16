@@ -96,14 +96,14 @@ class IncomingCallService :
         // startForeground() here — in onCreate() — prevents ForegroundServiceDidNotStartInTimeException
         // regardless of which action onStartCommand() processes first.
         //
-        // IMPORTANT: use PLACEHOLDER_NOTIFICATION_ID (not NOTIFICATION_ID) here. The real
-        // incoming-call notification uses NOTIFICATION_ID and carries a fullScreenIntent. If both
-        // use the same ID, the system sees the real notification as an UPDATE to the placeholder
-        // and suppresses the fullScreenIntent (FSI fires only for newly-posted notification IDs,
-        // not for updates to existing ones). Using a distinct placeholder ID ensures that when
-        // IncomingCallHandler later calls startForeground(NOTIFICATION_ID, ...), the system
-        // treats it as a brand-new notification — allowing the FSI to fire and wake the screen.
-        // Android removes the placeholder automatically when the FGS transitions to NOTIFICATION_ID.
+        // IMPORTANT: use PLACEHOLDER_NOTIFICATION_ID here, NOT a call-derived notification ID.
+        // The real incoming-call notification is posted by IncomingCallHandler with an ID derived
+        // from the call ID (IncomingCallNotificationBuilder.notificationId(callId)). If the
+        // placeholder used the same ID, the system would treat the real notification as an UPDATE
+        // to the placeholder and suppress the fullScreenIntent — FSI fires only for newly-posted
+        // notification IDs, not for updates to existing ones. A distinct placeholder ID ensures
+        // that the real notification is always new from the system's perspective.
+        // Android removes the placeholder automatically when the FGS transitions to the new ID.
         val placeholder =
             Notification
                 .Builder(this, NotificationChannelManager.INCOMING_CALL_NOTIFICATION_CHANNEL_ID)
@@ -373,11 +373,13 @@ class IncomingCallService :
         private const val WAKELOCK_TIMEOUT_MS = 30_000L
         private const val WAKELOCK_TAG = "com.webtrit.callkeep:IncomingCallWakeLock"
 
-        // Notification ID used for the FGS placeholder in onCreate(). Must differ from
-        // IncomingCallNotificationBuilder.NOTIFICATION_ID so that the real incoming-call
-        // notification (which carries a fullScreenIntent) is posted as a new notification
-        // rather than an update — FSI fires only on newly-posted notification IDs.
-        private const val PLACEHOLDER_NOTIFICATION_ID = IncomingCallNotificationBuilder.NOTIFICATION_ID + 10
+        // Stable notification ID for the FGS placeholder posted in onCreate(). Must not
+        // collide with IDs produced by IncomingCallNotificationBuilder.notificationId(callId)
+        // (which are String.hashCode() values). Using a fixed sentinel keeps it simple; the
+        // placeholder lives only until IncomingCallHandler replaces it with the real call
+        // notification, so a hash collision (probability ~1 in 4 billion) would cause no
+        // visible problem — the placeholder is removed either way.
+        private const val PLACEHOLDER_NOTIFICATION_ID = 3
 
         @Volatile
         var isRunning = false

@@ -172,11 +172,24 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
 
     @SuppressLint("MissingPermission")
     fun updateToReleaseIncomingCallNotification() {
-        NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, buildReleaseNotification())
+        val id = callMetaData?.callId?.let { notificationId(it) } ?: NOTIFICATION_ID
+        NotificationManagerCompat.from(context).notify(id, buildReleaseNotification())
     }
 
     companion object {
         const val TAG = "INCOMING_CALL_NOTIFICATION"
+
+        // Legacy fixed ID kept only as a fallback when callId is unavailable.
+        // Prefer notificationId(callId) for all new code.
         const val NOTIFICATION_ID = 2
+
+        /**
+         * Returns a stable notification ID for the given call ID.
+         * Using a per-call ID ensures each incoming call is treated as a new
+         * notification by the system, so the fullScreenIntent fires correctly
+         * even when a previous call's notification with the same fixed ID still
+         * exists (or existed as a placeholder).
+         */
+        fun notificationId(callId: String): Int = callId.hashCode()
     }
 }
