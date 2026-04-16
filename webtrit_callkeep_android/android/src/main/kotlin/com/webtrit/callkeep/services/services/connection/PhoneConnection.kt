@@ -1,11 +1,13 @@
 package com.webtrit.callkeep.services.services.connection
 
+import android.app.KeyguardManager
 import android.content.Context
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.OutcomeReceiver
 import android.os.ParcelUuid
+import android.os.PowerManager
 import android.telecom.CallAudioState
 import android.telecom.CallEndpoint
 import android.telecom.CallEndpointException
@@ -121,18 +123,26 @@ class PhoneConnection internal constructor(
      * Invoked by the system when the incoming call interface should be displayed.
      *
      * Android grants a Background Activity Launch (BAL) exemption to the ConnectionService
-     * during this callback. We use it to start the activity directly, bypassing the
-     * VoipCallMonitor introduced in Android 14 which intercepts FSI delivery for self-managed
-     * calls and prevents the full-screen call UI from appearing.
+     * during this callback. When the screen is off or the device is locked, we start the
+     * activity directly to bypass the VoipCallMonitor introduced in Android 14, which
+     * intercepts FSI delivery for self-managed calls and prevents the full-screen call UI
+     * from appearing.
+     *
+     * When the screen is on and the device is unlocked, the notification is sufficient —
+     * the app handles the call UI via the DidPushIncomingCall event.
      */
     override fun onShowIncomingCallUi() {
         logger.d("Showing incoming call UI for callId: $callId")
         notificationManager.showIncomingCallNotification(metadata)
         audioManager.startRingtone(metadata.ringtonePath)
-        Platform.getLaunchActivity(context)?.let { launchIntent ->
-            logger.d("onShowIncomingCallUi: starting activity directly for incoming call UI")
-            context.startActivity(launchIntent)
-        } ?: logger.w("onShowIncomingCallUi: no launch activity found, incoming call UI may not appear")
+        val power = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        val keyguard = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        if (!power.isInteractive || keyguard.isKeyguardLocked) {
+            Platform.getLaunchActivity(context)?.let { launchIntent ->
+                logger.d("onShowIncomingCallUi: starting activity directly (screen off or locked)")
+                context.startActivity(launchIntent)
+            } ?: logger.w("onShowIncomingCallUi: no launch activity found, incoming call UI may not appear")
+        }
         dispatcher(CallLifecycleEvent.DidPushIncomingCall, metadata)
     }
 
