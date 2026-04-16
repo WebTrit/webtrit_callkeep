@@ -313,11 +313,16 @@ class IncomingCallService :
     }
 
     /**
-     * Returns true if the app is allowed to post full-screen intent notifications.
+     * Returns true if the system will fire a full-screen intent for this app's notifications,
+     * meaning the WakeLock is not needed to wake the screen.
      *
-     * On Android 14+ (API 34) this maps to the USE_FULL_SCREEN_INTENT permission, which
-     * some OEM ROMs (MIUI/HyperOS) deny by default. On older Android versions FSI is
-     * always available so this method returns false (WakeLock fallback is used).
+     * On Android 13 and below there is no VoipCallMonitor and no USE_FULL_SCREEN_INTENT
+     * permission gate, but acquiring the WakeLock on those versions is harmless and keeps
+     * the pre-existing behavior. Returning false here causes handleLaunch() to always acquire
+     * the WakeLock on API < 34, which is intentional.
+     *
+     * On Android 14+ (API 34) the permission can be denied by OEM ROMs (MIUI/HyperOS).
+     * When denied, canUseFullScreenIntent() returns false and we fall back to the WakeLock.
      */
     private fun isFullScreenIntentAvailable(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return false

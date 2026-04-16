@@ -172,10 +172,8 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
 
     @SuppressLint("MissingPermission")
     fun updateToReleaseIncomingCallNotification() {
-        NotificationManagerCompat.from(context).notify(
-            notificationId(callMetaData!!.callId),
-            buildReleaseNotification(),
-        )
+        val meta = requireNotNull(callMetaData) { "Call metadata must be set before updating the notification." }
+        NotificationManagerCompat.from(context).notify(notificationId(meta.callId), buildReleaseNotification())
     }
 
     companion object {
@@ -183,11 +181,19 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
 
         /**
          * Returns a stable notification ID for the given call ID.
+         *
          * Using a per-call ID ensures each incoming call is treated as a new
          * notification by the system, so the fullScreenIntent fires correctly
-         * even when a previous call's notification with the same fixed ID still
-         * exists (or existed as a placeholder).
+         * regardless of any previous call's notification.
+         *
+         * IDs are remapped into [MIN_CALL_NOTIFICATION_ID, Int.MAX_VALUE] to guarantee
+         * they never collide with reserved IDs used elsewhere in the app
+         * (FGS placeholder = 3, ActiveCallNotificationBuilder = 1, StandaloneCallService = 97).
          */
-        fun notificationId(callId: String): Int = callId.hashCode()
+        fun notificationId(callId: String): Int = (callId.hashCode() and Int.MAX_VALUE).coerceAtLeast(MIN_CALL_NOTIFICATION_ID)
+
+        // All per-call notification IDs are kept above this threshold so they never
+        // collide with small reserved IDs used by other services in this package.
+        private const val MIN_CALL_NOTIFICATION_ID = 1000
     }
 }
