@@ -63,6 +63,8 @@ class PhoneConnection internal constructor(
     private var availableCallEndpoints: List<CallEndpoint> = emptyList()
     private val notificationManager = NotificationManager()
 
+    private var lastKnownState: Int? = null
+
     val callId: String
         get() = metadata.callId
 
@@ -225,10 +227,16 @@ class PhoneConnection internal constructor(
         super.onStateChanged(state)
         handleConnectionTimeout(state)
 
-        when (state) {
-            STATE_DIALING -> onDialing()
-            STATE_ACTIVE -> onActiveConnection()
+        if(lastKnownState == STATE_NEW && state == STATE_DIALING){
+            onDialing()
         }
+
+        // Core Fix: Ensure onActiveConnection is called when transitioning from transient states (DIALING/RINGING) to ACTIVE and ignore Hold -> Unhold
+        if((lastKnownState == STATE_DIALING || lastKnownState == STATE_RINGING) && state == STATE_ACTIVE){
+            onActiveConnection()
+        }
+
+        lastKnownState = state
     }
 
     /**
@@ -299,8 +307,8 @@ class PhoneConnection internal constructor(
         logger.w("dispatchFallbackAudioState: callAudioState not set by system — building device list from AudioManager")
         val supportedDevices =
             buildList {
-                add(AudioDevice(AudioDeviceType.EARPIECE))
-                add(AudioDevice(AudioDeviceType.SPEAKER))
+                if (audioManager.isSupportEarpiese()) add(AudioDevice(AudioDeviceType.EARPIECE))
+                if (audioManager.isSupportSpeakerphone()) add(AudioDevice(AudioDeviceType.SPEAKER))
                 if (audioManager.isWiredHeadsetConnected()) add(AudioDevice(AudioDeviceType.WIRED_HEADSET))
                 if (audioManager.isBluetoothConnected()) add(AudioDevice(AudioDeviceType.BLUETOOTH))
             }
@@ -310,6 +318,7 @@ class PhoneConnection internal constructor(
             when {
                 audioManager.isBluetoothConnected() -> AudioDevice(AudioDeviceType.BLUETOOTH)
                 audioManager.isWiredHeadsetConnected() -> AudioDevice(AudioDeviceType.WIRED_HEADSET)
+                audioManager.isSpeakerphoneOn() -> AudioDevice(AudioDeviceType.SPEAKER)
                 else -> AudioDevice(AudioDeviceType.EARPIECE)
             }
         dispatcher(CallMediaEvent.AudioDeviceSet, metadata.copy(audioDevice = currentDevice))
@@ -424,22 +433,21 @@ class PhoneConnection internal constructor(
                 )
             }
         } else {
-            setAudioRoute(mapDeviceTypeToRoute(device.type))
+            val targetRoute = mapDeviceTypeToRoute(device.type)
+            setAudioRoute(targetRoute)
 
-            if (callAudioState == null) {
-                logger.w("callAudioState is null after setAudioRoute.")
-                // MIUI Android 12 (and similar OEM Telecom implementations) silently ignores
-                // setAudioRoute() for self-managed outgoing calls — the hardware never switches.
-                // Bypass Telecom and route audio directly via AudioManager so the device actually
-                // changes. On AOSP, setAudioRoute() works and onCallAudioStateChanged fires
-                // authoritatively; the direct call is redundant but idempotent there.
-                directRouteAudioDevice(device.type)
+            // MIUI Android 12 (and similar OEM Telecom implementations) silently ignores
+            // setAudioRoute() — both for outgoing calls (where callAudioState is always null)
+            // and for incoming calls after hold/unhold (where MIUI re-seeds callAudioState
+            // when ACTIVE is re-confirmed, making callAudioState non-null, yet still ignores
+            // setAudioRoute()). Always bypass Telecom and route directly via AudioManager.
+            // On AOSP, setAudioRoute() works and onCallAudioStateChanged fires authoritatively
+            // to override the proactive dispatch below — idempotent.
+            
+            directRouteAudioDevice(device.type)
+            dispatcher(CallMediaEvent.AudioDeviceSet, metadata.copy(audioDevice = device))
+            isHasSpeaker = device.type == AudioDeviceType.SPEAKER
 
-                // Proactively dispatch AudioDeviceSet because onCallAudioStateChanged never fires
-                // on MIUI. On AOSP, the callback fires and overrides this — idempotent.
-                dispatcher(CallMediaEvent.AudioDeviceSet, metadata.copy(audioDevice = device))
-                isHasSpeaker = device.type == AudioDeviceType.SPEAKER
-            }
         }
     }
 
