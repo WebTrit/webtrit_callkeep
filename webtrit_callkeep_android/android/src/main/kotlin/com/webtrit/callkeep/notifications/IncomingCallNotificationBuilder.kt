@@ -172,16 +172,14 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
 
     @SuppressLint("MissingPermission")
     fun updateToReleaseIncomingCallNotification() {
-        val id = callMetaData?.callId?.let { notificationId(it) } ?: NOTIFICATION_ID
-        NotificationManagerCompat.from(context).notify(id, buildReleaseNotification())
+        NotificationManagerCompat.from(context).notify(
+            notificationId(callMetaData!!.callId),
+            buildReleaseNotification(),
+        )
     }
 
     companion object {
         const val TAG = "INCOMING_CALL_NOTIFICATION"
-
-        // Legacy fixed ID kept only as a fallback when callId is unavailable.
-        // Prefer notificationId(callId) for all new code.
-        const val NOTIFICATION_ID = 2
 
         /**
          * Returns a stable notification ID for the given call ID.
