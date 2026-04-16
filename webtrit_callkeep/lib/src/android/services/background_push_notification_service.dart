@@ -40,12 +40,23 @@ class BackgroundPushNotificationService {
     return platform.endCallsBackgroundPushNotificationService();
   }
 
-  /// Unconditionally releases the incoming call service for [callId] (Android only).
+  /// Terminates the PhoneConnection and stops IncomingCallService for [callId] (Android only).
   ///
-  /// Call this after all isolate work is done (notifications shown, logs written).
-  /// Stops [IncomingCallService] regardless of Telecom connection state.
+  /// Use for unanswered calls: missed, declined by server, signaling error, or hangup
+  /// received before the user answered. Sends a decline signal to the ConnectionService
+  /// which destroys the PhoneConnection before stopping the service.
   Future<dynamic> releaseCall(String callId) {
     if (kIsWeb || !Platform.isAndroid) return Future.value();
     return platform.releaseCallBackgroundPushNotificationService(callId);
+  }
+
+  /// Stops IncomingCallService for [callId] without terminating the PhoneConnection (Android only).
+  ///
+  /// Use when the call was already answered via the push notification path and the Activity
+  /// is taking over. The PhoneConnection stays alive so the Activity can adopt it via
+  /// the CALL_ID_ALREADY_EXISTS_AND_ANSWERED path in reportNewIncomingCall.
+  Future<dynamic> handoffCall(String callId) {
+    if (kIsWeb || !Platform.isAndroid) return Future.value();
+    return platform.handoffCallBackgroundPushNotificationService(callId);
   }
 }

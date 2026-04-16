@@ -130,8 +130,20 @@ class CallLifecycleHandler(
         callId: String,
         callback: (Result<Unit>) -> Unit,
     ) {
-        Log.d(TAG, "releaseCall: $callId - terminate connection and stop service")
+        Log.d(TAG, "releaseCall: $callId — unanswered, terminating connection and stopping service")
         terminateCall(CallMetadata(callId = callId), DeclineSource.SERVER)
+        stopService()
+        callback(Result.success(Unit))
+    }
+
+    override fun handoffCall(
+        callId: String,
+        callback: (Result<Unit>) -> Unit,
+    ) {
+        // The call was answered via push notification and the Activity is taking over.
+        // The PhoneConnection must stay alive for the Activity to adopt it via
+        // reportNewIncomingCall → CALL_ID_ALREADY_EXISTS_AND_ANSWERED.
+        Log.d(TAG, "handoffCall: $callId — answered, stopping service only (Activity handoff)")
         stopService()
         callback(Result.success(Unit))
     }

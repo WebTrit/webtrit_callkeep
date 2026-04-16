@@ -301,6 +301,11 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
     return _backgroundPushNotificationIsolateApi.releaseCall(callId);
   }
 
+  @override
+  Future<dynamic> handoffCallBackgroundPushNotificationService(String callId) {
+    return _backgroundPushNotificationIsolateApi.handoffCall(callId);
+  }
+
   // ------------------------------------------------------------------------------------------------
   // Android background push notification service
 

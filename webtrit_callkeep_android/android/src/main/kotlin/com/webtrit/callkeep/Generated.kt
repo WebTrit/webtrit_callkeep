@@ -1198,7 +1198,23 @@ interface PHostBackgroundPushNotificationIsolateApi {
 
     fun endAllCalls(callback: (Result<Unit>) -> Unit)
 
+    /**
+     * Terminates the PhoneConnection and stops IncomingCallService.
+     * Called when the push isolate is done with an unanswered call
+     * (missed, declined, server hangup, signaling error).
+     */
     fun releaseCall(
+        callId: String,
+        callback: (Result<Unit>) -> Unit,
+    )
+
+    /**
+     * Stops IncomingCallService without touching the PhoneConnection.
+     * Called when the push isolate hands off an already-answered call
+     * to the Activity. The PhoneConnection must stay alive so the
+     * Activity can adopt it via CALL_ID_ALREADY_EXISTS_AND_ANSWERED.
+     */
+    fun handoffCall(
         callId: String,
         callback: (Result<Unit>) -> Unit,
     )
@@ -1260,6 +1276,25 @@ interface PHostBackgroundPushNotificationIsolateApi {
                         val args = message as List<Any?>
                         val callIdArg = args[0] as String
                         api.releaseCall(callIdArg) { result: Result<Unit> ->
+                            val error = result.exceptionOrNull()
+                            if (error != null) {
+                                reply.reply(GeneratedPigeonUtils.wrapError(error))
+                            } else {
+                                reply.reply(GeneratedPigeonUtils.wrapResult(null))
+                            }
+                        }
+                    }
+                } else {
+                    channel.setMessageHandler(null)
+                }
+            }
+            run {
+                val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostBackgroundPushNotificationIsolateApi.handoffCall$separatedMessageChannelSuffix", codec)
+                if (api != null) {
+                    channel.setMessageHandler { message, reply ->
+                        val args = message as List<Any?>
+                        val callIdArg = args[0] as String
+                        api.handoffCall(callIdArg) { result: Result<Unit> ->
                             val error = result.exceptionOrNull()
                             if (error != null) {
                                 reply.reply(GeneratedPigeonUtils.wrapError(error))
