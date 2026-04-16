@@ -5,6 +5,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
@@ -238,7 +239,20 @@ class IncomingCallService :
         timeoutHandler.removeCallbacks(independentTimeoutRunnable)
         timeoutHandler.postDelayed(independentTimeoutRunnable, INDEPENDENT_SERVICE_TIMEOUT_MS)
         callLifecycleHandler.currentCallData = metadata.toPCallkeepIncomingCallData()
-        acquireScreenWakeLockIfNeeded()
+        // Acquire the screen WakeLock only when USE_FULL_SCREEN_INTENT is unavailable
+        // (e.g. MIUI/HyperOS where the permission is denied by default).
+        //
+        // When FSI is granted, acquiring a WakeLock here wakes the device from Doze
+        // *before* the FSI notification is posted. On an already-awake device, SystemUI
+        // no longer fires FSI as part of a Doze-exit sequence — VoipCallMonitor
+        // (Android 14+) then intercepts the notification and silently suppresses FSI
+        // because self-managed connections are not tracked in its call registry.
+        //
+        // When FSI is unavailable the WakeLock is the only mechanism to turn the screen
+        // on; the notification provides the call UI instead of a full-screen Activity.
+        if (!isFullScreenIntentAvailable()) {
+            acquireScreenWakeLockIfNeeded()
+        }
         incomingCallHandler.handle(metadata)
         // START_NOT_STICKY: if the OS kills this service after the incoming call is set up,
         // do not restart it. A restart would deliver a null intent — the current onStartCommand
@@ -292,18 +306,30 @@ class IncomingCallService :
     }
 
     /**
-     * Acquires a wake lock that turns on the screen when an incoming call arrives.
+     * Returns true if the app is allowed to post full-screen intent notifications.
+     *
+     * On Android 14+ (API 34) this maps to the USE_FULL_SCREEN_INTENT permission, which
+     * some OEM ROMs (MIUI/HyperOS) deny by default. On older Android versions FSI is
+     * always available so this method returns false (WakeLock fallback is used).
+     */
+    private fun isFullScreenIntentAvailable(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return false
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        return nm.canUseFullScreenIntent()
+    }
+
+    /**
+     * Acquires a wake lock that turns on the screen when an incoming call arrives on
+     * devices where USE_FULL_SCREEN_INTENT is unavailable (e.g. MIUI/HyperOS).
      *
      * SCREEN_BRIGHT_WAKE_LOCK | ACQUIRE_CAUSES_WAKEUP is required to physically turn the
-     * screen on via PowerManager. This is complementary to the full-screen intent — the
-     * intent launches the incoming call UI; the wake lock turns the screen on so the UI
-     * is visible. They must both be used together.
+     * screen on via PowerManager. On these devices the notification provides the call UI
+     * instead of a full-screen Activity; the wake lock makes it visible.
      *
-     * The two mechanisms are NOT mutually exclusive. When the app is in the foreground
-     * with the screen locked (Activity state ON_STOP), Android may suppress the
-     * full-screen intent Activity launch because the app is already "visible". In that
-     * case only the wake lock can turn the screen on. Skipping it when full-screen intent
-     * is available causes the ringtone to play on a dark screen with no call UI shown.
+     * This must NOT be acquired before the FSI notification is posted on devices where
+     * FSI is available. Waking the device from Doze first changes the timing so that
+     * VoipCallMonitor (Android 14+) intercepts the FSI notification on an already-awake
+     * device, preventing SystemUI from firing it as part of the Doze-exit sequence.
      *
      * The lock expires automatically after WAKELOCK_TIMEOUT_MS to prevent battery
      * drain if the release path is skipped.
