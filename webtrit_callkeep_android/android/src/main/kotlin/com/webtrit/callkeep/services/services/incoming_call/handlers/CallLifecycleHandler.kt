@@ -140,10 +140,12 @@ class CallLifecycleHandler(
         callId: String,
         callback: (Result<Unit>) -> Unit,
     ) {
-        // The call was answered via push notification and the Activity is taking over.
-        // The PhoneConnection must stay alive for the Activity to adopt it via
-        // reportNewIncomingCall → CALL_ID_ALREADY_EXISTS_AND_ANSWERED.
-        Log.d(TAG, "handoffCall: $callId — answered, stopping service only (Activity handoff)")
+        // Called when the Activity is taking over the call — either because the user
+        // answered via push-notification UI, or because the Activity launched as a
+        // full-screen intent and the push isolate's budget expired while the call was
+        // still ringing. In both cases the PhoneConnection must stay alive; only
+        // IncomingCallService is stopped so the Activity can handle the call normally.
+        Log.d(TAG, "handoffCall: $callId — stopping service only, connection stays alive (Activity handoff)")
         stopService()
         callback(Result.success(Unit))
     }
