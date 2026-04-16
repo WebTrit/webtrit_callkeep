@@ -119,11 +119,20 @@ class PhoneConnection internal constructor(
 
     /**
      * Invoked by the system when the incoming call interface should be displayed.
+     *
+     * Android grants a Background Activity Launch (BAL) exemption to the ConnectionService
+     * during this callback. We use it to start the activity directly, bypassing the
+     * VoipCallMonitor introduced in Android 14 which intercepts FSI delivery for self-managed
+     * calls and prevents the full-screen call UI from appearing.
      */
     override fun onShowIncomingCallUi() {
         logger.d("Showing incoming call UI for callId: $callId")
         notificationManager.showIncomingCallNotification(metadata)
         audioManager.startRingtone(metadata.ringtonePath)
+        Platform.getLaunchActivity(context)?.let { launchIntent ->
+            logger.d("onShowIncomingCallUi: starting activity directly for incoming call UI")
+            context.startActivity(launchIntent)
+        } ?: logger.w("onShowIncomingCallUi: no launch activity found, incoming call UI may not appear")
         dispatcher(CallLifecycleEvent.DidPushIncomingCall, metadata)
     }
 
