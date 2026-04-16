@@ -38,7 +38,7 @@ class IncomingCallHandler(
     private val currentNotificationId: Int
         get() =
             lastMetadata?.callId?.let { IncomingCallNotificationBuilder.notificationId(it) }
-                ?: currentNotificationId
+                ?: IncomingCallNotificationBuilder.NOTIFICATION_ID
 
     /**
      * Entry point to process a fresh incoming call.
