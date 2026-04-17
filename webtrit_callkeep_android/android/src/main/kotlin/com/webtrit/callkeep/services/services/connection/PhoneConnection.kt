@@ -227,12 +227,12 @@ class PhoneConnection internal constructor(
         super.onStateChanged(state)
         handleConnectionTimeout(state)
 
-        if(lastKnownState == STATE_NEW && state == STATE_DIALING){
+        if (lastKnownState == STATE_NEW && state == STATE_DIALING) {
             onDialing()
         }
 
         // Core Fix: Ensure onActiveConnection is called when transitioning from transient states (DIALING/RINGING) to ACTIVE and ignore Hold -> Unhold
-        if((lastKnownState == STATE_DIALING || lastKnownState == STATE_RINGING) && state == STATE_ACTIVE){
+        if ((lastKnownState == STATE_DIALING || lastKnownState == STATE_RINGING) && state == STATE_ACTIVE) {
             onActiveConnection()
         }
 
@@ -443,11 +443,10 @@ class PhoneConnection internal constructor(
             // setAudioRoute()). Always bypass Telecom and route directly via AudioManager.
             // On AOSP, setAudioRoute() works and onCallAudioStateChanged fires authoritatively
             // to override the proactive dispatch below — idempotent.
-            
+
             directRouteAudioDevice(device.type)
             dispatcher(CallMediaEvent.AudioDeviceSet, metadata.copy(audioDevice = device))
             isHasSpeaker = device.type == AudioDeviceType.SPEAKER
-
         }
     }
 
@@ -935,9 +934,7 @@ class PhoneConnection internal constructor(
             timeout = ConnectionTimeout.createOutgoingConnectionTimeout(context),
         ).apply {
             setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
-            if (!Build.MANUFACTURER.equals("Samsung", ignoreCase = true)) {
-                setInitialized()
-            }
+            setInitialized()
             setDialing()
         }
     }
