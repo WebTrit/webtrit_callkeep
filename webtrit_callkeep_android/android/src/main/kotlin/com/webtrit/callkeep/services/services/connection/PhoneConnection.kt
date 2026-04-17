@@ -227,11 +227,12 @@ class PhoneConnection internal constructor(
         super.onStateChanged(state)
         handleConnectionTimeout(state)
 
-        if (state == STATE_DIALING && lastKnownState != STATE_HOLDING) {
+        if (lastKnownState == STATE_NEW && state == STATE_DIALING) {
             onDialing()
         }
 
-        if (state == STATE_ACTIVE && (lastKnownState == STATE_DIALING || lastKnownState == STATE_RINGING)) {
+        // Ensure onActiveConnection is called when transitioning from transient states (DIALING/RINGING) to ACTIVE and ignore Hold -> Unhold
+        if ((lastKnownState == STATE_DIALING || lastKnownState == STATE_RINGING) && state == STATE_ACTIVE) {
             onActiveConnection()
         }
 
@@ -933,9 +934,7 @@ class PhoneConnection internal constructor(
             timeout = ConnectionTimeout.createOutgoingConnectionTimeout(context),
         ).apply {
             setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
-            if (!Build.MANUFACTURER.equals("Samsung", ignoreCase = true)) {
-                setInitialized()
-            }
+            setInitialized()
             setDialing()
         }
     }
