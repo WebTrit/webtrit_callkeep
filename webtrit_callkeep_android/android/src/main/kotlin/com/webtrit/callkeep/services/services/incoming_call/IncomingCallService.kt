@@ -268,6 +268,11 @@ class IncomingCallService :
             acquireScreenWakeLockIfNeeded()
         }
         incomingCallHandler.handle(metadata)
+        // After the real call notification is posted with a call-derived ID, explicitly cancel
+        // the placeholder (ID=3) posted in onCreate(). On some OEM builds startForeground() with
+        // a new ID does not automatically remove the previous foreground notification, leaving the
+        // blank "Webtrit • now" entry visible for the entire duration of the call.
+        NotificationManagerCompat.from(this).cancel(PLACEHOLDER_NOTIFICATION_ID)
         // START_NOT_STICKY: if the OS kills this service after the incoming call is set up,
         // do not restart it. A restart would deliver a null intent — the current onStartCommand
         // handler has no fallback for that path and Android would kill the process with
