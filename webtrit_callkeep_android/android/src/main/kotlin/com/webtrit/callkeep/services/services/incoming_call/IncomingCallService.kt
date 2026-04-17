@@ -13,6 +13,7 @@ import android.os.Looper
 import android.os.PowerManager
 import androidx.annotation.Keep
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.R
@@ -200,6 +201,12 @@ class IncomingCallService :
         CallkeepCore.instance.removeConnectionEventListener(this)
 
         stopForeground(STOP_FOREGROUND_REMOVE)
+        // Explicitly cancel the placeholder notification (ID=3) posted in onCreate().
+        // stopForeground(REMOVE) only removes the *current* foreground notification.
+        // If the FGS transitioned to a call-derived ID before this point, the placeholder
+        // may not be auto-cancelled by Android on all OEM builds, leaving a blank
+        // "Webtrit • now" notification that the user cannot dismiss (setOngoing=true).
+        NotificationManagerCompat.from(this).cancel(PLACEHOLDER_NOTIFICATION_ID)
         isolateHandler.cleanup()
         super.onDestroy()
     }
