@@ -231,7 +231,7 @@ class PhoneConnection internal constructor(
             onDialing()
         }
 
-        // Ensure onActiveConnection is called when transitioning from transient states (DIALING/RINGING) to ACTIVE and ignore Hold -> Unhold
+        // Core Fix: Ensure onActiveConnection is called when transitioning from transient states (DIALING/RINGING) to ACTIVE and ignore Hold -> Unhold
         if ((lastKnownState == STATE_DIALING || lastKnownState == STATE_RINGING) && state == STATE_ACTIVE) {
             onActiveConnection()
         }
