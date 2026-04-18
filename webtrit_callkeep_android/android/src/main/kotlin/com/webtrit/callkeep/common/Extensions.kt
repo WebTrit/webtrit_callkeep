@@ -100,12 +100,13 @@ fun Context.registerReceiverCompat(
     receiver: BroadcastReceiver,
     intentFilter: IntentFilter,
     exported: Boolean = true,
+    permission: String? = null,
 ) {
     if (SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         val flags = if (exported) Context.RECEIVER_EXPORTED else Context.RECEIVER_NOT_EXPORTED
-        registerReceiver(receiver, intentFilter, flags)
+        registerReceiver(receiver, intentFilter, permission, null, flags)
     } else {
-        registerReceiver(receiver, intentFilter)
+        registerReceiver(receiver, intentFilter, permission, null)
     }
 }
 
@@ -118,13 +119,14 @@ fun Context.registerReceiverCompat(
 fun Context.sendInternalBroadcast(
     action: String,
     extras: Bundle? = null,
+    permission: String? = null,
 ) {
     Intent(action)
         .apply {
             setPackage(packageName)
             addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
             extras?.let { putExtras(it) }
-        }.also { sendBroadcast(it) }
+        }.also { sendBroadcast(it, permission) }
 }
 
 fun Lifecycle.Event.toPCallkeepLifecycleType(): PCallkeepLifecycleEvent =
