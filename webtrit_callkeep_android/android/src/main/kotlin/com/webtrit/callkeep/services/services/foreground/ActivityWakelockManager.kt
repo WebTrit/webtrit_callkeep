@@ -2,6 +2,7 @@ package com.webtrit.callkeep.services.services.foreground
 
 import android.app.Activity
 import android.view.WindowManager
+import androidx.annotation.MainThread
 import com.webtrit.callkeep.common.ActivityProvider
 import com.webtrit.callkeep.common.Log
 
@@ -10,7 +11,7 @@ class ActivityWakelockManager(
 ) {
     private val operationQueue = mutableListOf<(Activity) -> Unit>()
 
-    @Volatile private var isScreenOnDesired = false
+    private var isScreenOnDesired = false
 
     // Reference to the listener for unsubscribing later
     private val activityChangeListener: (Activity?) -> Unit = { activity ->
@@ -33,6 +34,7 @@ class ActivityWakelockManager(
     /**
      * Keeps the screen on by applying the FLAG_KEEP_SCREEN_ON to the current activity.
      */
+    @MainThread
     fun acquireScreenWakeLock() {
         isScreenOnDesired = true
         executeOrQueue("Acquire FLAG_KEEP_SCREEN_ON") { activity ->
@@ -44,6 +46,7 @@ class ActivityWakelockManager(
     /**
      * Releases the wake lock by clearing the FLAG_KEEP_SCREEN_ON from the current activity.
      */
+    @MainThread
     fun releaseScreenWakeLock() {
         isScreenOnDesired = false
         executeOrQueue("Release FLAG_KEEP_SCREEN_ON") { activity ->
@@ -106,6 +109,7 @@ class ActivityWakelockManager(
      * Disposes of the WakelockManager by unsubscribing from ActivityHolder updates.
      * Forcefully clears the keep-screen-on flag before disposing resources to prevent leaks.
      */
+    @MainThread
     fun dispose() {
         logger.d("Disposing ActivityWakelockManager. Cleanup started.")
 

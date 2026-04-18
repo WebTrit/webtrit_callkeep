@@ -47,7 +47,7 @@ interface ConnectionTracker {
      * Used to propagate mid-call updates (e.g. hasVideo toggle) to the shadow
      * without going through a full promote() cycle.
      */
-    fun updateMetadata(metadata: CallMetadata)
+    fun updateMetadata(metadata: CallMetadata) {}
 
     /** Mark [callId] as terminated, removing it from the active connections map. */
     fun markTerminated(callId: String)
