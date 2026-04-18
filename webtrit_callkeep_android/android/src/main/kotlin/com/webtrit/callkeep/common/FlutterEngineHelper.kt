@@ -38,8 +38,12 @@ class FlutterEngineHelper(
             }
             flutterLoader.ensureInitializationComplete(context.applicationContext, null)
 
-            // FlutterJNI is obtained via FlutterInjector so test overrides and DI
-            // replacements are respected, matching the behaviour of the 1-arg constructor.
+            // automaticallyRegisterPlugins=false: prevents GeneratedPluginRegistrant from
+            // registering all app plugins on this background FGS engine. On Android 16
+            // REMOTE_MESSAGING services, audio/hardware init in onAttachedToEngine can
+            // block the Dart VM from running the background entry point.
+            // FlutterJNI is obtained via FlutterInjector so DI overrides are respected,
+            // matching the internal behaviour of the 1-arg FlutterEngine constructor.
             backgroundEngine =
                 FlutterEngine(context.applicationContext, null, FlutterInjector.instance().flutterJNIFactory.provideFlutterJNI(), null, false).also { engine ->
                     val callbackInformation =
