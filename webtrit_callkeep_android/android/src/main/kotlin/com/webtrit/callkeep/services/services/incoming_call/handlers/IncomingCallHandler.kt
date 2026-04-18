@@ -74,6 +74,18 @@ class IncomingCallHandler(
     }
 
     /**
+     * Explicitly cancels the call-derived notification (ID ≥ 1000) if a call was handled.
+     * Called from IncomingCallService.onDestroy() as a belt-and-suspenders cleanup:
+     * stopForeground(REMOVE) does not reliably cancel the FGS notification on some Samsung
+     * builds, so we cancel it directly to prevent a lingering notification in the shade.
+     */
+    @SuppressLint("MissingPermission")
+    fun cancelCurrentNotification() {
+        if (lastMetadata == null) return
+        notifier.cancel(currentNotificationId)
+    }
+
+    /**
      * Transitions the foreground Service to a silent call notification
      * (keeps the service in foreground, but cancels the loud ringing one).
      */
