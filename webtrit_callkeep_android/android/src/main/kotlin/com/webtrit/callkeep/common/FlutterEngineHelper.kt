@@ -4,7 +4,6 @@ import android.content.Context
 import android.util.Log
 import io.flutter.FlutterInjector
 import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.embedding.engine.FlutterJNI
 import io.flutter.embedding.engine.dart.DartExecutor.DartCallback
 import io.flutter.view.FlutterCallbackInformation
 
@@ -39,8 +38,10 @@ class FlutterEngineHelper(
             }
             flutterLoader.ensureInitializationComplete(context.applicationContext, null)
 
+            // FlutterJNI is obtained via FlutterInjector so test overrides and DI
+            // replacements are respected, matching the behaviour of the 1-arg constructor.
             backgroundEngine =
-                FlutterEngine(context.applicationContext, null, FlutterJNI(), null, false).also { engine ->
+                FlutterEngine(context.applicationContext, null, FlutterInjector.instance().flutterJNIFactory.provideFlutterJNI(), null, false).also { engine ->
                     val callbackInformation =
                         FlutterCallbackInformation.lookupCallbackInformation(callbackHandle)
 
