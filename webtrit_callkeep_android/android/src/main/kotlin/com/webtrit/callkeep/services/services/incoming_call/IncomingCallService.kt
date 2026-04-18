@@ -305,15 +305,12 @@ class IncomingCallService :
             acquireScreenWakeLockIfNeeded()
         }
         // Remove the placeholder before posting the real notification.
-        // STOP_FOREGROUND_REMOVE guarantees the placeholder is fully gone before
-        // startForeground() in handle() posts the real notification.
-        //
-        // The previous approach (DETACH + cancel) was unreliable: NotificationManager.cancel()
-        // is silently ignored when Android still considers the notification FGS-bound within
-        // the same dispatch cycle, leaving the placeholder visible alongside the real notification.
-        //
-        // REMOVE + immediate startForeground() is safe: both calls are synchronous on the
-        // main thread, so the service is never truly backgrounded between them.
+        // NotificationManager.cancel() cannot remove an FGS-bound notification — it is
+        // silently ignored when Android still considers the notification foreground-attached.
+        // STOP_FOREGROUND_REMOVE removes the binding and the notification atomically,
+        // guaranteeing the placeholder is gone before startForeground() in handle() posts
+        // the real ringing notification. Both calls are synchronous on the main thread so
+        // the service is never truly backgrounded between them.
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         incomingCallHandler.handle(metadata)
         // START_NOT_STICKY: if the OS kills this service after the incoming call is set up,
