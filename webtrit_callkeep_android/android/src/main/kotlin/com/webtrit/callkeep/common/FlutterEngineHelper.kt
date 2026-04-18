@@ -38,8 +38,10 @@ class FlutterEngineHelper(
             }
             flutterLoader.ensureInitializationComplete(context.applicationContext, null)
 
+            // FlutterJNI is obtained via FlutterInjector so test overrides and DI
+            // replacements are respected, matching the behaviour of the 1-arg constructor.
             backgroundEngine =
-                FlutterEngine(context.applicationContext).also { engine ->
+                FlutterEngine(context.applicationContext, null, FlutterInjector.instance().flutterJNIFactory.provideFlutterJNI(), null, false).also { engine ->
                     val callbackInformation =
                         FlutterCallbackInformation.lookupCallbackInformation(callbackHandle)
 
