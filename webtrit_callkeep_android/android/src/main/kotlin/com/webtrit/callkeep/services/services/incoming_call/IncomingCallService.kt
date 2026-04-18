@@ -305,17 +305,16 @@ class IncomingCallService :
             acquireScreenWakeLockIfNeeded()
         }
         // Remove the placeholder before posting the real notification.
-        // Samsung (and other OEMs) force-show all CATEGORY_CALL notifications as heads-up,
-        // ignoring setPriority/setSilent. Without this, the placeholder (no buttons) appears
-        // as a brief heads-up before the real notification (with buttons) replaces it —
-        // the user perceives two sequential call notifications.
+        // STOP_FOREGROUND_REMOVE guarantees the placeholder is fully gone before
+        // startForeground() in handle() posts the real notification.
         //
-        // DETACH first: converts the placeholder from an FGS-bound notification (which
-        // NotificationManager.cancel() cannot remove) into a regular cancellable one.
-        // All three calls are synchronous on the main thread so the service is never
-        // truly backgrounded — startForeground() in handle() re-binds FGS immediately.
-        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)
-        NotificationManagerCompat.from(this).cancel(PLACEHOLDER_NOTIFICATION_ID)
+        // The previous approach (DETACH + cancel) was unreliable: NotificationManager.cancel()
+        // is silently ignored when Android still considers the notification FGS-bound within
+        // the same dispatch cycle, leaving the placeholder visible alongside the real notification.
+        //
+        // REMOVE + immediate startForeground() is safe: both calls are synchronous on the
+        // main thread, so the service is never truly backgrounded between them.
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         incomingCallHandler.handle(metadata)
         // START_NOT_STICKY: if the OS kills this service after the incoming call is set up,
         // do not restart it. A restart would deliver a null intent — the current onStartCommand
