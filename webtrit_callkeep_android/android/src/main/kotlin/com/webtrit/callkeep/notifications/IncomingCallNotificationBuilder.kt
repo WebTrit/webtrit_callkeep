@@ -135,7 +135,10 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
         return NotificationCompat
             .Builder(context, INCOMING_CALL_NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setCategory(NotificationCompat.CATEGORY_CALL)
+            // Intentionally no CATEGORY_CALL here: Samsung/MIUI force all CATEGORY_CALL
+            // notifications to show as heads-up regardless of priority or silent flag.
+            // This notification is a transitional FGS keepalive during teardown and must
+            // not be visible to the user.
             .setContentTitle(title)
             .setContentText(description)
             .setOnlyAlertOnce(true)

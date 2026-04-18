@@ -14,6 +14,7 @@ import android.os.PowerManager
 import androidx.annotation.Keep
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.ServiceCompat
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.R
@@ -109,7 +110,12 @@ class IncomingCallService :
             Notification
                 .Builder(this, NotificationChannelManager.INCOMING_CALL_NOTIFICATION_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setCategory(NotificationCompat.CATEGORY_CALL)
+                // No CATEGORY_CALL: Samsung/MIUI force all CATEGORY_CALL notifications to
+                // show as heads-up even without title or text, producing a blank notification.
+                // The placeholder is a technical FGS keepalive only — the real ringing
+                // notification posted in handleLaunch() still uses CATEGORY_CALL.
+                .setContentTitle(getString(R.string.incoming_call_title))
+                .setContentText(getString(R.string.incoming_call_connecting))
                 .setOngoing(true)
                 .build()
         startForegroundServiceCompat(
@@ -164,8 +170,18 @@ class IncomingCallService :
             return START_NOT_STICKY
         }
 
-        if (!isInitialized && action == IncomingCallRelease.IC_RELEASE_WITH_DECLINE.name) {
-            Log.w(TAG, "onStartCommand: IC_RELEASE_WITH_DECLINE received before IC_INITIALIZE — service was restarted after stop, ignoring")
+        if (!isInitialized && (
+                action == IncomingCallRelease.IC_RELEASE_WITH_DECLINE.name ||
+                    action == IncomingCallRelease.IC_RELEASE_WITH_ANSWER.name
+            )
+        ) {
+            Log.w(TAG, "onStartCommand: $action received before IC_INITIALIZE — service was restarted after stop, ignoring")
+            // Remove the placeholder notification immediately — do not wait for onDestroy().
+            // Without this, the blank placeholder posted in onCreate() remains visible in the
+            // notification shade until the Looper processes onDestroy(), which on Samsung Android 11
+            // can take 1–2 seconds and shows as a blank "Webtrit" notification to the user.
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            NotificationManagerCompat.from(this).cancel(PLACEHOLDER_NOTIFICATION_ID)
             stopSelf()
             return START_NOT_STICKY
         }
@@ -201,8 +217,14 @@ class IncomingCallService :
         CallkeepCore.instance.removeConnectionEventListener(this)
 
         stopForeground(STOP_FOREGROUND_REMOVE)
+        // Explicitly cancel the call-derived notification (ID ≥ 1000).
+        // stopForeground(REMOVE) does not reliably remove the FGS notification on some
+        // Samsung builds (Android 11), leaving buildSilent() or the ringing notification
+        // lingering in the shade. cancelCurrentNotification() handles this explicitly.
+        if (::incomingCallHandler.isInitialized) {
+            incomingCallHandler.cancelCurrentNotification()
+        }
         // Explicitly cancel the placeholder notification (ID=3) posted in onCreate().
-        // stopForeground(REMOVE) only removes the *current* foreground notification.
         // If the FGS transitioned to a call-derived ID before this point, the placeholder
         // may not be auto-cancelled by Android on all OEM builds, leaving a blank
         // "Webtrit • now" notification that the user cannot dismiss (setOngoing=true).
@@ -267,6 +289,18 @@ class IncomingCallService :
         if (!isFullScreenIntentAvailable()) {
             acquireScreenWakeLockIfNeeded()
         }
+        // Remove the placeholder before posting the real notification.
+        // Samsung (and other OEMs) force-show all CATEGORY_CALL notifications as heads-up,
+        // ignoring setPriority/setSilent. Without this, the placeholder (no buttons) appears
+        // as a brief heads-up before the real notification (with buttons) replaces it —
+        // the user perceives two sequential call notifications.
+        //
+        // DETACH first: converts the placeholder from an FGS-bound notification (which
+        // NotificationManager.cancel() cannot remove) into a regular cancellable one.
+        // All three calls are synchronous on the main thread so the service is never
+        // truly backgrounded — startForeground() in handle() re-binds FGS immediately.
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)
+        NotificationManagerCompat.from(this).cancel(PLACEHOLDER_NOTIFICATION_ID)
         incomingCallHandler.handle(metadata)
         // START_NOT_STICKY: if the OS kills this service after the incoming call is set up,
         // do not restart it. A restart would deliver a null intent — the current onStartCommand
