@@ -74,6 +74,8 @@ class ForegroundService :
     ConnectionEventListener {
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
 
+    private val activityWakelockManager = ActivityWakelockManager(ActivityHolder)
+
     // Stored as fields so onDestroy() can cancel the timeout and unregister the receiver
     // if the service is destroyed before the TearDownComplete ack arrives.
     private var tearDownAckReceiver: BroadcastReceiver? = null
@@ -323,6 +325,7 @@ class ForegroundService :
                             logger.i("$logContext: ongoing call confirmed by CS")
                             // Outgoing call is now active in Telecom — promote from pending.
                             core.promote(callMetaData.callId, callMetaData, PCallkeepConnectionState.STATE_DIALING)
+                            syncScreenWakelock()
                             flutterDelegateApi?.performStartCall(
                                 callMetaData.callId,
                                 callMetaData.handle!!.toPHandle(),
@@ -705,6 +708,7 @@ class ForegroundService :
             tearDownAckReceiver = null
             // Step 6: Reset tracker state for the next session.
             core.clear()
+            syncScreenWakelock()
             // Keep PhoneConnectionService alive for the next session so that its next
             // incoming intents (e.g. AnswerCall) arrive at a live service instance.
             core.tearDownService()
@@ -780,6 +784,7 @@ class ForegroundService :
                 proximityEnabled = proximityEnabled,
             )
         core.startUpdateCall(metadata)
+        syncScreenWakelock()
         callback.invoke(Result.success(Unit))
     }
 
@@ -935,12 +940,22 @@ class ForegroundService :
     // --------------------------------
     //
 
+    private fun syncScreenWakelock() {
+        val hasVideo = core.getAll().any { it.hasVideo == true }
+        if (hasVideo) {
+            activityWakelockManager.acquireScreenWakeLock()
+        } else {
+            activityWakelockManager.releaseScreenWakeLock()
+        }
+    }
+
     private fun handleCSReportDidPushIncomingCall(extras: Bundle?) {
         logger.d("handleCSReportDidPushIncomingCall")
         extras?.let {
             val metadata = CallMetadata.fromBundle(it)
             // Promote from pending to fully registered incoming connection.
             core.promote(metadata.callId, metadata, PCallkeepConnectionState.STATE_RINGING)
+            syncScreenWakelock()
 
             // Resolve any deferred reportNewIncomingCall Pigeon callback waiting for this
             // Telecom confirmation. This is the success path: Telecom accepted the call,
@@ -1022,6 +1037,7 @@ class ForegroundService :
             // AND the endCall re-fire path fires it a second time — producing a duplicate
             // delegate callback.
             core.clearAndMarkEndCallDispatched(callId)
+            syncScreenWakelock()
 
             flutterDelegateApi?.performEndCall(callId) {}
             flutterDelegateApi?.didDeactivateAudioSession {}
@@ -1175,6 +1191,8 @@ class ForegroundService :
             }
         }
         tearDownAckReceiver = null
+
+        activityWakelockManager.dispose()
 
         // Phone account registration is tied to the user session, not the service lifecycle.
         // Unregistration happens only in finishTearDown() (explicit logout/tearDown call).

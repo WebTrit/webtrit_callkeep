@@ -32,8 +32,7 @@ import org.robolectric.annotation.Config
  * TearDown only synchronises sensor state — connection cleanup is performed synchronously
  * by ForegroundService.tearDown() before the TearDown intent is sent.
  *
- * [ActivityWakelockManager] and [ProximitySensorManager] are mocked so tests run without
- * a real Activity or proximity sensor hardware.
+ * [ProximitySensorManager] is mocked so tests run without real proximity sensor hardware.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [Build.VERSION_CODES.UPSIDE_DOWN_CAKE])
@@ -43,7 +42,6 @@ class PhoneConnectionServiceDispatcherTest {
     private val capturedEvents = mutableListOf<ConnectionEvent>()
     private val captureDispatcher: PerformDispatchHandle = { event, _ -> capturedEvents.add(event) }
 
-    private val wakelockManager: ActivityWakelockManager = mock()
     private val proximitySensorManager: ProximitySensorManager = mock()
 
     private lateinit var connectionManager: ConnectionManager
@@ -58,7 +56,6 @@ class PhoneConnectionServiceDispatcherTest {
             PhoneConnectionServiceDispatcher(
                 connectionManager,
                 captureDispatcher,
-                wakelockManager,
                 proximitySensorManager,
             )
     }

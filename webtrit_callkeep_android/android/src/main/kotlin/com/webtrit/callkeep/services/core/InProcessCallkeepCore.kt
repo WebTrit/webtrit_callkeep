@@ -255,7 +255,10 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
 
     override fun startEstablishCall(metadata: CallMetadata) = router.startEstablishCall(metadata)
 
-    override fun startUpdateCall(metadata: CallMetadata) = router.startUpdateCall(metadata)
+    override fun startUpdateCall(metadata: CallMetadata) {
+        tracker.updateMetadata(metadata)
+        router.startUpdateCall(metadata)
+    }
 
     override fun startSendDtmfCall(metadata: CallMetadata) = router.startSendDtmfCall(metadata)
 

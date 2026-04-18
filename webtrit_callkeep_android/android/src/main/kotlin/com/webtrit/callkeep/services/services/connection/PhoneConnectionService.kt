@@ -13,7 +13,6 @@ import android.telecom.PhoneAccount
 import android.telecom.PhoneAccountHandle
 import androidx.annotation.RequiresPermission
 import com.webtrit.callkeep.PIncomingCallError
-import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.AssetCacheManager
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
@@ -58,7 +57,6 @@ class PhoneConnectionService : ConnectionService() {
         // Set the service state to true when the system starts the service.
         isRunning = true
 
-        val activityWakelockManager = ActivityWakelockManager(ActivityHolder)
         val proximitySensorManager =
             ProximitySensorManager(applicationContext, PhoneConnectionConsts())
 
@@ -66,7 +64,6 @@ class PhoneConnectionService : ConnectionService() {
             PhoneConnectionServiceDispatcher(
                 connectionManager,
                 ::performEventHandle,
-                activityWakelockManager,
                 proximitySensorManager,
             )
     }

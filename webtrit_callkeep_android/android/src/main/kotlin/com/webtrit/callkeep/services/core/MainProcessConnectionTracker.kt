@@ -155,6 +155,12 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
             }
     }
 
+    override fun updateMetadata(metadata: CallMetadata) {
+        connections.computeIfPresent(metadata.callId) { _, existing ->
+            existing.mergeWith(metadata)
+        }
+    }
+
     /**
      * Mark [callId] as terminated. Removes it from all active tracking sets so that
      * [isTerminated] returns true (derived: absent from all sets = terminated).
