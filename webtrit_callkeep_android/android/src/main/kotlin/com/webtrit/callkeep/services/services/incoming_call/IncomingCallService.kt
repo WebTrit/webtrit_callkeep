@@ -2,8 +2,10 @@ package com.webtrit.callkeep.services.services.incoming_call
 
 import android.app.Notification
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Bundle
@@ -22,6 +24,8 @@ import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.PermissionsHelper
 import com.webtrit.callkeep.common.StorageDelegate
+import com.webtrit.callkeep.common.registerReceiverCompat
+import com.webtrit.callkeep.common.sendInternalBroadcast
 import com.webtrit.callkeep.common.startForegroundServiceCompat
 import com.webtrit.callkeep.managers.NotificationChannelManager
 import com.webtrit.callkeep.models.CallMetadata
@@ -47,10 +51,27 @@ class IncomingCallService :
     // denied). Released in onDestroy() or when the call is answered/declined.
     private var screenWakeLock: PowerManager.WakeLock? = null
 
-    // Set to true only after IC_INITIALIZE is handled. Guards against spurious IC_RELEASE_WITH_DECLINE
-    // intents that restart the service after it has already been stopped (e.g. when releaseCall()
-    // calls stopSelf() and Telecom later triggers PhoneConnection.onDisconnect → startService).
+    // Set to true only after IC_INITIALIZE is handled. Guards against a duplicate IC_INITIALIZE
+    // arriving while the service is still processing a call (e.g. a second push while the first
+    // call is still in the teardown window).
     private var isInitialized = false
+
+    // Receives IC_RELEASE_WITH_ANSWER / IC_RELEASE_WITH_DECLINE from release().
+    // Registered in onCreate() and unregistered in onDestroy() so it only lives while the
+    // service is alive. If the service is not running the broadcast goes nowhere — no zombie
+    // restart, no placeholder notification appearing after the call ends.
+    private val releaseReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                context: Context?,
+                intent: Intent?,
+            ) {
+                when (intent?.action) {
+                    IncomingCallRelease.IC_RELEASE_WITH_DECLINE.name -> handleRelease(answered = false)
+                    IncomingCallRelease.IC_RELEASE_WITH_ANSWER.name -> handleRelease(answered = true)
+                }
+            }
+        }
 
     private val timeoutHandler = Handler(Looper.getMainLooper())
     private val stopTimeoutRunnable =
@@ -127,6 +148,15 @@ class IncomingCallService :
 
         Log.d(TAG, "IncomingCallService created")
 
+        registerReceiverCompat(
+            releaseReceiver,
+            IntentFilter().apply {
+                addAction(IncomingCallRelease.IC_RELEASE_WITH_DECLINE.name)
+                addAction(IncomingCallRelease.IC_RELEASE_WITH_ANSWER.name)
+            },
+            exported = false,
+        )
+
         CallkeepCore.instance.addConnectionEventListener(this)
 
         isolateHandler =
@@ -170,29 +200,13 @@ class IncomingCallService :
             return START_NOT_STICKY
         }
 
-        if (!isInitialized && (
-                action == IncomingCallRelease.IC_RELEASE_WITH_DECLINE.name ||
-                    action == IncomingCallRelease.IC_RELEASE_WITH_ANSWER.name
-            )
-        ) {
-            Log.w(TAG, "onStartCommand: $action received before IC_INITIALIZE — service was restarted after stop, ignoring")
-            // Remove the placeholder notification immediately — do not wait for onDestroy().
-            // Without this, the blank placeholder posted in onCreate() remains visible in the
-            // notification shade until the Looper processes onDestroy(), which on Samsung Android 11
-            // can take 1–2 seconds and shows as a blank "Webtrit" notification to the user.
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            NotificationManagerCompat.from(this).cancel(PLACEHOLDER_NOTIFICATION_ID)
-            stopSelf()
-            return START_NOT_STICKY
-        }
-
         return when (action) {
-            // Listen foreground service actions
             PushNotificationServiceEnums.IC_INITIALIZE.name -> handleLaunch(metadata!!)
 
-            IncomingCallRelease.IC_RELEASE_WITH_DECLINE.name -> handleRelease(answered = false)
-
-            IncomingCallRelease.IC_RELEASE_WITH_ANSWER.name -> handleRelease(answered = true)
+            // IC_RELEASE_WITH_ANSWER / IC_RELEASE_WITH_DECLINE are now delivered via
+            // releaseReceiver (BroadcastReceiver registered in onCreate). They no longer
+            // arrive through onStartCommand — release() uses sendInternalBroadcast() instead
+            // of startService(), so the service is never restarted after it has stopped.
 
             // Listen push notification actions (Only notify connection service)
             NotificationAction.Answer.action -> reportAnswerToConnectionService(metadata!!)
@@ -214,6 +228,7 @@ class IncomingCallService :
 
         setRunning(false)
         releaseScreenWakeLock()
+        unregisterReceiver(releaseReceiver)
         CallkeepCore.instance.removeConnectionEventListener(this)
 
         stopForeground(STOP_FOREGROUND_REMOVE)
@@ -458,34 +473,17 @@ class IncomingCallService :
             context: Context,
             type: IncomingCallRelease,
         ) {
-            // Do NOT guard on isRunning here. isRunning is a static field set only in the
-            // main-process JVM. After the :callkeep_core process split, PhoneConnection
-            // (which runs in :callkeep_core) calls this method; in that JVM isRunning is
-            // always false, so the guard would silently drop every cancel request and leave
-            // the incoming-call notification frozen after answer/decline.
+            // Deliver via broadcast instead of startService().
+            // releaseReceiver is registered in onCreate() and unregistered in onDestroy(),
+            // so it is alive only while the service is running. If the service has already
+            // stopped the broadcast goes nowhere — no zombie restart, no placeholder
+            // notification appearing after the call ends.
             //
-            // startService() is intentional here, NOT startForegroundService().
-            //
-            // IC_RELEASE is only meaningful when IncomingCallService is already running
-            // as a foreground service (started by IC_INITIALIZE). While that service is
-            // alive the process is not treated as background by Android, so plain
-            // startService() is allowed and delivers the action to onStartCommand().
-            //
-            // If IncomingCallService is NOT running we must not start it via
-            // startForegroundService(): the release code path never calls startForeground(),
-            // so Android would kill the app after the 5-second deadline with
-            // ForegroundServiceDidNotStartInTimeException.
-            // startService() instead fails with a caught IllegalStateException (background-
-            // start restriction) which is the correct no-op: the notification is already
-            // gone because the service was never running.
-            runCatching {
-                context.startService(
-                    Intent(context, IncomingCallService::class.java).apply { this.action = type.name },
-                )
-                Log.d(TAG, "Release action $type initiated.")
-            }.onFailure { e ->
-                Log.w(TAG, "Release action $type: startService failed: $e")
-            }
+            // sendInternalBroadcast() uses setPackage(packageName) + FLAG_RECEIVER_FOREGROUND,
+            // so it crosses the :callkeep_core → main-process boundary safely and is
+            // delivered only to this app.
+            context.sendInternalBroadcast(type.name)
+            Log.d(TAG, "Release action $type initiated via broadcast.")
         }
     }
 }
