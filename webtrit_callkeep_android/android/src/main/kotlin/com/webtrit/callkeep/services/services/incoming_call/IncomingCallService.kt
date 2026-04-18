@@ -1,12 +1,10 @@
 package com.webtrit.callkeep.services.services.incoming_call
 
-import android.app.Notification
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -14,9 +12,6 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
 import androidx.annotation.Keep
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
-import androidx.core.app.ServiceCompat
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.R
@@ -26,8 +21,6 @@ import com.webtrit.callkeep.common.PermissionsHelper
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.registerReceiverCompat
 import com.webtrit.callkeep.common.sendInternalBroadcast
-import com.webtrit.callkeep.common.startForegroundServiceCompat
-import com.webtrit.callkeep.managers.NotificationChannelManager
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.models.toPCallkeepIncomingCallData
@@ -112,39 +105,6 @@ class IncomingCallService :
         super.onCreate()
         setRunning(true)
         ContextHolder.init(applicationContext)
-
-        // Satisfy Android's 5-second startForeground() requirement immediately.
-        // onStartCommand() may be delayed if the main thread is busy (e.g. platform-channel IPC
-        // during Flutter cold-start) or if IC_RELEASE arrives before IC_INITIALIZE. Calling
-        // startForeground() here — in onCreate() — prevents ForegroundServiceDidNotStartInTimeException
-        // regardless of which action onStartCommand() processes first.
-        //
-        // IMPORTANT: use PLACEHOLDER_NOTIFICATION_ID here, NOT a call-derived notification ID.
-        // The real incoming-call notification is posted by IncomingCallHandler with an ID derived
-        // from the call ID (IncomingCallNotificationBuilder.notificationId(callId)). If the
-        // placeholder used the same ID, the system would treat the real notification as an UPDATE
-        // to the placeholder and suppress the fullScreenIntent — FSI fires only for newly-posted
-        // notification IDs, not for updates to existing ones. A distinct placeholder ID ensures
-        // that the real notification is always new from the system's perspective.
-        // Android removes the placeholder automatically when the FGS transitions to the new ID.
-        val placeholder =
-            Notification
-                .Builder(this, NotificationChannelManager.INCOMING_CALL_NOTIFICATION_CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_notification)
-                // No CATEGORY_CALL: Samsung/MIUI force all CATEGORY_CALL notifications to
-                // show as heads-up even without title or text, producing a blank notification.
-                // The placeholder is a technical FGS keepalive only — the real ringing
-                // notification posted in handleLaunch() still uses CATEGORY_CALL.
-                .setContentTitle(getString(R.string.incoming_call_title))
-                .setContentText(getString(R.string.incoming_call_connecting))
-                .setOngoing(true)
-                .build()
-        startForegroundServiceCompat(
-            this,
-            PLACEHOLDER_NOTIFICATION_ID,
-            placeholder,
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL,
-        )
 
         Log.d(TAG, "IncomingCallService created")
 
@@ -239,11 +199,6 @@ class IncomingCallService :
         if (::incomingCallHandler.isInitialized) {
             incomingCallHandler.cancelCurrentNotification()
         }
-        // Explicitly cancel the placeholder notification (ID=3) posted in onCreate().
-        // If the FGS transitioned to a call-derived ID before this point, the placeholder
-        // may not be auto-cancelled by Android on all OEM builds, leaving a blank
-        // "Webtrit • now" notification that the user cannot dismiss (setOngoing=true).
-        NotificationManagerCompat.from(this).cancel(PLACEHOLDER_NOTIFICATION_ID)
         isolateHandler.cleanup()
         super.onDestroy()
     }
@@ -304,14 +259,6 @@ class IncomingCallService :
         if (!isFullScreenIntentAvailable()) {
             acquireScreenWakeLockIfNeeded()
         }
-        // Remove the placeholder before posting the real notification.
-        // NotificationManager.cancel() cannot remove an FGS-bound notification — it is
-        // silently ignored when Android still considers the notification foreground-attached.
-        // STOP_FOREGROUND_REMOVE removes the binding and the notification atomically,
-        // guaranteeing the placeholder is gone before startForeground() in handle() posts
-        // the real ringing notification. Both calls are synchronous on the main thread so
-        // the service is never truly backgrounded between them.
-        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         incomingCallHandler.handle(metadata)
         // START_NOT_STICKY: if the OS kills this service after the incoming call is set up,
         // do not restart it. A restart would deliver a null intent — the current onStartCommand
@@ -429,14 +376,6 @@ class IncomingCallService :
         private const val INDEPENDENT_SERVICE_TIMEOUT_MS = 60_000L
         private const val WAKELOCK_TIMEOUT_MS = 30_000L
         private const val WAKELOCK_TAG = "com.webtrit.callkeep:IncomingCallWakeLock"
-
-        // Stable notification ID for the FGS placeholder posted in onCreate(). Must not
-        // collide with IDs produced by IncomingCallNotificationBuilder.notificationId(callId)
-        // (which are String.hashCode() values). Using a fixed sentinel keeps it simple; the
-        // placeholder lives only until IncomingCallHandler replaces it with the real call
-        // notification, so a hash collision (probability ~1 in 4 billion) would cause no
-        // visible problem — the placeholder is removed either way.
-        private const val PLACEHOLDER_NOTIFICATION_ID = 3
 
         @Volatile
         var isRunning = false

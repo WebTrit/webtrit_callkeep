@@ -93,4 +93,9 @@ class ActiveCallService : Service() {
         }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onDestroy() {
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        super.onDestroy()
+    }
 }
