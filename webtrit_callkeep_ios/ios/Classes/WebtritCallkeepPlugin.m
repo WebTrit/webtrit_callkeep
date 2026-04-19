@@ -11,6 +11,8 @@
 #import "NSUUID+v5.h"
 
 static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
+static NSString *const kActiveCallUUIDsKey = @"WebtritCallkeepActiveCallUUIDs";
+static NSString *const kEndedCallUUIDsKey  = @"WebtritCallkeepEndedCallUUIDs";
 
 @interface WebtritCallkeepPlugin ()<PKPushRegistryDelegate, CXProviderDelegate, WTPPushRegistryHostApi, WTPHostApi, WTPHostSoundApi>
 @end
@@ -178,6 +180,40 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   completion(nil);
 }
 
+// MARK: - Call state persistence (WT-1347)
+
+- (void)_markUUIDActive:(NSString *)uuidString {
+  NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+  NSMutableArray *active = [([ud arrayForKey:kActiveCallUUIDsKey] ?: @[]) mutableCopy];
+  if (![active containsObject:uuidString]) [active addObject:uuidString];
+  [ud setObject:active forKey:kActiveCallUUIDsKey];
+  NSMutableDictionary *ended = [([ud dictionaryForKey:kEndedCallUUIDsKey] ?: @{}) mutableCopy];
+  [ended removeObjectForKey:uuidString];
+  [ud setObject:ended forKey:kEndedCallUUIDsKey];
+}
+
+- (void)_markUUIDEnded:(NSString *)uuidString {
+  NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+  NSMutableArray *active = [([ud arrayForKey:kActiveCallUUIDsKey] ?: @[]) mutableCopy];
+  [active removeObject:uuidString];
+  [ud setObject:active forKey:kActiveCallUUIDsKey];
+  NSMutableDictionary *ended = [([ud dictionaryForKey:kEndedCallUUIDsKey] ?: @{}) mutableCopy];
+  ended[uuidString] = @([[NSDate date] timeIntervalSince1970]);
+  [ud setObject:ended forKey:kEndedCallUUIDsKey];
+}
+
+- (void)_pruneEndedUUIDs {
+  NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+  NSMutableDictionary *ended = [([ud dictionaryForKey:kEndedCallUUIDsKey] ?: @{}) mutableCopy];
+  NSTimeInterval cutoff = [[NSDate date] timeIntervalSince1970] - 86400;
+  for (NSString *key in ended.allKeys) {
+    if ([ended[key] doubleValue] < cutoff) [ended removeObjectForKey:key];
+  }
+  [ud setObject:ended forKey:kEndedCallUUIDsKey];
+}
+
+// MARK: - WTPHostApi
+
 - (void)reportNewIncomingCall:(NSString *)uuidString
                        handle:(WTPHandle *)handle
                   displayName:(NSString *)displayName
@@ -198,6 +234,7 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
                                     update:callUpdate
                                 completion:^(NSError *error) {
                                   if (error == nil) {
+                                    [self _markUUIDActive:uuidString];
                                     [self assignIdleTimerDisabled:callUpdate.hasVideo];
                                     completion(nil, nil);
                                   } else if ([error.domain isEqualToString:CXErrorDomainIncomingCall]) {
@@ -215,6 +252,7 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
 #ifdef DEBUG
   NSLog(@"[Callkeep][reportConnectingOutgoingCall] uuidString = %@", uuidString);
 #endif
+  [self _markUUIDActive:uuidString];
   [_provider reportOutgoingCallWithUUID:[[NSUUID alloc] initWithUUIDString:uuidString]
                 startedConnectingAtDate:nil];
   completion(nil);
@@ -272,7 +310,7 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
 #ifdef DEBUG
   NSLog(@"[Callkeep][reportEndCall] uuidString = %@", uuidString);
 #endif
-    
+  [self _markUUIDEnded:uuidString];
   [_provider reportCallWithUUID:[[NSUUID alloc] initWithUUIDString:uuidString]
                     endedAtDate:nil
                          reason:[reason toCallKit]];
@@ -415,6 +453,26 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
   CXTransaction *transaction = [[CXTransaction alloc] initWithAction:action];
 
   [self requestTransaction:transaction completion:completion];
+}
+
+- (void)getConnectionWithUuidString:(NSString *)uuidString
+                         completion:(void (^)(WTPCallkeepConnection *_Nullable, FlutterError *_Nullable))completion {
+  [self _pruneEndedUUIDs];
+  NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+  NSDictionary *ended = [ud dictionaryForKey:kEndedCallUUIDsKey] ?: @{};
+  NSArray *active = [ud arrayForKey:kActiveCallUUIDsKey] ?: @[];
+
+  WTPCallkeepConnectionState state;
+  if (ended[uuidString]) {
+    state = WTPCallkeepConnectionStateStateDisconnected;
+  } else if ([active containsObject:uuidString]) {
+    state = WTPCallkeepConnectionStateStateActive;
+  } else {
+    completion(nil, nil);
+    return;
+  }
+
+  completion([WTPCallkeepConnection makeWithCallId:uuidString state:state], nil);
 }
 
 #pragma mark - WTPHostApi - helpers
@@ -718,6 +776,7 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
 #ifdef DEBUG
   NSLog(@"[Callkeep][CXProviderDelegate][provider:performEndCallAction:]");
 #endif
+  [self _markUUIDEnded:action.callUUID.UUIDString];
   [_delegateFlutterApi performEndCall:action.callUUID.UUIDString
                            completion:^(NSNumber *fulfill, FlutterError *error) {
                              if (error != nil || [fulfill boolValue] != YES) {
