@@ -15,9 +15,12 @@ class PermissionsHelper(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             val notificationManager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.canUseFullScreenIntent()
+            val granted = notificationManager.canUseFullScreenIntent()
+            if (!granted) {
+                Log.w(TAG, "USE_FULL_SCREEN_INTENT permission is not granted (Android 14+); full-screen incoming call UI will not appear on lock screen")
+            }
+            granted
         } else {
-            Log.i(TAG, "Can't check full screen intent permission on this device")
             true
         }
 

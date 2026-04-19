@@ -95,9 +95,13 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
                 // third-party apps.  Passing a full-screen intent when the permission is
                 // denied has no effect and produces a log warning, so we skip it and rely on
                 // the WakeLock acquired in IncomingCallService as the fallback wake mechanism.
-                val canUseFullScreen =
-                    StorageDelegate.IncomingCall.isFullScreen(context) &&
-                        PermissionsHelper(context).canUseFullScreenIntent()
+                val isFullScreenEnabled = StorageDelegate.IncomingCall.isFullScreen(context)
+                val hasFullScreenPermission = PermissionsHelper(context).canUseFullScreenIntent()
+                val canUseFullScreen = isFullScreenEnabled && hasFullScreenPermission
+                Log.d(
+                    TAG,
+                    "fullScreenIntent: enabled=$isFullScreenEnabled permissionGranted=$hasFullScreenPermission → applied=$canUseFullScreen",
+                )
                 if (canUseFullScreen) {
                     setFullScreenIntent(buildOpenAppIntent(context), true)
                 }
