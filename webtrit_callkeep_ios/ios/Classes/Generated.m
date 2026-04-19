@@ -81,6 +81,16 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
 }
 @end
 
+@implementation WTPCallkeepConnectionStateBox
+- (instancetype)initWithValue:(WTPCallkeepConnectionState)value {
+  self = [super init];
+  if (self) {
+    _value = value;
+  }
+  return self;
+}
+@end
+
 @interface WTPIOSOptions ()
 + (WTPIOSOptions *)fromList:(NSArray<id> *)list;
 + (nullable WTPIOSOptions *)nullableFromList:(NSArray<id> *)list;
@@ -120,6 +130,12 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
 @interface WTPCallRequestError ()
 + (WTPCallRequestError *)fromList:(NSArray<id> *)list;
 + (nullable WTPCallRequestError *)nullableFromList:(NSArray<id> *)list;
+- (NSArray<id> *)toList;
+@end
+
+@interface WTPCallkeepConnection ()
++ (WTPCallkeepConnection *)fromList:(NSArray<id> *)list;
++ (nullable WTPCallkeepConnection *)nullableFromList:(NSArray<id> *)list;
 - (NSArray<id> *)toList;
 @end
 
@@ -330,6 +346,32 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
 }
 @end
 
+@implementation WTPCallkeepConnection
++ (instancetype)makeWithCallId:(NSString *)callId
+    state:(WTPCallkeepConnectionState)state {
+  WTPCallkeepConnection* pigeonResult = [[WTPCallkeepConnection alloc] init];
+  pigeonResult.callId = callId;
+  pigeonResult.state = state;
+  return pigeonResult;
+}
++ (WTPCallkeepConnection *)fromList:(NSArray<id> *)list {
+  WTPCallkeepConnection *pigeonResult = [[WTPCallkeepConnection alloc] init];
+  pigeonResult.callId = GetNullableObjectAtIndex(list, 0);
+  WTPCallkeepConnectionStateBox *boxedWTPCallkeepConnectionState = GetNullableObjectAtIndex(list, 1);
+  pigeonResult.state = boxedWTPCallkeepConnectionState.value;
+  return pigeonResult;
+}
++ (nullable WTPCallkeepConnection *)nullableFromList:(NSArray<id> *)list {
+  return (list) ? [WTPCallkeepConnection fromList:list] : nil;
+}
+- (NSArray<id> *)toList {
+  return @[
+    self.callId ?: [NSNull null],
+    [[WTPCallkeepConnectionStateBox alloc] initWithValue:self.state],
+  ];
+}
+@end
+
 @interface WTGeneratedPigeonCodecReader : FlutterStandardReader
 @end
 @implementation WTGeneratedPigeonCodecReader
@@ -355,20 +397,26 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
       NSNumber *enumAsNumber = [self readValue];
       return enumAsNumber == nil ? nil : [[WTPCallRequestErrorEnumBox alloc] initWithValue:[enumAsNumber integerValue]];
     }
-    case 134: 
-      return [WTPIOSOptions fromList:[self readValue]];
+    case 134: {
+      NSNumber *enumAsNumber = [self readValue];
+      return enumAsNumber == nil ? nil : [[WTPCallkeepConnectionStateBox alloc] initWithValue:[enumAsNumber integerValue]];
+    }
     case 135: 
-      return [WTPAndroidOptions fromList:[self readValue]];
+      return [WTPIOSOptions fromList:[self readValue]];
     case 136: 
-      return [WTPOptions fromList:[self readValue]];
+      return [WTPAndroidOptions fromList:[self readValue]];
     case 137: 
-      return [WTPHandle fromList:[self readValue]];
+      return [WTPOptions fromList:[self readValue]];
     case 138: 
-      return [WTPEndCallReason fromList:[self readValue]];
+      return [WTPHandle fromList:[self readValue]];
     case 139: 
-      return [WTPIncomingCallError fromList:[self readValue]];
+      return [WTPEndCallReason fromList:[self readValue]];
     case 140: 
+      return [WTPIncomingCallError fromList:[self readValue]];
+    case 141: 
       return [WTPCallRequestError fromList:[self readValue]];
+    case 142: 
+      return [WTPCallkeepConnection fromList:[self readValue]];
     default:
       return [super readValueOfType:type];
   }
@@ -399,26 +447,33 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
     WTPCallRequestErrorEnumBox *box = (WTPCallRequestErrorEnumBox *)value;
     [self writeByte:133];
     [self writeValue:(value == nil ? [NSNull null] : [NSNumber numberWithInteger:box.value])];
-  } else if ([value isKindOfClass:[WTPIOSOptions class]]) {
+  } else if ([value isKindOfClass:[WTPCallkeepConnectionStateBox class]]) {
+    WTPCallkeepConnectionStateBox *box = (WTPCallkeepConnectionStateBox *)value;
     [self writeByte:134];
-    [self writeValue:[value toList]];
-  } else if ([value isKindOfClass:[WTPAndroidOptions class]]) {
+    [self writeValue:(value == nil ? [NSNull null] : [NSNumber numberWithInteger:box.value])];
+  } else if ([value isKindOfClass:[WTPIOSOptions class]]) {
     [self writeByte:135];
     [self writeValue:[value toList]];
-  } else if ([value isKindOfClass:[WTPOptions class]]) {
+  } else if ([value isKindOfClass:[WTPAndroidOptions class]]) {
     [self writeByte:136];
     [self writeValue:[value toList]];
-  } else if ([value isKindOfClass:[WTPHandle class]]) {
+  } else if ([value isKindOfClass:[WTPOptions class]]) {
     [self writeByte:137];
     [self writeValue:[value toList]];
-  } else if ([value isKindOfClass:[WTPEndCallReason class]]) {
+  } else if ([value isKindOfClass:[WTPHandle class]]) {
     [self writeByte:138];
     [self writeValue:[value toList]];
-  } else if ([value isKindOfClass:[WTPIncomingCallError class]]) {
+  } else if ([value isKindOfClass:[WTPEndCallReason class]]) {
     [self writeByte:139];
     [self writeValue:[value toList]];
-  } else if ([value isKindOfClass:[WTPCallRequestError class]]) {
+  } else if ([value isKindOfClass:[WTPIncomingCallError class]]) {
     [self writeByte:140];
+    [self writeValue:[value toList]];
+  } else if ([value isKindOfClass:[WTPCallRequestError class]]) {
+    [self writeByte:141];
+    [self writeValue:[value toList]];
+  } else if ([value isKindOfClass:[WTPCallkeepConnection class]]) {
+    [self writeByte:142];
     [self writeValue:[value toList]];
   } else {
     [super writeValue:value];
@@ -793,6 +848,25 @@ void SetUpWTPHostApiWithSuffix(id<FlutterBinaryMessenger> binaryMessenger, NSObj
         NSString *arg_uuidString = GetNullableObjectAtIndex(args, 0);
         NSString *arg_key = GetNullableObjectAtIndex(args, 1);
         [api sendDTMF:arg_uuidString key:arg_key completion:^(WTPCallRequestError *_Nullable output, FlutterError *_Nullable error) {
+          callback(wrapResult(output, error));
+        }];
+      }];
+    } else {
+      [channel setMessageHandler:nil];
+    }
+  }
+  {
+    FlutterBasicMessageChannel *channel =
+      [[FlutterBasicMessageChannel alloc]
+        initWithName:[NSString stringWithFormat:@"%@%@", @"dev.flutter.pigeon.webtrit_callkeep_ios.PHostApi.getConnection", messageChannelSuffix]
+        binaryMessenger:binaryMessenger
+        codec:WTGetGeneratedCodec()];
+    if (api) {
+      NSCAssert([api respondsToSelector:@selector(getConnectionWithUuidString:completion:)], @"WTPHostApi api (%@) doesn't respond to @selector(getConnectionWithUuidString:completion:)", api);
+      [channel setMessageHandler:^(id _Nullable message, FlutterReply callback) {
+        NSArray<id> *args = message;
+        NSString *arg_uuidString = GetNullableObjectAtIndex(args, 0);
+        [api getConnectionWithUuidString:arg_uuidString completion:^(WTPCallkeepConnection *_Nullable output, FlutterError *_Nullable error) {
           callback(wrapResult(output, error));
         }];
       }];
