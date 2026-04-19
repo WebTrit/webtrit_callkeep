@@ -21,6 +21,7 @@ class PermissionsHelper(
             }
             granted
         } else {
+            Log.d(TAG, "USE_FULL_SCREEN_INTENT permission check skipped (Android < 14); assuming granted")
             true
         }
 
