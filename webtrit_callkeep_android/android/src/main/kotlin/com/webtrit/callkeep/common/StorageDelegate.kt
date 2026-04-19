@@ -1,6 +1,7 @@
 package com.webtrit.callkeep.common
 
 import android.content.Context
+import android.util.Log
 
 /**
  * A delegate for managing SharedPreferences related to incoming and root routes.
@@ -56,7 +57,10 @@ object StorageDelegate {
             sharedPreferences(context).edit().putBoolean(FULL_SCREEN, enabled).apply()
         }
 
-        fun isFullScreen(context: Context): Boolean = sharedPreferences(context).getBoolean(FULL_SCREEN, true)
+        fun isFullScreen(context: Context): Boolean =
+            sharedPreferences(context).getBoolean(FULL_SCREEN, true).also {
+                Log.d("StorageDelegate", "IncomingCall.isFullScreen=$it")
+            }
     }
 
     object IncomingCallService {
