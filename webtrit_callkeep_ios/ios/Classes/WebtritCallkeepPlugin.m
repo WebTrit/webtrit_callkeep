@@ -472,8 +472,17 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
     return;
   }
 
+  // callId carries the UUID string here — the Dart layer substitutes the real callId
+  // before exposing the CallkeepConnection to callers (see webtrit_callkeep_ios.dart getConnection).
   completion([WTPCallkeepConnection makeWithCallId:uuidString state:state], nil);
 }
+
+// NOTE: missed/auto-unanswered calls are covered by both write paths:
+// 1. App-initiated: reportEndCall (Dart) → _markUUIDEnded (this file)
+// 2. System-initiated (user swipes/CallKit timeout) → provider:performEndCallAction: → _markUUIDEnded
+// A gap exists only if CallKit ends the call before _markUUIDActive was written (e.g. rejected
+// at the CallKit level during reportNewIncomingCall). In that case getConnection returns nil,
+// and HandshakeProcessor falls through to the orphan-outgoing branch for cleanup.
 
 #pragma mark - WTPHostApi - helpers
 
@@ -690,6 +699,9 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
                                     }
                                   }
 
+                                  if (incomingCallError == nil) {
+                                    [self _markUUIDActive:[uuid UUIDString]];
+                                  }
                                   [self->_delegateFlutterApi didPushIncomingCallHandle:[callUpdate.remoteHandle toPigeon]
                                                                            displayName:callUpdate.localizedCallerName
                                                                                  video:callUpdate.hasVideo
