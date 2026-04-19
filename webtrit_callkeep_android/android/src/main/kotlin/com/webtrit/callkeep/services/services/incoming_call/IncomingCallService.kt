@@ -257,7 +257,9 @@ class IncomingCallService :
         //
         // When FSI is unavailable the WakeLock is the only mechanism to turn the screen
         // on; the notification provides the call UI instead of a full-screen Activity.
-        if (!isFullScreenIntentAvailable()) {
+        val fsiAvailable = isFullScreenIntentAvailable()
+        Log.d(TAG, "handleLaunch: isFullScreenIntentAvailable=$fsiAvailable → ${if (fsiAvailable) "relying on FSI" else "acquiring WakeLock fallback"}")
+        if (!fsiAvailable) {
             acquireScreenWakeLockIfNeeded()
         }
         incomingCallHandler.handle(metadata)
@@ -325,9 +327,14 @@ class IncomingCallService :
      * When denied, canUseFullScreenIntent() returns false and we fall back to the WakeLock.
      */
     private fun isFullScreenIntentAvailable(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return false
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            Log.d(TAG, "isFullScreenIntentAvailable: SDK ${Build.VERSION.SDK_INT} < 34, returning false (WakeLock path)")
+            return false
+        }
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
-        return nm.canUseFullScreenIntent()
+        val available = nm.canUseFullScreenIntent()
+        Log.d(TAG, "isFullScreenIntentAvailable: SDK ${Build.VERSION.SDK_INT}, canUseFullScreenIntent=$available")
+        return available
     }
 
     /**
