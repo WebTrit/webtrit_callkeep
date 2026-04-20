@@ -343,9 +343,7 @@ class _UUIDToCallIdMapping {
 }
 
 sealed class _CallkeepAction {
-  _CallkeepAction({
-    required this.timestamp,
-  });
+  _CallkeepAction({required this.timestamp});
 
   final DateTime timestamp;
 
@@ -354,17 +352,11 @@ sealed class _CallkeepAction {
 }
 
 final class _PerformAnswerCall extends _CallkeepAction {
-  _PerformAnswerCall()
-      : super(
-          timestamp: DateTime.now(),
-        );
+  _PerformAnswerCall() : super(timestamp: DateTime.now());
 }
 
 final class _PerformEndCall extends _CallkeepAction {
-  _PerformEndCall()
-      : super(
-          timestamp: DateTime.now(),
-        );
+  _PerformEndCall() : super(timestamp: DateTime.now());
 }
 
 class _CallkeepActionHistory {
