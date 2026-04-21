@@ -313,6 +313,23 @@ class ConnectionManager {
         }
     }
 
+    /**
+     * Checks whether there is already an active or held connection.
+     *
+     * Used to decide whether a new incoming call should play a soft call-waiting tone
+     * instead of the full ringtone, preventing the ringtone from blasting through the
+     * earpiece during an ongoing conversation.
+     *
+     * @return `true` if any connection is in `STATE_ACTIVE` or `STATE_HOLDING`.
+     */
+    fun hasActiveOrHoldingConnection(): Boolean {
+        synchronized(connectionResourceLock) {
+            return connections.values.any {
+                it.state == Connection.STATE_ACTIVE || it.state == Connection.STATE_HOLDING
+            }
+        }
+    }
+
     fun cleanConnections() {
         synchronized(connectionResourceLock) {
             connections.values.forEach { it.destroy() }

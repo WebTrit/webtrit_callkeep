@@ -7,7 +7,10 @@ import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.Ringtone
 import android.media.RingtoneManager
+import android.media.ToneGenerator
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import com.webtrit.callkeep.common.AssetCacheManager
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.setLoopingCompat
@@ -19,6 +22,15 @@ class AudioManager(
         requireNotNull(context.getSystemService(Context.AUDIO_SERVICE) as AudioManager)
     private var ringtone: Ringtone? = null
     private var ringBack: MediaPlayer? = null
+    private var callWaitingToneGenerator: ToneGenerator? = null
+    private val callWaitingHandler = Handler(Looper.getMainLooper())
+    private val callWaitingRunnable =
+        object : Runnable {
+            override fun run() {
+                callWaitingToneGenerator?.startTone(ToneGenerator.TONE_SUP_CALL_WAITING, 1000)
+                callWaitingHandler.postDelayed(this, 3000)
+            }
+        }
 
     private fun isInputDeviceConnected(type: Int): Boolean {
         val devices = audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)
@@ -36,14 +48,13 @@ class AudioManager(
      * @return True if the device supports earpiece, false otherwise.
      */
     fun isSupportEarpiese(): Boolean = isOutputDeviceConnected(AudioDeviceInfo.TYPE_BUILTIN_EARPIECE)
-    
+
     /**
      * Check if the device supports speakerphone.
      *
      * @return True if the device supports speakerphone, false otherwise.
      */
     fun isSupportSpeakerphone(): Boolean = isOutputDeviceConnected(AudioDeviceInfo.TYPE_BUILTIN_SPEAKER)
-
 
     /**
      * Check if a wired headset is connected.
@@ -59,18 +70,17 @@ class AudioManager(
      */
     fun isBluetoothConnected(): Boolean = isInputDeviceConnected(AudioDeviceInfo.TYPE_BLUETOOTH_SCO)
 
-
     /**
      * Check if the speakerphone is currently on.
      *
      * @return True if the speakerphone is on, false otherwise.
      */
-    fun isSpeakerphoneOn(): Boolean = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        audioManager.communicationDevice?.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
-    } else {
-        audioManager.isSpeakerphoneOn
-    }
-
+    fun isSpeakerphoneOn(): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            audioManager.communicationDevice?.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+        } else {
+            audioManager.isSpeakerphoneOn
+        }
 
     /**
      * Start playing the ringtone.
@@ -148,5 +158,30 @@ class AudioManager(
         } finally {
             ringBack = null
         }
+    }
+
+    /**
+     * Play a soft call-waiting beep through the voice call audio stream.
+     *
+     * Uses STREAM_VOICE_CALL so the tone respects in-call volume and routes through
+     * the earpiece/headset — not the ringtone stream, which would blast at full
+     * ringtone volume while the user has the phone to their ear.
+     *
+     * Repeats every 3 seconds until [stopCallWaitingTone] is called.
+     */
+    fun startCallWaitingTone() {
+        stopCallWaitingTone()
+        callWaitingToneGenerator = ToneGenerator(AudioManager.STREAM_VOICE_CALL, ToneGenerator.MAX_VOLUME / 2)
+        callWaitingRunnable.run()
+    }
+
+    /**
+     * Stop the call-waiting beep and release the tone generator.
+     */
+    fun stopCallWaitingTone() {
+        callWaitingHandler.removeCallbacks(callWaitingRunnable)
+        callWaitingToneGenerator?.stopTone()
+        callWaitingToneGenerator?.release()
+        callWaitingToneGenerator = null
     }
 }
