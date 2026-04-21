@@ -17,6 +17,7 @@ import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
+import com.webtrit.callkeep.common.PendingBroadcastQueue
 import com.webtrit.callkeep.common.PermissionsHelper
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.registerReceiverCompat
@@ -242,6 +243,20 @@ class IncomingCallService :
             return START_NOT_STICKY
         }
         isInitialized = true
+
+        // Check for a pending release posted by ForegroundService.reportEndCall() before
+        // this service started. startForegroundService(IC_INITIALIZE) may be queued in the
+        // OS before the caller hangs up. By the time the OS delivers it, reportEndCall() has
+        // already run and posted to PendingBroadcastQueue. The IC_RELEASE_WITH_DECLINE
+        // broadcast from :callkeep_core was lost (releaseReceiver not yet registered), so
+        // this in-process entry is the only remaining signal that the call is over.
+        if (PendingBroadcastQueue.consume(pendingReleaseKey(metadata.callId))) {
+            Log.w(TAG, "handleLaunch: pending release found for callId=${metadata.callId} — releasing immediately without showing UI")
+            isInitialized = false
+            callLifecycleHandler.currentCallData = metadata.toPCallkeepIncomingCallData()
+            handleRelease(answered = false)
+            return START_NOT_STICKY
+        }
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
         timeoutHandler.removeCallbacks(independentTimeoutRunnable)
         timeoutHandler.postDelayed(independentTimeoutRunnable, INDEPENDENT_SERVICE_TIMEOUT_MS)
@@ -313,6 +328,8 @@ class IncomingCallService :
         Log.e(TAG, "Unknown or missing intent action: $action")
         return START_NOT_STICKY
     }
+
+    private fun pendingReleaseKey(callId: String) = "IC_RELEASE_WITH_DECLINE:$callId"
 
     /**
      * Returns true if the system will fire a full-screen intent for this app's notifications,
