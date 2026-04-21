@@ -375,6 +375,50 @@ class ConnectionManagerTest {
     }
 
     // -------------------------------------------------------------------------
+    // hasActiveOrHoldingConnection
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `hasActiveOrHoldingConnection returns false when manager is empty`() {
+        assertFalse(createManager().hasActiveOrHoldingConnection())
+    }
+
+    @Test
+    fun `hasActiveOrHoldingConnection returns false when connection is ringing`() {
+        val manager = createManager()
+        manager.addConnection("call-1", createRingingConnection())
+        assertFalse(manager.hasActiveOrHoldingConnection())
+    }
+
+    @Test
+    fun `hasActiveOrHoldingConnection returns true when connection is active`() {
+        val manager = createManager()
+        val conn = createRingingConnection()
+        conn.setActive()
+        manager.addConnection("call-1", conn)
+        assertTrue(manager.hasActiveOrHoldingConnection())
+    }
+
+    @Test
+    fun `hasActiveOrHoldingConnection returns true when connection is on hold`() {
+        val manager = createManager()
+        val conn = createRingingConnection()
+        conn.setOnHold()
+        manager.addConnection("call-1", conn)
+        assertTrue(manager.hasActiveOrHoldingConnection())
+    }
+
+    @Test
+    fun `hasActiveOrHoldingConnection returns false after active connection disconnects`() {
+        val manager = createManager()
+        val conn = createRingingConnection()
+        conn.setActive()
+        manager.addConnection("call-1", conn)
+        conn.setDisconnected(DisconnectCause(DisconnectCause.LOCAL))
+        assertFalse(manager.hasActiveOrHoldingConnection())
+    }
+
+    // -------------------------------------------------------------------------
     // pendingCallIds — basic behaviour
     // -------------------------------------------------------------------------
 
