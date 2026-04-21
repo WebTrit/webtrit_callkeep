@@ -209,7 +209,12 @@ class StandaloneCallService : Service() {
         promoteToForeground()
         callMetadataMap[metadata.callId] = metadata
         answeredCallIds.remove(metadata.callId)
-        ringtoneManager.startRingtone(metadata.ringtonePath)
+        if (answeredCallIds.isNotEmpty()) {
+            Log.d(TAG, "handleIncomingCall: active call detected — playing call-waiting tone for callId=${metadata.callId}")
+            ringtoneManager.startCallWaitingTone()
+        } else {
+            ringtoneManager.startRingtone(metadata.ringtonePath)
+        }
 
         // Replace the placeholder foreground notification (posted by promoteToForeground) with
         // a full incoming call notification — including Answer/Decline buttons and CallStyle on
@@ -254,6 +259,7 @@ class StandaloneCallService : Service() {
     private fun handleEstablishCall(metadata: CallMetadata) {
         Log.i(TAG, "handleEstablishCall: callId=${metadata.callId}")
         ringtoneManager.stopRingtone()
+        ringtoneManager.stopCallWaitingTone()
         val full = (callMetadataMap[metadata.callId] ?: metadata).mergeWith(metadata)
         callMetadataMap[metadata.callId] = full.copy(acceptedTime = System.currentTimeMillis())
         answeredCallIds.add(metadata.callId)
@@ -268,6 +274,7 @@ class StandaloneCallService : Service() {
     private fun handleAnswerCall(metadata: CallMetadata) {
         Log.i(TAG, "handleAnswerCall: callId=${metadata.callId}")
         ringtoneManager.stopRingtone()
+        ringtoneManager.stopCallWaitingTone()
         val full = (callMetadataMap[metadata.callId] ?: metadata).mergeWith(metadata)
         callMetadataMap[metadata.callId] = full.copy(acceptedTime = System.currentTimeMillis())
         answeredCallIds.add(metadata.callId)
@@ -282,6 +289,7 @@ class StandaloneCallService : Service() {
     private fun handleDeclineCall(metadata: CallMetadata) {
         Log.i(TAG, "handleDeclineCall: callId=${metadata.callId}")
         ringtoneManager.stopRingtone()
+        ringtoneManager.stopCallWaitingTone()
         endCall(metadata)
         core.notifyConnectionEvent(CallLifecycleEvent.HungUp, metadata.toBundle())
     }
@@ -289,6 +297,7 @@ class StandaloneCallService : Service() {
     private fun handleHungUpCall(metadata: CallMetadata) {
         Log.i(TAG, "handleHungUpCall: callId=${metadata.callId}")
         ringtoneManager.stopRingtone()
+        ringtoneManager.stopCallWaitingTone()
         endCall(metadata)
         core.notifyConnectionEvent(CallLifecycleEvent.HungUp, metadata.toBundle())
     }
@@ -323,6 +332,7 @@ class StandaloneCallService : Service() {
     private fun handleTearDownConnections() {
         Log.i(TAG, "handleTearDownConnections: cleaning up ${callMetadataMap.size} calls")
         ringtoneManager.stopRingtone()
+        ringtoneManager.stopCallWaitingTone()
         callMetadataMap.keys.toList().forEach { callId ->
             val meta = callMetadataMap[callId] ?: CallMetadata(callId = callId)
             core.notifyConnectionEvent(CallLifecycleEvent.HungUp, meta.toBundle())
