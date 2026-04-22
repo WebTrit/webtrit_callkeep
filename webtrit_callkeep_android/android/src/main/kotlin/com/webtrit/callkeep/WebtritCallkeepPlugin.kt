@@ -225,6 +225,22 @@ class WebtritCallkeepPlugin :
         ConnectionsApi().let {
             PHostConnectionsApi.setUp(messenger, it)
         }
+
+        // Cold-start recovery: Flutter's ServiceAware.onAttachedToService() is only dispatched
+        // to plugins that are registered at the time attachToService() is called. On a cold-start
+        // background engine, attachToService() fires before executeDartCallback() runs, so the
+        // plugin is not yet registered and misses the lifecycle call. onAttachedToEngine() fires
+        // later when Dart registers the plugin — at that point we can establish communication
+        // with a running IncomingCallService directly.
+        val runningService = IncomingCallService.runningInstance
+        if (runningService != null && !runningService.hasFlutterCommunication()) {
+            Log.i(TAG, "onAttachedToEngine: IncomingCallService running without flutterApi — establishing communication")
+            runningService.establishFlutterCommunication(
+                PDelegateBackgroundServiceFlutterApi(messenger),
+                PDelegateBackgroundRegisterFlutterApi(messenger),
+            )
+            PHostBackgroundPushNotificationIsolateApi.setUp(messenger, runningService.getCallLifecycleHandler())
+        }
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
