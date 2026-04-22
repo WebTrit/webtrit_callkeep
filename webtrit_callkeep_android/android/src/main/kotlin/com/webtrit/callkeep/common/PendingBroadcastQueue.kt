@@ -24,4 +24,10 @@ object PendingBroadcastQueue {
 
     /** Key for a pending IC_RELEASE_WITH_DECLINE for [callId]. */
     fun incomingReleaseKey(callId: String) = "IC_RELEASE_WITH_DECLINE:$callId"
+
+    /** Removes all pending entries. Intended for use in tests to reset state between cases. */
+    @androidx.annotation.VisibleForTesting
+    fun clear() {
+        queue.clear()
+    }
 }

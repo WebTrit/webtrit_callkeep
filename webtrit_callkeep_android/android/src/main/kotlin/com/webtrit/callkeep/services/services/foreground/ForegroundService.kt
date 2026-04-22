@@ -798,12 +798,15 @@ class ForegroundService :
         logger.i("reportEndCall: callId=$callId, reason=$reason")
         val callMetaData = CallMetadata(callId = callId, displayName = displayName)
         // Post a pending release so IncomingCallService.handleLaunch() can detect a stale
-        // IC_INITIALIZE that arrives after this call was already terminated. The broadcast
-        // IC_RELEASE_WITH_DECLINE sent from :callkeep_core may be lost if IncomingCallService
-        // has not started yet. This in-process entry bridges that timing gap.
+        // IC_INITIALIZE that arrives after this call was already terminated. Only posted when
+        // IncomingCallService is not yet running — if it is already up, releaseReceiver is
+        // registered and will handle IC_RELEASE_WITH_DECLINE directly. Posting when the service
+        // is already running creates orphan entries that are never consumed.
         // Must be posted here (main thread) — not in NotificationManager which runs in
         // :callkeep_core and cannot reach this main-process queue.
-        PendingBroadcastQueue.post(PendingBroadcastQueue.incomingReleaseKey(callId))
+        if (!IncomingCallService.isRunning) {
+            PendingBroadcastQueue.post(PendingBroadcastQueue.incomingReleaseKey(callId))
+        }
         core.startDeclineCall(callMetaData)
         callback.invoke(Result.success(Unit))
     }

@@ -55,6 +55,11 @@ class IncomingCallService :
     // deferred) would otherwise both deliver call data to the Dart isolate.
     private var callDataSynced = false
 
+    // Set to true on the first handleRelease() call. Guards against a second invocation in the
+    // narrow window where both releaseReceiver and the PendingBroadcastQueue early-exit path
+    // could race to call handleRelease() for the same call.
+    private var isReleased = false
+
     // Receives IC_RELEASE_WITH_ANSWER / IC_RELEASE_WITH_DECLINE from release().
     // Registered in onCreate() and unregistered in onDestroy() so it only lives while the
     // service is alive. If the service is not running the broadcast goes nowhere — no zombie
@@ -319,6 +324,11 @@ class IncomingCallService :
 
     // Handles the RELEASE action and cancels the timeout
     private fun handleRelease(answered: Boolean = false): Int {
+        if (isReleased) {
+            Log.w(TAG, "handleRelease: already released, ignoring duplicate invocation")
+            return START_NOT_STICKY
+        }
+        isReleased = true
         // The ringing phase is over — release the wake lock immediately so the screen
         // is not held on for the full WAKELOCK_TIMEOUT_MS during post-call teardown.
         // onDestroy() keeps the lock as a final safety net in case this path is skipped.
