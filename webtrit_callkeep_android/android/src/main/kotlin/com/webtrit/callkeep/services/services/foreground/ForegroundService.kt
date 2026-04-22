@@ -803,12 +803,10 @@ class ForegroundService :
         // has not started yet. This in-process entry bridges that timing gap.
         // Must be posted here (main thread) — not in NotificationManager which runs in
         // :callkeep_core and cannot reach this main-process queue.
-        PendingBroadcastQueue.post(pendingReleaseKey(callId))
+        PendingBroadcastQueue.post(PendingBroadcastQueue.incomingReleaseKey(callId))
         core.startDeclineCall(callMetaData)
         callback.invoke(Result.success(Unit))
     }
-
-    private fun pendingReleaseKey(callId: String) = "IC_RELEASE_WITH_DECLINE:$callId"
 
     override fun answerCall(
         callId: String,

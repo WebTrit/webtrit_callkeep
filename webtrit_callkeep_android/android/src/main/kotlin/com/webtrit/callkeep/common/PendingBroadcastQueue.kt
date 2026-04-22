@@ -21,4 +21,7 @@ object PendingBroadcastQueue {
 
     /** Returns true and removes the entry if [key] was present, false otherwise. */
     fun consume(key: String): Boolean = queue.remove(key) != null
+
+    /** Key for a pending IC_RELEASE_WITH_DECLINE for [callId]. */
+    fun incomingReleaseKey(callId: String) = "IC_RELEASE_WITH_DECLINE:$callId"
 }

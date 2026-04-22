@@ -250,9 +250,13 @@ class IncomingCallService :
         // already run and posted to PendingBroadcastQueue. The IC_RELEASE_WITH_DECLINE
         // broadcast from :callkeep_core was lost (releaseReceiver not yet registered), so
         // this in-process entry is the only remaining signal that the call is over.
-        if (PendingBroadcastQueue.consume(pendingReleaseKey(metadata.callId))) {
+        if (PendingBroadcastQueue.consume(PendingBroadcastQueue.incomingReleaseKey(metadata.callId))) {
             Log.w(TAG, "handleLaunch: pending release found for callId=${metadata.callId} — releasing immediately without showing UI")
-            isInitialized = false
+            // startForeground() must be called within 5s of startForegroundService() on Android 12+.
+            // handle() satisfies this by posting a notification and calling startForeground().
+            // releaseIncomingCallNotification() immediately transitions it to a silent release
+            // notification, so the ringing UI is never visible to the user.
+            incomingCallHandler.handle(metadata)
             callLifecycleHandler.currentCallData = metadata.toPCallkeepIncomingCallData()
             handleRelease(answered = false)
             return START_NOT_STICKY
@@ -328,8 +332,6 @@ class IncomingCallService :
         Log.e(TAG, "Unknown or missing intent action: $action")
         return START_NOT_STICKY
     }
-
-    private fun pendingReleaseKey(callId: String) = "IC_RELEASE_WITH_DECLINE:$callId"
 
     /**
      * Returns true if the system will fire a full-screen intent for this app's notifications,
