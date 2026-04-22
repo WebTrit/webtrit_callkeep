@@ -275,6 +275,10 @@ class IncomingCallService :
         // this in-process entry is the only remaining signal that the call is over.
         if (PendingBroadcastQueue.consume(PendingBroadcastQueue.incomingReleaseKey(metadata.callId))) {
             Log.w(TAG, "handleLaunch: pending release found for callId=${metadata.callId} — releasing immediately without showing UI")
+            // Block any deferred syncPushIsolate from establishFlutterCommunication(). The call
+            // is already in teardown; delivering it to Dart as a new incoming call would create
+            // a zombie ActiveCall on the Dart side that was never set up natively.
+            callDataSynced = true
             // startForeground() must be called within 5s of startForegroundService() on Android 12+.
             // handle() satisfies this by posting a notification and calling startForeground().
             // releaseIncomingCallNotification() immediately transitions it to a silent release
