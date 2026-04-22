@@ -50,6 +50,11 @@ class IncomingCallService :
     // call is still in the teardown window).
     private var isInitialized = false
 
+    // Set to true once syncPushIsolate has been dispatched. Prevents double-sync when both
+    // the onStart() path (warm engine) and the establishFlutterCommunication() path (cold-start
+    // deferred) would otherwise both deliver call data to the Dart isolate.
+    private var callDataSynced = false
+
     // Receives IC_RELEASE_WITH_ANSWER / IC_RELEASE_WITH_DECLINE from release().
     // Registered in onCreate() and unregistered in onDestroy() so it only lives while the
     // service is alive. If the service is not running the broadcast goes nowhere — no zombie
@@ -126,9 +131,12 @@ class IncomingCallService :
                 Log.d(TAG, "onStart: invoking syncPushIsolate, flutterApi=${callLifecycleHandler.flutterApi != null}, callData=${callLifecycleHandler.currentCallData?.callId}")
                 callLifecycleHandler.flutterApi?.syncPushIsolate(
                     callLifecycleHandler.currentCallData,
-                    onSuccess = { Log.d(TAG, "syncPushIsolate: success") },
+                    onSuccess = {
+                        callDataSynced = true
+                        Log.d(TAG, "syncPushIsolate: success")
+                    },
                     onFailure = { e -> Log.e(TAG, "syncPushIsolate: failed: $e") },
-                ) ?: Log.e(TAG, "syncPushIsolate: flutterApi is null, isolate will not receive call data")
+                ) ?: Log.w(TAG, "syncPushIsolate: flutterApi is null — will retry from establishFlutterCommunication")
             }
 
         incomingCallHandler =
@@ -212,6 +220,21 @@ class IncomingCallService :
         callLifecycleHandler.apply {
             flutterApi =
                 DefaultFlutterIsolateCommunicator(this@IncomingCallService, serviceApi, registerApi)
+        }
+        // On a cold-start Flutter engine, executeDartCallback() returns before Dart has run.
+        // onStart() fires immediately and finds flutterApi == null, so syncPushIsolate is skipped.
+        // This is the first point where Dart has registered its APIs and can accept the call data.
+        if (!callDataSynced) {
+            val data = callLifecycleHandler.currentCallData
+            if (data != null) {
+                callDataSynced = true
+                Log.w(TAG, "establishFlutterCommunication: deferred sync for callId=${data.callId}")
+                callLifecycleHandler.flutterApi?.syncPushIsolate(
+                    data,
+                    onSuccess = { Log.d(TAG, "syncPushIsolate (deferred): success") },
+                    onFailure = { e -> Log.e(TAG, "syncPushIsolate (deferred): failed: $e") },
+                )
+            }
         }
     }
 
