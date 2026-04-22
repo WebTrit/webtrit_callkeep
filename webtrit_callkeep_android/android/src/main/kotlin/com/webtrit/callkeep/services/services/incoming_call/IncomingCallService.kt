@@ -17,6 +17,7 @@ import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
+import com.webtrit.callkeep.common.PendingBroadcastQueue
 import com.webtrit.callkeep.common.PermissionsHelper
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.registerReceiverCompat
@@ -48,6 +49,16 @@ class IncomingCallService :
     // arriving while the service is still processing a call (e.g. a second push while the first
     // call is still in the teardown window).
     private var isInitialized = false
+
+    // Set to true once syncPushIsolate has been dispatched. Prevents double-sync when both
+    // the onStart() path (warm engine) and the establishFlutterCommunication() path (cold-start
+    // deferred) would otherwise both deliver call data to the Dart isolate.
+    private var callDataSynced = false
+
+    // Set to true on the first handleRelease() call. Guards against a second invocation in the
+    // narrow window where both releaseReceiver and the PendingBroadcastQueue early-exit path
+    // could race to call handleRelease() for the same call.
+    private var isReleased = false
 
     // Receives IC_RELEASE_WITH_ANSWER / IC_RELEASE_WITH_DECLINE from release().
     // Registered in onCreate() and unregistered in onDestroy() so it only lives while the
@@ -122,12 +133,19 @@ class IncomingCallService :
 
         isolateHandler =
             FlutterIsolateHandler(this@IncomingCallService, this@IncomingCallService) {
-                Log.d(TAG, "onStart: invoking syncPushIsolate, flutterApi=${callLifecycleHandler.flutterApi != null}, callData=${callLifecycleHandler.currentCallData?.callId}")
-                callLifecycleHandler.flutterApi?.syncPushIsolate(
-                    callLifecycleHandler.currentCallData,
-                    onSuccess = { Log.d(TAG, "syncPushIsolate: success") },
-                    onFailure = { e -> Log.e(TAG, "syncPushIsolate: failed: $e") },
-                ) ?: Log.e(TAG, "syncPushIsolate: flutterApi is null, isolate will not receive call data")
+                Log.d(TAG, "onStart: flutterApi=${callLifecycleHandler.flutterApi != null}, callDataSynced=$callDataSynced, callData=${callLifecycleHandler.currentCallData?.callId}")
+                if (callDataSynced) {
+                    Log.d(TAG, "onStart: callDataSynced already set — skipping duplicate syncPushIsolate")
+                } else {
+                    callLifecycleHandler.flutterApi?.syncPushIsolate(
+                        callLifecycleHandler.currentCallData,
+                        onSuccess = {
+                            callDataSynced = true
+                            Log.d(TAG, "syncPushIsolate: success")
+                        },
+                        onFailure = { e -> Log.e(TAG, "syncPushIsolate: failed: $e") },
+                    ) ?: Log.w(TAG, "syncPushIsolate: flutterApi is null — will retry from establishFlutterCommunication")
+                }
             }
 
         incomingCallHandler =
@@ -212,6 +230,21 @@ class IncomingCallService :
             flutterApi =
                 DefaultFlutterIsolateCommunicator(this@IncomingCallService, serviceApi, registerApi)
         }
+        // On a cold-start Flutter engine, executeDartCallback() returns before Dart has run.
+        // onStart() fires immediately and finds flutterApi == null, so syncPushIsolate is skipped.
+        // This is the first point where Dart has registered its APIs and can accept the call data.
+        if (!callDataSynced) {
+            val data = callLifecycleHandler.currentCallData
+            if (data != null) {
+                callDataSynced = true
+                Log.w(TAG, "establishFlutterCommunication: deferred sync for callId=${data.callId}")
+                callLifecycleHandler.flutterApi?.syncPushIsolate(
+                    data,
+                    onSuccess = { Log.d(TAG, "syncPushIsolate (deferred): success") },
+                    onFailure = { e -> Log.e(TAG, "syncPushIsolate (deferred): failed: $e") },
+                )
+            }
+        }
     }
 
     private fun reportAnswerToConnectionService(metadata: CallMetadata): Int {
@@ -242,6 +275,28 @@ class IncomingCallService :
             return START_NOT_STICKY
         }
         isInitialized = true
+
+        // Check for a pending release posted by ForegroundService.reportEndCall() before
+        // this service started. startForegroundService(IC_INITIALIZE) may be queued in the
+        // OS before the caller hangs up. By the time the OS delivers it, reportEndCall() has
+        // already run and posted to PendingBroadcastQueue. The IC_RELEASE_WITH_DECLINE
+        // broadcast from :callkeep_core was lost (releaseReceiver not yet registered), so
+        // this in-process entry is the only remaining signal that the call is over.
+        if (PendingBroadcastQueue.consume(PendingBroadcastQueue.incomingReleaseKey(metadata.callId))) {
+            Log.w(TAG, "handleLaunch: pending release found for callId=${metadata.callId} — releasing immediately without showing UI")
+            // Block any deferred syncPushIsolate from establishFlutterCommunication(). The call
+            // is already in teardown; delivering it to Dart as a new incoming call would create
+            // a zombie ActiveCall on the Dart side that was never set up natively.
+            callDataSynced = true
+            // startForeground() must be called within 5s of startForegroundService() on Android 12+.
+            // handle() satisfies this by posting a notification and calling startForeground().
+            // releaseIncomingCallNotification() immediately transitions it to a silent release
+            // notification, so the ringing UI is never visible to the user.
+            incomingCallHandler.handle(metadata)
+            callLifecycleHandler.currentCallData = metadata.toPCallkeepIncomingCallData()
+            handleRelease(answered = false)
+            return START_NOT_STICKY
+        }
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
         timeoutHandler.removeCallbacks(independentTimeoutRunnable)
         timeoutHandler.postDelayed(independentTimeoutRunnable, INDEPENDENT_SERVICE_TIMEOUT_MS)
@@ -273,6 +328,11 @@ class IncomingCallService :
 
     // Handles the RELEASE action and cancels the timeout
     private fun handleRelease(answered: Boolean = false): Int {
+        if (isReleased) {
+            Log.w(TAG, "handleRelease: already released, ignoring duplicate invocation")
+            return START_NOT_STICKY
+        }
+        isReleased = true
         // The ringing phase is over — release the wake lock immediately so the screen
         // is not held on for the full WAKELOCK_TIMEOUT_MS during post-call teardown.
         // onDestroy() keeps the lock as a final safety net in case this path is skipped.

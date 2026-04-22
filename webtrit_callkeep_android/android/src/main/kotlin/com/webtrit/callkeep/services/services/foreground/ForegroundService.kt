@@ -24,6 +24,7 @@ import com.webtrit.callkeep.PIncomingCallErrorEnum
 import com.webtrit.callkeep.POptions
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.Log
+import com.webtrit.callkeep.common.PendingBroadcastQueue
 import com.webtrit.callkeep.common.Platform
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.TelephonyUtils
@@ -796,6 +797,16 @@ class ForegroundService :
     ) {
         logger.i("reportEndCall: callId=$callId, reason=$reason")
         val callMetaData = CallMetadata(callId = callId, displayName = displayName)
+        // Post a pending release so IncomingCallService.handleLaunch() can detect a stale
+        // IC_INITIALIZE that arrives after this call was already terminated. Only posted when
+        // IncomingCallService is not yet running — if it is already up, releaseReceiver is
+        // registered and will handle IC_RELEASE_WITH_DECLINE directly. Posting when the service
+        // is already running creates orphan entries that are never consumed.
+        // Must be posted here (main thread) — not in NotificationManager which runs in
+        // :callkeep_core and cannot reach this main-process queue.
+        if (!IncomingCallService.isRunning) {
+            PendingBroadcastQueue.post(PendingBroadcastQueue.incomingReleaseKey(callId))
+        }
         core.startDeclineCall(callMetaData)
         callback.invoke(Result.success(Unit))
     }
