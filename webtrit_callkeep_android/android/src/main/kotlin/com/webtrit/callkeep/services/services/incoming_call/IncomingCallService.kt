@@ -96,8 +96,6 @@ class IncomingCallService :
 
     fun getCallLifecycleHandler(): CallLifecycleHandler = callLifecycleHandler
 
-    fun hasFlutterCommunication(): Boolean = callLifecycleHandler.flutterApi != null
-
     override fun onConnectionEvent(
         event: ConnectionEvent,
         data: Bundle?,
@@ -117,7 +115,6 @@ class IncomingCallService :
     override fun onCreate() {
         super.onCreate()
         setRunning(true)
-        runningInstance = this
         ContextHolder.init(applicationContext)
 
         Log.d(TAG, "IncomingCallService created")
@@ -136,15 +133,19 @@ class IncomingCallService :
 
         isolateHandler =
             FlutterIsolateHandler(this@IncomingCallService, this@IncomingCallService) {
-                Log.d(TAG, "onStart: invoking syncPushIsolate, flutterApi=${callLifecycleHandler.flutterApi != null}, callData=${callLifecycleHandler.currentCallData?.callId}")
-                callLifecycleHandler.flutterApi?.syncPushIsolate(
-                    callLifecycleHandler.currentCallData,
-                    onSuccess = {
-                        callDataSynced = true
-                        Log.d(TAG, "syncPushIsolate: success")
-                    },
-                    onFailure = { e -> Log.e(TAG, "syncPushIsolate: failed: $e") },
-                ) ?: Log.w(TAG, "syncPushIsolate: flutterApi is null — will retry from establishFlutterCommunication")
+                Log.d(TAG, "onStart: flutterApi=${callLifecycleHandler.flutterApi != null}, callDataSynced=$callDataSynced, callData=${callLifecycleHandler.currentCallData?.callId}")
+                if (callDataSynced) {
+                    Log.d(TAG, "onStart: callDataSynced already set — skipping duplicate syncPushIsolate")
+                } else {
+                    callLifecycleHandler.flutterApi?.syncPushIsolate(
+                        callLifecycleHandler.currentCallData,
+                        onSuccess = {
+                            callDataSynced = true
+                            Log.d(TAG, "syncPushIsolate: success")
+                        },
+                        onFailure = { e -> Log.e(TAG, "syncPushIsolate: failed: $e") },
+                    ) ?: Log.w(TAG, "syncPushIsolate: flutterApi is null — will retry from establishFlutterCommunication")
+                }
             }
 
         incomingCallHandler =
@@ -205,7 +206,6 @@ class IncomingCallService :
         timeoutHandler.removeCallbacks(independentTimeoutRunnable)
 
         setRunning(false)
-        runningInstance = null
         releaseScreenWakeLock()
         unregisterReceiver(releaseReceiver)
         CallkeepCore.instance.removeConnectionEventListener(this)
@@ -448,14 +448,6 @@ class IncomingCallService :
 
         @Volatile
         var isRunning = false
-            private set
-
-        // Weak reference to the currently running instance. Set in onCreate(), cleared in
-        // onDestroy(). Used by WebtritCallkeepPlugin.onAttachedToEngine() to establish Flutter
-        // communication when onAttachedToService() is not triggered retroactively (cold-start
-        // engine: attachToService() fires before Dart registers the plugin).
-        @Volatile
-        var runningInstance: IncomingCallService? = null
             private set
 
         private fun setRunning(running: Boolean) {
