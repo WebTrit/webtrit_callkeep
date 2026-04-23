@@ -171,7 +171,7 @@ class PhoneConnection internal constructor(
     override fun onReject() {
         logger.i("Rejecting call: $callId")
         super.onReject()
-        setDisconnected(DisconnectCause(DisconnectCause.REJECTED))
+        terminateWithCause(DisconnectCause(DisconnectCause.REJECTED))
     }
 
     /**
