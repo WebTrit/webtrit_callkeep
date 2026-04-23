@@ -186,10 +186,29 @@ class PhoneConnection internal constructor(
         notificationManager.cancelActiveCallNotification(callId)
         audioManager.stopRingtone()
         audioManager.stopCallWaitingTone()
+        resetSystemAudioState()
 
         dispatcher(eventForDisconnectCause(disconnectCause), metadata)
         onDisconnectCallback.invoke(this)
         destroy()
+    }
+
+    // Resets system audio state after call ends to prevent speaker/mic state from
+    // bleeding into the next call session. Mirrors deactivateAudio() in StandaloneCallService.
+    private fun resetSystemAudioState() {
+        try {
+            val sysAm = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+            @Suppress("DEPRECATION")
+            sysAm.isSpeakerphoneOn = false
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                sysAm.clearCommunicationDevice()
+            }
+            sysAm.mode = android.media.AudioManager.MODE_NORMAL
+            sysAm.isMicrophoneMute = false
+            logger.d("System audio state reset on disconnect for callId: $callId")
+        } catch (e: Exception) {
+            logger.w("Failed to reset system audio state on disconnect: ${e.message}")
+        }
     }
 
     /**
@@ -351,41 +370,15 @@ class PhoneConnection internal constructor(
 
     /**
      * Updates available audio destinations for API 34+.
-     *
-     * This method intercepts the initial hardware report to resolve the "Sticky Speaker State."
-     * On some devices, the Telecom Framework caches the last used route. By forcing the
-     * EARPIECE during the first load of an audio-only call, we override this behavior.
      */
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     override fun onAvailableCallEndpointsChanged(callEndpoints: List<CallEndpoint>) {
-        val isFirstLoad = availableCallEndpoints.isEmpty()
         super.onAvailableCallEndpointsChanged(callEndpoints)
         logger.d("Available call endpoints changed: $callEndpoints")
         availableCallEndpoints = callEndpoints
 
         val devices = callEndpoints.map(::mapEndpointToAudioDevice)
         dispatcher(CallMediaEvent.AudioDevicesUpdate, metadata.copy(audioDevices = devices))
-
-        try {
-            /*
-             * Core Fix: Force EARPIECE on initialization for audio-only calls.
-             * By forcing the switch blindly on the first load, we preemptively correct
-             * any "sticky" speaker state without risking a crash.
-             */
-            if (isFirstLoad && !hasVideo) {
-                val earpiece = callEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_EARPIECE }
-                if (earpiece != null) {
-                    logger.i("Startup: Preemptively forcing EARPIECE to clear sticky state.")
-                    performEndpointChange(earpiece)
-                }
-            }
-        } catch (e: Exception) {
-            /*
-             * Defensive logging: Ensures the call remains active even if
-             * the platform-specific routing request fails.
-             */
-            logger.w("Failed to perform initial audio endpoint correction: ${e.message}", e)
-        }
 
         enforceVideoSpeakerLogic()
     }
