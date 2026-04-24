@@ -186,35 +186,10 @@ class PhoneConnection internal constructor(
         notificationManager.cancelActiveCallNotification(callId)
         audioManager.stopRingtone()
         audioManager.stopCallWaitingTone()
-        resetSystemAudioState()
 
         dispatcher(eventForDisconnectCause(disconnectCause), metadata)
         onDisconnectCallback.invoke(this)
         destroy()
-    }
-
-    // Resets system audio state after call ends to prevent speaker/mic state from
-    // bleeding into the next call session. Mirrors deactivateAudio() in StandaloneCallService.
-    //
-    // Order matters per Android docs:
-    //   1. clearCommunicationDevice() while still owning the audio mode priority
-    //   2. setMode(MODE_NORMAL) to release mode ownership
-    //   3. setSpeakerphoneOn(false) as MIUI fallback (MODE_IN_CALL ignores clearCommunicationDevice)
-    //   4. setMicrophoneMute(false) defensive reset
-    private fun resetSystemAudioState() {
-        try {
-            val sysAm = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                sysAm.clearCommunicationDevice()
-            }
-            sysAm.mode = android.media.AudioManager.MODE_NORMAL
-            @Suppress("DEPRECATION")
-            sysAm.isSpeakerphoneOn = false
-            sysAm.isMicrophoneMute = false
-            logger.d("System audio state reset on disconnect for callId: $callId")
-        } catch (e: Exception) {
-            logger.w("Failed to reset system audio state on disconnect: ${e.message}")
-        }
     }
 
     /**
