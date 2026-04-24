@@ -50,6 +50,19 @@ class PhoneConnection internal constructor(
     private var isSpeakerManuallyDisabled = false
 
     /**
+     * Set to true when the user explicitly activates the speaker via [setAudioDevice] or
+     * [toggleSpeaker]. Distinguishes user intent from system-triggered speaker switches
+     * (e.g. OEM proximity features that call setSpeakerphoneOn without user action).
+     */
+    private var isSpeakerUserActivated = false
+
+    /**
+     * Guards against countering a system-triggered speaker switch more than once per call.
+     * After the first counter-response the system is allowed to win to avoid a routing loop.
+     */
+    private var hasCounteredSystemSpeaker = false
+
+    /**
      * Prevents automatic speaker enforcement if the call originally started as audio-only.
      * This ensures mid-call video upgrades from the remote party do not force the speaker on.
      */
@@ -298,12 +311,25 @@ class PhoneConnection internal constructor(
 
     /**
      * Handles audio routing changes for Android versions below API 34.
+     *
+     * Includes a one-shot counter for OEM features (e.g. Samsung EarHover) that call
+     * setSpeakerphoneOn(true) without user intent. On an audio-only call, the first
+     * unexpected SPEAKER transition is silently redirected back to EARPIECE. A second
+     * system-triggered SPEAKER is allowed through to prevent an infinite routing loop.
      */
     @Deprecated("Deprecated in Java")
     override fun onCallAudioStateChanged(state: CallAudioState?) {
         super.onCallAudioStateChanged(state)
         logger.d("Legacy audio state changed: $state")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
+
+        if (!hasVideo && !isSpeakerUserActivated && state?.route == CallAudioState.ROUTE_SPEAKER && !hasCounteredSystemSpeaker) {
+            hasCounteredSystemSpeaker = true
+            logger.w("Unexpected SPEAKER on audio-only call — countering with EARPIECE (system-triggered, e.g. OEM EarHover)")
+            setAudioRoute(CallAudioState.ROUTE_EARPIECE)
+            directRouteAudioDevice(AudioDeviceType.EARPIECE)
+            return
+        }
 
         val audioDevices = state?.supportedRouteMask?.let(::mapSupportedRoutes) ?: emptyList()
         dispatcher(CallMediaEvent.AudioDevicesUpdate, metadata.copy(audioDevices = audioDevices))
@@ -423,6 +449,7 @@ class PhoneConnection internal constructor(
         logger.i("Setting audio device: $device for callId: $callId")
 
         isSpeakerManuallyDisabled = device.type != AudioDeviceType.SPEAKER
+        if (device.type == AudioDeviceType.SPEAKER) isSpeakerUserActivated = true
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             val deviceId = device.id
