@@ -97,6 +97,7 @@ class PhoneConnection internal constructor(
         connectionProperties = PROPERTY_SELF_MANAGED
         connectionCapabilities = CAPABILITY_MUTE or CAPABILITY_SUPPORT_HOLD
 
+        clearStickyAudioState()
         setInitializing()
         updateData(metadata)
     }
@@ -191,6 +192,24 @@ class PhoneConnection internal constructor(
         dispatcher(eventForDisconnectCause(disconnectCause), metadata)
         onDisconnectCallback.invoke(this)
         destroy()
+    }
+
+    // Clears sticky speaker state inherited from a previous call session before EarHover
+    // activates for the new call. On Samsung One UI, EarHover reacts to the true→false
+    // transition that Telecom's SWITCH_FOCUS causes when isSpeakerphoneOn was left true
+    // by the previous session. Resetting here — before Telecom initialises call audio —
+    // prevents that reaction.
+    private fun clearStickyAudioState() {
+        try {
+            val sysAm = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+            @Suppress("DEPRECATION")
+            if (sysAm.isSpeakerphoneOn) {
+                sysAm.isSpeakerphoneOn = false
+                logger.d("Cleared sticky speaker state at call start for callId: $callId")
+            }
+        } catch (e: Exception) {
+            logger.w("Failed to clear sticky audio state at call start: ${e.message}")
+        }
     }
 
     // Resets system audio state after call ends to prevent speaker/mic state from
