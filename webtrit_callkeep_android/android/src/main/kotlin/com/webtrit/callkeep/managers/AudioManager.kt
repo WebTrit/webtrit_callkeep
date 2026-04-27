@@ -11,6 +11,9 @@ import android.media.ToneGenerator
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import com.webtrit.callkeep.common.AssetCacheManager
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.setLoopingCompat
@@ -20,6 +23,13 @@ class AudioManager(
 ) {
     private val audioManager =
         requireNotNull(context.getSystemService(Context.AUDIO_SERVICE) as AudioManager)
+    private val vibrator: Vibrator =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
     private var ringtone: Ringtone? = null
     private var ringBack: MediaPlayer? = null
     private var callWaitingToneGenerator: ToneGenerator? = null
@@ -83,13 +93,35 @@ class AudioManager(
         }
 
     /**
-     * Start playing the ringtone.
+     * Start playing the ringtone, or vibrate if the device is in vibrate-only mode.
+     *
+     * The Ringtone API plays through the ringtone audio stream, which is muted in
+     * RINGER_MODE_VIBRATE. In that case we skip the ringtone and start a repeating
+     * vibration pattern directly so the user is notified of the incoming call.
      */
     fun startRingtone(ringtoneSound: String?) {
         ringtone?.stop()
-        ringtone = ringtoneSound?.let { getRingtone(it) } ?: getDefaultRingtone()
-        ringtone?.setLoopingCompat(true)
-        ringtone?.play()
+        when (audioManager.ringerMode) {
+            android.media.AudioManager.RINGER_MODE_VIBRATE -> {
+                startVibration()
+            }
+
+            android.media.AudioManager.RINGER_MODE_NORMAL -> {
+                ringtone = ringtoneSound?.let { getRingtone(it) } ?: getDefaultRingtone()
+                ringtone?.setLoopingCompat(true)
+                ringtone?.play()
+            }
+            // RINGER_MODE_SILENT: do nothing
+        }
+    }
+
+    private fun startVibration() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(VibrationEffect.createWaveform(VIBRATION_PATTERN, 0))
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator.vibrate(VIBRATION_PATTERN, 0)
+        }
     }
 
     private fun getDefaultRingtone(): Ringtone =
@@ -109,10 +141,11 @@ class AudioManager(
         }
 
     /**
-     * Stop playing the ringtone.
+     * Stop playing the ringtone and cancel any active vibration.
      */
     fun stopRingtone() {
         ringtone?.stop()
+        vibrator.cancel()
     }
 
     /**
@@ -183,5 +216,10 @@ class AudioManager(
         callWaitingToneGenerator?.stopTone()
         callWaitingToneGenerator?.release()
         callWaitingToneGenerator = null
+    }
+
+    companion object {
+        // delay 0ms → vibrate 1s → pause 1s → repeat
+        private val VIBRATION_PATTERN = longArrayOf(0, 1000, 1000)
     }
 }
