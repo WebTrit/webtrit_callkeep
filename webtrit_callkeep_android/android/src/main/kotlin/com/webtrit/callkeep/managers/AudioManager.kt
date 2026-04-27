@@ -201,7 +201,7 @@ class AudioManager(
      * Play a soft call-waiting beep through the voice call audio stream.
      *
      * Uses STREAM_VOICE_CALL so the tone respects in-call volume and routes through
-     * the earpiece/headset — not the ringtone stream, which would blast at full
+     * the earpiece/headset - not the ringtone stream, which would blast at full
      * ringtone volume while the user has the phone to their ear.
      *
      * Repeats every 3 seconds until [stopCallWaitingTone] is called.
@@ -225,7 +225,7 @@ class AudioManager(
     companion object {
         private const val TAG = "AudioManager"
 
-        // delay 0ms → vibrate 1s → pause 1s → repeat
+        // delay 0ms, vibrate 1s, pause 1s, repeat
         private val VIBRATION_PATTERN = longArrayOf(0, 1000, 1000)
     }
 }
