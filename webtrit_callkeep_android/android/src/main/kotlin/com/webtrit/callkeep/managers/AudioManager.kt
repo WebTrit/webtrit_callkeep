@@ -25,7 +25,9 @@ class AudioManager(
         requireNotNull(context.getSystemService(Context.AUDIO_SERVICE) as AudioManager)
     private val vibrator: Vibrator =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+            requireNotNull(context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager) {
+                "VibratorManager service unavailable"
+            }.defaultVibrator
         } else {
             @Suppress("DEPRECATION")
             context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
@@ -103,6 +105,7 @@ class AudioManager(
         ringtone?.stop()
         when (audioManager.ringerMode) {
             android.media.AudioManager.RINGER_MODE_VIBRATE -> {
+                ringtone = null
                 startVibration()
             }
 

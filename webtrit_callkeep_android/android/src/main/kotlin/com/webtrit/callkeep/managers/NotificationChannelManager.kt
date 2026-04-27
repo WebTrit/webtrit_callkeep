@@ -64,7 +64,6 @@ object NotificationChannelManager {
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC,
             customSound = true,
             showBadge = true,
-            enableVibration = true,
         )
     }
 
@@ -105,7 +104,6 @@ object NotificationChannelManager {
         showBadge: Boolean = true,
         customSound: Boolean = false,
         lockscreenVisibility: Int = Notification.VISIBILITY_PUBLIC,
-        enableVibration: Boolean = false,
     ) {
         val notificationChannel =
             NotificationChannel(
@@ -117,10 +115,6 @@ object NotificationChannelManager {
                 this.lockscreenVisibility = lockscreenVisibility
                 setShowBadge(showBadge)
                 if (customSound) setSound(null, null)
-                if (enableVibration) {
-                    enableVibration(true)
-                    vibrationPattern = longArrayOf(0, 1000, 1000)
-                }
             }
         NotificationManagerCompat
             .from(context)
