@@ -23,16 +23,12 @@ class AudioManager(
 ) {
     private val audioManager =
         requireNotNull(context.getSystemService(Context.AUDIO_SERVICE) as AudioManager)
-    private val vibrator: Vibrator =
+    private val vibrator: Vibrator? =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            requireNotNull(context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager) {
-                "VibratorManager service unavailable"
-            }.defaultVibrator
+            (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
         } else {
             @Suppress("DEPRECATION")
-            requireNotNull(context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator) {
-                "Vibrator service unavailable"
-            }
+            context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
         }
     private var ringtone: Ringtone? = null
     private var ringBack: MediaPlayer? = null
@@ -122,10 +118,10 @@ class AudioManager(
 
     private fun startVibration() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(VibrationEffect.createWaveform(VIBRATION_PATTERN, 0))
+            vibrator?.vibrate(VibrationEffect.createWaveform(VIBRATION_PATTERN, 0))
         } else {
             @Suppress("DEPRECATION")
-            vibrator.vibrate(VIBRATION_PATTERN, 0)
+            vibrator?.vibrate(VIBRATION_PATTERN, 0)
         }
     }
 
@@ -150,7 +146,7 @@ class AudioManager(
      */
     fun stopRingtone() {
         ringtone?.stop()
-        vibrator.cancel()
+        vibrator?.cancel()
     }
 
     /**
