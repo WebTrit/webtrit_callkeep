@@ -267,8 +267,7 @@ class PhoneConnection internal constructor(
      */
     private fun onTimeoutTriggered() {
         logger.w("Timeout reached for callId: $callId")
-        setDisconnected(DisconnectCause(DisconnectCause.CANCELED, "Timeout reached"))
-        onDisconnect()
+        terminateWithCause(DisconnectCause(DisconnectCause.CANCELED, "Timeout reached"))
     }
 
     /**
