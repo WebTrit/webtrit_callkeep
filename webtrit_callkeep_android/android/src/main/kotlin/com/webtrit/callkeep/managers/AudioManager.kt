@@ -112,7 +112,10 @@ class AudioManager(
                 ringtone?.setLoopingCompat(true)
                 ringtone?.play()
             }
-            // RINGER_MODE_SILENT: do nothing
+
+            else -> {
+                Log.d(TAG, "startRingtone: ringer mode is silent, skipping audio and vibration")
+            }
         }
     }
 
@@ -220,6 +223,8 @@ class AudioManager(
     }
 
     companion object {
+        private const val TAG = "AudioManager"
+
         // delay 0ms → vibrate 1s → pause 1s → repeat
         private val VIBRATION_PATTERN = longArrayOf(0, 1000, 1000)
     }
