@@ -35,7 +35,6 @@ class AudioManager(
             }
         }
     private var ringtone: Ringtone? = null
-    private var isVibrating = false
     private var ringBack: MediaPlayer? = null
     private var callWaitingToneGenerator: ToneGenerator? = null
     private val callWaitingHandler = Handler(Looper.getMainLooper())
@@ -122,7 +121,6 @@ class AudioManager(
     }
 
     private fun startVibration() {
-        isVibrating = true
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             vibrator.vibrate(VibrationEffect.createWaveform(VIBRATION_PATTERN, 0))
         } else {
@@ -152,10 +150,7 @@ class AudioManager(
      */
     fun stopRingtone() {
         ringtone?.stop()
-        if (isVibrating) {
-            vibrator.cancel()
-            isVibrating = false
-        }
+        vibrator.cancel()
     }
 
     /**
