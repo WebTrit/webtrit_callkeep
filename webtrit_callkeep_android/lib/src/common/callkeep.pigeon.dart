@@ -624,10 +624,6 @@ class PCallkeepServiceStatus {
     return <Object?>[lifecycleEvent];
   }
 
-  List<Object?> _toList() {
-    return <Object?>[lifecycleEvent, mainSignalingStatus];
-  }
-
   Object encode() {
     return _toList();
   }
