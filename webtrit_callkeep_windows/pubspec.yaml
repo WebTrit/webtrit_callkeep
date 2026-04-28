@@ -1,6 +1,6 @@
 name: webtrit_callkeep_windows
 description: Windows implementation of the webtrit_callkeep plugin
-version: 0.1.0+1
+version: 0.0.0+0
 publish_to: none
 
 environment:

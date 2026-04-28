@@ -633,6 +633,15 @@ class PhoneConnection internal constructor(
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             forceUpdateAudioState()
         }
+
+        // If the incoming call is answered as audio-only, we set a flag to prevent
+        // the speaker from turning on automatically if the remote party adds video later.
+        // This prevents blasting audio into the user's ear.
+        if (!hasVideo) {
+            preventAutoSpeakerEnforcement = true
+        }
+
+        enforceVideoSpeakerLogic()
     }
 
     /**

@@ -263,6 +263,17 @@ extension PCallkeepIncomingCallDataConverter on PCallkeepIncomingCallData {
   }
 }
 
+extension PCallkeepIncomingCallDataConverter on PCallkeepIncomingCallData {
+  CallkeepIncomingCallMetadata toCallkeep() {
+    return CallkeepIncomingCallMetadata(
+      callId: callId,
+      handle: handle?.toCallkeep(),
+      displayName: displayName,
+      hasVideo: hasVideo,
+    );
+  }
+}
+
 extension PCallkeepLifecycleTypeConverter on PCallkeepLifecycleEvent {
   CallkeepLifecycleEvent toCallkeep() {
     switch (this) {
