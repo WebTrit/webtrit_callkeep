@@ -246,30 +246,6 @@ class PhoneConnectionService : ConnectionService() {
             connectionManager.addPendingForIncomingCall(metadata.callId)
         }
 
-        // Guard against stale Telecom callbacks that arrive after a tearDown.
-        //
-        // Both onCreateIncomingConnection (posted to this service's main-thread handler by the
-        // Telecom binder stub) and handleNotifyPending (posted via startService -> onStartCommand)
-        // run on the same main thread, but their relative arrival order is non-deterministic:
-        // Telecom's dispatch path through TelecomManager is independent of ActivityManager's
-        // startService delivery, so onCreateIncomingConnection can fire before isPending is true.
-        //
-        // Strategy:
-        //   - isPending == true  : normal path, NotifyPending arrived first (common case).
-        //   - isPending == false AND isForcedTerminated : stale post-tearDown callback — reject.
-        //   - isPending == false AND NOT isForcedTerminated : NotifyPending IPC delayed (race
-        //     window) — register as pending now so the rest of the flow sees consistent state.
-        if (!connectionManager.isPending(metadata.callId)) {
-            if (connectionManager.isForcedTerminated(metadata.callId)) {
-                Log.w(TAG, "onCreateIncomingConnection: callId=${metadata.callId} force-terminated by tearDown, rejecting stale callback")
-                return Connection.createFailedConnection(DisconnectCause(DisconnectCause.LOCAL))
-            }
-            // NotifyPending IPC has not arrived yet — register as pending now.
-            // handleNotifyPending will call addPendingForIncomingCall later (idempotent).
-            Log.d(TAG, "onCreateIncomingConnection: callId=${metadata.callId} not pending yet, accepting (NotifyPending race window)")
-            connectionManager.addPendingForIncomingCall(metadata.callId)
-        }
-
         // Check if a connection with the same ID already exists.
         // This can occur if receivers from both the activity and the service
         // trigger the incoming call flow simultaneously.

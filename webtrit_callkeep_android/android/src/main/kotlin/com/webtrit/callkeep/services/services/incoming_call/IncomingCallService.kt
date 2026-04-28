@@ -1,7 +1,7 @@
 package com.webtrit.callkeep.services.services.incoming_call
 
-import android.app.Notification
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -12,7 +12,6 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
 import androidx.annotation.Keep
-import androidx.core.app.NotificationCompat
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.R
@@ -117,27 +116,6 @@ class IncomingCallService :
         super.onCreate()
         setRunning(true)
         ContextHolder.init(applicationContext)
-
-        // Satisfy Android's 5-second startForeground() requirement immediately.
-        // onStartCommand() may be delayed if the main thread is busy (e.g. platform-channel IPC
-        // during Flutter cold-start) or if IC_RELEASE arrives before IC_INITIALIZE. Calling
-        // startForeground() here — in onCreate() — prevents ForegroundServiceDidNotStartInTimeException
-        // regardless of which action onStartCommand() processes first.
-        // When IC_INITIALIZE later arrives, incomingCallHandler.handle() calls startForeground()
-        // again with the full incoming-call notification, which simply replaces this placeholder.
-        val placeholder =
-            Notification
-                .Builder(this, NotificationChannelManager.INCOMING_CALL_NOTIFICATION_CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setCategory(NotificationCompat.CATEGORY_CALL)
-                .setOngoing(true)
-                .build()
-        startForegroundServiceCompat(
-            this,
-            IncomingCallNotificationBuilder.NOTIFICATION_ID,
-            placeholder,
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL,
-        )
 
         Log.d(TAG, "IncomingCallService created")
 
