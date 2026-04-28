@@ -26,14 +26,14 @@
         Only components signed with the same key can send or receive these broadcasts.
     -->
     <permission
-        android:name="com.webtrit.callkeep.INTERNAL_BROADCAST"
+        android:name="${applicationId}.INTERNAL_BROADCAST"
         android:protectionLevel="signature" />
     <!--
         The app must also hold the permission it declares so that intra-app
         sendBroadcast(intent, permission) passes the receiver permission check,
         and registerReceiver(broadcastPermission) passes the sender permission check.
     -->
-    <uses-permission android:name="com.webtrit.callkeep.INTERNAL_BROADCAST" />
+    <uses-permission android:name="${applicationId}.INTERNAL_BROADCAST" />
 
     <uses-feature
         android:name="android.hardware.telephony"
