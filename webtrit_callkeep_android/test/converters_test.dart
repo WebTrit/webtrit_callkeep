@@ -471,84 +471,6 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // PCallkeepSignalingStatusConverter
-  // ---------------------------------------------------------------------------
-
-  group('PCallkeepSignalingStatusConverter.toCallkeep()', () {
-    test('disconnecting', () {
-      expect(PCallkeepSignalingStatus.disconnecting.toCallkeep(), CallkeepSignalingStatus.disconnecting);
-    });
-
-    test('disconnect', () {
-      expect(PCallkeepSignalingStatus.disconnect.toCallkeep(), CallkeepSignalingStatus.disconnect);
-    });
-
-    test('connecting', () {
-      expect(PCallkeepSignalingStatus.connecting.toCallkeep(), CallkeepSignalingStatus.connecting);
-    });
-
-    test('connect', () {
-      expect(PCallkeepSignalingStatus.connect.toCallkeep(), CallkeepSignalingStatus.connect);
-    });
-
-    test('failure', () {
-      expect(PCallkeepSignalingStatus.failure.toCallkeep(), CallkeepSignalingStatus.failure);
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // CallkeepSignalingStatusConverter
-  // ---------------------------------------------------------------------------
-
-  group('CallkeepSignalingStatusConverter.toPigeon()', () {
-    test('disconnecting', () {
-      expect(CallkeepSignalingStatus.disconnecting.toPigeon(), PCallkeepSignalingStatus.disconnecting);
-    });
-
-    test('disconnect', () {
-      expect(CallkeepSignalingStatus.disconnect.toPigeon(), PCallkeepSignalingStatus.disconnect);
-    });
-
-    test('connecting', () {
-      expect(CallkeepSignalingStatus.connecting.toPigeon(), PCallkeepSignalingStatus.connecting);
-    });
-
-    test('connect', () {
-      expect(CallkeepSignalingStatus.connect.toPigeon(), PCallkeepSignalingStatus.connect);
-    });
-
-    test('failure', () {
-      expect(CallkeepSignalingStatus.failure.toPigeon(), PCallkeepSignalingStatus.failure);
-    });
-
-    test('round-trip for all values', () {
-      for (final status in CallkeepSignalingStatus.values) {
-        expect(status.toPigeon().toCallkeep(), status);
-      }
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // PCallkeepPushNotificationSyncStatusConverter
-  // ---------------------------------------------------------------------------
-
-  group('PCallkeepPushNotificationSyncStatusConverter.toCallkeep()', () {
-    test('synchronizeCallStatus', () {
-      expect(
-        PCallkeepPushNotificationSyncStatus.synchronizeCallStatus.toCallkeep(),
-        CallkeepPushNotificationSyncStatus.synchronizeCallStatus,
-      );
-    });
-
-    test('releaseResources', () {
-      expect(
-        PCallkeepPushNotificationSyncStatus.releaseResources.toCallkeep(),
-        CallkeepPushNotificationSyncStatus.releaseResources,
-      );
-    });
-  });
-
-  // ---------------------------------------------------------------------------
   // PCallkeepIncomingCallDataConverter
   // ---------------------------------------------------------------------------
 
@@ -588,21 +510,6 @@ void main() {
       final result = status.toCallkeep();
       expect(result.lifecycleEvent, CallkeepLifecycleEvent.onResume);
     });
-
-    test('null mainSignalingStatus stays null', () {
-      final status = PCallkeepServiceStatus(lifecycleEvent: PCallkeepLifecycleEvent.onStart, mainSignalingStatus: null);
-      final result = status.toCallkeep();
-      expect(result.mainSignalingStatus, isNull);
-    });
-
-    test('non-null mainSignalingStatus is converted', () {
-      final status = PCallkeepServiceStatus(
-        lifecycleEvent: PCallkeepLifecycleEvent.onResume,
-        mainSignalingStatus: PCallkeepSignalingStatus.connect,
-      );
-      final result = status.toCallkeep();
-      expect(result.mainSignalingStatus, CallkeepSignalingStatus.connect);
-    });
   });
 
   // ---------------------------------------------------------------------------
@@ -614,15 +521,6 @@ void main() {
       final status = CallkeepServiceStatus(lifecycleEvent: CallkeepLifecycleEvent.onDestroy);
       final result = status.toPigeon();
       expect(result.lifecycleEvent, PCallkeepLifecycleEvent.onDestroy);
-    });
-
-    test('mainSignalingStatus is intentionally dropped (not serialized to Pigeon)', () {
-      final status = CallkeepServiceStatus(
-        lifecycleEvent: CallkeepLifecycleEvent.onResume,
-        mainSignalingStatus: CallkeepSignalingStatus.connect,
-      );
-      final result = status.toPigeon();
-      expect(result.mainSignalingStatus, isNull);
     });
   });
 

@@ -427,14 +427,6 @@ void main() {
       _mockVoid('$_prefix.PHostConnectionsApi.cleanConnections');
       await expectLater(WebtritCallkeepPlatform.instance.cleanConnections(), completes);
     });
-
-    test('updateActivitySignalingStatus with connect completes', () async {
-      _mockVoid('$_prefix.PHostConnectionsApi.updateActivitySignalingStatus');
-      await expectLater(
-        WebtritCallkeepPlatform.instance.updateActivitySignalingStatus(CallkeepSignalingStatus.connect),
-        completes,
-      );
-    });
   });
 
   // ---------------------------------------------------------------------------

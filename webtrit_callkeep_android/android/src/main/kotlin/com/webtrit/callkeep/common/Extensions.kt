@@ -22,12 +22,9 @@ import androidx.lifecycle.Lifecycle
 import com.webtrit.callkeep.PCallkeepIncomingCallData
 import com.webtrit.callkeep.PCallkeepLifecycleEvent
 import com.webtrit.callkeep.PCallkeepPermission
-import com.webtrit.callkeep.PCallkeepPushNotificationSyncStatus
-import com.webtrit.callkeep.PCallkeepSignalingStatus
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PPermissionResult
 import com.webtrit.callkeep.PSpecialPermissionStatusTypeEnum
-import com.webtrit.callkeep.models.SignalingStatus
 
 inline fun <reified T : Parcelable> Intent.parcelable(key: String): T? =
     when {
@@ -103,12 +100,13 @@ fun Context.registerReceiverCompat(
     receiver: BroadcastReceiver,
     intentFilter: IntentFilter,
     exported: Boolean = true,
+    permission: String? = null,
 ) {
     if (SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         val flags = if (exported) Context.RECEIVER_EXPORTED else Context.RECEIVER_NOT_EXPORTED
-        registerReceiver(receiver, intentFilter, flags)
+        registerReceiver(receiver, intentFilter, permission, null, flags)
     } else {
-        registerReceiver(receiver, intentFilter)
+        registerReceiver(receiver, intentFilter, permission, null)
     }
 }
 
@@ -121,13 +119,14 @@ fun Context.registerReceiverCompat(
 fun Context.sendInternalBroadcast(
     action: String,
     extras: Bundle? = null,
+    permission: String? = null,
 ) {
     Intent(action)
         .apply {
             setPackage(packageName)
             addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
             extras?.let { putExtras(it) }
-        }.also { sendBroadcast(it) }
+        }.also { sendBroadcast(it, permission) }
 }
 
 fun Lifecycle.Event.toPCallkeepLifecycleType(): PCallkeepLifecycleEvent =
@@ -172,49 +171,13 @@ fun Context.startForegroundServiceCompat(
     }
 }
 
-fun SignalingStatus.toPCallkeepSignalingStatus(): PCallkeepSignalingStatus =
-    when (this) {
-        SignalingStatus.DISCONNECTING -> PCallkeepSignalingStatus.DISCONNECTING
-        SignalingStatus.DISCONNECT -> PCallkeepSignalingStatus.DISCONNECT
-        SignalingStatus.CONNECTING -> PCallkeepSignalingStatus.CONNECTING
-        SignalingStatus.CONNECT -> PCallkeepSignalingStatus.CONNECT
-        SignalingStatus.FAILURE -> PCallkeepSignalingStatus.FAILURE
-    }
-
-fun PCallkeepSignalingStatus.toSignalingStatus(): SignalingStatus =
-    when (this) {
-        PCallkeepSignalingStatus.DISCONNECTING -> SignalingStatus.DISCONNECTING
-        PCallkeepSignalingStatus.DISCONNECT -> SignalingStatus.DISCONNECT
-        PCallkeepSignalingStatus.CONNECTING -> SignalingStatus.CONNECTING
-        PCallkeepSignalingStatus.CONNECT -> SignalingStatus.CONNECT
-        PCallkeepSignalingStatus.FAILURE -> SignalingStatus.FAILURE
-    }
-
 fun PDelegateBackgroundRegisterFlutterApi.syncPushIsolate(
     context: Context,
     callData: PCallkeepIncomingCallData?,
     callback: (Result<Unit>) -> Unit,
 ) {
-    isolateEvent(context, PCallkeepPushNotificationSyncStatus.SYNCHRONIZE_CALL_STATUS, callData, callback)
-}
-
-fun PDelegateBackgroundRegisterFlutterApi.releasePushIsolate(
-    context: Context,
-    callData: PCallkeepIncomingCallData?,
-    callback: (Result<Unit>) -> Unit,
-) {
-    isolateEvent(context, PCallkeepPushNotificationSyncStatus.RELEASE_RESOURCES, callData, callback)
-}
-
-private fun PDelegateBackgroundRegisterFlutterApi.isolateEvent(
-    context: Context,
-    event: PCallkeepPushNotificationSyncStatus,
-    callData: PCallkeepIncomingCallData?,
-    callback: (Result<Unit>) -> Unit,
-) {
     this.onNotificationSync(
         StorageDelegate.IncomingCallService.getOnNotificationSync(context),
-        event,
         callData,
         callback = callback,
     )

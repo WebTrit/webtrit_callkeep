@@ -13,8 +13,6 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
 
-    <!-- Needed for auto start at boot if keep alive service is enabled -->
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!--
@@ -22,6 +20,20 @@
         Allows the app to receive SMS messages to trigger incoming calls as a fallback when push notifications fail.
     -->
     <!-- <uses-permission android:name="android.permission.RECEIVE_SMS" /> -->
+
+    <!--
+        Signature-level permission used to protect internal IC_RELEASE broadcasts.
+        Only components signed with the same key can send or receive these broadcasts.
+    -->
+    <permission
+        android:name="com.webtrit.callkeep.INTERNAL_BROADCAST"
+        android:protectionLevel="signature" />
+    <!--
+        The app must also hold the permission it declares so that intra-app
+        sendBroadcast(intent, permission) passes the receiver permission check,
+        and registerReceiver(broadcastPermission) passes the sender permission check.
+    -->
+    <uses-permission android:name="com.webtrit.callkeep.INTERNAL_BROADCAST" />
 
     <uses-feature
         android:name="android.hardware.telephony"
@@ -67,11 +79,6 @@
             android:foregroundServiceType="microphone" />
 
         <service
-            android:name=".services.services.signaling.SignalingIsolateService"
-            android:exported="false"
-            android:foregroundServiceType="phoneCall" />
-
-        <service
             android:name=".services.services.incoming_call.IncomingCallService"
             android:exported="false"
             android:foregroundServiceType="phoneCall" />
@@ -82,33 +89,6 @@
             android:foregroundServiceType="phoneCall|microphone|camera" />
 
         <service android:name=".services.services.foreground.ForegroundService" />
-
-        <!--
-          Receiver for starting the signaling service (SignalingIsolateService) on system events,
-          only if the service is enabled in app settings.
-
-          Used to relaunch the service on:
-            - device boot (BOOT_COMPLETED, LOCKED_BOOT_COMPLETED),
-            - app update (MY_PACKAGE_REPLACED),
-            - quick boot on some legacy HTC/Motorola devices (QUICKBOOT_POWERON)
-
-           Note:
-            - On Android 14+ (API 34), BOOT_COMPLETED can no longer start a ForegroundService
-              of type "phone call". The service must be started later from WebtritCallkeepPlugin.
-
-          See: ForegroundCallBootReceiver.kt
-        -->
-        <receiver
-            android:name=".services.services.signaling.receivers.ForegroundCallBootReceiver"
-            android:enabled="true"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
-                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-            </intent-filter>
-        </receiver>
 
         <!--
           [Optional Integration] SMS Fallback Receiver

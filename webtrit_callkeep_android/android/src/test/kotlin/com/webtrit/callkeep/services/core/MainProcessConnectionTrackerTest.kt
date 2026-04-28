@@ -398,6 +398,7 @@ class MainProcessConnectionTrackerTest {
         assertTrue(tracker.getAll().isEmpty())
         assertFalse(tracker.isPending("call-1"))
         assertFalse(tracker.exists("call-2"))
+        // After clear, connectionStates is also cleared — unknown callIds are NOT considered terminated.
         assertFalse(tracker.isTerminated("call-1"))
         assertFalse(tracker.consumeAnswer("call-3"))
     }

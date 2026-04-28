@@ -20,11 +20,13 @@ import com.webtrit.callkeep.managers.NotificationChannelManager
 import com.webtrit.callkeep.models.AudioDevice
 import com.webtrit.callkeep.models.AudioDeviceType
 import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.notifications.StandaloneIncomingCallNotificationBuilder
 import com.webtrit.callkeep.services.broadcaster.CallCommandEvent
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
 import com.webtrit.callkeep.services.core.CallkeepCore
 import java.util.concurrent.ConcurrentHashMap
+import com.webtrit.callkeep.managers.AudioManager as CallkeepAudioManager
 
 /**
  * Standalone call management service for devices that do not expose the
@@ -46,12 +48,26 @@ import java.util.concurrent.ConcurrentHashMap
 class StandaloneCallService : Service() {
     private val core get() = CallkeepCore.instance
     private val audioManager by lazy { getSystemService(AUDIO_SERVICE) as AudioManager }
+    private val ringtoneManager by lazy { CallkeepAudioManager(applicationContext) }
 
     // Tracks whether startForeground() has been called in this service instance.
     // startForeground() is deferred until an actual call is handled so that lifecycle-only
     // commands (SyncConnectionState, SyncAudioState, etc.) do not post a foreground
     // notification when there is no call in progress.
     private var isForeground = false
+
+    // FOREGROUND_SERVICE_TYPE_MICROPHONE was introduced in API 31 (Android 12).
+    // On API 29-30 the type is unknown to the framework and startForeground() throws
+    // IllegalArgumentException when the requested type does not match the manifest.
+    // Passing null selects the 2-arg startForeground() fallback in startForegroundServiceCompat(),
+    // which skips type validation on older builds.
+    private val foregroundServiceType: Int?
+        get() =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            } else {
+                null
+            }
 
     override fun onCreate() {
         super.onCreate()
@@ -144,6 +160,8 @@ class StandaloneCallService : Service() {
 
     override fun onDestroy() {
         Log.i(TAG, "onDestroy")
+        ringtoneManager.stopRingtone()
+        ringtoneManager.stopCallWaitingTone()
         isRunning = false
         isForeground = false
         stopForeground(STOP_FOREGROUND_REMOVE)
@@ -183,18 +201,7 @@ class StandaloneCallService : Service() {
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setOngoing(true)
                 .build()
-        // FOREGROUND_SERVICE_TYPE_MICROPHONE was introduced in API 31 (Android 12).
-        // On API 29-30 the type is unknown to the framework and startForeground() throws
-        // IllegalArgumentException when the requested type does not match the manifest.
-        // Passing null here selects the 2-arg startForeground() fallback in
-        // startForegroundServiceCompat(), which skips type validation on older builds.
-        val foregroundType =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-            } else {
-                null
-            }
-        startForegroundServiceCompat(this, NOTIFICATION_ID, placeholder, foregroundType)
+        startForegroundServiceCompat(this, NOTIFICATION_ID, placeholder, foregroundServiceType)
         isForeground = true
     }
 
@@ -203,6 +210,21 @@ class StandaloneCallService : Service() {
         promoteToForeground()
         callMetadataMap[metadata.callId] = metadata
         answeredCallIds.remove(metadata.callId)
+        if (answeredCallIds.isNotEmpty()) {
+            Log.d(TAG, "handleIncomingCall: active call detected — playing call-waiting tone for callId=${metadata.callId}")
+            ringtoneManager.startCallWaitingTone()
+        } else {
+            ringtoneManager.startRingtone(metadata.ringtonePath)
+        }
+
+        // Replace the placeholder foreground notification (posted by promoteToForeground) with
+        // a full incoming call notification — including Answer/Decline buttons and CallStyle on
+        // API 31+.  The placeholder uses FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID (low importance)
+        // only to satisfy the 5-second startForeground() ANR window; this call switches to
+        // INCOMING_CALL_NOTIFICATION_CHANNEL_ID (high importance) so the system treats it as a
+        // ringing call rather than a silent ongoing service notification.
+        showIncomingCallNotification(metadata)
+
         // Notify the main process that the call has been registered. ForegroundService listens
         // for this broadcast to resolve its pendingIncomingCallbacks entry and promote the call
         // into the core shadow state, matching the PhoneConnectionService.onCreateIncomingConnection
@@ -214,6 +236,14 @@ class StandaloneCallService : Service() {
         if (pendingAnswers.remove(metadata.callId)) {
             handleAnswerCall(metadata)
         }
+    }
+
+    private fun showIncomingCallNotification(metadata: CallMetadata) {
+        val notification =
+            StandaloneIncomingCallNotificationBuilder()
+                .apply { setCallMetaData(metadata) }
+                .build()
+        startForegroundServiceCompat(this, NOTIFICATION_ID, notification, foregroundServiceType)
     }
 
     private fun handleOutgoingCall(metadata: CallMetadata) {
@@ -229,6 +259,8 @@ class StandaloneCallService : Service() {
 
     private fun handleEstablishCall(metadata: CallMetadata) {
         Log.i(TAG, "handleEstablishCall: callId=${metadata.callId}")
+        ringtoneManager.stopRingtone()
+        ringtoneManager.stopCallWaitingTone()
         val full = (callMetadataMap[metadata.callId] ?: metadata).mergeWith(metadata)
         callMetadataMap[metadata.callId] = full.copy(acceptedTime = System.currentTimeMillis())
         answeredCallIds.add(metadata.callId)
@@ -242,6 +274,8 @@ class StandaloneCallService : Service() {
 
     private fun handleAnswerCall(metadata: CallMetadata) {
         Log.i(TAG, "handleAnswerCall: callId=${metadata.callId}")
+        ringtoneManager.stopRingtone()
+        ringtoneManager.stopCallWaitingTone()
         val full = (callMetadataMap[metadata.callId] ?: metadata).mergeWith(metadata)
         callMetadataMap[metadata.callId] = full.copy(acceptedTime = System.currentTimeMillis())
         answeredCallIds.add(metadata.callId)
@@ -255,12 +289,16 @@ class StandaloneCallService : Service() {
 
     private fun handleDeclineCall(metadata: CallMetadata) {
         Log.i(TAG, "handleDeclineCall: callId=${metadata.callId}")
+        ringtoneManager.stopRingtone()
+        ringtoneManager.stopCallWaitingTone()
         endCall(metadata)
         core.notifyConnectionEvent(CallLifecycleEvent.HungUp, metadata.toBundle())
     }
 
     private fun handleHungUpCall(metadata: CallMetadata) {
         Log.i(TAG, "handleHungUpCall: callId=${metadata.callId}")
+        ringtoneManager.stopRingtone()
+        ringtoneManager.stopCallWaitingTone()
         endCall(metadata)
         core.notifyConnectionEvent(CallLifecycleEvent.HungUp, metadata.toBundle())
     }
@@ -294,6 +332,8 @@ class StandaloneCallService : Service() {
 
     private fun handleTearDownConnections() {
         Log.i(TAG, "handleTearDownConnections: cleaning up ${callMetadataMap.size} calls")
+        ringtoneManager.stopRingtone()
+        ringtoneManager.stopCallWaitingTone()
         callMetadataMap.keys.toList().forEach { callId ->
             val meta = callMetadataMap[callId] ?: CallMetadata(callId = callId)
             core.notifyConnectionEvent(CallLifecycleEvent.HungUp, meta.toBundle())
@@ -312,6 +352,7 @@ class StandaloneCallService : Service() {
         answeredCallIds.clear()
         pendingAnswers.clear()
         deactivateAudio(force = true)
+        ringtoneManager.stopCallWaitingTone()
     }
 
     /**

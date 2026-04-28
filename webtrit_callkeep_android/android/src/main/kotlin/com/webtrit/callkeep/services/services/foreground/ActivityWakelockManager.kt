@@ -1,7 +1,8 @@
-package com.webtrit.callkeep.services.services.connection
+package com.webtrit.callkeep.services.services.foreground
 
 import android.app.Activity
 import android.view.WindowManager
+import androidx.annotation.MainThread
 import com.webtrit.callkeep.common.ActivityProvider
 import com.webtrit.callkeep.common.Log
 
@@ -10,12 +11,19 @@ class ActivityWakelockManager(
 ) {
     private val operationQueue = mutableListOf<(Activity) -> Unit>()
 
+    private var isScreenOnDesired = false
+
     // Reference to the listener for unsubscribing later
     private val activityChangeListener: (Activity?) -> Unit = { activity ->
         val activityName = activity?.componentName?.shortClassName ?: "null"
         logger.d("Activity lifecycle change detected. Current Activity: $activityName")
 
-        activity?.let { executePendingOperations(it) }
+        activity?.let {
+            if (isScreenOnDesired) {
+                it.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+            executePendingOperations(it)
+        }
     }
 
     init {
@@ -26,7 +34,9 @@ class ActivityWakelockManager(
     /**
      * Keeps the screen on by applying the FLAG_KEEP_SCREEN_ON to the current activity.
      */
+    @MainThread
     fun acquireScreenWakeLock() {
+        isScreenOnDesired = true
         executeOrQueue("Acquire FLAG_KEEP_SCREEN_ON") { activity ->
             logger.v("Applying window flag FLAG_KEEP_SCREEN_ON to ${activity.componentName.shortClassName}")
             activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -36,7 +46,9 @@ class ActivityWakelockManager(
     /**
      * Releases the wake lock by clearing the FLAG_KEEP_SCREEN_ON from the current activity.
      */
+    @MainThread
     fun releaseScreenWakeLock() {
+        isScreenOnDesired = false
         executeOrQueue("Release FLAG_KEEP_SCREEN_ON") { activity ->
             logger.v("Clearing window flag FLAG_KEEP_SCREEN_ON from ${activity.componentName.shortClassName}")
             activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -97,8 +109,11 @@ class ActivityWakelockManager(
      * Disposes of the WakelockManager by unsubscribing from ActivityHolder updates.
      * Forcefully clears the keep-screen-on flag before disposing resources to prevent leaks.
      */
+    @MainThread
     fun dispose() {
         logger.d("Disposing ActivityWakelockManager. Cleanup started.")
+
+        isScreenOnDesired = false
 
         activityProvider.getActivity()?.let { activity ->
             runCatching {

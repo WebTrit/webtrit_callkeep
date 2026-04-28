@@ -1,7 +1,7 @@
 package com.webtrit.callkeep.common
 
 import android.content.Context
-import com.webtrit.callkeep.R
+import android.util.Log
 
 /**
  * A delegate for managing SharedPreferences related to incoming and root routes.
@@ -57,26 +57,15 @@ object StorageDelegate {
             sharedPreferences(context).edit().putBoolean(FULL_SCREEN, enabled).apply()
         }
 
-        fun isFullScreen(context: Context): Boolean = sharedPreferences(context).getBoolean(FULL_SCREEN, true)
+        fun isFullScreen(context: Context): Boolean =
+            sharedPreferences(context).getBoolean(FULL_SCREEN, true).also {
+                Log.d("StorageDelegate", "IncomingCall.isFullScreen=$it")
+            }
     }
 
     object IncomingCallService {
         private const val ON_NOTIFICATION_SYNC = "ON_NOTIFICATION_SYNC"
         private const val INCOMING_CALL_HANDLER = "INCOMING_CALL_HANDLER"
-        private const val LAUNCH_BACKGROUND_ISOLATE_EVEN_IF_APP_IS_OPEN =
-            "LAUNCH_BACKGROUND_ISOLATE_EVEN_IF_APP_IS_OPEN"
-
-        fun setLaunchBackgroundIsolateEvenIfAppIsOpen(
-            context: Context,
-            value: Boolean,
-        ) {
-            sharedPreferences(context)
-                .edit()
-                .putBoolean(LAUNCH_BACKGROUND_ISOLATE_EVEN_IF_APP_IS_OPEN, value)
-                .apply()
-        }
-
-        fun isLaunchBackgroundIsolateEvenIfAppIsOpen(context: Context): Boolean = sharedPreferences(context).getBoolean(LAUNCH_BACKGROUND_ISOLATE_EVEN_IF_APP_IS_OPEN, false)
 
         fun setOnNotificationSync(
             context: Context,
@@ -97,70 +86,28 @@ object StorageDelegate {
         fun getCallbackDispatcher(context: Context): Long = sharedPreferences(context).getLong(INCOMING_CALL_HANDLER, -1)
     }
 
-    object SignalingService {
-        private const val SIGNALING_SERVICE_ENABLED = "SIGNALING_SERVICE_ENABLED"
+    object Timeout {
+        private const val INCOMING_CALL_TIMEOUT_MS = "INCOMING_CALL_TIMEOUT_MS"
+        private const val OUTGOING_CALL_TIMEOUT_MS = "OUTGOING_CALL_TIMEOUT_MS"
+        private const val DEFAULT_TIMEOUT_MS = 60_000L
 
-        private const val SS_NOTIFICATION_TITLE_KEY = "SS_NOTIFICATION_TITLE_KEY"
-        private const val SS_NOTIFICATION_DESCRIPTION_KEY = "SS_NOTIFICATION_DESCRIPTION_KEY"
-
-        private const val ON_SYNC_HANDLER = "ON_SYNC_HANDLER"
-        private const val CALLBACK_DISPATCHER = "CALLBACK_DISPATCHER"
-
-        fun setSignalingServiceEnabled(
+        fun setIncomingCallTimeoutMs(
             context: Context,
-            value: Boolean,
+            ms: Long,
         ) {
-            sharedPreferences(context).edit().putBoolean(SIGNALING_SERVICE_ENABLED, value).apply()
+            sharedPreferences(context).edit().putLong(INCOMING_CALL_TIMEOUT_MS, ms).apply()
         }
 
-        fun isSignalingServiceEnabled(context: Context): Boolean = sharedPreferences(context).getBoolean(SIGNALING_SERVICE_ENABLED, false)
+        fun getIncomingCallTimeoutMs(context: Context): Long = sharedPreferences(context).getLong(INCOMING_CALL_TIMEOUT_MS, DEFAULT_TIMEOUT_MS)
 
-        fun setNotificationTitle(
+        fun setOutgoingCallTimeoutMs(
             context: Context,
-            value: String?,
+            ms: Long,
         ) {
-            sharedPreferences(context).edit().putString(SS_NOTIFICATION_TITLE_KEY, value).apply()
+            sharedPreferences(context).edit().putLong(OUTGOING_CALL_TIMEOUT_MS, ms).apply()
         }
 
-        fun setNotificationDescription(
-            context: Context,
-            value: String?,
-        ) {
-            sharedPreferences(context)
-                .edit()
-                .putString(SS_NOTIFICATION_DESCRIPTION_KEY, value)
-                .apply()
-        }
-
-        fun getNotificationTitle(context: Context): String {
-            val default = context.getString(R.string.signaling_service_notification_name)
-            return sharedPreferences(context).getString(SS_NOTIFICATION_TITLE_KEY, default)
-                ?: default
-        }
-
-        fun getNotificationDescription(context: Context): String {
-            val default = context.getString(R.string.signaling_service_notification_description)
-            return sharedPreferences(context).getString(SS_NOTIFICATION_DESCRIPTION_KEY, default)
-                ?: default
-        }
-
-        fun setOnSyncHandler(
-            context: Context,
-            value: Long,
-        ) {
-            sharedPreferences(context).edit().putLong(ON_SYNC_HANDLER, value).apply()
-        }
-
-        fun getOnSyncHandler(context: Context): Long = sharedPreferences(context).getLong(ON_SYNC_HANDLER, -1)
-
-        fun getCallbackDispatcher(context: Context): Long = sharedPreferences(context).getLong(CALLBACK_DISPATCHER, -1)
-
-        fun setCallbackDispatcher(
-            context: Context,
-            value: Long,
-        ) {
-            sharedPreferences(context).edit().putLong(CALLBACK_DISPATCHER, value).apply()
-        }
+        fun getOutgoingCallTimeoutMs(context: Context): Long = sharedPreferences(context).getLong(OUTGOING_CALL_TIMEOUT_MS, DEFAULT_TIMEOUT_MS)
     }
 
     object IncomingCallSmsConfig {

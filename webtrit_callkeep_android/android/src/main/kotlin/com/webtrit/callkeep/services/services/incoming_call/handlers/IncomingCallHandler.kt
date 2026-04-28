@@ -7,15 +7,16 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationManagerCompat
+import androidx.lifecycle.Lifecycle
 import com.webtrit.callkeep.common.startForegroundServiceCompat
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
-import com.webtrit.callkeep.services.common.IsolateLaunchPolicy
+import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleState
 
 /**
  * Handles the lifecycle of an incoming call within a foreground Service:
  *  - shows the initial high-priority incoming-call notification
- *  - optionally launches background handling (isolate) according to policy
+ *  - launches background handling (isolate) unless the main app is already active
  *  - transitions the notification to silent (ring muted) or releases it after answer
  *
  * This class is intentionally side-effectful and **does not** own Service lifecycle;
@@ -26,15 +27,23 @@ import com.webtrit.callkeep.services.common.IsolateLaunchPolicy
 class IncomingCallHandler(
     private val service: Service,
     private val notificationBuilder: IncomingCallNotificationBuilder,
-    private val isolateLaunchPolicy: IsolateLaunchPolicy,
     private val isolateInitializer: IsolateInitializer,
 ) {
     private var lastMetadata: CallMetadata? = null
     private val notifier by lazy { NotificationManagerCompat.from(service) }
 
+    // Derived from the current call's ID so each incoming call gets a unique notification ID.
+    // A unique ID guarantees the system treats the notification as new — not an update to a
+    // previous one — which is required for fullScreenIntent to fire on Android 14+.
+    // lastMetadata is always non-null when this property is read: showNotification() sets it
+    // before accessing currentNotificationId, and all other callers are guarded by the
+    // lastMetadata != null check in releaseIncomingCallNotification().
+    private val currentNotificationId: Int
+        get() = IncomingCallNotificationBuilder.notificationId(lastMetadata!!.callId)
+
     /**
      * Entry point to process a fresh incoming call.
-     * Shows the ringing notification and (if policy permits) starts background handling.
+     * Shows the ringing notification and starts background handling unless the main app is active.
      */
     fun handle(metadata: CallMetadata) {
         Log.d(
@@ -65,13 +74,25 @@ class IncomingCallHandler(
     }
 
     /**
+     * Explicitly cancels the call-derived notification (ID ≥ 1000) if a call was handled.
+     * Called from IncomingCallService.onDestroy() as a belt-and-suspenders cleanup:
+     * stopForeground(REMOVE) does not reliably cancel the FGS notification on some Samsung
+     * builds, so we cancel it directly to prevent a lingering notification in the shade.
+     */
+    @SuppressLint("MissingPermission")
+    fun cancelCurrentNotification() {
+        if (lastMetadata == null) return
+        notifier.cancel(currentNotificationId)
+    }
+
+    /**
      * Transitions the foreground Service to a silent call notification
      * (keeps the service in foreground, but cancels the loud ringing one).
      */
     @SuppressLint("MissingPermission")
     fun muteIncomingCallNotification() {
         stopForegroundDetach()
-        notifier.cancel(IncomingCallNotificationBuilder.NOTIFICATION_ID)
+        notifier.cancel(currentNotificationId)
         startForegroundCompat(notificationBuilder.buildSilent())
     }
 
@@ -82,24 +103,31 @@ class IncomingCallHandler(
         val notification = notificationBuilder.apply { setCallMetaData(metadata) }.build()
         service.startForegroundServiceCompat(
             service,
-            IncomingCallNotificationBuilder.NOTIFICATION_ID,
+            currentNotificationId,
             notification,
             ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL,
         )
     }
 
     private fun maybeInitBackgroundHandling() {
-        val shouldLaunch = isolateLaunchPolicy.shouldLaunch()
-        if (shouldLaunch) {
-            val callId = lastMetadata?.callId
-            Log.d(TAG, "Launching isolate for callId: $callId")
-            isolateInitializer.start()
-        } else {
-            Log.d(
-                TAG,
-                "Skipped launching isolate.initializer=$isolateInitializer",
-            )
+        // Skip isolate launch when the main Flutter app is active (foreground or recently
+        // backgrounded). In that state the main SignalingModule already has an open WebSocket
+        // and handles the incoming call. Starting a second background isolate would open a
+        // duplicate signaling connection, causing both sides to receive IncomingCallEvent and
+        // fight over the same Telecom slot — resulting in callRejectedBySystem and a decline
+        // loop. When the app is not active (killed / not yet started) the state is null or
+        // ON_DESTROY, so the isolate launches normally.
+        val state = ActivityLifecycleState.currentValue
+        val isAppActive =
+            state == Lifecycle.Event.ON_RESUME ||
+                state == Lifecycle.Event.ON_PAUSE ||
+                state == Lifecycle.Event.ON_STOP
+        if (isAppActive) {
+            Log.d(TAG, "maybeInitBackgroundHandling: app is active (state=$state), skipping isolate launch")
+            return
         }
+        Log.d(TAG, "Launching isolate for callId: ${lastMetadata?.callId}")
+        isolateInitializer.start()
     }
 
     /**
@@ -108,12 +136,12 @@ class IncomingCallHandler(
     private fun startForegroundCompat(notification: Notification) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             service.startForeground(
-                IncomingCallNotificationBuilder.NOTIFICATION_ID,
+                currentNotificationId,
                 notification,
                 android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL,
             )
         } else {
-            service.startForeground(IncomingCallNotificationBuilder.NOTIFICATION_ID, notification)
+            service.startForeground(currentNotificationId, notification)
         }
     }
 

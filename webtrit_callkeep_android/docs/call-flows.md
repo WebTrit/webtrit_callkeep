@@ -32,7 +32,6 @@ Triggered by an FCM message or a direct Dart call to `reportNewIncomingCall`.
 7.  ForegroundService.connectionServicePerformReceiver
         |   CallkeepCore.promote(callId, meta, state)
         |
-        |  If signalingRegisteredCallIds does NOT contain callId:
         |   PDelegateFlutterApi.performIncomingCall(callId, meta)
         v
 8.  Dart delegate receives performIncomingCall()
@@ -65,29 +64,6 @@ Triggered by an FCM message or a direct Dart call to `reportNewIncomingCall`.
 At step 10, `reserveAnswer` stores the intent. At step 6 (`onCreateIncomingConnection`),
 `ConnectionManager.consumeAnswer(callId)` returns true and `PhoneConnection.onAnswer()` is called
 immediately — continuing from step 11 above.
-
----
-
-## Incoming Call (Signaling Path)
-
-Triggered by the persistent `SignalingIsolateService` when the signaling WebSocket receives an
-incoming call event.
-
-```text
-1.  Server --> WebSocket --> SignalingIsolateService (background Flutter isolate)
-        |
-        v
-2.  Dart isolate calls PHostApi.reportNewIncomingCall(callId, meta)
-        |   (same path as steps 3-13 above, but starting from ForegroundService)
-        v
-3.  ForegroundService.reportNewIncomingCall()
-        |   TelephonyUtils.addNewIncomingCall()  -->  Android Telecom
-        |   MainProcessConnectionTracker.signalingRegisteredCallIds += callId
-        v
-    (continues as steps 5-13 above)
-    Note: signalingRegisteredCallIds suppresses the DidPushIncomingCall broadcast
-          notification to Dart (would be a duplicate since Dart already knows).
-```
 
 ---
 

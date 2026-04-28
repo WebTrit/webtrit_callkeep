@@ -226,21 +226,24 @@ class ConnectionManagerTest {
     }
 
     @Test
-    fun `validateConnectionAddition calls onError TERMINATED for a disconnected callId`() {
+    fun `validateConnectionAddition calls onSuccess for a disconnected callId — reuse allowed`() {
+        // A STATE_DISCONNECTED connection is treated as absent so that the same callId can be
+        // reused for a new incoming call (e.g. blind transfer-back). The stale entry is removed
+        // and the callId is reserved as pending — onSuccess must be called.
         val manager = createManager()
         val conn = createRingingConnection("call-1")
         manager.addConnection("call-1", conn)
         conn.setDisconnected(DisconnectCause(DisconnectCause.LOCAL))
         PhoneConnectionService.connectionManager = manager
 
-        var errorEnum: PIncomingCallErrorEnum? = null
+        var success = false
         ConnectionManager.validateConnectionAddition(
             metadata = CallMetadata(callId = "call-1"),
-            onSuccess = { },
-            onError = { errorEnum = it.value },
+            onSuccess = { success = true },
+            onError = { },
         )
 
-        assertEquals(PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED, errorEnum)
+        assertTrue(success)
     }
 
     @Test
@@ -369,6 +372,50 @@ class ConnectionManagerTest {
             PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS,
             errorEnum,
         )
+    }
+
+    // -------------------------------------------------------------------------
+    // hasActiveOrHoldingConnection
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `hasActiveOrHoldingConnection returns false when manager is empty`() {
+        assertFalse(createManager().hasActiveOrHoldingConnection())
+    }
+
+    @Test
+    fun `hasActiveOrHoldingConnection returns false when connection is ringing`() {
+        val manager = createManager()
+        manager.addConnection("call-1", createRingingConnection())
+        assertFalse(manager.hasActiveOrHoldingConnection())
+    }
+
+    @Test
+    fun `hasActiveOrHoldingConnection returns true when connection is active`() {
+        val manager = createManager()
+        val conn = createRingingConnection()
+        conn.setActive()
+        manager.addConnection("call-1", conn)
+        assertTrue(manager.hasActiveOrHoldingConnection())
+    }
+
+    @Test
+    fun `hasActiveOrHoldingConnection returns true when connection is on hold`() {
+        val manager = createManager()
+        val conn = createRingingConnection()
+        conn.setOnHold()
+        manager.addConnection("call-1", conn)
+        assertTrue(manager.hasActiveOrHoldingConnection())
+    }
+
+    @Test
+    fun `hasActiveOrHoldingConnection returns false after active connection disconnects`() {
+        val manager = createManager()
+        val conn = createRingingConnection()
+        conn.setActive()
+        manager.addConnection("call-1", conn)
+        conn.setDisconnected(DisconnectCause(DisconnectCause.LOCAL))
+        assertFalse(manager.hasActiveOrHoldingConnection())
     }
 
     // -------------------------------------------------------------------------

@@ -1,33 +1,33 @@
 package com.webtrit.callkeep.services.services.incoming_call
 
-import android.app.Notification
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ServiceInfo
+import android.content.IntentFilter
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
 import androidx.annotation.Keep
-import androidx.core.app.NotificationCompat
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
+import com.webtrit.callkeep.common.PendingBroadcastQueue
 import com.webtrit.callkeep.common.PermissionsHelper
 import com.webtrit.callkeep.common.StorageDelegate
-import com.webtrit.callkeep.common.startForegroundServiceCompat
-import com.webtrit.callkeep.managers.NotificationChannelManager
+import com.webtrit.callkeep.common.registerReceiverCompat
+import com.webtrit.callkeep.common.sendInternalBroadcast
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.models.toPCallkeepIncomingCallData
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
-import com.webtrit.callkeep.services.common.DefaultIsolateLaunchPolicy
 import com.webtrit.callkeep.services.core.CallkeepCore
 import com.webtrit.callkeep.services.core.ConnectionEventListener
 import com.webtrit.callkeep.services.services.incoming_call.handlers.CallLifecycleHandler
@@ -45,10 +45,48 @@ class IncomingCallService :
     // denied). Released in onDestroy() or when the call is answered/declined.
     private var screenWakeLock: PowerManager.WakeLock? = null
 
+    // Set to true only after IC_INITIALIZE is handled. Guards against a duplicate IC_INITIALIZE
+    // arriving while the service is still processing a call (e.g. a second push while the first
+    // call is still in the teardown window).
+    private var isInitialized = false
+
+    // Set to true once syncPushIsolate has been dispatched. Prevents double-sync when both
+    // the onStart() path (warm engine) and the establishFlutterCommunication() path (cold-start
+    // deferred) would otherwise both deliver call data to the Dart isolate.
+    private var callDataSynced = false
+
+    // Set to true on the first handleRelease() call. Guards against a second invocation in the
+    // narrow window where both releaseReceiver and the PendingBroadcastQueue early-exit path
+    // could race to call handleRelease() for the same call.
+    private var isReleased = false
+
+    // Receives IC_RELEASE_WITH_ANSWER / IC_RELEASE_WITH_DECLINE from release().
+    // Registered in onCreate() and unregistered in onDestroy() so it only lives while the
+    // service is alive. If the service is not running the broadcast goes nowhere — no zombie
+    // restart, no placeholder notification appearing after the call ends.
+    private val releaseReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                context: Context?,
+                intent: Intent?,
+            ) {
+                when (intent?.action) {
+                    IncomingCallRelease.IC_RELEASE_WITH_DECLINE.name -> handleRelease(answered = false)
+                    IncomingCallRelease.IC_RELEASE_WITH_ANSWER.name -> handleRelease(answered = true)
+                }
+            }
+        }
+
     private val timeoutHandler = Handler(Looper.getMainLooper())
     private val stopTimeoutRunnable =
         Runnable {
             Log.w(TAG, "Service stop timeout ($SERVICE_TIMEOUT_MS ms) reached. Stopping forcefully.")
+            stopSelf()
+        }
+
+    private val independentTimeoutRunnable =
+        Runnable {
+            Log.w(TAG, "Independent service timeout ($INDEPENDENT_SERVICE_TIMEOUT_MS ms) reached. Stopping forcefully.")
             stopSelf()
         }
 
@@ -79,41 +117,41 @@ class IncomingCallService :
         setRunning(true)
         ContextHolder.init(applicationContext)
 
-        // Satisfy Android's 5-second startForeground() requirement immediately.
-        // onStartCommand() may be delayed if the main thread is busy (e.g. platform-channel IPC
-        // during Flutter cold-start) or if IC_RELEASE arrives before IC_INITIALIZE. Calling
-        // startForeground() here — in onCreate() — prevents ForegroundServiceDidNotStartInTimeException
-        // regardless of which action onStartCommand() processes first.
-        // When IC_INITIALIZE later arrives, incomingCallHandler.handle() calls startForeground()
-        // again with the full incoming-call notification, which simply replaces this placeholder.
-        val placeholder =
-            Notification
-                .Builder(this, NotificationChannelManager.INCOMING_CALL_NOTIFICATION_CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setCategory(NotificationCompat.CATEGORY_CALL)
-                .setOngoing(true)
-                .build()
-        startForegroundServiceCompat(
-            this,
-            IncomingCallNotificationBuilder.NOTIFICATION_ID,
-            placeholder,
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL,
-        )
-
         Log.d(TAG, "IncomingCallService created")
+
+        registerReceiverCompat(
+            releaseReceiver,
+            IntentFilter().apply {
+                addAction(IncomingCallRelease.IC_RELEASE_WITH_DECLINE.name)
+                addAction(IncomingCallRelease.IC_RELEASE_WITH_ANSWER.name)
+            },
+            exported = false,
+            permission = RELEASE_BROADCAST_PERMISSION,
+        )
 
         CallkeepCore.instance.addConnectionEventListener(this)
 
         isolateHandler =
             FlutterIsolateHandler(this@IncomingCallService, this@IncomingCallService) {
-                callLifecycleHandler.flutterApi?.syncPushIsolate(callLifecycleHandler.currentCallData, onSuccess = {}, onFailure = {})
+                Log.d(TAG, "onStart: flutterApi=${callLifecycleHandler.flutterApi != null}, callDataSynced=$callDataSynced, callData=${callLifecycleHandler.currentCallData?.callId}")
+                if (callDataSynced) {
+                    Log.d(TAG, "onStart: callDataSynced already set — skipping duplicate syncPushIsolate")
+                } else {
+                    callLifecycleHandler.flutterApi?.syncPushIsolate(
+                        callLifecycleHandler.currentCallData,
+                        onSuccess = {
+                            callDataSynced = true
+                            Log.d(TAG, "syncPushIsolate: success")
+                        },
+                        onFailure = { e -> Log.e(TAG, "syncPushIsolate: failed: $e") },
+                    ) ?: Log.w(TAG, "syncPushIsolate: flutterApi is null — will retry from establishFlutterCommunication")
+                }
             }
 
         incomingCallHandler =
             IncomingCallHandler(
                 service = this,
                 notificationBuilder = incomingCallNotificationBuilder,
-                isolateLaunchPolicy = DefaultIsolateLaunchPolicy(this),
                 isolateInitializer = isolateHandler,
             )
 
@@ -142,12 +180,12 @@ class IncomingCallService :
         }
 
         return when (action) {
-            // Listen foreground service actions
             PushNotificationServiceEnums.IC_INITIALIZE.name -> handleLaunch(metadata!!)
 
-            IncomingCallRelease.IC_RELEASE_WITH_DECLINE.name -> handleRelease(answered = false)
-
-            IncomingCallRelease.IC_RELEASE_WITH_ANSWER.name -> handleRelease(answered = true)
+            // IC_RELEASE_WITH_ANSWER / IC_RELEASE_WITH_DECLINE are now delivered via
+            // releaseReceiver (BroadcastReceiver registered in onCreate). They no longer
+            // arrive through onStartCommand — release() uses sendInternalBroadcast() instead
+            // of startService(), so the service is never restarted after it has stopped.
 
             // Listen push notification actions (Only notify connection service)
             NotificationAction.Answer.action -> reportAnswerToConnectionService(metadata!!)
@@ -163,15 +201,23 @@ class IncomingCallService :
     override fun onDestroy() {
         Log.d(TAG, "onDestroy called")
 
-        // Cancel the safety-net timeout so it does not fire after a graceful stop and
-        // report a false-alarm to Crashlytics.
+        // Cancel both safety-net timeouts so they do not fire after a graceful stop.
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
+        timeoutHandler.removeCallbacks(independentTimeoutRunnable)
 
         setRunning(false)
         releaseScreenWakeLock()
+        unregisterReceiver(releaseReceiver)
         CallkeepCore.instance.removeConnectionEventListener(this)
 
         stopForeground(STOP_FOREGROUND_REMOVE)
+        // Explicitly cancel the call-derived notification (ID ≥ 1000).
+        // stopForeground(REMOVE) does not reliably remove the FGS notification on some
+        // Samsung builds (Android 11), leaving buildSilent() or the ringing notification
+        // lingering in the shade. cancelCurrentNotification() handles this explicitly.
+        if (::incomingCallHandler.isInitialized) {
+            incomingCallHandler.cancelCurrentNotification()
+        }
         isolateHandler.cleanup()
         super.onDestroy()
     }
@@ -183,6 +229,21 @@ class IncomingCallService :
         callLifecycleHandler.apply {
             flutterApi =
                 DefaultFlutterIsolateCommunicator(this@IncomingCallService, serviceApi, registerApi)
+        }
+        // On a cold-start Flutter engine, executeDartCallback() returns before Dart has run.
+        // onStart() fires immediately and finds flutterApi == null, so syncPushIsolate is skipped.
+        // This is the first point where Dart has registered its APIs and can accept the call data.
+        if (!callDataSynced) {
+            val data = callLifecycleHandler.currentCallData
+            if (data != null) {
+                callDataSynced = true
+                Log.w(TAG, "establishFlutterCommunication: deferred sync for callId=${data.callId}")
+                callLifecycleHandler.flutterApi?.syncPushIsolate(
+                    data,
+                    onSuccess = { Log.d(TAG, "syncPushIsolate (deferred): success") },
+                    onFailure = { e -> Log.e(TAG, "syncPushIsolate (deferred): failed: $e") },
+                )
+            }
         }
     }
 
@@ -203,9 +264,59 @@ class IncomingCallService :
 
     // Launches the service with the LAUNCH action and cancels the timeout
     private fun handleLaunch(metadata: CallMetadata): Int {
+        // The service handles one call at a time. If IC_INITIALIZE arrives while we are
+        // still in the teardown window of a previous call (stopTimeoutRunnable pending),
+        // accepting it would cancel the stop timer, overwrite currentCallData, and start
+        // a second Flutter isolate on the same engine — causing FlutterEngine conflicts and
+        // callRejectedBySystem from Telecom. Reject the duplicate; it will be delivered to
+        // a fresh service instance once the current one stops.
+        if (isInitialized) {
+            Log.w(TAG, "handleLaunch: already initialized for ${callLifecycleHandler.currentCallData?.callId}, ignoring IC_INITIALIZE for ${metadata.callId}")
+            return START_NOT_STICKY
+        }
+        isInitialized = true
+
+        // Check for a pending release posted by ForegroundService.reportEndCall() before
+        // this service started. startForegroundService(IC_INITIALIZE) may be queued in the
+        // OS before the caller hangs up. By the time the OS delivers it, reportEndCall() has
+        // already run and posted to PendingBroadcastQueue. The IC_RELEASE_WITH_DECLINE
+        // broadcast from :callkeep_core was lost (releaseReceiver not yet registered), so
+        // this in-process entry is the only remaining signal that the call is over.
+        if (PendingBroadcastQueue.consume(PendingBroadcastQueue.incomingReleaseKey(metadata.callId))) {
+            Log.w(TAG, "handleLaunch: pending release found for callId=${metadata.callId} — releasing immediately without showing UI")
+            // Block any deferred syncPushIsolate from establishFlutterCommunication(). The call
+            // is already in teardown; delivering it to Dart as a new incoming call would create
+            // a zombie ActiveCall on the Dart side that was never set up natively.
+            callDataSynced = true
+            // startForeground() must be called within 5s of startForegroundService() on Android 12+.
+            // handle() satisfies this by posting a notification and calling startForeground().
+            // releaseIncomingCallNotification() immediately transitions it to a silent release
+            // notification, so the ringing UI is never visible to the user.
+            incomingCallHandler.handle(metadata)
+            callLifecycleHandler.currentCallData = metadata.toPCallkeepIncomingCallData()
+            handleRelease(answered = false)
+            return START_NOT_STICKY
+        }
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
+        timeoutHandler.removeCallbacks(independentTimeoutRunnable)
+        timeoutHandler.postDelayed(independentTimeoutRunnable, INDEPENDENT_SERVICE_TIMEOUT_MS)
         callLifecycleHandler.currentCallData = metadata.toPCallkeepIncomingCallData()
-        acquireScreenWakeLockIfNeeded()
+        // Acquire the screen WakeLock only when USE_FULL_SCREEN_INTENT is unavailable
+        // (e.g. MIUI/HyperOS where the permission is denied by default).
+        //
+        // When FSI is granted, acquiring a WakeLock here wakes the device from Doze
+        // *before* the FSI notification is posted. On an already-awake device, SystemUI
+        // no longer fires FSI as part of a Doze-exit sequence — VoipCallMonitor
+        // (Android 14+) then intercepts the notification and silently suppresses FSI
+        // because self-managed connections are not tracked in its call registry.
+        //
+        // When FSI is unavailable the WakeLock is the only mechanism to turn the screen
+        // on; the notification provides the call UI instead of a full-screen Activity.
+        val fsiAvailable = isFullScreenIntentAvailable()
+        Log.d(TAG, "handleLaunch: isFullScreenIntentAvailable=$fsiAvailable → ${if (fsiAvailable) "relying on FSI" else "acquiring WakeLock fallback"}")
+        if (!fsiAvailable) {
+            acquireScreenWakeLockIfNeeded()
+        }
         incomingCallHandler.handle(metadata)
         // START_NOT_STICKY: if the OS kills this service after the incoming call is set up,
         // do not restart it. A restart would deliver a null intent — the current onStartCommand
@@ -217,11 +328,17 @@ class IncomingCallService :
 
     // Handles the RELEASE action and cancels the timeout
     private fun handleRelease(answered: Boolean = false): Int {
+        if (isReleased) {
+            Log.w(TAG, "handleRelease: already released, ignoring duplicate invocation")
+            return START_NOT_STICKY
+        }
+        isReleased = true
         // The ringing phase is over — release the wake lock immediately so the screen
         // is not held on for the full WAKELOCK_TIMEOUT_MS during post-call teardown.
         // onDestroy() keeps the lock as a final safety net in case this path is skipped.
         releaseScreenWakeLock()
         incomingCallHandler.releaseIncomingCallNotification(answered)
+        timeoutHandler.removeCallbacks(independentTimeoutRunnable)
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
         timeoutHandler.postDelayed(stopTimeoutRunnable, SERVICE_TIMEOUT_MS)
         if (answered) {
@@ -258,12 +375,40 @@ class IncomingCallService :
     }
 
     /**
-     * Acquires a wake lock that turns on the screen when an incoming call arrives.
+     * Returns true if the system will fire a full-screen intent for this app's notifications,
+     * meaning the WakeLock is not needed to wake the screen.
      *
-     * This is a fallback for devices (MIUI/HyperOS) where USE_FULL_SCREEN_INTENT is
-     * denied by default and the full-screen intent cannot wake the display. When
-     * full-screen intent is available and enabled, the system handles screen wake via
-     * the full-screen intent itself, so no wake lock is needed.
+     * On Android 13 and below there is no VoipCallMonitor and no USE_FULL_SCREEN_INTENT
+     * permission gate, but acquiring the WakeLock on those versions is harmless and keeps
+     * the pre-existing behavior. Returning false here causes handleLaunch() to always acquire
+     * the WakeLock on API < 34, which is intentional.
+     *
+     * On Android 14+ (API 34) the permission can be denied by OEM ROMs (MIUI/HyperOS).
+     * When denied, canUseFullScreenIntent() returns false and we fall back to the WakeLock.
+     */
+    private fun isFullScreenIntentAvailable(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            Log.d(TAG, "isFullScreenIntentAvailable: SDK ${Build.VERSION.SDK_INT} < 34, returning false (WakeLock path)")
+            return false
+        }
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        val available = nm.canUseFullScreenIntent()
+        Log.d(TAG, "isFullScreenIntentAvailable: SDK ${Build.VERSION.SDK_INT}, canUseFullScreenIntent=$available")
+        return available
+    }
+
+    /**
+     * Acquires a wake lock that turns on the screen when an incoming call arrives on
+     * devices where USE_FULL_SCREEN_INTENT is unavailable (e.g. MIUI/HyperOS).
+     *
+     * SCREEN_BRIGHT_WAKE_LOCK | ACQUIRE_CAUSES_WAKEUP is required to physically turn the
+     * screen on via PowerManager. On these devices the notification provides the call UI
+     * instead of a full-screen Activity; the wake lock makes it visible.
+     *
+     * This must NOT be acquired before the FSI notification is posted on devices where
+     * FSI is available. Waking the device from Doze first changes the timing so that
+     * VoipCallMonitor (Android 14+) intercepts the FSI notification on an already-awake
+     * device, preventing SystemUI from firing it as part of the Doze-exit sequence.
      *
      * The lock expires automatically after WAKELOCK_TIMEOUT_MS to prevent battery
      * drain if the release path is skipped.
@@ -271,12 +416,6 @@ class IncomingCallService :
     @Suppress("DEPRECATION") // SCREEN_BRIGHT_WAKE_LOCK is deprecated but is the correct flag
     // for waking the screen; the modern alternative (FLAG_TURN_SCREEN_ON) requires an Activity.
     private fun acquireScreenWakeLockIfNeeded() {
-        val fullScreenEnabled = StorageDelegate.IncomingCall.isFullScreen(this)
-        val canUseFullScreenIntent = PermissionsHelper(this).canUseFullScreenIntent()
-        if (fullScreenEnabled && canUseFullScreenIntent) {
-            Log.d(TAG, "Screen wake lock skipped: full-screen intent is available")
-            return
-        }
         if (screenWakeLock?.isHeld == true) return
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
         screenWakeLock =
@@ -302,8 +441,10 @@ class IncomingCallService :
         private const val TAG = "IncomingCallService"
 
         private const val SERVICE_TIMEOUT_MS = 2_000L
+        private const val INDEPENDENT_SERVICE_TIMEOUT_MS = 60_000L
         private const val WAKELOCK_TIMEOUT_MS = 30_000L
         private const val WAKELOCK_TAG = "com.webtrit.callkeep:IncomingCallWakeLock"
+        private const val RELEASE_BROADCAST_PERMISSION = "com.webtrit.callkeep.INTERNAL_BROADCAST"
 
         @Volatile
         var isRunning = false
@@ -336,34 +477,17 @@ class IncomingCallService :
             context: Context,
             type: IncomingCallRelease,
         ) {
-            // Do NOT guard on isRunning here. isRunning is a static field set only in the
-            // main-process JVM. After the :callkeep_core process split, PhoneConnection
-            // (which runs in :callkeep_core) calls this method; in that JVM isRunning is
-            // always false, so the guard would silently drop every cancel request and leave
-            // the incoming-call notification frozen after answer/decline.
+            // Deliver via broadcast instead of startService().
+            // releaseReceiver is registered in onCreate() and unregistered in onDestroy(),
+            // so it is alive only while the service is running. If the service has already
+            // stopped the broadcast goes nowhere — no zombie restart, no placeholder
+            // notification appearing after the call ends.
             //
-            // startService() is intentional here, NOT startForegroundService().
-            //
-            // IC_RELEASE is only meaningful when IncomingCallService is already running
-            // as a foreground service (started by IC_INITIALIZE). While that service is
-            // alive the process is not treated as background by Android, so plain
-            // startService() is allowed and delivers the action to onStartCommand().
-            //
-            // If IncomingCallService is NOT running we must not start it via
-            // startForegroundService(): the release code path never calls startForeground(),
-            // so Android would kill the app after the 5-second deadline with
-            // ForegroundServiceDidNotStartInTimeException.
-            // startService() instead fails with a caught IllegalStateException (background-
-            // start restriction) which is the correct no-op: the notification is already
-            // gone because the service was never running.
-            runCatching {
-                context.startService(
-                    Intent(context, IncomingCallService::class.java).apply { this.action = type.name },
-                )
-                Log.d(TAG, "Release action $type initiated.")
-            }.onFailure { e ->
-                Log.w(TAG, "Release action $type: startService failed: $e")
-            }
+            // sendInternalBroadcast() uses setPackage(packageName) + FLAG_RECEIVER_FOREGROUND,
+            // so it crosses the :callkeep_core → main-process boundary safely and is
+            // delivered only to this app.
+            context.sendInternalBroadcast(type.name, permission = RELEASE_BROADCAST_PERMISSION)
+            Log.d(TAG, "Release action $type initiated via broadcast.")
         }
     }
 }

@@ -41,6 +41,14 @@ interface ConnectionTracker {
         onHold: Boolean,
     )
 
+    /**
+     * Merge [metadata] into the stored record for [metadata.callId].
+     * No-op if the call is not yet promoted to connections (still pending).
+     * Used to propagate mid-call updates (e.g. hasVideo toggle) to the shadow
+     * without going through a full promote() cycle.
+     */
+    fun updateMetadata(metadata: CallMetadata) {}
+
     /** Mark [callId] as terminated, removing it from the active connections map. */
     fun markTerminated(callId: String)
 

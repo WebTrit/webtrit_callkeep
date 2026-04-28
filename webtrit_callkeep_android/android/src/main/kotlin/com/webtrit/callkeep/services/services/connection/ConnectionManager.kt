@@ -3,10 +3,12 @@ package com.webtrit.callkeep.services.services.connection
 import android.telecom.Connection
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.PIncomingCallErrorEnum
+import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.models.CallMetadata
 import java.util.concurrent.ConcurrentHashMap
 
 class ConnectionManager {
+    private val logger = Log("ConnectionManager")
     private val connections: ConcurrentHashMap<String, PhoneConnection> = ConcurrentHashMap()
     private val connectionResourceLock = Any()
 
@@ -47,15 +49,26 @@ class ConnectionManager {
         synchronized(connectionResourceLock) {
             return when {
                 pendingCallIds.contains(callId) -> {
+                    logger.w("checkAndReservePending: $callId → CALL_ID_ALREADY_EXISTS (in pending)")
                     PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS
                 }
 
                 connections[callId]?.state == Connection.STATE_DISCONNECTED -> {
-                    PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED
+                    // Align with isConnectionAlreadyExists/addConnection: treat a stale
+                    // STATE_DISCONNECTED entry as absent so the same callId can be reused
+                    // (e.g. blind transfer-back). Remove the old entry and reserve as pending.
+                    logger.w("checkAndReservePending: $callId has stale STATE_DISCONNECTED connection — allowing reuse, reserving as pending")
+                    connections.remove(callId)
+                    pendingCallIds.add(callId)
+                    logger.i("checkAndReservePending: $callId → reserved as pending (previous connection was STATE_DISCONNECTED)")
+                    null
                 }
 
                 connections.containsKey(callId) -> {
-                    if (connections[callId]?.hasAnswered == true) {
+                    val answered = connections[callId]?.hasAnswered == true
+                    val snapshot = connections.entries.joinToString { (id, c) -> "$id:state=${c.state}" }
+                    logger.w("checkAndReservePending: $callId → ${if (answered) "CALL_ID_ALREADY_EXISTS_AND_ANSWERED" else "CALL_ID_ALREADY_EXISTS"} (active in :callkeep_core) connections=[$snapshot]")
+                    if (answered) {
                         PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS_AND_ANSWERED
                     } else {
                         PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS
@@ -64,6 +77,7 @@ class ConnectionManager {
 
                 else -> {
                     pendingCallIds.add(callId)
+                    logger.i("checkAndReservePending: $callId → reserved as pending (free slot)")
                     null
                 }
             }
@@ -132,7 +146,8 @@ class ConnectionManager {
         connection: PhoneConnection,
     ) {
         synchronized(connectionResourceLock) {
-            if (!connections.containsKey(callId)) {
+            val existing = connections[callId]
+            if (existing == null || existing.state == Connection.STATE_DISCONNECTED) {
                 connections[callId] = connection
             }
         }
@@ -156,11 +171,16 @@ class ConnectionManager {
         }
 
     /**
-     * Check if a connection already exists.
+     * Check if a live (non-disconnected) connection already exists for [callId].
+     *
+     * A STATE_DISCONNECTED connection is not considered "existing" because it is
+     * a terminal object left in the map until tearDown. Treating it as live would
+     * block a new incoming call that reuses the same callId (e.g. blind transfer-back).
      */
     fun isConnectionAlreadyExists(callId: String): Boolean {
         synchronized(connectionResourceLock) {
-            return connections.containsKey(callId)
+            val existing = connections[callId] ?: return false
+            return existing.state != Connection.STATE_DISCONNECTED
         }
     }
 
@@ -222,7 +242,8 @@ class ConnectionManager {
         connection: PhoneConnection,
     ): Boolean {
         synchronized(connectionResourceLock) {
-            if (!connections.containsKey(callId)) {
+            val existing = connections[callId]
+            if (existing == null || existing.state == Connection.STATE_DISCONNECTED) {
                 connections[callId] = connection
             }
             return pendingAnswers.remove(callId)
@@ -289,6 +310,23 @@ class ConnectionManager {
     fun isExistsIncomingConnection(): Boolean {
         synchronized(connectionResourceLock) {
             return connections.values.any { it.state == Connection.STATE_NEW || it.state == Connection.STATE_RINGING }
+        }
+    }
+
+    /**
+     * Checks whether there is already an active or held connection.
+     *
+     * Used to decide whether a new incoming call should play a soft call-waiting tone
+     * instead of the full ringtone, preventing the ringtone from blasting through the
+     * earpiece during an ongoing conversation.
+     *
+     * @return `true` if any connection is in `STATE_ACTIVE` or `STATE_HOLDING`.
+     */
+    fun hasActiveOrHoldingConnection(): Boolean {
+        synchronized(connectionResourceLock) {
+            return connections.values.any {
+                it.state == Connection.STATE_ACTIVE || it.state == Connection.STATE_HOLDING
+            }
         }
     }
 

@@ -4,7 +4,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
-import android.os.Build
 import android.os.IBinder
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -13,14 +12,12 @@ import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.AssetCacheManager
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
-import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.setShowWhenLockedCompat
 import com.webtrit.callkeep.common.setTurnScreenOnCompat
 import com.webtrit.callkeep.services.broadcaster.ActivityLifecycleState
 import com.webtrit.callkeep.services.core.CallkeepCore
 import com.webtrit.callkeep.services.services.foreground.ForegroundService
 import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
-import com.webtrit.callkeep.services.services.signaling.SignalingIsolateService
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -41,7 +38,6 @@ class WebtritCallkeepPlugin :
     private lateinit var messenger: BinaryMessenger
     private lateinit var context: Context
 
-    private var signalingIsolateService: SignalingIsolateService? = null
     private var pushNotificationIsolateService: IncomingCallService? = null
 
     private var foregroundService: ForegroundService? = null
@@ -180,6 +176,19 @@ class WebtritCallkeepPlugin :
     private var delegateLogsFlutterApi: PDelegateLogsFlutterApi? = null
     private var permissionsApi: PermissionsApi? = null
 
+    // The BinaryMessenger that belongs to the Activity's Flutter engine, captured
+    // synchronously in onAttachedToActivity BEFORE bindForegroundService() runs.
+    //
+    // WebtritCallkeepPlugin.messenger is a shared mutable field overwritten by every
+    // onAttachedToEngine() call. Push-notification isolates (IncomingCallService) each
+    // run in their own FlutterEngine and trigger onAttachedToEngine() independently.
+    // If a push isolate's onAttachedToEngine fires BETWEEN onAttachedToActivity() and
+    // the async onServiceConnected() callback, messenger will be pointing to the push
+    // engine's BinaryMessenger when flutterDelegateApi is created — causing
+    // performAnswerCall to be sent to the wrong engine where it is silently dropped.
+    // Capturing the Activity's messenger here, before any async gap, prevents this race.
+    private var activityBinaryMessenger: BinaryMessenger? = null
+
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         // Store binnyMessenger for later use if instance of the flutter engine belongs to main isolate OR call service isolate
         messenger = flutterPluginBinding.binaryMessenger
@@ -189,9 +198,6 @@ class WebtritCallkeepPlugin :
         AssetCacheManager.init(context)
 
         // Bootstrap isolate APIs
-        BackgroundSignalingIsolateBootstrapApi(context).let {
-            PHostBackgroundSignalingIsolateBootstrapApi.setUp(messenger, it)
-        }
         BackgroundPushNotificationIsolateBootstrapApi(context).let {
             PHostBackgroundPushNotificationIsolateBootstrapApi.setUp(messenger, it)
         }
@@ -231,7 +237,6 @@ class WebtritCallkeepPlugin :
 
         PHostApi.setUp(this.messenger, null)
 
-        PHostBackgroundSignalingIsolateBootstrapApi.setUp(messenger, null)
         PHostBackgroundPushNotificationIsolateBootstrapApi.setUp(messenger, null)
 
         PHostDiagnosticsApi.setUp(messenger, null)
@@ -242,6 +247,10 @@ class WebtritCallkeepPlugin :
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         Log.i(TAG, "onAttachedToActivity id:${binding.hashCode()}")
         this.activityPluginBinding = binding
+        // Capture Activity's messenger before bindForegroundService() to prevent the race
+        // where a push-isolate onAttachedToEngine() overwrites messenger before
+        // onServiceConnected() fires and reads it to create flutterDelegateApi.
+        activityBinaryMessenger = messenger
 
         ActivityHolder.setActivity(binding.activity)
 
@@ -256,22 +265,6 @@ class WebtritCallkeepPlugin :
         lifeCycle = (binding.lifecycle as HiddenLifecycleReference).lifecycle
         lifeCycle!!.addObserver(this)
 
-        // Launch the signaling service manually on Android 15+ (API 34 / UPSIDE_DOWN_CAKE) if enabled.
-        //
-        // On Android 15 and above, the system no longer allows ForegroundServices of type "phone call"
-        // to be started from BOOT_COMPLETED or similar system broadcasts. As a result, the service must
-        // be started explicitly from the app lifecycle — in this case, from the plugin/activity attachment.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            if (StorageDelegate.SignalingService.isSignalingServiceEnabled(binding.activity)) {
-                try {
-                    val intent = Intent(binding.activity, SignalingIsolateService::class.java)
-                    context.startForegroundService(intent)
-                    Log.i(TAG, "SignalingIsolateService started successfully")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to start SignalingIsolateService: ${e.message}")
-                }
-            }
-        }
         // Register the proxy immediately so setUp() calls from Dart are never lost
         // during the asynchronous bindService() window.
         PHostApi.setUp(messenger, serviceProxy)
@@ -281,6 +274,7 @@ class WebtritCallkeepPlugin :
 
     override fun onDetachedFromActivity() {
         Log.i(TAG, "onDetachedFromActivity id:${activityPluginBinding?.hashCode()}")
+        activityBinaryMessenger = null
         ActivityHolder.setActivity(null)
 
         permissionsApi?.let {
@@ -314,30 +308,12 @@ class WebtritCallkeepPlugin :
                 pushNotificationIsolateService?.getCallLifecycleHandler(),
             )
         }
-
-        // Create communication bridge between the service and the signaling isolate
-        if (binding.service is SignalingIsolateService) {
-            Log.i(TAG, "SignalingIsolateService detected, setting up communication bridge")
-            this.signalingIsolateService = binding.service as SignalingIsolateService
-
-            PDelegateBackgroundServiceFlutterApi(messenger).let {
-                signalingIsolateService?.isolateCalkeepFlutterApi = it
-            }
-
-            PDelegateBackgroundRegisterFlutterApi(messenger).let {
-                signalingIsolateService?.isolateSignalingFlutterApi = it
-            }
-
-            PHostBackgroundSignalingIsolateApi.setUp(messenger, signalingIsolateService)
-        }
     }
 
     override fun onDetachedFromService() {
         Log.i(TAG, "onDetachedFromService id:${activityPluginBinding?.hashCode()}")
-        PHostBackgroundSignalingIsolateApi.setUp(messenger, null)
         PHostBackgroundPushNotificationIsolateApi.setUp(messenger, null)
 
-        signalingIsolateService = null
         pushNotificationIsolateService = null
     }
 
@@ -423,7 +399,11 @@ class WebtritCallkeepPlugin :
                     Log.i(TAG, "ForegroundService connected: ${service?.javaClass?.name}")
                     val binder = service as ForegroundService.LocalBinder
                     foregroundService = binder.getService()
-                    foregroundService?.flutterDelegateApi = PDelegateFlutterApi(messenger)
+                    // Use activityBinaryMessenger (captured synchronously in onAttachedToActivity)
+                    // rather than the shared messenger field which may have been overwritten by a
+                    // push-isolate engine that started after onAttachedToActivity but before this
+                    // async callback fired.
+                    foregroundService?.flutterDelegateApi = PDelegateFlutterApi(activityBinaryMessenger ?: messenger)
                     // Flush any setUp() call that arrived before the service connected.
                     pendingSetUp?.let { (options, callback) ->
                         Log.i(TAG, "ForegroundService connected: replaying queued setUp()")

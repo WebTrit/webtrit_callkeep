@@ -95,9 +95,13 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
                 // third-party apps.  Passing a full-screen intent when the permission is
                 // denied has no effect and produces a log warning, so we skip it and rely on
                 // the WakeLock acquired in IncomingCallService as the fallback wake mechanism.
-                val canUseFullScreen =
-                    StorageDelegate.IncomingCall.isFullScreen(context) &&
-                        PermissionsHelper(context).canUseFullScreenIntent()
+                val isFullScreenEnabled = StorageDelegate.IncomingCall.isFullScreen(context)
+                val hasFullScreenPermission = PermissionsHelper(context).canUseFullScreenIntent()
+                val canUseFullScreen = isFullScreenEnabled && hasFullScreenPermission
+                Log.d(
+                    TAG,
+                    "fullScreenIntent: enabled=$isFullScreenEnabled permissionGranted=$hasFullScreenPermission → applied=$canUseFullScreen",
+                )
                 if (canUseFullScreen) {
                     setFullScreenIntent(buildOpenAppIntent(context), true)
                 }
@@ -135,7 +139,10 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
         return NotificationCompat
             .Builder(context, INCOMING_CALL_NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setCategory(NotificationCompat.CATEGORY_CALL)
+            // Intentionally no CATEGORY_CALL here: Samsung/MIUI force all CATEGORY_CALL
+            // notifications to show as heads-up regardless of priority or silent flag.
+            // This notification is a transitional FGS keepalive during teardown and must
+            // not be visible to the user.
             .setContentTitle(title)
             .setContentText(description)
             .setOnlyAlertOnce(true)
@@ -172,11 +179,28 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
 
     @SuppressLint("MissingPermission")
     fun updateToReleaseIncomingCallNotification() {
-        NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, buildReleaseNotification())
+        val meta = requireNotNull(callMetaData) { "Call metadata must be set before updating the notification." }
+        NotificationManagerCompat.from(context).notify(notificationId(meta.callId), buildReleaseNotification())
     }
 
     companion object {
         const val TAG = "INCOMING_CALL_NOTIFICATION"
-        const val NOTIFICATION_ID = 2
+
+        /**
+         * Returns a stable notification ID for the given call ID.
+         *
+         * Using a per-call ID ensures each incoming call is treated as a new
+         * notification by the system, so the fullScreenIntent fires correctly
+         * regardless of any previous call's notification.
+         *
+         * IDs are remapped into [MIN_CALL_NOTIFICATION_ID, Int.MAX_VALUE] to guarantee
+         * they never collide with reserved IDs used elsewhere in the app
+         * (FGS placeholder = 3, ActiveCallNotificationBuilder = 1, StandaloneCallService = 97).
+         */
+        fun notificationId(callId: String): Int = (callId.hashCode() and Int.MAX_VALUE).coerceAtLeast(MIN_CALL_NOTIFICATION_ID)
+
+        // All per-call notification IDs are kept above this threshold so they never
+        // collide with small reserved IDs used by other services in this package.
+        private const val MIN_CALL_NOTIFICATION_ID = 1000
     }
 }

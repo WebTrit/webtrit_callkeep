@@ -3,7 +3,6 @@ package com.webtrit.callkeep.services.services.connection.dispatchers
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
-import com.webtrit.callkeep.services.services.connection.ActivityWakelockManager
 import com.webtrit.callkeep.services.services.connection.ConnectionManager
 import com.webtrit.callkeep.services.services.connection.PhoneConnection
 import com.webtrit.callkeep.services.services.connection.ProximitySensorManager
@@ -19,7 +18,7 @@ enum class ConnectionLifecycleAction {
 /**
  * Dispatcher responsible for routing ServiceAction requests to PhoneConnection instances
  * managed by the [ConnectionManager], and for coordinating ancillary managers such as
- * [ProximitySensorManager] and [ActivityWakelockManager].
+ * [ProximitySensorManager].
  *
  * If the targeted connection cannot be found, the provided [PerformDispatchHandle]
  * (`dispatcher`) is invoked to propagate the event to the higher layer (for example, Flutter)
@@ -27,13 +26,11 @@ enum class ConnectionLifecycleAction {
  *
  * @property connectionManager Manages active phone connections.
  * @property dispatcher Callback invoked when a connection is not found.
- * @property activityWakelockManager Controls screen wake locks (used for video calls).
  * @property proximitySensorManager Controls proximity sensor behavior.
  */
 class PhoneConnectionServiceDispatcher(
     private val connectionManager: ConnectionManager,
     private val dispatcher: PerformDispatchHandle,
-    private val activityWakelockManager: ActivityWakelockManager,
     private val proximitySensorManager: ProximitySensorManager,
 ) {
     /**
@@ -217,22 +214,10 @@ class PhoneConnectionServiceDispatcher(
         logger.i("Service destroyed. Disposing resources.")
 
         runCatching {
-            activityWakelockManager.releaseScreenWakeLock()
-        }.onFailure { e ->
-            logger.e("Failed to release screen wake lock", e)
-        }
-
-        runCatching {
             proximitySensorManager.setShouldListenProximity(false)
             proximitySensorManager.stopListening()
         }.onFailure { e ->
             logger.e("Failed to stop proximity sensor", e)
-        }
-
-        runCatching {
-            activityWakelockManager.dispose()
-        }.onFailure { e ->
-            logger.e("Failed to dispose wakelock manager", e)
         }
 
         runCatching {
@@ -251,12 +236,12 @@ class PhoneConnectionServiceDispatcher(
     }
 
     /**
-     * Centralized logic to manage Proximity Sensor and Screen WakeLock based on
+     * Centralized logic to manage Proximity Sensor based on
      * the global state of all connections.
      *
      * Rule:
-     * 1. If ANY video connection exists -> Screen ON (WakeLock), Proximity OFF.
-     * 2. If NO video but ANY audio connection -> Screen managed by Proximity (WakeLock OFF).
+     * 1. If ANY video connection exists -> Proximity OFF.
+     * 2. If NO video but ANY audio connection -> Screen managed by Proximity.
      * 3. If NO connections -> All sensors OFF.
      */
     private fun updateSensorsState() {
@@ -277,12 +262,9 @@ class PhoneConnectionServiceDispatcher(
             "Updating sensors state. HasVideo: $hasVideo, HasAnyConnection: $hasAnyConnection, ShouldEnableProximity: $shouldEnableProximity",
         )
         if (hasVideo) {
-            activityWakelockManager.acquireScreenWakeLock()
             proximitySensorManager.setShouldListenProximity(false)
             proximitySensorManager.stopListening()
         } else {
-            activityWakelockManager.releaseScreenWakeLock()
-
             if (shouldEnableProximity) {
                 proximitySensorManager.setShouldListenProximity(true)
                 proximitySensorManager.startListening()

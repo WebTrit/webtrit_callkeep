@@ -18,6 +18,7 @@ import androidx.core.net.toUri
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.Platform
+import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.managers.AudioManager
 import com.webtrit.callkeep.managers.NotificationManager
 import com.webtrit.callkeep.models.AudioDevice
@@ -37,6 +38,7 @@ class PhoneConnection internal constructor(
     private var metadata: CallMetadata,
     var onDisconnectCallback: (connection: PhoneConnection) -> Unit,
     var timeout: ConnectionTimeout? = null,
+    private val audioManager: AudioManager = AudioManager(context),
 ) : Connection() {
     private var isMute = false
     private var isHasSpeaker = false
@@ -60,7 +62,8 @@ class PhoneConnection internal constructor(
     private var pendingEndpointRequest: CallEndpoint? = null
     private var availableCallEndpoints: List<CallEndpoint> = emptyList()
     private val notificationManager = NotificationManager()
-    private val audioManager = AudioManager(context)
+
+    private var lastKnownState: Int? = null
 
     val callId: String
         get() = metadata.callId
@@ -118,12 +121,36 @@ class PhoneConnection internal constructor(
 
     /**
      * Invoked by the system when the incoming call interface should be displayed.
+     *
+     * If there is already an active or held call, play a soft call-waiting tone through
+     * the voice call stream instead of the full ringtone. The ringtone uses TYPE_RINGTONE
+     * which routes through the earpiece at full ringtone volume during an active call,
+     * and can cause pain if the user has the phone pressed to their ear (WT-1388).
      */
     override fun onShowIncomingCallUi() {
         logger.d("Showing incoming call UI for callId: $callId")
         notificationManager.showIncomingCallNotification(metadata)
-        audioManager.startRingtone(metadata.ringtonePath)
+        if (PhoneConnectionService.connectionManager.hasActiveOrHoldingConnection()) {
+            logger.d("Active call detected — playing call-waiting tone instead of ringtone for callId: $callId")
+            audioManager.startCallWaitingTone()
+        } else {
+            audioManager.startRingtone(metadata.ringtonePath)
+        }
         dispatcher(CallLifecycleEvent.DidPushIncomingCall, metadata)
+    }
+
+    /**
+     * Invoked by Telecom when the user presses a volume key during an incoming call.
+     *
+     * For self-managed calls, Telecom does not control the ringtone directly — it delegates
+     * silence requests to the app via this callback. Without this override the ringtone keeps
+     * playing regardless of volume key presses (confirmed on Xiaomi/MIUI and Samsung/One UI,
+     * Android 11, WT-1300).
+     */
+    override fun onSilence() {
+        logger.d("Silencing ringtone for callId: $callId")
+        audioManager.stopRingtone()
+        audioManager.stopCallWaitingTone()
     }
 
     /**
@@ -158,6 +185,7 @@ class PhoneConnection internal constructor(
         notificationManager.cancelIncomingNotification(hasAnswered)
         notificationManager.cancelActiveCallNotification(callId)
         audioManager.stopRingtone()
+        audioManager.stopCallWaitingTone()
 
         dispatcher(eventForDisconnectCause(disconnectCause), metadata)
         onDisconnectCallback.invoke(this)
@@ -197,14 +225,30 @@ class PhoneConnection internal constructor(
      * Orchestrates logical transitions based on the underlying Telecom state.
      */
     override fun onStateChanged(state: Int) {
-        logger.v("Connection state changed to: $state for callId: $callId")
+        val stateText =
+            when (state) {
+                STATE_NEW -> "NEW"
+                STATE_DIALING -> "DIALING"
+                STATE_RINGING -> "RINGING"
+                STATE_HOLDING -> "HOLDING"
+                STATE_ACTIVE -> "ACTIVE"
+                STATE_DISCONNECTED -> "DISCONNECTED"
+                else -> "UNKNOWN($state)"
+            }
+        logger.v("Connection state is now: $stateText for callId: $callId")
         super.onStateChanged(state)
         handleConnectionTimeout(state)
 
-        when (state) {
-            STATE_DIALING -> onDialing()
-            STATE_ACTIVE -> onActiveConnection()
+        if (lastKnownState == STATE_NEW && state == STATE_DIALING) {
+            onDialing()
         }
+
+        // Core Fix: Ensure onActiveConnection is called when transitioning from transient states (DIALING/RINGING) to ACTIVE and ignore Hold -> Unhold
+        if ((lastKnownState == STATE_DIALING || lastKnownState == STATE_RINGING) && state == STATE_ACTIVE) {
+            onActiveConnection()
+        }
+
+        lastKnownState = state
     }
 
     /**
@@ -239,8 +283,7 @@ class PhoneConnection internal constructor(
         val audioDevices = state?.supportedRouteMask?.let(::mapSupportedRoutes) ?: emptyList()
         dispatcher(CallMediaEvent.AudioDevicesUpdate, metadata.copy(audioDevices = audioDevices))
 
-        val currentDevice =
-            state?.route?.let(::mapRouteToAudioDevice) ?: AudioDevice(AudioDeviceType.UNKNOWN)
+        val currentDevice = state?.route?.let(::mapRouteToAudioDevice) ?: AudioDevice(AudioDeviceType.UNKNOWN)
         dispatcher(CallMediaEvent.AudioDeviceSet, metadata.copy(audioDevice = currentDevice))
     }
 
@@ -252,8 +295,45 @@ class PhoneConnection internal constructor(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             updateModernAudioState()
         } else {
-            callAudioState?.let(::onCallAudioStateChanged)
+            val state = callAudioState
+            if (state != null) {
+                onCallAudioStateChanged(state)
+            } else {
+                // Fallback for OEM Telecom implementations (e.g. MIUI Android 12) that do not
+                // call setCallAudioState for outgoing self-managed calls. On AOSP, the
+                // CallAudioRouteStateMachine.resendSystemAudioState() seeds this during call
+                // setup; MIUI's MiuiCallsManager skips that step for outgoing calls.
+                dispatchFallbackAudioState()
+            }
         }
+    }
+
+    /**
+     * Builds and dispatches audio device information from [android.media.AudioManager] directly.
+     *
+     * Used as a fallback when [callAudioState] was never set by the Telecom framework (e.g.
+     * on MIUI Android 12 for outgoing calls). Earpiece and Speaker are always present on a
+     * phone; wired and Bluetooth headsets are detected via input-device availability.
+     */
+    private fun dispatchFallbackAudioState() {
+        logger.w("dispatchFallbackAudioState: callAudioState not set by system — building device list from AudioManager")
+        val supportedDevices =
+            buildList {
+                if (audioManager.isSupportEarpiese()) add(AudioDevice(AudioDeviceType.EARPIECE))
+                if (audioManager.isSupportSpeakerphone()) add(AudioDevice(AudioDeviceType.SPEAKER))
+                if (audioManager.isWiredHeadsetConnected()) add(AudioDevice(AudioDeviceType.WIRED_HEADSET))
+                if (audioManager.isBluetoothConnected()) add(AudioDevice(AudioDeviceType.BLUETOOTH))
+            }
+        dispatcher(CallMediaEvent.AudioDevicesUpdate, metadata.copy(audioDevices = supportedDevices))
+
+        val currentDevice =
+            when {
+                audioManager.isBluetoothConnected() -> AudioDevice(AudioDeviceType.BLUETOOTH)
+                audioManager.isWiredHeadsetConnected() -> AudioDevice(AudioDeviceType.WIRED_HEADSET)
+                audioManager.isSpeakerphoneOn() -> AudioDevice(AudioDeviceType.SPEAKER)
+                else -> AudioDevice(AudioDeviceType.EARPIECE)
+            }
+        dispatcher(CallMediaEvent.AudioDeviceSet, metadata.copy(audioDevice = currentDevice))
     }
 
     /**
@@ -293,8 +373,7 @@ class PhoneConnection internal constructor(
              * any "sticky" speaker state without risking a crash.
              */
             if (isFirstLoad && !hasVideo) {
-                val earpiece =
-                    callEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_EARPIECE }
+                val earpiece = callEndpoints.firstOrNull { it.endpointType == CallEndpoint.TYPE_EARPIECE }
                 if (earpiece != null) {
                     logger.i("Startup: Preemptively forcing EARPIECE to clear sticky state.")
                     performEndpointChange(earpiece)
@@ -366,7 +445,20 @@ class PhoneConnection internal constructor(
                 )
             }
         } else {
-            setAudioRoute(mapDeviceTypeToRoute(device.type))
+            val targetRoute = mapDeviceTypeToRoute(device.type)
+            setAudioRoute(targetRoute)
+
+            // MIUI Android 12 (and similar OEM Telecom implementations) silently ignores
+            // setAudioRoute() — both for outgoing calls (where callAudioState is always null)
+            // and for incoming calls after hold/unhold (where MIUI re-seeds callAudioState
+            // when ACTIVE is re-confirmed, making callAudioState non-null, yet still ignores
+            // setAudioRoute()). Always bypass Telecom and route directly via AudioManager.
+            // On AOSP, setAudioRoute() works and onCallAudioStateChanged fires authoritatively
+            // to override the proactive dispatch below — idempotent.
+
+            directRouteAudioDevice(device.type)
+            dispatcher(CallMediaEvent.AudioDeviceSet, metadata.copy(audioDevice = device))
+            isHasSpeaker = device.type == AudioDeviceType.SPEAKER
         }
     }
 
@@ -509,6 +601,7 @@ class PhoneConnection internal constructor(
     private fun onActiveConnection() {
         logger.i("Connection became active for callId: $callId")
         audioManager.stopRingtone()
+        audioManager.stopCallWaitingTone()
         // IncomingCallService release (IC_RELEASE_WITH_ANSWER) is intentionally NOT triggered
         // here from :callkeep_core. ForegroundService.handleCSReportAnswerCall() owns that
         // trigger and sets pendingReleaseCallback before firing it, ensuring performAnswerCall
@@ -530,6 +623,16 @@ class PhoneConnection internal constructor(
         }
 
         enforceVideoSpeakerLogic()
+
+        // Proactively emit audio device state for OEM Telecom implementations that do not
+        // call setCallAudioState for outgoing calls (e.g. MIUI Android 12). On AOSP,
+        // CallAudioRouteStateMachine.resendSystemAudioState() fires during call setup and
+        // triggers onCallAudioStateChanged; on MIUI that step is skipped for outgoing calls,
+        // leaving callAudioState null and audio devices undiscovered until the next routing
+        // event. forceUpdateAudioState() falls back to AudioManager enumeration when null.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            forceUpdateAudioState()
+        }
     }
 
     /**
@@ -647,6 +750,67 @@ class PhoneConnection internal constructor(
         }
 
     /**
+     * Routes audio hardware directly via [android.media.AudioManager], bypassing Telecom.
+     *
+     * Required for OEM Telecom implementations (e.g. MIUI Android 12) that silently ignore
+     * [Connection.setAudioRoute] for self-managed calls.
+     *
+     * [android.media.AudioManager.setCommunicationDevice] (API 31+) only routes audio when the
+     * stack is in [android.media.AudioManager.MODE_IN_COMMUNICATION] (VoIP). On MIUI Android 12,
+     * outgoing self-managed calls are misclassified as cellular (`IS_IPCALL=false` in the
+     * ConnectionRequest extras), so MIUI runs audio in [android.media.AudioManager.MODE_IN_CALL]
+     * instead — making [android.media.AudioManager.setCommunicationDevice] a no-op.
+     *
+     * [android.media.AudioManager.isSpeakerphoneOn] works in both
+     * [android.media.AudioManager.MODE_IN_CALL] and
+     * [android.media.AudioManager.MODE_IN_COMMUNICATION] and is used as the reliable fallback.
+     */
+    private fun directRouteAudioDevice(type: AudioDeviceType) {
+        val sysAm = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+        val mode = sysAm.mode
+        logger.d("directRouteAudioDevice: type=$type, audioMode=$mode")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && mode == android.media.AudioManager.MODE_IN_COMMUNICATION) {
+            val targetType =
+                when (type) {
+                    AudioDeviceType.SPEAKER -> {
+                        android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+                    }
+
+                    AudioDeviceType.EARPIECE -> {
+                        android.media.AudioDeviceInfo.TYPE_BUILTIN_EARPIECE
+                    }
+
+                    AudioDeviceType.BLUETOOTH -> {
+                        android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+                    }
+
+                    AudioDeviceType.WIRED_HEADSET -> {
+                        android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET
+                    }
+
+                    else -> {
+                        logger.w("directRouteAudioDevice: unsupported type=$type, skipping")
+                        return
+                    }
+                }
+            val deviceInfo = sysAm.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS).firstOrNull { it.type == targetType }
+            if (deviceInfo != null && sysAm.setCommunicationDevice(deviceInfo)) {
+                logger.d("directRouteAudioDevice: setCommunicationDevice succeeded for type=$type")
+                return
+            }
+            logger.w("directRouteAudioDevice: setCommunicationDevice failed for type=$type, falling back")
+        }
+
+        // setSpeakerphoneOn works in both MODE_IN_CALL and MODE_IN_COMMUNICATION.
+        // It is deprecated since API 31 but remains the correct fallback when MIUI
+        // misclassifies the outgoing self-managed call as cellular (MODE_IN_CALL).
+        @Suppress("DEPRECATION")
+        sysAm.isSpeakerphoneOn = (type == AudioDeviceType.SPEAKER)
+        logger.d("directRouteAudioDevice: setSpeakerphoneOn=${type == AudioDeviceType.SPEAKER}")
+    }
+
+    /**
      * Locates the best matching endpoint for a requested speaker state.
      */
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
@@ -761,7 +925,7 @@ class PhoneConnection internal constructor(
             dispatcher = dispatcher,
             metadata = metadata,
             onDisconnectCallback = onDisconnect,
-            timeout = ConnectionTimeout.createIncomingConnectionTimeout(),
+            timeout = ConnectionTimeout.createIncomingConnectionTimeout(context),
         ).apply {
             setInitialized()
             setRinging()
@@ -780,13 +944,11 @@ class PhoneConnection internal constructor(
             dispatcher = dispatcher,
             metadata = metadata,
             onDisconnectCallback = onDisconnect,
-            timeout = ConnectionTimeout.createOutgoingConnectionTimeout(),
+            timeout = ConnectionTimeout.createOutgoingConnectionTimeout(context),
         ).apply {
-            setDialing()
             setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
-            if (!Build.MANUFACTURER.equals("Samsung", ignoreCase = true)) {
-                setInitialized()
-            }
+            setInitialized()
+            setDialing()
         }
     }
 }
@@ -820,11 +982,6 @@ class ConnectionTimeout(
 
     companion object {
         /**
-         * Duration in milliseconds before a call in a transient state is automatically disconnected.
-         */
-        private const val TIMEOUT_DURATION_MS = 35000L
-
-        /**
          * Telecom states that trigger the timeout for incoming calls.
          */
         private val DEFAULT_INCOMING_STATES = listOf(Connection.STATE_NEW, Connection.STATE_RINGING)
@@ -836,12 +993,14 @@ class ConnectionTimeout(
 
         /**
          * Creates a timeout configuration for outgoing dialing.
+         * The duration is read from [StorageDelegate.Timeout] so it can be configured via [CallkeepAndroidOptions].
          */
-        fun createOutgoingConnectionTimeout() = ConnectionTimeout(TIMEOUT_DURATION_MS, DEFAULT_OUTGOING_STATES)
+        fun createOutgoingConnectionTimeout(context: Context) = ConnectionTimeout(StorageDelegate.Timeout.getOutgoingCallTimeoutMs(context), DEFAULT_OUTGOING_STATES)
 
         /**
          * Creates a timeout configuration for incoming ringing.
+         * The duration is read from [StorageDelegate.Timeout] so it can be configured via [CallkeepAndroidOptions].
          */
-        fun createIncomingConnectionTimeout() = ConnectionTimeout(TIMEOUT_DURATION_MS, DEFAULT_INCOMING_STATES)
+        fun createIncomingConnectionTimeout(context: Context) = ConnectionTimeout(StorageDelegate.Timeout.getIncomingCallTimeoutMs(context), DEFAULT_INCOMING_STATES)
     }
 }

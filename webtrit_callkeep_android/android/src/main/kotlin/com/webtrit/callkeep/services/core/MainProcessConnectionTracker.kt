@@ -18,6 +18,11 @@ import java.util.concurrent.ConcurrentHashMap
  *   [com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent.DeclineCall]          -> markTerminated
  * - [com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent.OngoingCall]          -> promote outgoing
  *
+ * Termination is derived: a call is considered terminated when it is absent from all active
+ * tracking sets ([connections], [pendingCallIds], [pendingAnswers], [answeredCallIds]).
+ * No explicit terminated set is maintained, so a call that re-arrives with the same ID
+ * (e.g. transfer back) is never incorrectly blocked.
+ *
  * This allows [ForegroundService] and [com.webtrit.callkeep.ConnectionsApi] to query connection
  * state without crossing a process boundary. The main process never reads
  * [com.webtrit.callkeep.services.services.connection.PhoneConnectionService.connectionManager]
@@ -34,9 +39,6 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
 
     // callIds that have been answered by the user
     private val answeredCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
-
-    // callIds for which the call has fully terminated (guards duplicate endCall)
-    private val terminatedCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
     // callIds for which answerCall was requested before the PhoneConnection was created
     private val pendingAnswers: MutableSet<String> = ConcurrentHashMap.newKeySet()
@@ -82,11 +84,20 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
      * caller's genuine pending entry.
      */
     override fun addPending(callId: String): Boolean {
-        // Reset any stale lifecycle state from a prior use of this callId in the same session.
-        // Without this, isTerminated() / isAnswered() could return true for a genuinely new call.
-        terminatedCallIds.remove(callId)
+        // Reset all per-call lifecycle state from any prior use of this callId (e.g. transfer-back
+        // reusing the same callId). Without this, a reused callId can inherit stale guards from
+        // the previous call — for example, endCallDispatchedCallIds would cause the second
+        // clearAndMarkEndCallDispatched to return false, suppressing the required performEndCall.
         answeredCallIds.remove(callId)
         pendingAnswers.remove(callId)
+        endCallDispatchedCallIds.remove(callId)
+        directNotifiedCallIds.remove(callId)
+        // signalingRegisteredCallIds is intentionally NOT cleared here. addPending is called
+        // both by the initial registration site (before markSignalingRegistered) and again
+        // inside InProcessCallkeepCore.startIncomingCall (after markSignalingRegistered). Clearing
+        // it here would erase the guard on the second call and let DidPushIncomingCall through.
+        // The guard is cleared by consumeSignalingRegistered (normal flow) or markTerminated
+        // (call-end cleanup, covers callId reuse).
         return pendingCallIds.add(callId)
     }
 
@@ -102,11 +113,16 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         metadata: CallMetadata,
         state: PCallkeepConnectionState,
     ) {
-        // Reset stale lifecycle sets in case addPending was not called first (push-path),
-        // or in case this callId was reused without going through addPending.
-        terminatedCallIds.remove(callId)
+        // Reset all per-call lifecycle guards in case addPending was not called first (push-path),
+        // or in case this callId is being reused without going through addPending.
         answeredCallIds.remove(callId)
         pendingAnswers.remove(callId)
+        endCallDispatchedCallIds.remove(callId)
+        directNotifiedCallIds.remove(callId)
+        // signalingRegisteredCallIds is intentionally NOT cleared here. promote() is called
+        // inside handleCSReportDidPushIncomingCall, immediately before consumeSignalingRegistered
+        // checks the guard. Clearing it here would defeat the suppression and let
+        // didPushIncomingCall reach Flutter for signaling-path calls.
         connections[callId] = metadata
         pendingCallIds.remove(callId)
         connectionStates[callId] = state
@@ -139,17 +155,22 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
             }
     }
 
+    override fun updateMetadata(metadata: CallMetadata) {
+        connections.computeIfPresent(metadata.callId) { _, existing ->
+            existing.mergeWith(metadata)
+        }
+    }
+
     /**
-     * Mark [callId] as terminated. Removes it from the active connections map so that
-     * subsequent [exists] / [getAll] calls exclude it, and records it in [terminatedCallIds]
-     * so that [isTerminated] returns true for duplicate endCall guards.
+     * Mark [callId] as terminated. Removes it from all active tracking sets so that
+     * [isTerminated] returns true (derived: absent from all sets = terminated).
      */
     override fun markTerminated(callId: String) {
-        terminatedCallIds.add(callId)
         connections.remove(callId)
         answeredCallIds.remove(callId)
         pendingCallIds.remove(callId)
         pendingAnswers.remove(callId)
+        signalingRegisteredCallIds.remove(callId)
         connectionStates[callId] = PCallkeepConnectionState.STATE_DISCONNECTED
     }
 
@@ -166,8 +187,26 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
     /** Returns a non-destructive snapshot of all currently pending call IDs. */
     override fun getPendingCallIds(): Set<String> = pendingCallIds.toSet()
 
-    /** Returns true if [callId] has been marked terminated. */
-    override fun isTerminated(callId: String): Boolean = terminatedCallIds.contains(callId)
+    /**
+     * Returns true if [callId] was previously observed (i.e. appeared in [connectionStates]
+     * via [addPending] → [markTerminated], [promote], or [markAnswered]) and is no longer
+     * present in any active tracking set.
+     *
+     * Requiring [connectionStates] presence prevents false positives for callIds that were
+     * never tracked: an unknown callId absent from all sets is NOT considered terminated —
+     * it is simply unknown. Without this guard, [ForegroundService.endCall] would
+     * misclassify an unknown callId as terminated and fire a spurious [performEndCall].
+     *
+     * Termination is still derived — no explicit terminated set is maintained — so a call
+     * that re-arrives with the same ID (e.g. transfer back) is never blocked once it
+     * re-enters [pendingCallIds] via [addPending] or [promote].
+     */
+    override fun isTerminated(callId: String): Boolean =
+        connectionStates.containsKey(callId) &&
+            !connections.containsKey(callId) &&
+            !pendingCallIds.contains(callId) &&
+            !pendingAnswers.contains(callId) &&
+            !answeredCallIds.contains(callId)
 
     /** Returns true if [callId] has been answered. */
     override fun isAnswered(callId: String): Boolean = answeredCallIds.contains(callId)
@@ -252,7 +291,6 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         connections.clear()
         pendingCallIds.clear()
         answeredCallIds.clear()
-        terminatedCallIds.clear()
         pendingAnswers.clear()
         connectionStates.clear()
         directNotifiedCallIds.clear()

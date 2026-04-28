@@ -6,7 +6,6 @@ import android.util.Log
 import com.webtrit.callkeep.PCallkeepIncomingCallData
 import com.webtrit.callkeep.PHostBackgroundPushNotificationIsolateApi
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.services.common.IsolateSelector
 import com.webtrit.callkeep.services.services.incoming_call.CallConnectionController
 import com.webtrit.callkeep.services.services.incoming_call.FlutterIsolateCommunicator
 
@@ -38,22 +37,17 @@ class CallLifecycleHandler(
     // Does NOT call connectionController.answer() on success: Telecom already confirmed the answer by
     // invoking this method; a second answer() call would send a duplicate signal to the connection service.
     fun performAnswerCall(metadata: CallMetadata) {
-        IsolateSelector.executeIfBackground {
-            val api = flutterApi
-            if (api == null) {
-                Log.w(
-                    TAG,
-                    "performAnswerCall: flutterApi is null, no Flutter isolate to notify for callId=${metadata.callId}",
-                )
-                return@executeIfBackground
-            }
-            api.performAnswer(metadata.callId, onSuccess = {
-                Log.d(TAG, "performAnswerCall: Flutter isolate acknowledged answer for callId=${metadata.callId}")
-            }, onFailure = {
-                Log.d(TAG, "Tear down connection due to answer failure: $it")
-                connectionController.tearDown()
-            })
+        val api = flutterApi
+        if (api == null) {
+            Log.w(TAG, "performAnswerCall: flutterApi is null, no Flutter isolate to notify for callId=${metadata.callId}")
+            return
         }
+        api.performAnswer(metadata.callId, onSuccess = {
+            Log.d(TAG, "performAnswerCall: Flutter isolate acknowledged answer for callId=${metadata.callId}")
+        }, onFailure = {
+            Log.d(TAG, "Tear down connection due to answer failure: $it")
+            connectionController.tearDown()
+        })
     }
 
     fun performEndCall(metadata: CallMetadata) {
@@ -74,10 +68,7 @@ class CallLifecycleHandler(
         metadata: CallMetadata,
         source: DeclineSource,
     ) {
-        IsolateSelector.executeBasedOnIsolate(
-            mainAction = { connectionController.hangUp(metadata) },
-            backgroundAction = { declineCallByBackground(metadata, source) },
-        )
+        declineCallByBackground(metadata, source)
     }
 
     fun declineCallByBackground(
@@ -131,22 +122,38 @@ class CallLifecycleHandler(
     }
 
     override fun endAllCalls(callback: (Result<Unit>) -> Unit) {
-        flutterApi?.releaseResources(currentCallData) {
-            connectionController.tearDown()
-        }
+        connectionController.tearDown()
         callback(Result.success(Unit))
     }
 
-    // Isolate
+    override fun releaseCall(
+        callId: String,
+        callback: (Result<Unit>) -> Unit,
+    ) {
+        Log.d(TAG, "releaseCall: $callId — unanswered, terminating connection and stopping service")
+        terminateCall(CallMetadata(callId = callId), DeclineSource.SERVER)
+        stopService()
+        callback(Result.success(Unit))
+    }
+
+    override fun handoffCall(
+        callId: String,
+        callback: (Result<Unit>) -> Unit,
+    ) {
+        // Called when the Activity is taking over the call — either because the user
+        // answered via push-notification UI, or because the Activity launched as a
+        // full-screen intent and the push isolate's budget expired while the call was
+        // still ringing. In both cases the PhoneConnection must stay alive; only
+        // IncomingCallService is stopped so the Activity can handle the call normally.
+        Log.d(TAG, "handoffCall: $callId — stopping service only, connection stays alive (Activity handoff)")
+        stopService()
+        callback(Result.success(Unit))
+    }
+
     fun release(onComplete: (() -> Unit)? = null) {
         Log.d(TAG, "Resources released")
-        flutterApi?.releaseResources(currentCallData) {
-            onComplete?.invoke()
-            stopServiceWithDelay()
-        } ?: run {
-            onComplete?.invoke()
-            stopService()
-        }
+        onComplete?.invoke()
+        stopServiceWithDelay()
     }
 
     private fun stopServiceWithDelay() {

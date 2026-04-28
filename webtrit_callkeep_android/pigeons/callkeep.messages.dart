@@ -29,6 +29,14 @@ class PAndroidOptions {
   late String? ringtoneSound;
   late String? ringbackSound;
   late bool? incomingCallFullScreen;
+
+  /// Timeout in milliseconds before an unanswered incoming call (STATE_RINGING) is
+  /// automatically disconnected. When null the native default is used.
+  late int? incomingCallTimeoutMs;
+
+  /// Timeout in milliseconds before an unanswered outgoing call (STATE_DIALING) is
+  /// automatically disconnected. When null the native default is used.
+  late int? outgoingCallTimeoutMs;
 }
 
 class POptions {
@@ -151,8 +159,6 @@ class PCallRequestError {
 
 enum PCallkeepLifecycleEvent { onCreate, onStart, onResume, onPause, onStop, onDestroy, onAny }
 
-enum PCallkeepPushNotificationSyncStatus { synchronizeCallStatus, releaseResources }
-
 class PCallkeepIncomingCallData {
   late String callId;
   late PHandle? handle;
@@ -162,7 +168,6 @@ class PCallkeepIncomingCallData {
 
 class PCallkeepServiceStatus {
   late PCallkeepLifecycleEvent lifecycleEvent;
-  late PCallkeepSignalingStatus? mainSignalingStatus;
 }
 
 enum PCallkeepConnectionState {
@@ -192,8 +197,6 @@ enum PCallkeepDisconnectCauseType {
   callPulled,
 }
 
-enum PCallkeepSignalingStatus { disconnecting, disconnect, connecting, connect, failure }
-
 class PCallkeepDisconnectCause {
   late PCallkeepDisconnectCauseType type;
   late String? reason;
@@ -206,39 +209,9 @@ class PCallkeepConnection {
 }
 
 @HostApi()
-abstract class PHostBackgroundSignalingIsolateBootstrapApi {
-  @async
-  void initializeSignalingServiceCallback({required int callbackDispatcher, required int onSync});
-
-  @async
-  void configureSignalingService({String? androidNotificationName, String? androidNotificationDescription});
-
-  @async
-  void startService();
-
-  @async
-  void stopService();
-}
-
-@HostApi()
-abstract class PHostBackgroundSignalingIsolateApi {
-  @async
-  void incomingCall(String callId, PHandle handle, String? displayName, bool hasVideo);
-
-  @async
-  void endCall(String callId);
-
-  @async
-  void endAllCalls();
-}
-
-@HostApi()
 abstract class PHostBackgroundPushNotificationIsolateBootstrapApi {
   @async
   void initializePushNotificationCallback({required int callbackDispatcher, required int onNotificationSync});
-
-  @async
-  void configureSignalingService({bool launchBackgroundIsolateEvenIfAppIsOpen = false});
 
   @async
   PIncomingCallError? reportNewIncomingCall(String callId, PHandle handle, String? displayName, bool hasVideo);
@@ -251,6 +224,19 @@ abstract class PHostBackgroundPushNotificationIsolateApi {
 
   @async
   void endAllCalls();
+
+  /// Terminates the PhoneConnection and stops IncomingCallService.
+  /// Called when the push isolate is done with an unanswered call
+  /// (missed, declined, server hangup, signaling error).
+  @async
+  void releaseCall(String callId);
+
+  /// Stops IncomingCallService without touching the PhoneConnection.
+  /// Called when the push isolate hands off an already-answered call
+  /// to the Activity. The PhoneConnection must stay alive so the
+  /// Activity can adopt it via CALL_ID_ALREADY_EXISTS_AND_ANSWERED.
+  @async
+  void handoffCall(String callId);
 }
 
 @HostApi()
@@ -302,11 +288,7 @@ abstract class PDelegateBackgroundRegisterFlutterApi {
   void onApplicationStatusChanged(int applicationStatusCallbackHandle, PCallkeepServiceStatus status);
 
   @async
-  void onNotificationSync(
-    int pushNotificationSyncStatusHandle,
-    PCallkeepPushNotificationSyncStatus status,
-    PCallkeepIncomingCallData? callData,
-  );
+  void onNotificationSync(int pushNotificationSyncStatusHandle, PCallkeepIncomingCallData? callData);
 }
 
 @HostApi()
@@ -394,9 +376,6 @@ abstract class PHostConnectionsApi {
 
   @async
   void cleanConnections();
-
-  @async
-  void updateActivitySignalingStatus(PCallkeepSignalingStatus status);
 }
 
 @FlutterApi()

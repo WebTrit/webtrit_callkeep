@@ -74,11 +74,18 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
       // When an incoming call is in the background, the user may press the notifications action button faster than the app's state initializes.
       // For this case, we store the history and during the initialization of the incoming call, we return the appropriate status for correct handling.
 
-      if (_callkeepActionHistory.contain(uuid: uuid, action: _CallkeepAction.performEndCall)) {
+      final currentTime = DateTime.now();
+      final ttl = Duration(seconds: 5);
+      // Its important to use only recent actions to to bot block the calls with same callId that were returned back using transfers
+      final recentActions = _callkeepActionHistory
+          .getActions(uuid: uuid)
+          .where((action) => currentTime.difference(action.timestamp).inSeconds < ttl.inSeconds);
+
+      if (recentActions.any((action) => action is _PerformEndCall)) {
         return CallkeepIncomingCallError.callIdAlreadyTerminated;
       }
 
-      if (_callkeepActionHistory.contain(uuid: uuid, action: _CallkeepAction.performAnswerCall)) {
+      if (recentActions.any((action) => action is _PerformAnswerCall)) {
         return CallkeepIncomingCallError.callIdAlreadyExistsAndAnswered;
       }
 
@@ -224,13 +231,13 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
 
   @override
   Future<bool> performAnswerCall(String uuid) async {
-    _callkeepActionHistory.add(uuid: uuid, action: _CallkeepAction.performAnswerCall);
+    _callkeepActionHistory.add(uuid: uuid, action: _CallkeepAction.performAnswerCall());
     return _delegate.performAnswerCall(_uuidToCallIdMapping.getCallId(uuid: uuid));
   }
 
   @override
   Future<bool> performEndCall(String uuid) async {
-    _callkeepActionHistory.add(uuid: uuid, action: _CallkeepAction.performEndCall);
+    _callkeepActionHistory.add(uuid: uuid, action: _CallkeepAction.performEndCall());
     final result = await _delegate.performEndCall(_uuidToCallIdMapping.getCallId(uuid: uuid));
     if (result) {
       _uuidToCallIdMapping.delete(uuid: uuid);
@@ -335,7 +342,22 @@ class _UUIDToCallIdMapping {
   }
 }
 
-enum _CallkeepAction { performAnswerCall, performEndCall }
+sealed class _CallkeepAction {
+  _CallkeepAction({required this.timestamp});
+
+  final DateTime timestamp;
+
+  factory _CallkeepAction.performAnswerCall() => _PerformAnswerCall();
+  factory _CallkeepAction.performEndCall() => _PerformEndCall();
+}
+
+final class _PerformAnswerCall extends _CallkeepAction {
+  _PerformAnswerCall() : super(timestamp: DateTime.now());
+}
+
+final class _PerformEndCall extends _CallkeepAction {
+  _PerformEndCall() : super(timestamp: DateTime.now());
+}
 
 class _CallkeepActionHistory {
   final Map<String, List<_CallkeepAction>> _history = {};
@@ -345,10 +367,8 @@ class _CallkeepActionHistory {
     _history.putIfAbsent(uuid.toLowerCase(), () => []).add(action);
   }
 
-  // Checks if the given UUID contains the specified action.
-  bool contain({required String uuid, required _CallkeepAction action}) {
-    final actions = _history[uuid.toLowerCase()];
-    return actions?.contains(action) ?? false;
+  List<_CallkeepAction> getActions({required String uuid}) {
+    return _history[uuid.toLowerCase()] ?? [];
   }
 
   // Deletes the history of the given UUID.

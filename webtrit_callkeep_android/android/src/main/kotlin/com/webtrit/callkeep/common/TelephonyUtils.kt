@@ -42,10 +42,15 @@ class TelephonyUtils(
     }
 
     fun addNewIncomingCall(metadata: CallMetadata) {
-        getTelecomManager().addNewIncomingCall(
+        val telecomManager = getTelecomManager()
+        val isInCall = runCatching { telecomManager.isInCall }.getOrNull()
+        val isInManagedCall = runCatching { telecomManager.isInManagedCall }.getOrNull()
+        logger.i("addNewIncomingCall: callId=${metadata.callId} — before dispatch: isInCall=$isInCall isInManagedCall=$isInManagedCall")
+        telecomManager.addNewIncomingCall(
             getPhoneAccountHandle(),
             buildIncomingCallExtras(metadata),
         )
+        logger.i("addNewIncomingCall: callId=${metadata.callId} — addNewIncomingCall dispatched to Telecom")
     }
 
     fun registerPhoneAccount() {
