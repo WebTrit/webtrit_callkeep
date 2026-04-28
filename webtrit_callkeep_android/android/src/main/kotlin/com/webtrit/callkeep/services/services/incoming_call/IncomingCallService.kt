@@ -126,7 +126,7 @@ class IncomingCallService :
                 addAction(IncomingCallRelease.IC_RELEASE_WITH_ANSWER.name)
             },
             exported = false,
-            permission = RELEASE_BROADCAST_PERMISSION,
+            permission = releaseBroadcastPermission(this),
         )
 
         CallkeepCore.instance.addConnectionEventListener(this)
@@ -444,7 +444,8 @@ class IncomingCallService :
         private const val INDEPENDENT_SERVICE_TIMEOUT_MS = 60_000L
         private const val WAKELOCK_TIMEOUT_MS = 30_000L
         private const val WAKELOCK_TAG = "com.webtrit.callkeep:IncomingCallWakeLock"
-        private const val RELEASE_BROADCAST_PERMISSION = "com.webtrit.callkeep.INTERNAL_BROADCAST"
+
+        private fun releaseBroadcastPermission(context: Context) = "${context.packageName}.INTERNAL_BROADCAST"
 
         @Volatile
         var isRunning = false
@@ -486,7 +487,7 @@ class IncomingCallService :
             // sendInternalBroadcast() uses setPackage(packageName) + FLAG_RECEIVER_FOREGROUND,
             // so it crosses the :callkeep_core → main-process boundary safely and is
             // delivered only to this app.
-            context.sendInternalBroadcast(type.name, permission = RELEASE_BROADCAST_PERMISSION)
+            context.sendInternalBroadcast(type.name, permission = releaseBroadcastPermission(context))
             Log.d(TAG, "Release action $type initiated via broadcast.")
         }
     }
