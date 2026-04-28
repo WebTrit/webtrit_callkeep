@@ -1,18 +1,9 @@
-import 'dart:isolate' show ReceivePort;
-import 'dart:ui' show IsolateNameServer;
-
 import 'package:logging/logging.dart';
 import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 
 import 'bootstrap.dart';
 
 final _log = Logger('Isolates');
-
-/// Port name used by integration tests to inject signaling commands into the
-/// background isolate.  The background isolate registers a ReceivePort under
-/// this name so the test (main) isolate can send incomingCall / endCall /
-/// endCalls messages that are executed on the correct Flutter engine messenger.
-const signalingServiceCommandPortName = 'webtrit_callkeep.signaling_test';
 
 @pragma('vm:entry-point')
 Future<void> onPushNotificationCallback(CallkeepIncomingCallMetadata? metadata) async {
