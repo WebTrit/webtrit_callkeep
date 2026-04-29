@@ -258,12 +258,6 @@ class IncomingCallService :
     }
 
     private fun performAnswerCall(metadata: CallMetadata): Int {
-        // Telecom confirmed the user answered — mark the connection as active before
-        // notifying the Flutter push isolate. If flutterApi is null (push isolate not
-        // yet ready), callLifecycleHandler.performAnswerCall returns early without
-        // marking the connection, leaving the tracker in STATE_RINGING. HandshakeProcessor
-        // would then see stateDisconnected and incorrectly send a DeclineRequest.
-        CallkeepCore.instance.markAnswered(metadata.callId)
         callLifecycleHandler.performAnswerCall(metadata)
         return START_STICKY
     }
