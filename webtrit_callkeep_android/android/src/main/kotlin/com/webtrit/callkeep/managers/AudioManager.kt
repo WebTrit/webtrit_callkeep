@@ -137,8 +137,21 @@ class AudioManager(
             Log.w(TAG, "startVibration: vibrator is null, skipping")
             return
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(VibrationEffect.createWaveform(VIBRATION_PATTERN, VIBRATION_AMPLITUDES, 0))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val attrs =
+                android.os.VibrationAttributes
+                    .Builder()
+                    .setUsage(android.os.VibrationAttributes.USAGE_RINGTONE)
+                    .build()
+            vibrator.vibrate(VibrationEffect.createWaveform(VIBRATION_PATTERN, VIBRATION_AMPLITUDES, 0), attrs)
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val attrs =
+                AudioAttributes
+                    .Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                    .build()
+            vibrator.vibrate(VibrationEffect.createWaveform(VIBRATION_PATTERN, VIBRATION_AMPLITUDES, 0), attrs)
         } else {
             @Suppress("DEPRECATION")
             vibrator.vibrate(VIBRATION_PATTERN, 0)
