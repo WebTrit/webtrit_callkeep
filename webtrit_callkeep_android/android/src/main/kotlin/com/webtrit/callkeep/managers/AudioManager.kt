@@ -121,7 +121,7 @@ class AudioManager(
 
     private fun startVibration() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator?.vibrate(VibrationEffect.createWaveform(VIBRATION_PATTERN, 0))
+            vibrator?.vibrate(VibrationEffect.createWaveform(VIBRATION_PATTERN, VIBRATION_AMPLITUDES, 0))
         } else {
             @Suppress("DEPRECATION")
             vibrator?.vibrate(VIBRATION_PATTERN, 0)
@@ -225,7 +225,7 @@ class AudioManager(
     companion object {
         private const val TAG = "AudioManager"
 
-        // delay 0ms, vibrate 1s, pause 1s, repeat
         private val VIBRATION_PATTERN = longArrayOf(0, 1000, 1000)
+        private val VIBRATION_AMPLITUDES = intArrayOf(0, 255, 0)
     }
 }
