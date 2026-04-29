@@ -43,7 +43,7 @@ class CallLifecycleHandler(
             Log.w(TAG, "performAnswerCall: flutterApi is null, no Flutter isolate to notify for callId=${metadata.callId}")
             // The push isolate is not reachable, so markAnswered() will never be
             // called through the normal Flutter callback path. Mark the connection
-            // here so HandshakeProcessor sees STATE_ACTIVE instead of stateDisconnected.
+            // here so the connection tracker reflects STATE_ACTIVE instead of stateDisconnected.
             CallkeepCore.instance.markAnswered(metadata.callId)
             return
         }
