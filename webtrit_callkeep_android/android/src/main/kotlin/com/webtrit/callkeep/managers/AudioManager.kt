@@ -142,7 +142,7 @@ class AudioManager(
                     ringtone = null
                     startVibration()
                 } else {
-                    val r = ringtoneSound?.let { getRingtone(it) } ?: getDefaultRingtone()
+                    val pendingRingtone = ringtoneSound?.let { getRingtone(it) } ?: getDefaultRingtone()
                     val headsetAvailable = isHeadsetAvailable()
                     Log.i(TAG, "startRingtone: headsetAvailable=$headsetAvailable")
                     if (headsetAvailable) {
@@ -152,14 +152,14 @@ class AudioManager(
                         // ringtone through the same communication path as WebRTC, so Android
                         // re-routes it to the headset once BT SCO connects or immediately for
                         // wired headsets.
-                        r.audioAttributes =
+                        pendingRingtone.audioAttributes =
                             AudioAttributes
                                 .Builder()
                                 .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING)
                                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                                 .build()
                     }
-                    ringtone = r
+                    ringtone = pendingRingtone
                     ringtone?.setLoopingCompat(true)
                     ringtone?.play()
                 }
