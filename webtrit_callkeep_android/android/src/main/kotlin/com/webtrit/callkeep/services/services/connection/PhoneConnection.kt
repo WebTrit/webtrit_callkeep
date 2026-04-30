@@ -137,6 +137,10 @@ class PhoneConnection internal constructor(
             audioManager.startRingtone(metadata.ringtonePath)
         }
         dispatcher(CallLifecycleEvent.DidPushIncomingCall, metadata)
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            forceUpdateAudioState()
+        }
     }
 
     /**
@@ -279,7 +283,10 @@ class PhoneConnection internal constructor(
         logger.d("Legacy audio state changed: $state")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
 
-        val audioDevices = state?.supportedRouteMask?.let(::mapSupportedRoutes) ?: emptyList()
+        var audioDevices = state?.supportedRouteMask?.let(::mapSupportedRoutes) ?: emptyList()
+        if (audioDevices.none { it.type == AudioDeviceType.WIRED_HEADSET } && audioManager.isWiredHeadsetConnected()) {
+            audioDevices = audioDevices + AudioDevice(AudioDeviceType.WIRED_HEADSET)
+        }
         dispatcher(CallMediaEvent.AudioDevicesUpdate, metadata.copy(audioDevices = audioDevices))
 
         val currentDevice = state?.route?.let(::mapRouteToAudioDevice) ?: AudioDevice(AudioDeviceType.UNKNOWN)
@@ -357,7 +364,10 @@ class PhoneConnection internal constructor(
         logger.d("Available call endpoints changed: $callEndpoints")
         availableCallEndpoints = callEndpoints
 
-        val devices = callEndpoints.map(::mapEndpointToAudioDevice)
+        var devices = callEndpoints.map(::mapEndpointToAudioDevice)
+        if (devices.none { it.type == AudioDeviceType.WIRED_HEADSET } && audioManager.isWiredHeadsetConnected()) {
+            devices = devices + AudioDevice(AudioDeviceType.WIRED_HEADSET)
+        }
         dispatcher(CallMediaEvent.AudioDevicesUpdate, metadata.copy(audioDevices = devices))
 
         enforceVideoSpeakerLogic()
