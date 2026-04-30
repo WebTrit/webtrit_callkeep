@@ -67,11 +67,18 @@ class AudioManager(
     fun isSupportSpeakerphone(): Boolean = isOutputDeviceConnected(AudioDeviceInfo.TYPE_BUILTIN_SPEAKER)
 
     /**
-     * Check if a wired headset is connected.
+     * Check if a wired headset (with mic) is connected.
      *
      * @return True if a wired headset is connected, false otherwise.
      */
     fun isWiredHeadsetConnected(): Boolean = isInputDeviceConnected(AudioDeviceInfo.TYPE_WIRED_HEADSET)
+
+    /**
+     * Check if wired headphones (output-only, no mic) are connected.
+     *
+     * @return True if wired headphones are connected, false otherwise.
+     */
+    private fun isWiredHeadphonesConnected(): Boolean = isOutputDeviceConnected(AudioDeviceInfo.TYPE_WIRED_HEADPHONES)
 
     /**
      * Check if a Bluetooth headset is connected via SCO (active call audio profile).
@@ -115,7 +122,9 @@ class AudioManager(
     fun startRingtone(ringtoneSound: String?) {
         ringtone?.stop()
         val ringVolume = audioManager.getStreamVolume(android.media.AudioManager.STREAM_RING)
-        Log.i(TAG, "startRingtone: ringerMode=${audioManager.ringerMode}, ringVolume=$ringVolume, vibratorAvailable=${vibrator != null}")
+        val wiredConnected = isWiredHeadsetConnected() || isWiredHeadphonesConnected()
+        val btConnected = isBluetoothA2dpAvailable()
+        Log.i(TAG, "startRingtone: ringerMode=${audioManager.ringerMode}, ringVolume=$ringVolume, wired=$wiredConnected, btA2dp=$btConnected, vibratorAvailable=${vibrator != null}")
         when (audioManager.ringerMode) {
             android.media.AudioManager.RINGER_MODE_VIBRATE -> {
                 ringtone = null
@@ -129,6 +138,19 @@ class AudioManager(
                     startVibration()
                 } else {
                     val pendingRingtone = ringtoneSound?.let { getRingtone(it) } ?: getDefaultRingtone()
+                    if (wiredConnected || btConnected) {
+                        // Some OEMs (e.g. Samsung) route STREAM_RING to both speaker and
+                        // headset simultaneously in ringtone mode. Switching to USAGE_MEDIA
+                        // (STREAM_MUSIC) routes the ringtone exclusively to the connected
+                        // headset/BT device and avoids the dual-output behavior.
+                        Log.i(TAG, "startRingtone: headset detected, overriding to USAGE_MEDIA to prevent dual-output")
+                        pendingRingtone.audioAttributes =
+                            AudioAttributes
+                                .Builder()
+                                .setUsage(AudioAttributes.USAGE_MEDIA)
+                                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                                .build()
+                    }
                     ringtone = pendingRingtone
                     ringtone?.setLoopingCompat(true)
                     ringtone?.play()
