@@ -6,6 +6,7 @@ import android.util.Log
 import com.webtrit.callkeep.PCallkeepIncomingCallData
 import com.webtrit.callkeep.PHostBackgroundPushNotificationIsolateApi
 import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.services.core.CallkeepCore
 import com.webtrit.callkeep.services.services.incoming_call.CallConnectionController
 import com.webtrit.callkeep.services.services.incoming_call.FlutterIsolateCommunicator
 
@@ -40,6 +41,10 @@ class CallLifecycleHandler(
         val api = flutterApi
         if (api == null) {
             Log.w(TAG, "performAnswerCall: flutterApi is null, no Flutter isolate to notify for callId=${metadata.callId}")
+            // The push isolate is not reachable, so markAnswered() will never be
+            // called through the normal Flutter callback path. Mark the connection
+            // here so the connection tracker reflects STATE_ACTIVE instead of stateDisconnected.
+            CallkeepCore.instance.markAnswered(metadata.callId)
             return
         }
         api.performAnswer(metadata.callId, onSuccess = {
