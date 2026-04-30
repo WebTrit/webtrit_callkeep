@@ -6,9 +6,7 @@ import 'package:pigeon/pigeon.dart';
     dartTestOut: 'test/src/common/test_callkeep.pigeon.dart',
     objcHeaderOut: 'ios/Classes/Generated.h',
     objcSourceOut: 'ios/Classes/Generated.m',
-    objcOptions: ObjcOptions(
-      prefix: 'WT',
-    ),
+    objcOptions: ObjcOptions(prefix: 'WT'),
   ),
 )
 class PIOSOptions {
@@ -36,33 +34,16 @@ class POptions {
   late PAndroidOptions android;
 }
 
-enum PHandleTypeEnum {
-  generic,
-  number,
-  email,
-}
+enum PHandleTypeEnum { generic, number, email }
 
-enum PCallInfoConsts {
-  uuid,
-  dtmf,
-  isVideo,
-  number,
-  name,
-}
+enum PCallInfoConsts { uuid, dtmf, isVideo, number, name }
 
 class PHandle {
   late PHandleTypeEnum type;
   late String value;
 }
 
-enum PEndCallReasonEnum {
-  failed,
-  remoteEnded,
-  unanswered,
-  answeredElsewhere,
-  declinedElsewhere,
-  missed,
-}
+enum PEndCallReasonEnum { failed, remoteEnded, unanswered, answeredElsewhere, declinedElsewhere, missed }
 
 // TODO: See https://github.com/flutter/flutter/issues/87307
 class PEndCallReason {
@@ -97,23 +78,21 @@ class PCallRequestError {
   late PCallRequestErrorEnum value;
 }
 
+enum PCallkeepConnectionState { stateNew, stateActive, stateHolding, stateDisconnected }
+
+class PCallkeepConnection {
+  late String callId;
+  late PCallkeepConnectionState state;
+}
+
 // TODO: Rename to background service
 @HostApi()
 abstract class PHostAndroidServiceApi {
   @async
-  void hungUp(
-    String callId,
-    String uuidString,
-  );
+  void hungUp(String callId, String uuidString);
 
   @async
-  void incomingCall(
-    String callId,
-    String uuidString,
-    PHandle handle,
-    String? displayName,
-    bool hasVideo,
-  );
+  void incomingCall(String callId, String uuidString, PHandle handle, String? displayName, bool hasVideo);
 }
 
 @HostApi()
@@ -131,12 +110,7 @@ abstract class PHostApi {
 
   @ObjCSelector('reportNewIncomingCall:handle:displayName:hasVideo:')
   @async
-  PIncomingCallError? reportNewIncomingCall(
-    String uuidString,
-    PHandle handle,
-    String? displayName,
-    bool hasVideo,
-  );
+  PIncomingCallError? reportNewIncomingCall(String uuidString, PHandle handle, String? displayName, bool hasVideo);
 
   @ObjCSelector('reportConnectingOutgoingCall:')
   @async
@@ -193,16 +167,16 @@ abstract class PHostApi {
   @ObjCSelector('sendDTMF:key:')
   @async
   PCallRequestError? sendDTMF(String uuidString, String key);
+
+  @ObjCSelector('getConnectionWithUuidString:')
+  @async
+  PCallkeepConnection? getConnection(String uuidString);
 }
 
 @FlutterApi()
 abstract class PDelegateFlutterApi {
   @ObjCSelector('continueStartCallIntentHandle:displayName:video:')
-  void continueStartCallIntent(
-    PHandle handle,
-    String? displayName,
-    bool video,
-  );
+  void continueStartCallIntent(PHandle handle, String? displayName, bool video);
 
   @ObjCSelector('didPushIncomingCallHandle:displayName:video:callId:uuid:error:')
   void didPushIncomingCall(
@@ -216,12 +190,7 @@ abstract class PDelegateFlutterApi {
 
   @ObjCSelector('performStartCall:handle:displayNameOrContactIdentifier:video:')
   @async
-  bool performStartCall(
-    String uuidString,
-    PHandle handle,
-    String? displayNameOrContactIdentifier,
-    bool video,
-  );
+  bool performStartCall(String uuidString, PHandle handle, String? displayNameOrContactIdentifier, bool video);
 
   @ObjCSelector('performAnswerCall:')
   @async

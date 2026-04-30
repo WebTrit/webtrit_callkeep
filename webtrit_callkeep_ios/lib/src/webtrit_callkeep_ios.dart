@@ -183,6 +183,14 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
   }
 
   @override
+  Future<CallkeepConnection?> getConnection(String callId) async {
+    final uuid = _uuidToCallIdMapping.put(callId: callId);
+    final conn = await _api.getConnection(uuid);
+    if (conn == null) return null;
+    return CallkeepConnection(callId: callId, state: conn.state.toCallkeep(), disconnectCause: null);
+  }
+
+  @override
   Future<void> playRingbackSound() {
     return _soundApi.playRingbackSound();
   }

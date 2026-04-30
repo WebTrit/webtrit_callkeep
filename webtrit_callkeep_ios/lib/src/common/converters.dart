@@ -129,3 +129,18 @@ extension CallkeepAndroidOptionsConverter on CallkeepAndroidOptions {
     return PAndroidOptions();
   }
 }
+
+extension PCallkeepConnectionStateConverter on PCallkeepConnectionState {
+  CallkeepConnectionState toCallkeep() {
+    switch (this) {
+      case PCallkeepConnectionState.stateNew:
+        return CallkeepConnectionState.stateNew;
+      case PCallkeepConnectionState.stateActive:
+        return CallkeepConnectionState.stateActive;
+      case PCallkeepConnectionState.stateHolding:
+        return CallkeepConnectionState.stateHolding;
+      case PCallkeepConnectionState.stateDisconnected:
+        return CallkeepConnectionState.stateDisconnected;
+    }
+  }
+}
