@@ -81,6 +81,28 @@ class AudioManager(
     fun isBluetoothConnected(): Boolean = isInputDeviceConnected(AudioDeviceInfo.TYPE_BLUETOOTH_SCO)
 
     /**
+     * Returns true if any headset is reachable for communication audio — wired (with or without
+     * mic) or Bluetooth (A2DP or SCO). Used to decide whether the ringtone should follow the
+     * communication audio path instead of the default ring stream.
+     *
+     * BT SCO is often not yet connected at ringtone-start time; checking A2DP as well means we
+     * catch the headset before SCO is established and let Android re-route the track once SCO
+     * comes up.
+     */
+    private fun isHeadsetAvailable(): Boolean {
+        val inputs = audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)
+        val outputs = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+        return inputs.any {
+            it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+        } ||
+            outputs.any {
+                it.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+                    it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP
+            }
+    }
+
+    /**
      * Check if the speakerphone is currently on.
      *
      * @return True if the speakerphone is on, false otherwise.
@@ -120,7 +142,24 @@ class AudioManager(
                     ringtone = null
                     startVibration()
                 } else {
-                    ringtone = ringtoneSound?.let { getRingtone(it) } ?: getDefaultRingtone()
+                    val r = ringtoneSound?.let { getRingtone(it) } ?: getDefaultRingtone()
+                    val headsetAvailable = isHeadsetAvailable()
+                    Log.i(TAG, "startRingtone: headsetAvailable=$headsetAvailable")
+                    if (headsetAvailable) {
+                        // STREAM_RING routes to speaker in MODE_RINGTONE even when a headset is
+                        // connected, while WebRTC audio independently uses the headset — causing
+                        // split audio. Using USAGE_VOICE_COMMUNICATION_SIGNALLING routes the
+                        // ringtone through the same communication path as WebRTC, so Android
+                        // re-routes it to the headset once BT SCO connects or immediately for
+                        // wired headsets.
+                        r.audioAttributes =
+                            AudioAttributes
+                                .Builder()
+                                .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING)
+                                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                                .build()
+                    }
+                    ringtone = r
                     ringtone?.setLoopingCompat(true)
                     ringtone?.play()
                 }
