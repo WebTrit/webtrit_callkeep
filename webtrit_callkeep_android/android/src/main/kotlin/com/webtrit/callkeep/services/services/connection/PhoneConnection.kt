@@ -137,6 +137,35 @@ class PhoneConnection internal constructor(
             audioManager.startRingtone(metadata.ringtonePath)
         }
         dispatcher(CallLifecycleEvent.DidPushIncomingCall, metadata)
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            routeRingtoneToHeadsetLegacy()
+        }
+    }
+
+    /**
+     * Requests Telecom to route audio to a connected headset during the ringing phase.
+     *
+     * STREAM_RING defaults to speaker in MODE_RINGTONE even when a headset is connected,
+     * while WebRTC audio claims the headset independently — causing split audio. Calling
+     * setAudioRoute() routes the ring stream through Telecom's audio routing so both
+     * ringtone and WebRTC audio reach the same output device.
+     *
+     * BT A2DP is checked instead of BT SCO because SCO is not established until the call
+     * becomes active; A2DP indicates a BT headset is present during ringing.
+     */
+    private fun routeRingtoneToHeadsetLegacy() {
+        when {
+            audioManager.isBluetoothConnected() || audioManager.isBluetoothA2dpAvailable() -> {
+                logger.d("routeRingtoneToHeadsetLegacy: routing to BLUETOOTH for callId: $callId")
+                setAudioRoute(CallAudioState.ROUTE_BLUETOOTH)
+            }
+
+            audioManager.isWiredHeadsetConnected() -> {
+                logger.d("routeRingtoneToHeadsetLegacy: routing to WIRED_HEADSET for callId: $callId")
+                setAudioRoute(CallAudioState.ROUTE_WIRED_HEADSET)
+            }
+        }
     }
 
     /**
@@ -360,7 +389,27 @@ class PhoneConnection internal constructor(
         val devices = callEndpoints.map(::mapEndpointToAudioDevice)
         dispatcher(CallMediaEvent.AudioDevicesUpdate, metadata.copy(audioDevices = devices))
 
+        routeRingtoneToHeadsetModern(callEndpoints)
         enforceVideoSpeakerLogic()
+    }
+
+    /**
+     * Auto-selects a headset endpoint during the ringing phase on API 34+.
+     *
+     * Telecom may deliver the headset endpoint asynchronously after [onShowIncomingCallUi].
+     * Reacting here ensures the route is applied even when endpoints arrive after ringing starts.
+     * Only acts during STATE_RINGING to avoid disrupting an already active call.
+     */
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    private fun routeRingtoneToHeadsetModern(callEndpoints: List<CallEndpoint>) {
+        if (state != STATE_RINGING) return
+        val headsetEndpoint =
+            callEndpoints.firstOrNull {
+                it.endpointType == CallEndpoint.TYPE_BLUETOOTH ||
+                    it.endpointType == CallEndpoint.TYPE_WIRED_HEADSET
+            } ?: return
+        logger.d("routeRingtoneToHeadsetModern: switching to ${headsetEndpoint.endpointName} for callId: $callId")
+        performEndpointChange(headsetEndpoint)
     }
 
     /**
