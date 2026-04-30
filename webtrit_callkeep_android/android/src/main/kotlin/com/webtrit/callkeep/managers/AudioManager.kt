@@ -98,9 +98,16 @@ class AudioManager(
      * The Ringtone API plays through the ringtone audio stream, which is muted in
      * RINGER_MODE_VIBRATE. In that case we skip the ringtone and start a repeating
      * vibration pattern directly so the user is notified of the incoming call.
+     *
+     * Some OEM ROMs (e.g. MIUI/HyperOS on Xiaomi) report vibrate mode as
+     * RINGER_MODE_NORMAL with STREAM_RING volume = 0 instead of RINGER_MODE_VIBRATE.
+     * In that case Ringtone.play() runs silently and no vibration is triggered.
+     * We detect this by checking stream volume and treat it as vibrate mode.
      */
     fun startRingtone(ringtoneSound: String?) {
         ringtone?.stop()
+        val ringVolume = audioManager.getStreamVolume(android.media.AudioManager.STREAM_RING)
+        Log.i(TAG, "startRingtone: ringerMode=${audioManager.ringerMode}, ringVolume=$ringVolume, vibratorAvailable=${vibrator != null}")
         when (audioManager.ringerMode) {
             android.media.AudioManager.RINGER_MODE_VIBRATE -> {
                 ringtone = null
@@ -108,9 +115,15 @@ class AudioManager(
             }
 
             android.media.AudioManager.RINGER_MODE_NORMAL -> {
-                ringtone = ringtoneSound?.let { getRingtone(it) } ?: getDefaultRingtone()
-                ringtone?.setLoopingCompat(true)
-                ringtone?.play()
+                if (ringVolume == 0) {
+                    // OEM quirk: vibrate mode reported as NORMAL with zero ring volume
+                    ringtone = null
+                    startVibration()
+                } else {
+                    ringtone = ringtoneSound?.let { getRingtone(it) } ?: getDefaultRingtone()
+                    ringtone?.setLoopingCompat(true)
+                    ringtone?.play()
+                }
             }
 
             else -> {
@@ -120,11 +133,28 @@ class AudioManager(
     }
 
     private fun startVibration() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator?.vibrate(VibrationEffect.createWaveform(VIBRATION_PATTERN, 0))
+        if (vibrator == null) {
+            Log.w(TAG, "startVibration: vibrator is null, skipping")
+            return
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val attrs =
+                android.os.VibrationAttributes
+                    .Builder()
+                    .setUsage(android.os.VibrationAttributes.USAGE_RINGTONE)
+                    .build()
+            vibrator.vibrate(VibrationEffect.createWaveform(VIBRATION_PATTERN, VIBRATION_AMPLITUDES, 0), attrs)
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val attrs =
+                AudioAttributes
+                    .Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                    .build()
+            vibrator.vibrate(VibrationEffect.createWaveform(VIBRATION_PATTERN, VIBRATION_AMPLITUDES, 0), attrs)
         } else {
             @Suppress("DEPRECATION")
-            vibrator?.vibrate(VIBRATION_PATTERN, 0)
+            vibrator.vibrate(VIBRATION_PATTERN, 0)
         }
     }
 
@@ -225,7 +255,7 @@ class AudioManager(
     companion object {
         private const val TAG = "AudioManager"
 
-        // delay 0ms, vibrate 1s, pause 1s, repeat
         private val VIBRATION_PATTERN = longArrayOf(0, 1000, 1000)
+        private val VIBRATION_AMPLITUDES = intArrayOf(0, 255, 0)
     }
 }
