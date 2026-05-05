@@ -67,7 +67,7 @@ class Log(
             throwable: Throwable? = null,
         ) {
             val prefixedTag = "$GLOBAL_PREFIX.$tag"
-            writeToFile(type, prefixedTag, message, throwable)
+            writeToFile(type, tag, message, throwable)
             performSystemLog(type, prefixedTag, message, throwable)
         }
 
@@ -116,13 +116,12 @@ class Log(
             message: String,
             throwable: Throwable?,
         ) {
-            val msg = "$tag: $message"
             when (type) {
-                PLogTypeEnum.DEBUG -> AndroidLog.d(GLOBAL_PREFIX, msg, throwable)
-                PLogTypeEnum.INFO -> AndroidLog.i(GLOBAL_PREFIX, msg, throwable)
-                PLogTypeEnum.WARN -> AndroidLog.w(GLOBAL_PREFIX, msg, throwable)
-                PLogTypeEnum.ERROR -> AndroidLog.e(GLOBAL_PREFIX, msg, throwable)
-                PLogTypeEnum.VERBOSE -> AndroidLog.v(GLOBAL_PREFIX, msg, throwable)
+                PLogTypeEnum.DEBUG -> AndroidLog.d(tag, message, throwable)
+                PLogTypeEnum.INFO -> AndroidLog.i(tag, message, throwable)
+                PLogTypeEnum.WARN -> AndroidLog.w(tag, message, throwable)
+                PLogTypeEnum.ERROR -> AndroidLog.e(tag, message, throwable)
+                PLogTypeEnum.VERBOSE -> AndroidLog.v(tag, message, throwable)
             }
         }
 
