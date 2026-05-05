@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import com.webtrit.callkeep.common.ContextHolder
+import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.PermissionsHelper
 import com.webtrit.callkeep.common.parcelableArrayList
 import com.webtrit.callkeep.common.startForegroundServiceCompat
@@ -22,6 +23,7 @@ class ActiveCallService : Service() {
     override fun onCreate() {
         super.onCreate()
         ContextHolder.init(applicationContext)
+        Log.initFromContext(applicationContext)
     }
 
     override fun onStartCommand(

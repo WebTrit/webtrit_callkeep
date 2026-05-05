@@ -247,6 +247,11 @@ class ForegroundService :
             options.android.incomingCallFullScreen?.let { StorageDelegate.IncomingCall.setFullScreen(baseContext, it) }
             options.android.incomingCallTimeoutMs?.let { StorageDelegate.Timeout.setIncomingCallTimeoutMs(baseContext, it) }
             options.android.outgoingCallTimeoutMs?.let { StorageDelegate.Timeout.setOutgoingCallTimeoutMs(baseContext, it) }
+            options.android.logFilePath?.let {
+                StorageDelegate.Logging.setLogFilePath(baseContext, it)
+                Log.setLogFilePath(it)
+                logger.i("applySetupOptions: native logging initialized path=$it")
+            }
         }.onFailure { Log.w("CallKeep", "Android options init failed: ${it.message}", it) }
     }
 

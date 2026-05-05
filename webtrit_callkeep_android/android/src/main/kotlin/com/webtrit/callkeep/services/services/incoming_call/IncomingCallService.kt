@@ -116,6 +116,7 @@ class IncomingCallService :
         super.onCreate()
         setRunning(true)
         ContextHolder.init(applicationContext)
+        Log.initFromContext(applicationContext)
 
         Log.d(TAG, "IncomingCallService created")
 

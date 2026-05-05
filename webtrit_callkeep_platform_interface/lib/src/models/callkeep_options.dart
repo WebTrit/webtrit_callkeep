@@ -58,6 +58,7 @@ class CallkeepAndroidOptions extends Equatable {
     this.incomingCallFullScreen,
     this.incomingCallTimeoutMs = 60000,
     this.outgoingCallTimeoutMs = 60000,
+    this.logFilePath,
   });
 
   final String? ringtoneSound;
@@ -76,6 +77,11 @@ class CallkeepAndroidOptions extends Equatable {
   /// is automatically disconnected. Defaults to `60000` ms.
   final int outgoingCallTimeoutMs;
 
+  /// Absolute path to a file where native (Kotlin) logs will be written directly,
+  /// bypassing the Flutter delegate channel. Logs are appended on every Log.d/i/w/e
+  /// call regardless of Flutter engine state.
+  final String? logFilePath;
+
   @override
   List<Object?> get props => [
     ringtoneSound,
@@ -83,5 +89,6 @@ class CallkeepAndroidOptions extends Equatable {
     incomingCallFullScreen,
     incomingCallTimeoutMs,
     outgoingCallTimeoutMs,
+    logFilePath,
   ];
 }

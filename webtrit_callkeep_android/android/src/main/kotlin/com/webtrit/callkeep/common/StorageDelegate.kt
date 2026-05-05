@@ -132,4 +132,19 @@ object StorageDelegate {
 
         fun getRegexPattern(context: Context): String? = sharedPreferences(context).getString(SMS_REGEX_PATTERN, null)
     }
+
+    object Logging {
+        private const val LOG_FILE_PATH = "LOG_FILE_PATH_KEY"
+
+        // commit() instead of apply() so the value is on disk before callkeep_core
+        // can start and call getLogFilePath() in initFromContext().
+        fun setLogFilePath(
+            context: Context,
+            path: String,
+        ) {
+            sharedPreferences(context).edit().putString(LOG_FILE_PATH, path).commit()
+        }
+
+        fun getLogFilePath(context: Context): String? = sharedPreferences(context).getString(LOG_FILE_PATH, null)
+    }
 }

@@ -57,6 +57,7 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
+  @Deprecated('Use CallkeepAndroidOptions.logFilePath in setUp() instead.')
   void setLogsDelegate(CallkeepLogsDelegate? delegate) {
     if (delegate != null) {
       PDelegateLogsFlutterApi.setUp(_LogsDelegateRelay(delegate));
