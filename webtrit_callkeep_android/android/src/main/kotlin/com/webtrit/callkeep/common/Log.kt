@@ -7,7 +7,7 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import android.util.Log as AndroidLog
+import android.util.Log as AndroidLog // used for error fallback and stack trace formatting
 
 /**
  * A logging utility that can be instantiated with a specific tag or used statically.
@@ -66,9 +66,7 @@ class Log(
             message: String,
             throwable: Throwable? = null,
         ) {
-            val prefixedTag = "$GLOBAL_PREFIX.$tag"
             writeToFile(type, tag, message, throwable)
-            performSystemLog(type, prefixedTag, message, throwable)
         }
 
         private fun nativeLogFilePath(): String? = logFilePath?.let { if (it.endsWith(".log")) it.dropLast(4) + "_native.log" else "$it.native" }
@@ -107,21 +105,6 @@ class Log(
                 }
             } catch (e: Exception) {
                 AndroidLog.e(GLOBAL_PREFIX, "writeToFile failed for $path: ${e.javaClass.simpleName}: ${e.message}")
-            }
-        }
-
-        private fun performSystemLog(
-            type: PLogTypeEnum,
-            tag: String,
-            message: String,
-            throwable: Throwable?,
-        ) {
-            when (type) {
-                PLogTypeEnum.DEBUG -> AndroidLog.d(tag, message, throwable)
-                PLogTypeEnum.INFO -> AndroidLog.i(tag, message, throwable)
-                PLogTypeEnum.WARN -> AndroidLog.w(tag, message, throwable)
-                PLogTypeEnum.ERROR -> AndroidLog.e(tag, message, throwable)
-                PLogTypeEnum.VERBOSE -> AndroidLog.v(tag, message, throwable)
             }
         }
 
