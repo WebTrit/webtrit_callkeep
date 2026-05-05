@@ -350,14 +350,17 @@ void main() {
 
     setUp(() {
       fake = _FakeLogsDelegate();
+      // ignore: deprecated_member_use
       WebtritCallkeepPlatform.instance.setLogsDelegate(fake);
     });
 
     tearDown(() {
+      // ignore: deprecated_member_use
       WebtritCallkeepPlatform.instance.setLogsDelegate(null);
     });
 
     test('setLogsDelegate(null) clears without error', () {
+      // ignore: deprecated_member_use
       expect(() => WebtritCallkeepPlatform.instance.setLogsDelegate(null), returnsNormally);
     });
 
