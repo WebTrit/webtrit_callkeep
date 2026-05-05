@@ -157,6 +157,9 @@ class PhoneConnectionService : ConnectionService() {
         connectionManagerPhoneAccount: PhoneAccountHandle,
         request: ConnectionRequest,
     ): Connection {
+        // Refresh log path from SharedPreferences — the main process may have updated it
+        // after this service was already running (each process has its own JVM copy).
+        Log.initFromContext(applicationContext)
         val metadata = CallMetadata.fromBundle(request.extras)
 
         // Check if a connection with the same call ID already exists.
@@ -220,6 +223,9 @@ class PhoneConnectionService : ConnectionService() {
         connectionManagerPhoneAccount: PhoneAccountHandle,
         request: ConnectionRequest,
     ): Connection {
+        // Refresh log path from SharedPreferences — the main process may have updated it
+        // after this service was already running (each process has its own JVM copy).
+        Log.initFromContext(applicationContext)
         val metadata = CallMetadata.fromBundle(request.extras)
         Log.i(TAG, "onCreateIncomingConnection: entry callId=${metadata.callId} account=$connectionManagerPhoneAccount")
 

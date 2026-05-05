@@ -101,7 +101,6 @@ class Log(
                     fos.flush()
                     fos.fd.sync()
                 }
-                AndroidLog.d(GLOBAL_PREFIX, "writeToFile: ok size=${File(path).length()}")
             } catch (e: Exception) {
                 AndroidLog.e(GLOBAL_PREFIX, "writeToFile failed for $path: ${e.javaClass.simpleName}: ${e.message}")
             }
