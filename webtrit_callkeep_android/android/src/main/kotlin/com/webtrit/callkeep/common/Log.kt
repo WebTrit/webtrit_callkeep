@@ -3,7 +3,7 @@ package com.webtrit.callkeep.common
 import com.webtrit.callkeep.PDelegateLogsFlutterApi
 import com.webtrit.callkeep.PLogTypeEnum
 import java.io.File
-import java.io.FileWriter
+import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -95,7 +95,13 @@ class Log(
                     } else {
                         "$timestamp $level $tag: $message\n"
                     }
-                FileWriter(File(path), true).use { it.write(line) }
+                val bytes = line.toByteArray(Charsets.UTF_8)
+                FileOutputStream(File(path), true).use { fos ->
+                    fos.write(bytes)
+                    fos.flush()
+                    fos.fd.sync()
+                }
+                AndroidLog.d(GLOBAL_PREFIX, "writeToFile: ok size=${File(path).length()}")
             } catch (e: Exception) {
                 AndroidLog.e(GLOBAL_PREFIX, "writeToFile failed for $path: ${e.javaClass.simpleName}: ${e.message}")
             }
