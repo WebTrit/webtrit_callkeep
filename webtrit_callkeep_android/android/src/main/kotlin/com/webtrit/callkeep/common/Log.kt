@@ -71,6 +71,8 @@ class Log(
             performSystemLog(type, prefixedTag, message, throwable)
         }
 
+        private fun nativeLogFilePath(): String? = logFilePath?.let { if (it.endsWith(".log")) it.dropLast(4) + "_native.log" else "$it.native" }
+
         @Synchronized
         private fun writeToFile(
             type: PLogTypeEnum,
@@ -78,8 +80,10 @@ class Log(
             message: String,
             throwable: Throwable?,
         ) {
-            val path = logFilePath ?: return
+            val path = nativeLogFilePath() ?: return
             try {
+                val file = File(path)
+                LogFileRotator.rotateIfNeeded(file)
                 val level =
                     when (type) {
                         PLogTypeEnum.DEBUG -> "D"
@@ -96,7 +100,7 @@ class Log(
                         "$timestamp $level $tag: $message\n"
                     }
                 val bytes = line.toByteArray(Charsets.UTF_8)
-                FileOutputStream(File(path), true).use { fos ->
+                FileOutputStream(file, true).use { fos ->
                     fos.write(bytes)
                     fos.flush()
                     fos.fd.sync()
