@@ -34,7 +34,6 @@ class ActionsCubit extends Cubit<ActionsState>
   @override
   Future<void> close() {
     _callkeep.setDelegate(null);
-    WebtritCallkeepLogs().setLogsDelegate(null);
     return super.close();
   }
 
@@ -436,10 +435,8 @@ class ActionsCubit extends Cubit<ActionsState>
 
   void toggleLogsDelegate() {
     if (state.isLogsDelegateActive) {
-      WebtritCallkeepLogs().setLogsDelegate(null);
       emit(state.copyWith(isLogsDelegateActive: false).log(LogEntry.info('logs delegate: OFF')));
     } else {
-      WebtritCallkeepLogs().setLogsDelegate(this);
       emit(state.copyWith(isLogsDelegateActive: true).log(LogEntry.info('logs delegate: ON')));
     }
   }
