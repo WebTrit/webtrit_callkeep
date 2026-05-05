@@ -142,7 +142,8 @@ object StorageDelegate {
             context: Context,
             path: String,
         ) {
-            sharedPreferences(context).edit().putString(LOG_FILE_PATH, path).commit()
+            val ok = sharedPreferences(context).edit().putString(LOG_FILE_PATH, path).commit()
+            if (!ok) AndroidLog.w("WebtritCallkeep", "StorageDelegate: commit() failed for LOG_FILE_PATH")
         }
 
         fun getLogFilePath(context: Context): String? = sharedPreferences(context).getString(LOG_FILE_PATH, null)

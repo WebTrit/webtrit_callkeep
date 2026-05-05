@@ -524,18 +524,6 @@ class _HelperDrawer extends StatelessWidget {
                       _Btn('Open Settings', cubit.openSettings),
                     ],
                   ),
-
-                  // --- Native Logs ---
-                  _Section(
-                    title: 'Native Logs',
-                    children: [
-                      _ToggleBtn(
-                        label: state.isLogsDelegateActive ? 'Logs: ON' : 'Logs: OFF',
-                        active: state.isLogsDelegateActive,
-                        onPressed: cubit.toggleLogsDelegate,
-                      ),
-                    ],
-                  ),
                 ],
               ),
             ),

@@ -429,18 +429,6 @@ class ActionsCubit extends Cubit<ActionsState>
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Logs
-  // ---------------------------------------------------------------------------
-
-  void toggleLogsDelegate() {
-    if (state.isLogsDelegateActive) {
-      emit(state.copyWith(isLogsDelegateActive: false).log(LogEntry.info('logs delegate: OFF')));
-    } else {
-      emit(state.copyWith(isLogsDelegateActive: true).log(LogEntry.info('logs delegate: ON')));
-    }
-  }
-
   @override
   void onLog(CallkeepLogType type, String tag, String message) {
     emit(state.log(LogEntry.event('[native/${type.name}] $tag: $message')));
