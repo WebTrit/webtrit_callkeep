@@ -137,7 +137,7 @@ class AudioManager(
             Log.w(TAG, "startVibration: vibrator is null, skipping")
             return
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val attrs =
                 android.os.VibrationAttributes
                     .Builder()
