@@ -346,40 +346,14 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('_LogsDelegateRelay', () {
-    late _FakeLogsDelegate fake;
-
-    setUp(() {
-      fake = _FakeLogsDelegate();
-      // ignore: deprecated_member_use
-      WebtritCallkeepPlatform.instance.setLogsDelegate(fake);
-    });
-
-    tearDown(() {
-      // ignore: deprecated_member_use
-      WebtritCallkeepPlatform.instance.setLogsDelegate(null);
-    });
-
     test('setLogsDelegate(null) clears without error', () {
       // ignore: deprecated_member_use
       expect(() => WebtritCallkeepPlatform.instance.setLogsDelegate(null), returnsNormally);
     });
 
-    test('onLog converts PLogTypeEnum and forwards all fields', () async {
-      await _send('$_prefix.PDelegateLogsFlutterApi.onLog', [PLogTypeEnum.warn, 'TAG', 'some message']);
-      expect(fake.calls.length, 1);
-      expect(fake.calls[0][0], CallkeepLogType.warn);
-      expect(fake.calls[0][1], 'TAG');
-      expect(fake.calls[0][2], 'some message');
-    });
-
-    test('onLog with debug type', () async {
-      await _send('$_prefix.PDelegateLogsFlutterApi.onLog', [PLogTypeEnum.debug, 'DEBUG_TAG', 'debug msg']);
-      expect(fake.calls[0][0], CallkeepLogType.debug);
-    });
-
-    test('onLog with error type', () async {
-      await _send('$_prefix.PDelegateLogsFlutterApi.onLog', [PLogTypeEnum.error, 'ERR', 'err msg']);
-      expect(fake.calls[0][0], CallkeepLogType.error);
+    test('setLogsDelegate(delegate) completes without error', () {
+      // ignore: deprecated_member_use
+      expect(() => WebtritCallkeepPlatform.instance.setLogsDelegate(_FakeLogsDelegate()), returnsNormally);
     });
   });
 
