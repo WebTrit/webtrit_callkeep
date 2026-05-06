@@ -247,10 +247,15 @@ class ForegroundService :
             options.android.incomingCallFullScreen?.let { StorageDelegate.IncomingCall.setFullScreen(baseContext, it) }
             options.android.incomingCallTimeoutMs?.let { StorageDelegate.Timeout.setIncomingCallTimeoutMs(baseContext, it) }
             options.android.outgoingCallTimeoutMs?.let { StorageDelegate.Timeout.setOutgoingCallTimeoutMs(baseContext, it) }
-            options.android.logFilePath?.let {
-                StorageDelegate.Logging.setLogFilePath(baseContext, it)
-                Log.setLogFilePath(it)
-                logger.i("applySetupOptions: native logging initialized path=$it")
+            val logFilePath = options.android.logFilePath
+            if (logFilePath != null) {
+                StorageDelegate.Logging.setLogFilePath(baseContext, logFilePath)
+                Log.setLogFilePath(logFilePath)
+                logger.i("applySetupOptions: native logging initialized path=$logFilePath")
+            } else {
+                StorageDelegate.Logging.clearLogFilePath(baseContext)
+                Log.clearLogFilePath()
+                logger.i("applySetupOptions: native logging disabled")
             }
         }.onFailure { Log.w("CallKeep", "Android options init failed: ${it.message}", it) }
     }

@@ -7,7 +7,7 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import android.util.Log as AndroidLog // used for error fallback and stack trace formatting
+import android.util.Log as AndroidLog
 
 /**
  * A logging utility that can be instantiated with a specific tag or used statically.
@@ -44,6 +44,11 @@ class Log(
             AndroidLog.d(GLOBAL_PREFIX, "setLogFilePath: $path")
         }
 
+        fun clearLogFilePath() {
+            logFilePath = null
+            AndroidLog.d(GLOBAL_PREFIX, "clearLogFilePath")
+        }
+
         fun initFromContext(context: android.content.Context) {
             val path = StorageDelegate.Logging.getLogFilePath(context)
             AndroidLog.d(GLOBAL_PREFIX, "initFromContext: getLogFilePath=$path pid=${android.os.Process.myPid()}")
@@ -66,7 +71,19 @@ class Log(
             message: String,
             throwable: Throwable? = null,
         ) {
-            writeToFile(type, tag, message, throwable)
+            if (nativeLogFilePath() != null) {
+                writeToFile(type, tag, message, throwable)
+            } else {
+                // logFilePath not yet configured — fall back to logcat directly
+                val prefixedTag = "$GLOBAL_PREFIX.$tag"
+                when (type) {
+                    PLogTypeEnum.DEBUG -> AndroidLog.d(prefixedTag, message, throwable)
+                    PLogTypeEnum.INFO -> AndroidLog.i(prefixedTag, message, throwable)
+                    PLogTypeEnum.WARN -> AndroidLog.w(prefixedTag, message, throwable)
+                    PLogTypeEnum.ERROR -> AndroidLog.e(prefixedTag, message, throwable)
+                    PLogTypeEnum.VERBOSE -> AndroidLog.v(prefixedTag, message, throwable)
+                }
+            }
         }
 
         private fun nativeLogFilePath(): String? = logFilePath?.let { if (it.endsWith(".log")) it.dropLast(4) + "_native.log" else "$it.native" }
@@ -99,9 +116,11 @@ class Log(
                     }
                 val bytes = line.toByteArray(Charsets.UTF_8)
                 FileOutputStream(file, true).use { fos ->
-                    fos.write(bytes)
-                    fos.flush()
-                    fos.fd.sync()
+                    fos.channel.lock().use {
+                        fos.write(bytes)
+                        fos.flush()
+                        fos.fd.sync()
+                    }
                 }
             } catch (e: Exception) {
                 AndroidLog.e(GLOBAL_PREFIX, "writeToFile failed for $path: ${e.javaClass.simpleName}: ${e.message}")
@@ -133,5 +152,11 @@ class Log(
             message: String,
             throwable: Throwable? = null,
         ) = log(PLogTypeEnum.WARN, tag, message, throwable)
+
+        @JvmStatic
+        fun v(
+            tag: String,
+            message: String,
+        ) = log(PLogTypeEnum.VERBOSE, tag, message)
     }
 }

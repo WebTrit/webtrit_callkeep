@@ -147,5 +147,10 @@ object StorageDelegate {
         }
 
         fun getLogFilePath(context: Context): String? = sharedPreferences(context).getString(LOG_FILE_PATH, null)
+
+        fun clearLogFilePath(context: Context) {
+            val isCommitted = sharedPreferences(context).edit().remove(LOG_FILE_PATH).commit()
+            if (!isCommitted) Log.w("WebtritCallkeep", "StorageDelegate: commit() failed clearing LOG_FILE_PATH")
+        }
     }
 }
