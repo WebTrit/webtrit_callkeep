@@ -4,7 +4,6 @@ import android.app.Notification
 import android.app.PendingIntent
 import android.content.Intent
 import android.graphics.drawable.Icon
-import androidx.core.app.NotificationCompat
 import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.ContextHolder.context
 import com.webtrit.callkeep.managers.NotificationChannelManager.NOTIFICATION_ACTIVE_CALL_CHANNEL_ID
@@ -45,17 +44,15 @@ class ActiveCallNotificationBuilder : NotificationBuilder() {
                 ).apply {
                     setSmallIcon(R.drawable.ic_notification)
                     setOngoing(true)
+                    setOnlyAlertOnce(true)
                     setContentTitle(title)
                     setContentText(text)
                     setAutoCancel(false)
                     setCategory(Notification.CATEGORY_SERVICE)
-                    setFullScreenIntent(buildOpenAppIntent(context), true)
                     addAction(hungUpAction)
                 }
 
-        val notification = notificationBuilder.build()
-        notification.flags = notification.flags or NotificationCompat.FLAG_INSISTENT
-        return notification
+        return notificationBuilder.build()
     }
 
     private fun getHungUpCallIntent(callMetaData: CallMetadata?): PendingIntent {
