@@ -86,7 +86,6 @@ class Log(
             }
         }
 
-        @Synchronized
         private fun writeToFile(
             type: PLogTypeEnum,
             tag: String,
@@ -95,8 +94,8 @@ class Log(
         ) {
             val path = logFilePath ?: return
             try {
-                val file = File(path)
-                LogFileRotator.rotateIfNeeded(file)
+                val logFile = File(path)
+                val lockFile = File("$path.lock")
                 val level =
                     when (type) {
                         PLogTypeEnum.DEBUG -> "D"
@@ -113,12 +112,18 @@ class Log(
                         "$timestamp $level $tag: $message\n"
                     }
                 val bytes = line.toByteArray(Charsets.UTF_8)
-                FileOutputStream(file, true).use { fos ->
-                    fos.channel.lock().use {
-                        fos.write(bytes)
-                        fos.flush()
-                        if (type == PLogTypeEnum.ERROR || type == PLogTypeEnum.WARN) {
-                            fos.fd.sync()
+                // Lock on a dedicated lock file so rotation and write are atomic
+                // across OS processes (main + callkeep_core). FileChannel.lock() is
+                // OS-level and works across processes, unlike @Synchronized.
+                FileOutputStream(lockFile, true).use { lockFos ->
+                    lockFos.channel.lock().use {
+                        LogFileRotator.rotateIfNeeded(logFile)
+                        FileOutputStream(logFile, true).use { fos ->
+                            fos.write(bytes)
+                            fos.flush()
+                            if (type == PLogTypeEnum.ERROR || type == PLogTypeEnum.WARN) {
+                                fos.fd.sync()
+                            }
                         }
                     }
                 }
