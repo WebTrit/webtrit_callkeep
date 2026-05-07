@@ -123,7 +123,7 @@ class Log(
                     }
                 }
             } catch (e: Exception) {
-                AndroidLog.e(GLOBAL_PREFIX, "writeToFile failed for $path: ${e.javaClass.simpleName}: ${e.message}")
+                AndroidLog.e(GLOBAL_PREFIX, "writeToFile failed for $path", e)
             }
         }
 
