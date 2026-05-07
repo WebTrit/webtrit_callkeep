@@ -273,6 +273,42 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
+  // CallkeepAndroidOptionsConverter
+  // ---------------------------------------------------------------------------
+
+  group('CallkeepAndroidOptionsConverter.toPigeon()', () {
+    test('nativeLogFilePath is forwarded to Pigeon logFilePath', () {
+      const opts = CallkeepAndroidOptions(nativeLogFilePath: '/data/app_logs_native.log');
+      expect(opts.toPigeon().logFilePath, '/data/app_logs_native.log');
+    });
+
+    test('nativeLogFilePath null maps to Pigeon logFilePath null', () {
+      const opts = CallkeepAndroidOptions();
+      expect(opts.toPigeon().logFilePath, isNull);
+    });
+  });
+
+  group('CallkeepAndroidOptions Equatable', () {
+    test('same nativeLogFilePath are equal', () {
+      const a = CallkeepAndroidOptions(nativeLogFilePath: '/data/app_logs_native.log');
+      const b = CallkeepAndroidOptions(nativeLogFilePath: '/data/app_logs_native.log');
+      expect(a, equals(b));
+    });
+
+    test('different nativeLogFilePath are not equal', () {
+      const a = CallkeepAndroidOptions(nativeLogFilePath: '/data/a.log');
+      const b = CallkeepAndroidOptions(nativeLogFilePath: '/data/b.log');
+      expect(a, isNot(equals(b)));
+    });
+
+    test('null vs non-null nativeLogFilePath are not equal', () {
+      const a = CallkeepAndroidOptions(nativeLogFilePath: '/data/a.log');
+      const b = CallkeepAndroidOptions();
+      expect(a, isNot(equals(b)));
+    });
+  });
+
+  // ---------------------------------------------------------------------------
   // CallkeepOptionsConverter
   // ---------------------------------------------------------------------------
 
