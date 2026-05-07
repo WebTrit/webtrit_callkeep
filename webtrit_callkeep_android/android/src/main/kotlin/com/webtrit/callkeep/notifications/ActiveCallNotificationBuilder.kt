@@ -6,7 +6,7 @@ import android.content.Intent
 import android.graphics.drawable.Icon
 import com.webtrit.callkeep.R
 import com.webtrit.callkeep.common.ContextHolder.context
-import com.webtrit.callkeep.managers.NotificationChannelManager.NOTIFICATION_ACTIVE_CALL_CHANNEL_ID
+import com.webtrit.callkeep.managers.NotificationChannelManager.ACTIVE_CALL_SERVICE_NOTIFICATION_CHANNEL_ID
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.services.services.active_call.ActiveCallService
@@ -40,7 +40,7 @@ class ActiveCallNotificationBuilder : NotificationBuilder() {
             Notification
                 .Builder(
                     context,
-                    NOTIFICATION_ACTIVE_CALL_CHANNEL_ID,
+                    ACTIVE_CALL_SERVICE_NOTIFICATION_CHANNEL_ID,
                 ).apply {
                     setSmallIcon(R.drawable.ic_notification)
                     setOngoing(true)
