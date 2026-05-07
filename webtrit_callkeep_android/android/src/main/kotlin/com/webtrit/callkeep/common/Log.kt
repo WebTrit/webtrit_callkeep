@@ -117,7 +117,9 @@ class Log(
                     fos.channel.lock().use {
                         fos.write(bytes)
                         fos.flush()
-                        fos.fd.sync()
+                        if (type == PLogTypeEnum.ERROR || type == PLogTypeEnum.WARN) {
+                            fos.fd.sync()
+                        }
                     }
                 }
             } catch (e: Exception) {
