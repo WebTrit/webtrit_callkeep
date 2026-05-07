@@ -71,7 +71,7 @@ class Log(
             message: String,
             throwable: Throwable? = null,
         ) {
-            if (nativeLogFilePath() != null) {
+            if (logFilePath != null) {
                 writeToFile(type, tag, message, throwable)
             } else {
                 // logFilePath not yet configured — fall back to logcat directly
@@ -86,8 +86,6 @@ class Log(
             }
         }
 
-        private fun nativeLogFilePath(): String? = logFilePath?.let { if (it.endsWith(".log")) it.dropLast(4) + "_native.log" else "$it.native" }
-
         @Synchronized
         private fun writeToFile(
             type: PLogTypeEnum,
@@ -95,7 +93,7 @@ class Log(
             message: String,
             throwable: Throwable?,
         ) {
-            val path = nativeLogFilePath() ?: return
+            val path = logFilePath ?: return
             try {
                 val file = File(path)
                 LogFileRotator.rotateIfNeeded(file)

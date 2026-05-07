@@ -177,7 +177,7 @@ extension CallkeepAndroidOptionsConverter on CallkeepAndroidOptions {
       incomingCallFullScreen: incomingCallFullScreen,
       incomingCallTimeoutMs: incomingCallTimeoutMs,
       outgoingCallTimeoutMs: outgoingCallTimeoutMs,
-      logFilePath: logFilePath,
+      logFilePath: nativeLogFilePath,
     );
   }
 }

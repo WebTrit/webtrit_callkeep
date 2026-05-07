@@ -20,8 +20,8 @@ class WebtritCallkeepLogs {
   /// Sets the logs delegate.
   /// [CallkeepLogsDelegate] needs to be implemented to receive logs.
   ///
-  /// Deprecated: pass [CallkeepAndroidOptions.logFilePath] to [Callkeep.setUp] instead.
-  @Deprecated('Use CallkeepAndroidOptions.logFilePath in setUp() instead.')
+  /// Deprecated: pass [CallkeepAndroidOptions.nativeLogFilePath] to [Callkeep.setUp] instead.
+  @Deprecated('Use CallkeepAndroidOptions.nativeLogFilePath in setUp() instead.')
   void setLogsDelegate(CallkeepLogsDelegate? delegate) {
     if (kIsWeb || !Platform.isAndroid) {
       return;
