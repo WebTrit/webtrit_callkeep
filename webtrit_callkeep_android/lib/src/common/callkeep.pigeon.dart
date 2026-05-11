@@ -253,6 +253,7 @@ class PAndroidOptions {
     this.incomingCallFullScreen,
     this.incomingCallTimeoutMs,
     this.outgoingCallTimeoutMs,
+    this.logFilePath,
   });
 
   String? ringtoneSound;
@@ -269,6 +270,9 @@ class PAndroidOptions {
   /// automatically disconnected. When null the native default is used.
   int? outgoingCallTimeoutMs;
 
+  /// Absolute path to a file where native logs will be written directly.
+  String? logFilePath;
+
   List<Object?> _toList() {
     return <Object?>[
       ringtoneSound,
@@ -276,6 +280,7 @@ class PAndroidOptions {
       incomingCallFullScreen,
       incomingCallTimeoutMs,
       outgoingCallTimeoutMs,
+      logFilePath,
     ];
   }
 
@@ -291,6 +296,7 @@ class PAndroidOptions {
       incomingCallFullScreen: result[2] as bool?,
       incomingCallTimeoutMs: result[3] as int?,
       outgoingCallTimeoutMs: result[4] as int?,
+      logFilePath: result[5] as String?,
     );
   }
 

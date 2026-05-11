@@ -77,6 +77,4 @@ void initializeLogs() {
       debugPrint('${record.stackTrace}');
     }
   });
-
-  WebtritCallkeepLogs().setLogsDelegate(CallkeepLogs());
 }

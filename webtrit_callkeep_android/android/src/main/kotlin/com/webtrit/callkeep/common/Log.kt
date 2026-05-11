@@ -1,10 +1,12 @@
 package com.webtrit.callkeep.common
 
-import android.os.Handler
-import android.os.Looper
 import com.webtrit.callkeep.PDelegateLogsFlutterApi
 import com.webtrit.callkeep.PLogTypeEnum
-import java.util.concurrent.CopyOnWriteArrayList
+import java.io.File
+import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import android.util.Log as AndroidLog
 
 /**
@@ -13,168 +15,153 @@ import android.util.Log as AndroidLog
 class Log(
     private val tag: String,
 ) {
-    /**
-     * Logs an error message using the instance tag.
-     */
     fun e(
         message: String,
         throwable: Throwable? = null,
-    ) = log(PLogTypeEnum.ERROR, tag, "$message\n$throwable")
+    ) = log(PLogTypeEnum.ERROR, tag, message, throwable)
 
-    /**
-     * Logs a debug message using the instance tag.
-     */
     fun d(message: String) = log(PLogTypeEnum.DEBUG, tag, message)
 
-    /**
-     * Logs an informational message using the instance tag.
-     */
     fun i(message: String) = log(PLogTypeEnum.INFO, tag, message)
 
-    /**
-     * Logs a verbose message using the instance tag.
-     */
     fun v(message: String) = log(PLogTypeEnum.VERBOSE, tag, message)
 
-    /**
-     * Logs a warning message using the instance tag.
-     */
     fun w(
         message: String,
         throwable: Throwable? = null,
-    ) = log(PLogTypeEnum.WARN, tag, "$message\n$throwable")
+    ) = log(PLogTypeEnum.WARN, tag, message, throwable)
 
     companion object {
-        /**
-         * Prefix prepended to all log tags to uniquely identify library-related log output.
-         */
-        private const val GLOBAL_PREFIX = "CK-"
+        private const val GLOBAL_PREFIX = "WebtritCallkeep"
 
-        /**
-         * Collection of registered Flutter API delegates that receive and process log events.
-         */
-        private var isolateDelegates = CopyOnWriteArrayList<PDelegateLogsFlutterApi>()
+        private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
 
-        /**
-         * Reusable handler tied to the main looper for dispatching logs to delegates.
-         */
-        private val mainHandler = Handler(Looper.getMainLooper())
+        @Volatile
+        private var logFilePath: String? = null
 
-        /**
-         * Adds a delegate to receive log messages.
-         */
-        @JvmStatic
-        fun add(delegate: PDelegateLogsFlutterApi) {
-            isolateDelegates.add(delegate)
+        fun setLogFilePath(path: String) {
+            logFilePath = path
+            AndroidLog.d(GLOBAL_PREFIX, "setLogFilePath: $path")
         }
 
-        /**
-         * Removes a delegate from receiving log messages.
-         */
-        @JvmStatic
-        fun remove(delegate: PDelegateLogsFlutterApi) {
-            isolateDelegates.remove(delegate)
+        fun clearLogFilePath() {
+            logFilePath = null
+            AndroidLog.d(GLOBAL_PREFIX, "clearLogFilePath")
         }
 
-        /**
-         * Internal dispatcher for log messages.
-         */
+        fun initFromContext(context: android.content.Context) {
+            val path = StorageDelegate.Logging.getLogFilePath(context)
+            AndroidLog.d(GLOBAL_PREFIX, "initFromContext: getLogFilePath=$path pid=${android.os.Process.myPid()}")
+            if (path != null) {
+                logFilePath = path
+            }
+        }
+
+        /** No-op: kept for API compatibility until delegate API is removed. */
+        @JvmStatic
+        fun add(delegate: PDelegateLogsFlutterApi) = Unit
+
+        /** No-op: kept for API compatibility until delegate API is removed. */
+        @JvmStatic
+        fun remove(delegate: PDelegateLogsFlutterApi) = Unit
+
         private fun log(
             type: PLogTypeEnum,
             tag: String,
             message: String,
             throwable: Throwable? = null,
         ) {
-            val prefixedTag = "$GLOBAL_PREFIX$tag"
-            if (isolateDelegates.isEmpty()) {
-                performSystemLog(type, prefixedTag, message, throwable)
+            if (logFilePath != null) {
+                writeToFile(type, tag, message, throwable)
             } else {
-                dispatchToDelegate(type, prefixedTag, message, throwable)
-            }
-        }
-
-        /**
-         * Logs to the standard Android system log with proper throwable handling.
-         */
-        private fun performSystemLog(
-            type: PLogTypeEnum,
-            tag: String,
-            message: String,
-            throwable: Throwable?,
-        ) {
-            when (type) {
-                PLogTypeEnum.DEBUG -> AndroidLog.d(tag, message, throwable)
-                PLogTypeEnum.INFO -> AndroidLog.i(tag, message, throwable)
-                PLogTypeEnum.WARN -> AndroidLog.w(tag, message, throwable)
-                PLogTypeEnum.ERROR -> AndroidLog.e(tag, message, throwable)
-                PLogTypeEnum.VERBOSE -> AndroidLog.v(tag, message, throwable)
-            }
-        }
-
-        /**
-         * Dispatches log events to the main thread for delegate consumption.
-         */
-        private fun dispatchToDelegate(
-            type: PLogTypeEnum,
-            tag: String,
-            message: String,
-            throwable: Throwable?,
-        ) = mainHandler.post { notifyFirstDelegate(type, tag, message, throwable) }
-
-        /**
-         * Notifies the primary registered isolate delegate.
-         */
-        private fun notifyFirstDelegate(
-            type: PLogTypeEnum,
-            tag: String,
-            message: String,
-            throwable: Throwable?,
-        ) {
-            val fullMessage =
-                if (throwable != null) {
-                    "$message\n${AndroidLog.getStackTraceString(throwable)}"
-                } else {
-                    message
+                // logFilePath not yet configured — fall back to logcat directly
+                val prefixedTag = "$GLOBAL_PREFIX.$tag"
+                when (type) {
+                    PLogTypeEnum.DEBUG -> AndroidLog.d(prefixedTag, message, throwable)
+                    PLogTypeEnum.INFO -> AndroidLog.i(prefixedTag, message, throwable)
+                    PLogTypeEnum.WARN -> AndroidLog.w(prefixedTag, message, throwable)
+                    PLogTypeEnum.ERROR -> AndroidLog.e(prefixedTag, message, throwable)
+                    PLogTypeEnum.VERBOSE -> AndroidLog.v(prefixedTag, message, throwable)
                 }
-            isolateDelegates.firstOrNull()?.onLog(type, tag, fullMessage) {}
+            }
         }
 
-        /**
-         * Logs an error message. (Static version)
-         */
+        private fun writeToFile(
+            type: PLogTypeEnum,
+            tag: String,
+            message: String,
+            throwable: Throwable?,
+        ) {
+            val path = logFilePath ?: return
+            try {
+                val logFile = File(path)
+                val lockFile = File("$path.lock")
+                val level =
+                    when (type) {
+                        PLogTypeEnum.DEBUG -> "D"
+                        PLogTypeEnum.INFO -> "I"
+                        PLogTypeEnum.WARN -> "W"
+                        PLogTypeEnum.ERROR -> "E"
+                        PLogTypeEnum.VERBOSE -> "V"
+                    }
+                val timestamp = dateFormat.format(Date())
+                val line =
+                    if (throwable != null) {
+                        "$timestamp $level $tag: $message\n${AndroidLog.getStackTraceString(throwable)}\n"
+                    } else {
+                        "$timestamp $level $tag: $message\n"
+                    }
+                val bytes = line.toByteArray(Charsets.UTF_8)
+                // Lock on a dedicated lock file so rotation and write are atomic
+                // across OS processes (main + callkeep_core). FileChannel.lock() is
+                // OS-level and works across processes, unlike @Synchronized.
+                FileOutputStream(lockFile, true).use { lockFos ->
+                    lockFos.channel.lock().use {
+                        LogFileRotator.rotateIfNeeded(logFile)
+                        FileOutputStream(logFile, true).use { fos ->
+                            fos.write(bytes)
+                            fos.flush()
+                            if (type == PLogTypeEnum.ERROR || type == PLogTypeEnum.WARN) {
+                                fos.fd.sync()
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                AndroidLog.e(GLOBAL_PREFIX, "writeToFile failed for $path", e)
+            }
+        }
+
         @JvmStatic
         fun e(
             tag: String,
             message: String,
             throwable: Throwable? = null,
-        ) = log(PLogTypeEnum.ERROR, tag, "$message\n$throwable")
+        ) = log(PLogTypeEnum.ERROR, tag, message, throwable)
 
-        /**
-         * Logs a debug message. (Static version)
-         */
         @JvmStatic
         fun d(
             tag: String,
             message: String,
         ) = log(PLogTypeEnum.DEBUG, tag, message)
 
-        /**
-         * Logs an informational message. (Static version)
-         */
         @JvmStatic
         fun i(
             tag: String,
             message: String,
         ) = log(PLogTypeEnum.INFO, tag, message)
 
-        /**
-         * Logs a warning message. (Static version)
-         */
         @JvmStatic
         fun w(
             tag: String,
             message: String,
             throwable: Throwable? = null,
-        ) = log(PLogTypeEnum.WARN, tag, "$message\n$throwable")
+        ) = log(PLogTypeEnum.WARN, tag, message, throwable)
+
+        @JvmStatic
+        fun v(
+            tag: String,
+            message: String,
+        ) = log(PLogTypeEnum.VERBOSE, tag, message)
     }
 }

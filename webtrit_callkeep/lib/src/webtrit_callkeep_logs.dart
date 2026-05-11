@@ -19,11 +19,15 @@ class WebtritCallkeepLogs {
 
   /// Sets the logs delegate.
   /// [CallkeepLogsDelegate] needs to be implemented to receive logs.
+  ///
+  /// Deprecated: pass [CallkeepAndroidOptions.nativeLogFilePath] to [Callkeep.setUp] instead.
+  @Deprecated('Use CallkeepAndroidOptions.nativeLogFilePath in setUp() instead.')
   void setLogsDelegate(CallkeepLogsDelegate? delegate) {
     if (kIsWeb || !Platform.isAndroid) {
       return;
     }
 
+    // ignore: deprecated_member_use
     WebtritCallkeepPlatform.instance.setLogsDelegate(delegate);
   }
 }
