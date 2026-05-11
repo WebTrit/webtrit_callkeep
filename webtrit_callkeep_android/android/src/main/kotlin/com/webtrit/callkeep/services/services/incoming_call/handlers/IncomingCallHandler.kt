@@ -56,12 +56,11 @@ class IncomingCallHandler(
     }
 
     /**
-     * Replaces the ringing notification with a silent one regardless of answer state.
-     * The silent notification keeps the FGS alive while the signaling layer sends SIP BYE
-     * (answered=false) or while the active-call session takes over (answered=true).
+     * Replaces the ringing notification with a silent one to transition out of the ringing phase.
+     * The silent notification keeps the FGS alive while the signaling layer completes teardown.
      */
     @SuppressLint("MissingPermission")
-    fun releaseIncomingCallNotification(answered: Boolean) {
+    fun releaseIncomingCallNotification() {
         if (lastMetadata == null) {
             Log.w(TAG, "releaseIncomingCallNotification: no metadata (service not initialized), skipping")
             return
