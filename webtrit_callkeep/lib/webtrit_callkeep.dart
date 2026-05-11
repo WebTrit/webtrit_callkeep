@@ -4,6 +4,5 @@ export 'src/android/android.dart';
 export 'src/android/services/android_calkeep_services.dart';
 export 'src/callkeep.dart';
 export 'src/callkeep_connections.dart';
-export 'src/webtrit_callkeep_logs.dart';
 export 'src/webtrit_callkeep_permissions.dart';
 export 'src/webtrit_callkeep_sound.dart';

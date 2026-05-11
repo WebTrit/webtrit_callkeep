@@ -5,8 +5,7 @@ import 'package:webtrit_callkeep_example/core/log_entry.dart';
 
 part 'actions_state.dart';
 
-class ActionsCubit extends Cubit<ActionsState>
-    implements CallkeepDelegate, CallkeepBackgroundServiceDelegate, CallkeepLogsDelegate {
+class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, CallkeepBackgroundServiceDelegate {
   ActionsCubit(this._callkeep) : super(const ActionsState()) {
     _callkeep.setDelegate(this);
   }
@@ -427,11 +426,6 @@ class ActionsCubit extends Cubit<ActionsState>
     } catch (e) {
       emit(state.log(LogEntry.error('openSettings: $e')));
     }
-  }
-
-  @override
-  void onLog(CallkeepLogType type, String tag, String message) {
-    emit(state.log(LogEntry.event('[native/${type.name}] $tag: $message')));
   }
 
   // ---------------------------------------------------------------------------

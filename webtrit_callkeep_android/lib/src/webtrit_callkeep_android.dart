@@ -57,10 +57,6 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  @Deprecated('Use CallkeepAndroidOptions.nativeLogFilePath in setUp() instead.')
-  void setLogsDelegate(CallkeepLogsDelegate? delegate) {}
-
-  @override
   Future<String?> pushTokenForPushTypeVoIP() {
     return _pushRegistryApi.pushTokenForPushTypeVoIP();
   }
