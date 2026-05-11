@@ -57,7 +57,8 @@ class IncomingCallHandler(
 
     /**
      * Replaces the ringing notification with a silent one to transition out of the ringing phase.
-     * The silent notification keeps the FGS alive while the signaling layer completes teardown.
+     * The silent notification keeps the FGS alive while the signaling layer completes teardown
+     * (decline path) or while the active-call session takes over (answer path).
      */
     @SuppressLint("MissingPermission")
     fun releaseIncomingCallNotification() {
