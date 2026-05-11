@@ -17,9 +17,6 @@ class _PigeonCodec extends StandardMessageCodec {
     if (value is int) {
       buffer.putUint8(4);
       buffer.putInt64(value);
-    } else if (value is PLogTypeEnum) {
-      buffer.putUint8(129);
-      writeValue(buffer, value.index);
     } else if (value is PCallkeepPermission) {
       buffer.putUint8(130);
       writeValue(buffer, value.index);
@@ -103,9 +100,6 @@ class _PigeonCodec extends StandardMessageCodec {
   @override
   Object? readValueOfType(int type, ReadBuffer buffer) {
     switch (type) {
-      case 129:
-        final int? value = readValue(buffer) as int?;
-        return value == null ? null : PLogTypeEnum.values[value];
       case 130:
         final int? value = readValue(buffer) as int?;
         return value == null ? null : PCallkeepPermission.values[value];

@@ -55,8 +55,6 @@ class PAudioDevice {
   late String? name;
 }
 
-enum PLogTypeEnum { debug, error, info, verbose, warn }
-
 enum PCallkeepPermission { readPhoneState, readPhoneNumbers }
 
 enum PSpecialPermissionStatusTypeEnum { denied, granted, unknown }
@@ -452,11 +450,6 @@ abstract class PPushRegistryHostApi {
 abstract class PPushRegistryDelegateFlutterApi {
   @ObjCSelector('didUpdatePushTokenForPushTypeVoIP:')
   void didUpdatePushTokenForPushTypeVoIP(String? token);
-}
-
-@FlutterApi()
-abstract class PDelegateLogsFlutterApi {
-  void onLog(PLogTypeEnum type, String tag, String message);
 }
 
 @FlutterApi()

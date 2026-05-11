@@ -23,32 +23,6 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // PLogTypeEnumConverter
-  // ---------------------------------------------------------------------------
-
-  group('PLogTypeEnumConverter.toCallkeep()', () {
-    test('debug maps to CallkeepLogType.debug', () {
-      expect(PLogTypeEnum.debug.toCallkeep(), CallkeepLogType.debug);
-    });
-
-    test('error maps to CallkeepLogType.error', () {
-      expect(PLogTypeEnum.error.toCallkeep(), CallkeepLogType.error);
-    });
-
-    test('info maps to CallkeepLogType.info', () {
-      expect(PLogTypeEnum.info.toCallkeep(), CallkeepLogType.info);
-    });
-
-    test('verbose maps to CallkeepLogType.verbose', () {
-      expect(PLogTypeEnum.verbose.toCallkeep(), CallkeepLogType.verbose);
-    });
-
-    test('warn maps to CallkeepLogType.warn', () {
-      expect(PLogTypeEnum.warn.toCallkeep(), CallkeepLogType.warn);
-    });
-  });
-
-  // ---------------------------------------------------------------------------
   // PHandleConverter
   // ---------------------------------------------------------------------------
 
@@ -168,32 +142,6 @@ void main() {
 
     test('timeout', () {
       expect(PCallRequestErrorEnum.timeout.toCallkeep(), CallkeepCallRequestError.timeout);
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // CallkeepTypeEnumConverter (CallkeepLogType -> PLogTypeEnum)
-  // ---------------------------------------------------------------------------
-
-  group('CallkeepTypeEnumConverter.toPigeon()', () {
-    test('debug maps to PLogTypeEnum.debug', () {
-      expect(CallkeepLogType.debug.toPigeon(), PLogTypeEnum.debug);
-    });
-
-    test('error maps to PLogTypeEnum.error', () {
-      expect(CallkeepLogType.error.toPigeon(), PLogTypeEnum.error);
-    });
-
-    test('info maps to PLogTypeEnum.info', () {
-      expect(CallkeepLogType.info.toPigeon(), PLogTypeEnum.info);
-    });
-
-    test('verbose maps to PLogTypeEnum.verbose', () {
-      expect(CallkeepLogType.verbose.toPigeon(), PLogTypeEnum.verbose);
-    });
-
-    test('warn maps to PLogTypeEnum.warn', () {
-      expect(CallkeepLogType.warn.toPigeon(), PLogTypeEnum.warn);
     });
   });
 

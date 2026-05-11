@@ -39,16 +39,6 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('setAndroidServiceDelegate() has not been implemented.');
   }
 
-  /// Sets the logs delegate.
-  /// [CallkeepLogsDelegate] needs to be implemented to receive logs.
-  ///
-  /// Deprecated: pass [CallkeepAndroidOptions.nativeLogFilePath] to [setUp] instead.
-  /// Native logs are then written directly to a file without the Flutter engine.
-  @Deprecated('Use CallkeepAndroidOptions.nativeLogFilePath in setUp() instead.')
-  void setLogsDelegate(CallkeepLogsDelegate? delegate) {
-    throw UnimplementedError('setLogsDelegate() has not been implemented.');
-  }
-
   /// Sets the delegate for receiving push registry events from the native side.
   /// [PushRegistryDelegate] needs to be implemented to receive push registry events.
   void setPushRegistryDelegate(PushRegistryDelegate? delegate) {

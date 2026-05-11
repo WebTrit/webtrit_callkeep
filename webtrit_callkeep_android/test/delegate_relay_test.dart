@@ -109,15 +109,6 @@ class _FakeCallkeepDelegate implements CallkeepDelegate {
   }
 }
 
-class _FakeLogsDelegate implements CallkeepLogsDelegate {
-  final List<List<dynamic>> calls = [];
-
-  @override
-  void onLog(CallkeepLogType type, String tag, String message) {
-    calls.add([type, tag, message]);
-  }
-}
-
 class _FakePushRegistryDelegate implements PushRegistryDelegate {
   final List<String?> tokens = [];
 
@@ -338,22 +329,6 @@ void main() {
     test('didReset calls delegate', () async {
       await _send('$_prefix.PDelegateFlutterApi.didReset', []);
       expect(fake.calls['didReset'], hasLength(1));
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // _LogsDelegateRelay
-  // ---------------------------------------------------------------------------
-
-  group('_LogsDelegateRelay', () {
-    test('setLogsDelegate(null) clears without error', () {
-      // ignore: deprecated_member_use
-      expect(() => WebtritCallkeepPlatform.instance.setLogsDelegate(null), returnsNormally);
-    });
-
-    test('setLogsDelegate(delegate) completes without error', () {
-      // ignore: deprecated_member_use
-      expect(() => WebtritCallkeepPlatform.instance.setLogsDelegate(_FakeLogsDelegate()), returnsNormally);
     });
   });
 
