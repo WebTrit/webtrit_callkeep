@@ -8,12 +8,38 @@ import com.webtrit.callkeep.services.core.CallkeepCore
 import io.flutter.plugin.common.BinaryMessenger
 
 /**
- * Registers webtrit_callkeep Pigeon channels on a secondary Flutter engine that was created
- * with automaticallyRegisterPlugins=false (e.g. the SignalingForegroundService FGS engine).
+ * Registers webtrit_callkeep Pigeon channels on a secondary Flutter engine whose
+ * BinaryMessenger is provided by the caller.
  *
- * Usage in Application.onCreate:
+ * ## Background
+ *
+ * Flutter plugins are normally registered automatically on the main engine via
+ * GeneratedPluginRegistrant. Secondary engines created for background work (foreground
+ * services, push-notification isolates, etc.) are typically started with
+ * `automaticallyRegisterPlugins = false` to avoid initialising audio, camera, and WebRTC
+ * hardware in a context where those resources must not be touched.
+ *
+ * Because [WebtritCallkeepPlugin.onAttachedToEngine] never fires on such engines,
+ * the two Pigeon HOST APIs that callkeep's background Dart code depends on are absent:
+ *
+ * - [PHostBackgroundPushNotificationIsolateBootstrapApi] — used by the push-notification
+ *   isolate to trigger ringing via [IncomingCallService].
+ * - [PHostApi] — used by any background Dart isolate that calls [Callkeep] directly
+ *   (e.g. to report an incoming call or end a call without going through the push path).
+ *
+ * [register] sets up both APIs on the given [messenger] so background Dart code works
+ * correctly without requiring the caller to know about callkeep internals.
+ *
+ * ## When to call
+ *
+ * Call [register] once, before the background Dart isolate starts executing. A safe place
+ * is inside a callback that the background engine host provides for exactly this purpose —
+ * for example `SignalingForegroundService.onFgsEngineReady` from the
+ * `webtrit_signaling_service` plugin, or an equivalent hook in your own foreground service.
+ *
  * ```kotlin
- * SignalingForegroundService.onFgsEngineReady = { context, messenger ->
+ * // Application.onCreate — wires callkeep into the FGS engine before any Dart code runs
+ * yourBackgroundEngineHost.onEngineReady = { context, messenger ->
  *     CallkeepFgsIntegration.register(context, messenger)
  * }
  * ```
