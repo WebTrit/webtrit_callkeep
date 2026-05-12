@@ -1,8 +1,11 @@
 package com.webtrit.callkeep
 
+import android.Manifest
 import android.content.Context
+import androidx.annotation.RequiresPermission
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.models.toAudioDevice
 import com.webtrit.callkeep.models.toCallHandle
 import com.webtrit.callkeep.services.core.CallkeepCore
 import io.flutter.plugin.common.BinaryMessenger
@@ -59,18 +62,18 @@ object CallkeepFgsIntegration {
     private class FgsHostApiHandler(
         private val context: Context,
     ) : PHostApi {
+        private val core get() = CallkeepCore.instance
+
+        // setUp/tearDown manage the callkeep lifecycle and are owned by the Activity.
+        // Calling them from the FGS engine would conflict with Activity-side state.
         override fun isSetUp(): Boolean = true
 
         override fun setUp(
             options: POptions,
             callback: (Result<Unit>) -> Unit,
-        ) {
-            callback(Result.success(Unit))
-        }
+        ) = callback(Result.success(Unit))
 
-        override fun tearDown(callback: (Result<Unit>) -> Unit) {
-            callback(Result.success(Unit))
-        }
+        override fun tearDown(callback: (Result<Unit>) -> Unit) = callback(Result.success(Unit))
 
         override fun reportNewIncomingCall(
             callId: String,
@@ -79,16 +82,15 @@ object CallkeepFgsIntegration {
             hasVideo: Boolean,
             callback: (Result<PIncomingCallError?>) -> Unit,
         ) {
-            val ringtonePath = StorageDelegate.Sound.getRingtonePath(context)
             val metadata =
                 CallMetadata(
                     callId = callId,
                     handle = handle.toCallHandle(),
                     displayName = displayName,
                     hasVideo = hasVideo,
-                    ringtonePath = ringtonePath,
+                    ringtonePath = StorageDelegate.Sound.getRingtonePath(context),
                 )
-            CallkeepCore.instance.startIncomingCall(
+            core.startIncomingCall(
                 metadata = metadata,
                 onSuccess = { callback(Result.success(null)) },
                 onError = { error -> callback(Result.success(error)) },
@@ -101,22 +103,21 @@ object CallkeepFgsIntegration {
             reason: PEndCallReason,
             callback: (Result<Unit>) -> Unit,
         ) {
-            val metadata = CallMetadata(callId = callId, displayName = displayName)
-            CallkeepCore.instance.startDeclineCall(metadata)
+            core.startDeclineCall(CallMetadata(callId = callId, displayName = displayName))
             callback(Result.success(Unit))
         }
 
+        // No CallkeepCore command exists for the DIALING state transition.
         override fun reportConnectingOutgoingCall(
             callId: String,
             callback: (Result<Unit>) -> Unit,
-        ) {
-            callback(Result.success(Unit))
-        }
+        ) = callback(Result.success(Unit))
 
         override fun reportConnectedOutgoingCall(
             callId: String,
             callback: (Result<Unit>) -> Unit,
         ) {
+            core.startEstablishCall(CallMetadata(callId = callId))
             callback(Result.success(Unit))
         }
 
@@ -128,9 +129,19 @@ object CallkeepFgsIntegration {
             proximityEnabled: Boolean?,
             callback: (Result<Unit>) -> Unit,
         ) {
+            core.startUpdateCall(
+                CallMetadata(
+                    callId = callId,
+                    handle = handle?.toCallHandle(),
+                    displayName = displayName,
+                    hasVideo = hasVideo,
+                    proximityEnabled = proximityEnabled,
+                ),
+            )
             callback(Result.success(Unit))
         }
 
+        @RequiresPermission(Manifest.permission.CALL_PHONE)
         override fun startCall(
             callId: String,
             handle: PHandle,
@@ -139,6 +150,15 @@ object CallkeepFgsIntegration {
             proximityEnabled: Boolean,
             callback: (Result<PCallRequestError?>) -> Unit,
         ) {
+            core.startOutgoingCall(
+                CallMetadata(
+                    callId = callId,
+                    handle = handle.toCallHandle(),
+                    displayName = displayNameOrContactIdentifier,
+                    hasVideo = video,
+                    proximityEnabled = proximityEnabled,
+                ),
+            )
             callback(Result.success(null))
         }
 
@@ -146,6 +166,7 @@ object CallkeepFgsIntegration {
             callId: String,
             callback: (Result<PCallRequestError?>) -> Unit,
         ) {
+            core.startAnswerCall(CallMetadata(callId = callId))
             callback(Result.success(null))
         }
 
@@ -153,6 +174,7 @@ object CallkeepFgsIntegration {
             callId: String,
             callback: (Result<PCallRequestError?>) -> Unit,
         ) {
+            core.startHungUpCall(CallMetadata(callId = callId))
             callback(Result.success(null))
         }
 
@@ -161,6 +183,7 @@ object CallkeepFgsIntegration {
             onHold: Boolean,
             callback: (Result<PCallRequestError?>) -> Unit,
         ) {
+            core.startHoldingCall(CallMetadata(callId = callId, hasHold = onHold))
             callback(Result.success(null))
         }
 
@@ -169,6 +192,7 @@ object CallkeepFgsIntegration {
             muted: Boolean,
             callback: (Result<PCallRequestError?>) -> Unit,
         ) {
+            core.startMutingCall(CallMetadata(callId = callId, hasMute = muted))
             callback(Result.success(null))
         }
 
@@ -177,6 +201,7 @@ object CallkeepFgsIntegration {
             enabled: Boolean,
             callback: (Result<PCallRequestError?>) -> Unit,
         ) {
+            core.startSpeaker(CallMetadata(callId = callId, hasSpeaker = enabled))
             callback(Result.success(null))
         }
 
@@ -185,6 +210,7 @@ object CallkeepFgsIntegration {
             device: PAudioDevice,
             callback: (Result<PCallRequestError?>) -> Unit,
         ) {
+            core.setAudioDevice(CallMetadata(callId = callId, audioDevice = device.toAudioDevice()))
             callback(Result.success(null))
         }
 
@@ -193,6 +219,7 @@ object CallkeepFgsIntegration {
             key: String,
             callback: (Result<PCallRequestError?>) -> Unit,
         ) {
+            core.startSendDtmfCall(CallMetadata(callId = callId, dualToneMultiFrequency = key.firstOrNull()))
             callback(Result.success(null))
         }
 
