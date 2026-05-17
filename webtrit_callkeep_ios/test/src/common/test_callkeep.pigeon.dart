@@ -32,26 +32,32 @@ class _PigeonCodec extends StandardMessageCodec {
     } else if (value is PCallRequestErrorEnum) {
       buffer.putUint8(133);
       writeValue(buffer, value.index);
-    } else if (value is PIOSOptions) {
+    } else if (value is PCallkeepConnectionState) {
       buffer.putUint8(134);
-      writeValue(buffer, value.encode());
-    } else if (value is PAndroidOptions) {
+      writeValue(buffer, value.index);
+    } else if (value is PIOSOptions) {
       buffer.putUint8(135);
       writeValue(buffer, value.encode());
-    } else if (value is POptions) {
+    } else if (value is PAndroidOptions) {
       buffer.putUint8(136);
       writeValue(buffer, value.encode());
-    } else if (value is PHandle) {
+    } else if (value is POptions) {
       buffer.putUint8(137);
       writeValue(buffer, value.encode());
-    } else if (value is PEndCallReason) {
+    } else if (value is PHandle) {
       buffer.putUint8(138);
       writeValue(buffer, value.encode());
-    } else if (value is PIncomingCallError) {
+    } else if (value is PEndCallReason) {
       buffer.putUint8(139);
       writeValue(buffer, value.encode());
-    } else if (value is PCallRequestError) {
+    } else if (value is PIncomingCallError) {
       buffer.putUint8(140);
+      writeValue(buffer, value.encode());
+    } else if (value is PCallRequestError) {
+      buffer.putUint8(141);
+      writeValue(buffer, value.encode());
+    } else if (value is PCallkeepConnection) {
+      buffer.putUint8(142);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -77,19 +83,24 @@ class _PigeonCodec extends StandardMessageCodec {
         final int? value = readValue(buffer) as int?;
         return value == null ? null : PCallRequestErrorEnum.values[value];
       case 134:
-        return PIOSOptions.decode(readValue(buffer)!);
+        final int? value = readValue(buffer) as int?;
+        return value == null ? null : PCallkeepConnectionState.values[value];
       case 135:
-        return PAndroidOptions.decode(readValue(buffer)!);
+        return PIOSOptions.decode(readValue(buffer)!);
       case 136:
-        return POptions.decode(readValue(buffer)!);
+        return PAndroidOptions.decode(readValue(buffer)!);
       case 137:
-        return PHandle.decode(readValue(buffer)!);
+        return POptions.decode(readValue(buffer)!);
       case 138:
-        return PEndCallReason.decode(readValue(buffer)!);
+        return PHandle.decode(readValue(buffer)!);
       case 139:
-        return PIncomingCallError.decode(readValue(buffer)!);
+        return PEndCallReason.decode(readValue(buffer)!);
       case 140:
+        return PIncomingCallError.decode(readValue(buffer)!);
+      case 141:
         return PCallRequestError.decode(readValue(buffer)!);
+      case 142:
+        return PCallkeepConnection.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
     }

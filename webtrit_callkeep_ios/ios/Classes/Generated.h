@@ -81,6 +81,19 @@ typedef NS_ENUM(NSUInteger, WTPCallRequestErrorEnum) {
 - (instancetype)initWithValue:(WTPCallRequestErrorEnum)value;
 @end
 
+typedef NS_ENUM(NSUInteger, WTPCallkeepConnectionState) {
+  WTPCallkeepConnectionStateStateNew = 0,
+  WTPCallkeepConnectionStateStateActive = 1,
+  WTPCallkeepConnectionStateStateHolding = 2,
+  WTPCallkeepConnectionStateStateDisconnected = 3,
+};
+
+/// Wrapper for WTPCallkeepConnectionState to allow for nullability.
+@interface WTPCallkeepConnectionStateBox : NSObject
+@property(nonatomic, assign) WTPCallkeepConnectionState value;
+- (instancetype)initWithValue:(WTPCallkeepConnectionState)value;
+@end
+
 @class WTPIOSOptions;
 @class WTPAndroidOptions;
 @class WTPOptions;
@@ -88,6 +101,7 @@ typedef NS_ENUM(NSUInteger, WTPCallRequestErrorEnum) {
 @class WTPEndCallReason;
 @class WTPIncomingCallError;
 @class WTPCallRequestError;
+@class WTPCallkeepConnection;
 
 @interface WTPIOSOptions : NSObject
 /// `init` unavailable to enforce nonnull fields, see the `make` class method.
@@ -164,6 +178,15 @@ typedef NS_ENUM(NSUInteger, WTPCallRequestErrorEnum) {
 @property(nonatomic, assign) WTPCallRequestErrorEnum value;
 @end
 
+@interface WTPCallkeepConnection : NSObject
+/// `init` unavailable to enforce nonnull fields, see the `make` class method.
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)makeWithCallId:(NSString *)callId
+    state:(WTPCallkeepConnectionState)state;
+@property(nonatomic, copy) NSString * callId;
+@property(nonatomic, assign) WTPCallkeepConnectionState state;
+@end
+
 /// The codec used by all APIs.
 NSObject<FlutterMessageCodec> *WTGetGeneratedCodec(void);
 
@@ -194,6 +217,7 @@ extern void SetUpWTPHostAndroidServiceApiWithSuffix(id<FlutterBinaryMessenger> b
 - (void)setMuted:(NSString *)uuidString muted:(BOOL)muted completion:(void (^)(WTPCallRequestError *_Nullable, FlutterError *_Nullable))completion;
 - (void)setSpeaker:(NSString *)uuidString enabled:(BOOL)enabled completion:(void (^)(WTPCallRequestError *_Nullable, FlutterError *_Nullable))completion;
 - (void)sendDTMF:(NSString *)uuidString key:(NSString *)key completion:(void (^)(WTPCallRequestError *_Nullable, FlutterError *_Nullable))completion;
+- (void)getConnectionWithUuidString:(NSString *)uuidString completion:(void (^)(WTPCallkeepConnection *_Nullable, FlutterError *_Nullable))completion;
 @end
 
 extern void SetUpWTPHostApi(id<FlutterBinaryMessenger> binaryMessenger, NSObject<WTPHostApi> *_Nullable api);

@@ -18,7 +18,7 @@ class CallkeepConnections {
   ///
   /// Returns a [Future] resolving to a [CallkeepConnection] if found, or null otherwise.
   Future<CallkeepConnection?> getConnection(String callId) {
-    if (!kIsWeb && defaultTargetPlatform != TargetPlatform.android) {
+    if (!kIsWeb && defaultTargetPlatform != TargetPlatform.android && defaultTargetPlatform != TargetPlatform.iOS) {
       return Future.value(null);
     }
 
