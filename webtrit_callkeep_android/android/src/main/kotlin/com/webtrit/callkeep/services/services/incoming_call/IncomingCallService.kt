@@ -116,6 +116,7 @@ class IncomingCallService :
         super.onCreate()
         setRunning(true)
         ContextHolder.init(applicationContext)
+        Log.initFromContext(applicationContext)
 
         Log.d(TAG, "IncomingCallService created")
 
@@ -337,7 +338,7 @@ class IncomingCallService :
         // is not held on for the full WAKELOCK_TIMEOUT_MS during post-call teardown.
         // onDestroy() keeps the lock as a final safety net in case this path is skipped.
         releaseScreenWakeLock()
-        incomingCallHandler.releaseIncomingCallNotification(answered)
+        incomingCallHandler.releaseIncomingCallNotification()
         timeoutHandler.removeCallbacks(independentTimeoutRunnable)
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
         timeoutHandler.postDelayed(stopTimeoutRunnable, SERVICE_TIMEOUT_MS)

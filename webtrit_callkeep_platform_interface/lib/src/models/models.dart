@@ -7,7 +7,6 @@ export 'callkeep_end_call_reason.dart';
 export 'callkeep_handle.dart';
 export 'callkeep_incoming_call_error.dart';
 export 'callkeep_lifecycle_event.dart';
-export 'callkeep_log_type.dart';
 export 'callkeep_options.dart';
 export 'callkeep_permission.dart';
 export 'callkeep_service_status.dart';

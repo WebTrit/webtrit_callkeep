@@ -39,12 +39,6 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('setAndroidServiceDelegate() has not been implemented.');
   }
 
-  /// Sets the logs delegate.
-  /// [CallkeepLogsDelegate] needs to be implemented to receive logs.
-  void setLogsDelegate(CallkeepLogsDelegate? delegate) {
-    throw UnimplementedError('setLogsDelegate() has not been implemented.');
-  }
-
   /// Sets the delegate for receiving push registry events from the native side.
   /// [PushRegistryDelegate] needs to be implemented to receive push registry events.
   void setPushRegistryDelegate(PushRegistryDelegate? delegate) {

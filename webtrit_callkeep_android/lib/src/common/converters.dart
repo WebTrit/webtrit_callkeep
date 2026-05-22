@@ -17,23 +17,6 @@ extension PHandleTypeEnumConverter on PHandleTypeEnum {
   }
 }
 
-extension PLogTypeEnumConverter on PLogTypeEnum {
-  CallkeepLogType toCallkeep() {
-    switch (this) {
-      case PLogTypeEnum.debug:
-        return CallkeepLogType.debug;
-      case PLogTypeEnum.error:
-        return CallkeepLogType.error;
-      case PLogTypeEnum.info:
-        return CallkeepLogType.info;
-      case PLogTypeEnum.verbose:
-        return CallkeepLogType.verbose;
-      case PLogTypeEnum.warn:
-        return CallkeepLogType.warn;
-    }
-  }
-}
-
 extension PHandleConverter on PHandle {
   CallkeepHandle toCallkeep() {
     return CallkeepHandle(type: type.toCallkeep(), value: value);
@@ -86,23 +69,6 @@ extension PCallRequestErrorEnumConverter on PCallRequestErrorEnum {
         return CallkeepCallRequestError.selfManagedPhoneAccountNotRegistered;
       case PCallRequestErrorEnum.timeout:
         return CallkeepCallRequestError.timeout;
-    }
-  }
-}
-
-extension CallkeepTypeEnumConverter on CallkeepLogType {
-  PLogTypeEnum toPigeon() {
-    switch (this) {
-      case CallkeepLogType.debug:
-        return PLogTypeEnum.debug;
-      case CallkeepLogType.error:
-        return PLogTypeEnum.error;
-      case CallkeepLogType.info:
-        return PLogTypeEnum.info;
-      case CallkeepLogType.verbose:
-        return PLogTypeEnum.verbose;
-      case CallkeepLogType.warn:
-        return PLogTypeEnum.warn;
     }
   }
 }
@@ -177,6 +143,7 @@ extension CallkeepAndroidOptionsConverter on CallkeepAndroidOptions {
       incomingCallFullScreen: incomingCallFullScreen,
       incomingCallTimeoutMs: incomingCallTimeoutMs,
       outgoingCallTimeoutMs: outgoingCallTimeoutMs,
+      logFilePath: nativeLogFilePath,
     );
   }
 }

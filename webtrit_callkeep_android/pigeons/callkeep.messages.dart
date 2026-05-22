@@ -37,6 +37,11 @@ class PAndroidOptions {
   /// Timeout in milliseconds before an unanswered outgoing call (STATE_DIALING) is
   /// automatically disconnected. When null the native default is used.
   late int? outgoingCallTimeoutMs;
+
+  /// Absolute path to a file where native logs will be written directly.
+  /// When set, all Log.d/i/w/e calls are appended to this file regardless
+  /// of whether the Flutter delegate is registered.
+  late String? logFilePath;
 }
 
 class POptions {
@@ -49,8 +54,6 @@ class PAudioDevice {
   late String? id;
   late String? name;
 }
-
-enum PLogTypeEnum { debug, error, info, verbose, warn }
 
 enum PCallkeepPermission { readPhoneState, readPhoneNumbers }
 
@@ -447,11 +450,6 @@ abstract class PPushRegistryHostApi {
 abstract class PPushRegistryDelegateFlutterApi {
   @ObjCSelector('didUpdatePushTokenForPushTypeVoIP:')
   void didUpdatePushTokenForPushTypeVoIP(String? token);
-}
-
-@FlutterApi()
-abstract class PDelegateLogsFlutterApi {
-  void onLog(PLogTypeEnum type, String tag, String message);
 }
 
 @FlutterApi()

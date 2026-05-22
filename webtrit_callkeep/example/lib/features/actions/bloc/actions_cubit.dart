@@ -5,8 +5,7 @@ import 'package:webtrit_callkeep_example/core/log_entry.dart';
 
 part 'actions_state.dart';
 
-class ActionsCubit extends Cubit<ActionsState>
-    implements CallkeepDelegate, CallkeepBackgroundServiceDelegate, CallkeepLogsDelegate {
+class ActionsCubit extends Cubit<ActionsState> implements CallkeepDelegate, CallkeepBackgroundServiceDelegate {
   ActionsCubit(this._callkeep) : super(const ActionsState()) {
     _callkeep.setDelegate(this);
   }
@@ -34,7 +33,6 @@ class ActionsCubit extends Cubit<ActionsState>
   @override
   Future<void> close() {
     _callkeep.setDelegate(null);
-    WebtritCallkeepLogs().setLogsDelegate(null);
     return super.close();
   }
 
@@ -428,25 +426,6 @@ class ActionsCubit extends Cubit<ActionsState>
     } catch (e) {
       emit(state.log(LogEntry.error('openSettings: $e')));
     }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Logs
-  // ---------------------------------------------------------------------------
-
-  void toggleLogsDelegate() {
-    if (state.isLogsDelegateActive) {
-      WebtritCallkeepLogs().setLogsDelegate(null);
-      emit(state.copyWith(isLogsDelegateActive: false).log(LogEntry.info('logs delegate: OFF')));
-    } else {
-      WebtritCallkeepLogs().setLogsDelegate(this);
-      emit(state.copyWith(isLogsDelegateActive: true).log(LogEntry.info('logs delegate: ON')));
-    }
-  }
-
-  @override
-  void onLog(CallkeepLogType type, String tag, String message) {
-    emit(state.log(LogEntry.event('[native/${type.name}] $tag: $message')));
   }
 
   // ---------------------------------------------------------------------------

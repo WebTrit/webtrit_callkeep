@@ -132,4 +132,25 @@ object StorageDelegate {
 
         fun getRegexPattern(context: Context): String? = sharedPreferences(context).getString(SMS_REGEX_PATTERN, null)
     }
+
+    object Logging {
+        private const val LOG_FILE_PATH = "LOG_FILE_PATH_KEY"
+
+        // commit() instead of apply() so the value is on disk before callkeep_core
+        // can start and call getLogFilePath() in initFromContext().
+        fun setLogFilePath(
+            context: Context,
+            path: String,
+        ) {
+            val isCommitted = sharedPreferences(context).edit().putString(LOG_FILE_PATH, path).commit()
+            if (!isCommitted) Log.w("WebtritCallkeep", "StorageDelegate: commit() failed for LOG_FILE_PATH")
+        }
+
+        fun getLogFilePath(context: Context): String? = sharedPreferences(context).getString(LOG_FILE_PATH, null)
+
+        fun clearLogFilePath(context: Context) {
+            val isCommitted = sharedPreferences(context).edit().remove(LOG_FILE_PATH).commit()
+            if (!isCommitted) Log.w("WebtritCallkeep", "StorageDelegate: commit() failed clearing LOG_FILE_PATH")
+        }
+    }
 }

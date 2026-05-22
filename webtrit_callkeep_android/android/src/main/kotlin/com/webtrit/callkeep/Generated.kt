@@ -416,6 +416,8 @@ data class PAndroidOptions(
      * automatically disconnected. When null the native default is used.
      */
     val outgoingCallTimeoutMs: Long? = null,
+    /** Absolute path to a file where native logs will be written directly. */
+    val logFilePath: String? = null,
 ) {
     companion object {
         fun fromList(pigeonVar_list: List<Any?>): PAndroidOptions {
@@ -424,7 +426,8 @@ data class PAndroidOptions(
             val incomingCallFullScreen = pigeonVar_list[2] as Boolean?
             val incomingCallTimeoutMs = pigeonVar_list[3] as Long?
             val outgoingCallTimeoutMs = pigeonVar_list[4] as Long?
-            return PAndroidOptions(ringtoneSound, ringbackSound, incomingCallFullScreen, incomingCallTimeoutMs, outgoingCallTimeoutMs)
+            val logFilePath = pigeonVar_list[5] as String?
+            return PAndroidOptions(ringtoneSound, ringbackSound, incomingCallFullScreen, incomingCallTimeoutMs, outgoingCallTimeoutMs, logFilePath)
         }
     }
 
@@ -435,6 +438,7 @@ data class PAndroidOptions(
             incomingCallFullScreen,
             incomingCallTimeoutMs,
             outgoingCallTimeoutMs,
+            logFilePath,
         )
 
     override fun equals(other: Any?): Boolean {

@@ -23,32 +23,6 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // PLogTypeEnumConverter
-  // ---------------------------------------------------------------------------
-
-  group('PLogTypeEnumConverter.toCallkeep()', () {
-    test('debug maps to CallkeepLogType.debug', () {
-      expect(PLogTypeEnum.debug.toCallkeep(), CallkeepLogType.debug);
-    });
-
-    test('error maps to CallkeepLogType.error', () {
-      expect(PLogTypeEnum.error.toCallkeep(), CallkeepLogType.error);
-    });
-
-    test('info maps to CallkeepLogType.info', () {
-      expect(PLogTypeEnum.info.toCallkeep(), CallkeepLogType.info);
-    });
-
-    test('verbose maps to CallkeepLogType.verbose', () {
-      expect(PLogTypeEnum.verbose.toCallkeep(), CallkeepLogType.verbose);
-    });
-
-    test('warn maps to CallkeepLogType.warn', () {
-      expect(PLogTypeEnum.warn.toCallkeep(), CallkeepLogType.warn);
-    });
-  });
-
-  // ---------------------------------------------------------------------------
   // PHandleConverter
   // ---------------------------------------------------------------------------
 
@@ -172,32 +146,6 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // CallkeepTypeEnumConverter (CallkeepLogType -> PLogTypeEnum)
-  // ---------------------------------------------------------------------------
-
-  group('CallkeepTypeEnumConverter.toPigeon()', () {
-    test('debug maps to PLogTypeEnum.debug', () {
-      expect(CallkeepLogType.debug.toPigeon(), PLogTypeEnum.debug);
-    });
-
-    test('error maps to PLogTypeEnum.error', () {
-      expect(CallkeepLogType.error.toPigeon(), PLogTypeEnum.error);
-    });
-
-    test('info maps to PLogTypeEnum.info', () {
-      expect(CallkeepLogType.info.toPigeon(), PLogTypeEnum.info);
-    });
-
-    test('verbose maps to PLogTypeEnum.verbose', () {
-      expect(CallkeepLogType.verbose.toPigeon(), PLogTypeEnum.verbose);
-    });
-
-    test('warn maps to PLogTypeEnum.warn', () {
-      expect(CallkeepLogType.warn.toPigeon(), PLogTypeEnum.warn);
-    });
-  });
-
-  // ---------------------------------------------------------------------------
   // CallkeepHandleTypeConverter
   // ---------------------------------------------------------------------------
 
@@ -269,6 +217,42 @@ void main() {
 
     test('missed maps to PEndCallReasonEnum.missed', () {
       expect(CallkeepEndCallReason.missed.toPigeon(), PEndCallReasonEnum.missed);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // CallkeepAndroidOptionsConverter
+  // ---------------------------------------------------------------------------
+
+  group('CallkeepAndroidOptionsConverter.toPigeon()', () {
+    test('nativeLogFilePath is forwarded to Pigeon logFilePath', () {
+      const opts = CallkeepAndroidOptions(nativeLogFilePath: '/data/app_logs_native.log');
+      expect(opts.toPigeon().logFilePath, '/data/app_logs_native.log');
+    });
+
+    test('nativeLogFilePath null maps to Pigeon logFilePath null', () {
+      const opts = CallkeepAndroidOptions();
+      expect(opts.toPigeon().logFilePath, isNull);
+    });
+  });
+
+  group('CallkeepAndroidOptions Equatable', () {
+    test('same nativeLogFilePath are equal', () {
+      const a = CallkeepAndroidOptions(nativeLogFilePath: '/data/app_logs_native.log');
+      const b = CallkeepAndroidOptions(nativeLogFilePath: '/data/app_logs_native.log');
+      expect(a, equals(b));
+    });
+
+    test('different nativeLogFilePath are not equal', () {
+      const a = CallkeepAndroidOptions(nativeLogFilePath: '/data/a.log');
+      const b = CallkeepAndroidOptions(nativeLogFilePath: '/data/b.log');
+      expect(a, isNot(equals(b)));
+    });
+
+    test('null vs non-null nativeLogFilePath are not equal', () {
+      const a = CallkeepAndroidOptions(nativeLogFilePath: '/data/a.log');
+      const b = CallkeepAndroidOptions();
+      expect(a, isNot(equals(b)));
     });
   });
 

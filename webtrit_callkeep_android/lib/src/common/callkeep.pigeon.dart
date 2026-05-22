@@ -39,8 +39,6 @@ bool _deepEquals(Object? a, Object? b) {
   return a == b;
 }
 
-enum PLogTypeEnum { debug, error, info, verbose, warn }
-
 enum PCallkeepPermission { readPhoneState, readPhoneNumbers }
 
 enum PSpecialPermissionStatusTypeEnum { denied, granted, unknown }
@@ -253,6 +251,7 @@ class PAndroidOptions {
     this.incomingCallFullScreen,
     this.incomingCallTimeoutMs,
     this.outgoingCallTimeoutMs,
+    this.logFilePath,
   });
 
   String? ringtoneSound;
@@ -269,6 +268,9 @@ class PAndroidOptions {
   /// automatically disconnected. When null the native default is used.
   int? outgoingCallTimeoutMs;
 
+  /// Absolute path to a file where native logs will be written directly.
+  String? logFilePath;
+
   List<Object?> _toList() {
     return <Object?>[
       ringtoneSound,
@@ -276,6 +278,7 @@ class PAndroidOptions {
       incomingCallFullScreen,
       incomingCallTimeoutMs,
       outgoingCallTimeoutMs,
+      logFilePath,
     ];
   }
 
@@ -291,6 +294,7 @@ class PAndroidOptions {
       incomingCallFullScreen: result[2] as bool?,
       incomingCallTimeoutMs: result[3] as int?,
       outgoingCallTimeoutMs: result[4] as int?,
+      logFilePath: result[5] as String?,
     );
   }
 
@@ -737,9 +741,6 @@ class _PigeonCodec extends StandardMessageCodec {
     if (value is int) {
       buffer.putUint8(4);
       buffer.putInt64(value);
-    } else if (value is PLogTypeEnum) {
-      buffer.putUint8(129);
-      writeValue(buffer, value.index);
     } else if (value is PCallkeepPermission) {
       buffer.putUint8(130);
       writeValue(buffer, value.index);
@@ -823,9 +824,6 @@ class _PigeonCodec extends StandardMessageCodec {
   @override
   Object? readValueOfType(int type, ReadBuffer buffer) {
     switch (type) {
-      case 129:
-        final int? value = readValue(buffer) as int?;
-        return value == null ? null : PLogTypeEnum.values[value];
       case 130:
         final int? value = readValue(buffer) as int?;
         return value == null ? null : PCallkeepPermission.values[value];
@@ -2664,63 +2662,6 @@ abstract class PPushRegistryDelegateFlutterApi {
           final String? arg_token = (args[0] as String?);
           try {
             api.didUpdatePushTokenForPushTypeVoIP(arg_token);
-            return wrapResponse(empty: true);
-          } on PlatformException catch (e) {
-            return wrapResponse(error: e);
-          } catch (e) {
-            return wrapResponse(
-              error: PlatformException(code: 'error', message: e.toString()),
-            );
-          }
-        });
-      }
-    }
-  }
-}
-
-abstract class PDelegateLogsFlutterApi {
-  static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();
-
-  void onLog(PLogTypeEnum type, String tag, String message);
-
-  static void setUp(
-    PDelegateLogsFlutterApi? api, {
-    BinaryMessenger? binaryMessenger,
-    String messageChannelSuffix = '',
-  }) {
-    messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
-    {
-      final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-        'dev.flutter.pigeon.webtrit_callkeep_android.PDelegateLogsFlutterApi.onLog$messageChannelSuffix',
-        pigeonChannelCodec,
-        binaryMessenger: binaryMessenger,
-      );
-      if (api == null) {
-        pigeonVar_channel.setMessageHandler(null);
-      } else {
-        pigeonVar_channel.setMessageHandler((Object? message) async {
-          assert(
-            message != null,
-            'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateLogsFlutterApi.onLog was null.',
-          );
-          final List<Object?> args = (message as List<Object?>?)!;
-          final PLogTypeEnum? arg_type = (args[0] as PLogTypeEnum?);
-          assert(
-            arg_type != null,
-            'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateLogsFlutterApi.onLog was null, expected non-null PLogTypeEnum.',
-          );
-          final String? arg_tag = (args[1] as String?);
-          assert(
-            arg_tag != null,
-            'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateLogsFlutterApi.onLog was null, expected non-null String.',
-          );
-          final String? arg_message = (args[2] as String?);
-          assert(
-            arg_message != null,
-            'Argument for dev.flutter.pigeon.webtrit_callkeep_android.PDelegateLogsFlutterApi.onLog was null, expected non-null String.',
-          );
-          try {
-            api.onLog(arg_type!, arg_tag!, arg_message!);
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);

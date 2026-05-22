@@ -40,7 +40,7 @@ import com.webtrit.callkeep.managers.AudioManager as CallkeepAudioManager
  * that [PhoneConnectionService] produces in the Telecom path. This means [ForegroundService]
  * and the Flutter layer do not need to be aware of which path is active.
  *
- * The service runs in the `:callkeep_core` process, mirroring [PhoneConnectionService].
+ * The service runs in the main process (no `android:process` in the manifest).
  * It is started as a foreground service on the first incoming call and stopped when all
  * calls have ended or a teardown command is received.
  */
@@ -73,12 +73,13 @@ class StandaloneCallService : Service() {
         super.onCreate()
         ContextHolder.init(applicationContext)
         AssetCacheManager.init(applicationContext)
+        Log.initFromContext(applicationContext)
         // Register notification channels here as well as in ForegroundService.setUp().
-        // StandaloneCallService runs in the :callkeep_core process and may start before
-        // setUp() is invoked from the Flutter layer (e.g. when SyncConnectionState is
-        // dispatched during app startup). Without this call, startForeground() would
-        // crash with CannotPostForegroundServiceNotificationException because the
-        // channel does not yet exist in the system.
+        // This service may start before setUp() is invoked from the Flutter layer
+        // (e.g. when SyncConnectionState is dispatched during app startup). Without this
+        // call, startForeground() would crash with
+        // CannotPostForegroundServiceNotificationException because the channel does not
+        // yet exist in the system.
         NotificationChannelManager.registerNotificationChannels(applicationContext)
         isRunning = true
         // Do NOT call promoteToForeground() here.

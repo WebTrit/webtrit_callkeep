@@ -46,9 +46,6 @@ class WebtritCallkeepWeb extends WebtritCallkeepPlatform {
   void setBackgroundServiceDelegate(CallkeepBackgroundServiceDelegate? delegate) {}
 
   @override
-  void setLogsDelegate(CallkeepLogsDelegate? delegate) {}
-
-  @override
   void setPushRegistryDelegate(PushRegistryDelegate? delegate) {}
 
   // ---------------------------------------------------------------------------

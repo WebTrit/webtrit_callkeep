@@ -53,15 +53,6 @@ Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
   );
 }
 
-class CallkeepLogs implements CallkeepLogsDelegate {
-  final _logger = Logger('CallkeepLogs');
-
-  @override
-  void onLog(CallkeepLogType type, String tag, String message) {
-    _logger.info('$tag $message');
-  }
-}
-
 void initializeLogs() {
   hierarchicalLoggingEnabled = true;
 
@@ -77,6 +68,4 @@ void initializeLogs() {
       debugPrint('${record.stackTrace}');
     }
   });
-
-  WebtritCallkeepLogs().setLogsDelegate(CallkeepLogs());
 }

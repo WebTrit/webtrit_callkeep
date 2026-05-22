@@ -57,15 +57,6 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
-  void setLogsDelegate(CallkeepLogsDelegate? delegate) {
-    if (delegate != null) {
-      PDelegateLogsFlutterApi.setUp(_LogsDelegateRelay(delegate));
-    } else {
-      PDelegateLogsFlutterApi.setUp(null);
-    }
-  }
-
-  @override
   Future<String?> pushTokenForPushTypeVoIP() {
     return _pushRegistryApi.pushTokenForPushTypeVoIP();
   }
@@ -464,17 +455,6 @@ class _PushRegistryDelegateRelay implements PPushRegistryDelegateFlutterApi {
   @override
   void didUpdatePushTokenForPushTypeVoIP(String? token) {
     _delegate.didUpdatePushTokenForPushTypeVoIP(token);
-  }
-}
-
-class _LogsDelegateRelay implements PDelegateLogsFlutterApi {
-  const _LogsDelegateRelay(this._delegate);
-
-  final CallkeepLogsDelegate _delegate;
-
-  @override
-  void onLog(PLogTypeEnum type, String tag, String message) {
-    _delegate.onLog(type.toCallkeep(), tag, message);
   }
 }
 

@@ -56,12 +56,12 @@ class IncomingCallHandler(
     }
 
     /**
-     * Replaces the ringing notification with a silent one regardless of answer state.
-     * The silent notification keeps the FGS alive while the signaling layer sends SIP BYE
-     * (answered=false) or while the active-call session takes over (answered=true).
+     * Replaces the ringing notification with a silent one to transition out of the ringing phase.
+     * The silent notification keeps the FGS alive while the signaling layer completes teardown
+     * (decline path) or while the active-call session takes over (answer path).
      */
     @SuppressLint("MissingPermission")
-    fun releaseIncomingCallNotification(answered: Boolean) {
+    fun releaseIncomingCallNotification() {
         if (lastMetadata == null) {
             Log.w(TAG, "releaseIncomingCallNotification: no metadata (service not initialized), skipping")
             return
@@ -87,6 +87,7 @@ class IncomingCallHandler(
      */
     @SuppressLint("MissingPermission")
     fun muteIncomingCallNotification() {
+        Log.d(TAG, "muteIncomingCallNotification: entry callId=${lastMetadata?.callId}")
         stopForegroundDetach()
         notifier.cancel(currentNotificationId)
         startForegroundCompat(notificationBuilder.buildSilent())
@@ -97,12 +98,14 @@ class IncomingCallHandler(
         // foregroundServiceType must be passed explicitly: on API 34+ startForeground() without
         // a type throws InvalidForegroundServiceTypeException when the manifest declares one.
         val notification = notificationBuilder.apply { setCallMetaData(metadata) }.build()
+        Log.d(TAG, "startForeground [ringing]: id=$currentNotificationId SDK=${Build.VERSION.SDK_INT}")
         service.startForegroundServiceCompat(
             service,
             currentNotificationId,
             notification,
             ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL,
         )
+        Log.d(TAG, "startForeground [ringing]: completed")
     }
 
     private fun maybeInitBackgroundHandling() {
@@ -130,6 +133,7 @@ class IncomingCallHandler(
      * Starts foreground respecting SDK level to avoid deprecated API warnings.
      */
     private fun startForegroundCompat(notification: Notification) {
+        Log.d(TAG, "startForeground [silent]: id=$currentNotificationId SDK=${Build.VERSION.SDK_INT}")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             service.startForeground(
                 currentNotificationId,
@@ -139,6 +143,7 @@ class IncomingCallHandler(
         } else {
             service.startForeground(currentNotificationId, notification)
         }
+        Log.d(TAG, "startForeground [silent]: completed")
     }
 
     /**

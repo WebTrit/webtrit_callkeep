@@ -48,6 +48,7 @@ class PhoneConnectionService : ConnectionService() {
         // Initialize ContextHolder for the :callkeep_core process. Each OS process has its own
         // JVM, so ContextHolder.init() called in the main process has no effect here.
         ContextHolder.init(applicationContext)
+        Log.initFromContext(applicationContext)
         // Initialize AssetCacheManager for the :callkeep_core process so that
         // PhoneConnection.onShowIncomingCallUi() can resolve the custom ringtone asset
         // path via AssetCacheManager.getAsset(). Without this, AssetCacheManager.getAsset()
