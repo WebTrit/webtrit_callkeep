@@ -14,7 +14,5 @@
     <string name="push_notification_missed_call_channel_description">Notification of missed calls</string>
     <string name="push_notification_foreground_call_service_title">Ongoing call</string>
     <string name="push_notification_foreground_call_service_description">This service keeps the call active in the background</string>
-    <string name="incoming_call_declined_title">Call Declined</string>
-    <string name="incoming_call_declined_text">Declined an incoming call from %1$s</string>
     <string name="incoming_call_connecting">Connecting…</string>
 </resources>

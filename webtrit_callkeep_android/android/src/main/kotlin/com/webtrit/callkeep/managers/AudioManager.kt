@@ -14,6 +14,7 @@ import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.provider.Settings
 import com.webtrit.callkeep.common.AssetCacheManager
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.setLoopingCompat
@@ -98,9 +99,16 @@ class AudioManager(
      * The Ringtone API plays through the ringtone audio stream, which is muted in
      * RINGER_MODE_VIBRATE. In that case we skip the ringtone and start a repeating
      * vibration pattern directly so the user is notified of the incoming call.
+     *
+     * Some OEM ROMs (e.g. MIUI/HyperOS on Xiaomi) report vibrate mode as
+     * RINGER_MODE_NORMAL with STREAM_RING volume = 0 instead of RINGER_MODE_VIBRATE.
+     * In that case Ringtone.play() runs silently and no vibration is triggered.
+     * We detect this by checking stream volume and treat it as vibrate mode.
      */
     fun startRingtone(ringtoneSound: String?) {
         ringtone?.stop()
+        val ringVolume = audioManager.getStreamVolume(android.media.AudioManager.STREAM_RING)
+        Log.i(TAG, "startRingtone: ringerMode=${audioManager.ringerMode}, ringVolume=$ringVolume, vibratorAvailable=${vibrator != null}")
         when (audioManager.ringerMode) {
             android.media.AudioManager.RINGER_MODE_VIBRATE -> {
                 ringtone = null
@@ -108,9 +116,15 @@ class AudioManager(
             }
 
             android.media.AudioManager.RINGER_MODE_NORMAL -> {
-                ringtone = ringtoneSound?.let { getRingtone(it) } ?: getDefaultRingtone()
-                ringtone?.setLoopingCompat(true)
-                ringtone?.play()
+                if (ringVolume == 0) {
+                    // OEM quirk: vibrate mode reported as NORMAL with zero ring volume
+                    ringtone = null
+                    startVibration()
+                } else {
+                    ringtone = ringtoneSound?.let { getRingtone(it) } ?: getDefaultRingtone()
+                    ringtone?.setLoopingCompat(true)
+                    ringtone?.play()
+                }
             }
 
             else -> {
@@ -120,11 +134,54 @@ class AudioManager(
     }
 
     private fun startVibration() {
+        if (vibrator == null) {
+            Log.w(TAG, "startVibration: vibrator is null, skipping")
+            return
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator?.vibrate(VibrationEffect.createWaveform(VIBRATION_PATTERN, 0))
+            val effect = VibrationEffect.createWaveform(VIBRATION_PATTERN, VIBRATION_AMPLITUDES, 0)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                val attrs =
+                    android.os.VibrationAttributes
+                        .Builder()
+                        .setUsage(android.os.VibrationAttributes.USAGE_RINGTONE)
+                        .build()
+                vibrator.vibrate(effect, attrs)
+            } else {
+                // On some MIUI/HyperOS builds, vibrate() with USAGE_NOTIFICATION_RINGTONE is silently
+                // suppressed because VibratorService.shouldVibrateForRingtone() reads a proprietary
+                // settings key instead of the standard VIBRATE_WHEN_RINGING (field observation,
+                // not confirmed from official MIUI source code).
+                // Field report (Xiaomi.eu forums, MIUI v10+): "MIUI overrides VibratorService with a
+                // proprietary implementation that reads an internal settings key instead of the standard
+                // VIBRATE_WHEN_RINGING. For third-party apps the standard key always resolves to 0,
+                // so shouldVibrateForRingtone() returns false even when the device is in vibrate mode."
+                // When VIBRATE_WHEN_RINGING is 0, fall back to vibrate() without AudioAttributes so
+                // shouldVibrateForRingtone() is bypassed entirely (USAGE_UNKNOWN -> isRingtone() == false).
+                @Suppress("DEPRECATION")
+                val vibrateWhenRinging =
+                    Settings.System.getInt(
+                        context.contentResolver,
+                        Settings.System.VIBRATE_WHEN_RINGING,
+                        1,
+                    )
+                Log.d(TAG, "startVibration: sdk=${Build.VERSION.SDK_INT}, vibrateWhenRinging=$vibrateWhenRinging")
+                if (vibrateWhenRinging == 0) {
+                    vibrator.vibrate(effect)
+                    Log.d(TAG, "startVibration: used no-attrs fallback (vibrateWhenRinging=0)")
+                } else {
+                    val attrs =
+                        AudioAttributes
+                            .Builder()
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                            .build()
+                    vibrator.vibrate(effect, attrs)
+                }
+            }
         } else {
             @Suppress("DEPRECATION")
-            vibrator?.vibrate(VIBRATION_PATTERN, 0)
+            vibrator.vibrate(VIBRATION_PATTERN, 0)
         }
     }
 
@@ -225,7 +282,7 @@ class AudioManager(
     companion object {
         private const val TAG = "AudioManager"
 
-        // delay 0ms, vibrate 1s, pause 1s, repeat
         private val VIBRATION_PATTERN = longArrayOf(0, 1000, 1000)
+        private val VIBRATION_AMPLITUDES = intArrayOf(0, 255, 0)
     }
 }

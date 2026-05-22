@@ -163,26 +163,6 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
             }
     }
 
-    fun buildReleaseNotification(): Notification {
-        val builder =
-            baseNotificationBuilder(
-                title = context.getString(R.string.incoming_call_declined_title),
-                text = context.getString(R.string.incoming_call_declined_text, callMetaData?.name),
-            ).apply {
-                setFullScreenIntent(null, false)
-                setTimeoutAfter(5_000)
-            }
-        return builder.build().apply {
-            flags = flags or NotificationCompat.FLAG_INSISTENT
-        }
-    }
-
-    @SuppressLint("MissingPermission")
-    fun updateToReleaseIncomingCallNotification() {
-        val meta = requireNotNull(callMetaData) { "Call metadata must be set before updating the notification." }
-        NotificationManagerCompat.from(context).notify(notificationId(meta.callId), buildReleaseNotification())
-    }
-
     companion object {
         const val TAG = "INCOMING_CALL_NOTIFICATION"
 

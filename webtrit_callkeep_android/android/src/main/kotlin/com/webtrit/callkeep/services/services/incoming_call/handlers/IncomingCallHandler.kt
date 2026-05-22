@@ -56,9 +56,9 @@ class IncomingCallHandler(
     }
 
     /**
-     * Updates the notification based on call answer state:
-     *  - answered=true  -> release incoming-call notification (builder-specific behavior)
-     *  - answered=false -> mute: replace with a silent ongoing notification
+     * Replaces the ringing notification with a silent one regardless of answer state.
+     * The silent notification keeps the FGS alive while the signaling layer sends SIP BYE
+     * (answered=false) or while the active-call session takes over (answered=true).
      */
     @SuppressLint("MissingPermission")
     fun releaseIncomingCallNotification(answered: Boolean) {
@@ -66,11 +66,7 @@ class IncomingCallHandler(
             Log.w(TAG, "releaseIncomingCallNotification: no metadata (service not initialized), skipping")
             return
         }
-        if (answered) {
-            muteIncomingCallNotification()
-        } else {
-            notificationBuilder.updateToReleaseIncomingCallNotification()
-        }
+        muteIncomingCallNotification()
     }
 
     /**

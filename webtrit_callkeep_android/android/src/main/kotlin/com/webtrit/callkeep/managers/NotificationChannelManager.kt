@@ -14,7 +14,7 @@ object NotificationChannelManager {
     // Constants for notification channel IDs
     const val INCOMING_CALL_NOTIFICATION_CHANNEL_ID = "INCOMING_CALL_NOTIFICATION_CHANNEL_ID"
     const val FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID = "FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID"
-    const val NOTIFICATION_ACTIVE_CALL_CHANNEL_ID = "NOTIFICATION_ACTIVE_CALL_CHANNEL_ID"
+    const val ACTIVE_CALL_SERVICE_NOTIFICATION_CHANNEL_ID = "ACTIVE_CALL_SERVICE_NOTIFICATION_CHANNEL"
 
     /**
      * Registers all necessary notification channels.
@@ -25,6 +25,7 @@ object NotificationChannelManager {
      * @param context The context used to access system services and resources.
      */
     fun registerNotificationChannels(context: Context) {
+        NotificationManagerCompat.from(context).deleteNotificationChannel("NOTIFICATION_ACTIVE_CALL_CHANNEL_ID")
         registerActiveCallChannel(context)
         registerIncomingCallChannel(context)
         registerForegroundCallChannel(context)
@@ -40,10 +41,10 @@ object NotificationChannelManager {
     private fun registerActiveCallChannel(context: Context) {
         registerNotificationChannel(
             context,
-            channelId = NOTIFICATION_ACTIVE_CALL_CHANNEL_ID,
+            channelId = ACTIVE_CALL_SERVICE_NOTIFICATION_CHANNEL_ID,
             title = context.getString(R.string.push_notification_active_call_channel_title),
             description = context.getString(R.string.push_notification_active_call_channel_description),
-            importance = NotificationManager.IMPORTANCE_DEFAULT,
+            importance = NotificationManager.IMPORTANCE_LOW,
         )
     }
 
