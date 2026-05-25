@@ -3,6 +3,7 @@ package com.webtrit.callkeep
 import android.content.Context
 import com.webtrit.callkeep.common.ContextHolder
 import io.flutter.plugin.common.BinaryMessenger
+import java.util.concurrent.CopyOnWriteArraySet
 
 /**
  * Public entry point for hosting callkeep on a Flutter engine that callkeep did not create.
@@ -17,12 +18,25 @@ import io.flutter.plugin.common.BinaryMessenger
  * host engine's [BinaryMessenger] is available. It performs the engine-scoped setup callkeep needs
  * in a background context and keeps callkeep's internal Pigeon channels hidden from the caller.
  *
- * The call is idempotent ([ContextHolder] init is a no-op once initialized; channel registration
- * replaces any previous handler), so it is safe across host-engine restarts. Pair it with
- * [detachFromEngine] to unregister explicitly; when the host engine is destroyed the channels are
- * torn down with it.
+ * While a host engine is attached, callkeep treats that engine as the owner of background work and
+ * does not start its own incoming-call isolate: it only shows the call UI. Pair every
+ * [attachToEngine] with a [detachFromEngine] when the host engine is torn down so callkeep can
+ * resume managing its own background work.
+ *
+ * The calls are idempotent and safe across host-engine restarts.
  */
 object WebtritCallkeep {
+    // Messengers of host-provided engines currently attached via [attachToEngine]. While this set
+    // is non-empty, a host engine owns the background work and callkeep skips its own isolate.
+    private val hostEngines = CopyOnWriteArraySet<BinaryMessenger>()
+
+    /**
+     * True while callkeep is hosted on at least one host-provided engine. Used internally to decide
+     * whether callkeep should start its own incoming-call background isolate.
+     */
+    internal val isHostedOnExternalEngine: Boolean
+        get() = hostEngines.isNotEmpty()
+
     fun attachToEngine(
         context: Context,
         messenger: BinaryMessenger,
@@ -36,9 +50,11 @@ object WebtritCallkeep {
             messenger,
             ExternalEngineCallApi(),
         )
+        hostEngines.add(messenger)
     }
 
     fun detachFromEngine(messenger: BinaryMessenger) {
+        hostEngines.remove(messenger)
         PHostBackgroundPushNotificationIsolateBootstrapApi.setUp(messenger, null)
         PHostBackgroundPushNotificationIsolateApi.setUp(messenger, null)
     }
