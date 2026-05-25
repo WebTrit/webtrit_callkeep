@@ -15,6 +15,7 @@ import androidx.annotation.Keep
 import com.webtrit.callkeep.PDelegateBackgroundRegisterFlutterApi
 import com.webtrit.callkeep.PDelegateBackgroundServiceFlutterApi
 import com.webtrit.callkeep.R
+import com.webtrit.callkeep.common.AssetCacheManager
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.PendingBroadcastQueue
@@ -116,6 +117,7 @@ class IncomingCallService :
         super.onCreate()
         setRunning(true)
         ContextHolder.init(applicationContext)
+        AssetCacheManager.init(applicationContext)
         Log.initFromContext(applicationContext)
 
         Log.d(TAG, "IncomingCallService created")

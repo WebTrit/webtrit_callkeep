@@ -1,6 +1,7 @@
 package com.webtrit.callkeep
 
 import android.content.Context
+import com.webtrit.callkeep.common.AssetCacheManager
 import com.webtrit.callkeep.common.ContextHolder
 import io.flutter.plugin.common.BinaryMessenger
 import java.util.concurrent.CopyOnWriteArraySet
@@ -42,6 +43,7 @@ object WebtritCallkeep {
         messenger: BinaryMessenger,
     ) {
         ContextHolder.init(context)
+        AssetCacheManager.init(context)
         PHostBackgroundPushNotificationIsolateBootstrapApi.setUp(
             messenger,
             BackgroundPushNotificationIsolateBootstrapApi(context),

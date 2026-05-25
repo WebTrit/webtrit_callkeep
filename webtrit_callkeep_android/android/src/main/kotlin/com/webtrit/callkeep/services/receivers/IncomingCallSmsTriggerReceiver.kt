@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
+import com.webtrit.callkeep.common.AssetCacheManager
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.StorageDelegate
@@ -20,6 +21,7 @@ class IncomingCallSmsTriggerReceiver : BroadcastReceiver() {
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
 
         ContextHolder.init(context)
+        AssetCacheManager.init(context)
 
         val prefix = StorageDelegate.IncomingCallSmsConfig.getSmsPrefix(context) ?: return
         val pattern = StorageDelegate.IncomingCallSmsConfig.getRegexPattern(context) ?: return
