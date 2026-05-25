@@ -211,6 +211,11 @@ class PCallkeepConnection {
   late PCallkeepDisconnectCause disconnectCause;
 }
 
+// TODO: drop the transport-bound "PushNotification" from these two host API names — callkeep
+// should not encode whether a call arrives via push or signaling. Rename here, regenerate pigeon
+// (flutter pub run pigeon --input pigeons/callkeep.messages.dart) and update references:
+//   PHostBackgroundPushNotificationIsolateBootstrapApi -> PHostBackgroundIsolateBootstrapApi
+//   PHostBackgroundPushNotificationIsolateApi          -> PHostBackgroundIsolateApi
 @HostApi()
 abstract class PHostBackgroundPushNotificationIsolateBootstrapApi {
   @async
