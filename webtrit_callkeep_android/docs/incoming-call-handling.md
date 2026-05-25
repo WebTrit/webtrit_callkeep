@@ -54,7 +54,7 @@ sequenceDiagram
         User->>SYS: Answer
         SYS->>PCS: onAnswer
         PCS->>OWNER: performAnswerCall / markAnswered
-        Note over ACT: Activity adopts the connection; the app completes the answer (200 OK)
+        Note over ACT: Activity adopts the connection, the app completes the answer (200 OK)
     else User declines
         User->>SYS: Decline
         SYS->>PCS: onReject -> terminateWithCause(REJECTED)
