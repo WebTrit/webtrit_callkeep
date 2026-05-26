@@ -33,15 +33,16 @@ import java.util.concurrent.atomic.AtomicBoolean
  *
  * All call sites are unaware of which backend is active — routing is entirely internal to [CallServiceRouter].
  */
-class InProcessCallkeepCore private constructor() : CallkeepCore {
-    private val tracker: ConnectionTracker = MainProcessConnectionTracker.instance
-
+class InProcessCallkeepCore internal constructor(
+    private val tracker: ConnectionTracker = MainProcessConnectionTracker.instance,
+    routerInit: () -> CallServiceRouter = { CallServiceRouter(ContextHolder.context) },
+) : CallkeepCore {
     // The context is read per call (not at construction time) so the singleton can be
     // created early without risking a NullPointerException. ContextHolder.init() must
     // have been called before any CS command method is invoked (guaranteed by Application.onCreate).
     private val context get() = ContextHolder.context
 
-    private val router: CallServiceRouter by lazy { CallServiceRouter(context) }
+    private val router: CallServiceRouter by lazy(routerInit)
 
     // -------------------------------------------------------------------------
     // Listener registry and lazy global BroadcastReceiver
