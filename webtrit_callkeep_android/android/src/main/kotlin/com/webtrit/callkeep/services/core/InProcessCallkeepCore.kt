@@ -282,6 +282,13 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
             // Synchronous failure (e.g. IllegalStateException from ContextHolder, SecurityException,
             // any unexpected throw inside the router). Drain so the next reportNewIncomingCall for
             // this callId is not rejected as "already pending, rejecting concurrent duplicate".
+            //
+            // The throwable is re-thrown rather than converted to onError so the original
+            // exception message + stack trace reach Dart via Pigeon's channel-error envelope
+            // (better diagnostics than a structured PIncomingCallError(INTERNAL) that would
+            // lose t.message). This skips the onError callback path — callers that pre-register
+            // state before invoking this method must handle that themselves; see KDoc on
+            // CallkeepCore.startIncomingCall.
             drainOnce()
             throw t
         }

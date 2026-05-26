@@ -522,6 +522,13 @@ class ForegroundService :
         // duplicate push-path didPushIncomingCall must not reach it.
         core.markSignalingRegistered(callId)
 
+        // Note: core.startIncomingCall can throw synchronously (e.g. uninitialized
+        // ContextHolder). The exception bypasses our onError handler and propagates to
+        // Pigeon as channel-error. The 5 s timeoutRunnable above is our safety-net for
+        // that case — it fires, drains pending, and resolves pendingIncomingCallbacks
+        // with CALL_REJECTED_BY_SYSTEM. (Dart will have already received the original
+        // throwable via channel-error by then; the second reply is matched by reply-ID
+        // and silently dropped by Flutter.)
         core.startIncomingCall(
             metadata = metadata,
             onSuccess = {
