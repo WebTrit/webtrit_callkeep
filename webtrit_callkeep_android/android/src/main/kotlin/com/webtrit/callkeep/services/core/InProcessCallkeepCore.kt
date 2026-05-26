@@ -20,6 +20,7 @@ import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadca
 import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * In-process implementation of [CallkeepCore].
@@ -238,13 +239,40 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
         onSuccess: () -> Unit,
         onError: (PIncomingCallError?) -> Unit,
     ) {
+        val callId = metadata.callId
         // Register as pending before handing off to the backend so that answerCall() can
         // find the call via core.isPending() during the broadcast-lag window, regardless
         // of which entry point initiated the incoming call (ForegroundService,
         // SignalingIsolateService, BackgroundPushNotificationIsolateBootstrapApi, etc.).
-        // addPending() is idempotent — safe to call even if the caller already did so.
-        tracker.addPending(metadata.callId)
-        router.startIncomingCall(metadata, onSuccess, onError)
+        //
+        // addPending() returns true only when this invocation actually inserted the entry.
+        // If a concurrent caller already owns the entry, we must not drain it on failure here —
+        // ownsPending guards that.
+        val ownsPending = tracker.addPending(callId)
+        val drained = AtomicBoolean(false)
+
+        fun drainOnce() {
+            if (ownsPending && drained.compareAndSet(false, true)) {
+                tracker.removePending(callId)
+            }
+        }
+
+        try {
+            router.startIncomingCall(
+                metadata,
+                onSuccess = onSuccess,
+                onError = { err ->
+                    drainOnce()
+                    onError(err)
+                },
+            )
+        } catch (t: Throwable) {
+            // Synchronous failure (e.g. IllegalStateException from ContextHolder, SecurityException,
+            // any unexpected throw inside the router). Drain so the next reportNewIncomingCall for
+            // this callId is not rejected as "already pending, rejecting concurrent duplicate".
+            drainOnce()
+            throw t
+        }
     }
 
     override fun startAnswerCall(metadata: CallMetadata) = router.startAnswerCall(metadata)
