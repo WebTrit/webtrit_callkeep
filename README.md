@@ -211,6 +211,13 @@ impractical. Signaling is also application-level responsibility: the plugin is c
 presenting calls to the OS, not maintaining a connection. FCM high-priority push is the
 recommended and sufficient mechanism to wake the device for an incoming call.
 
+### Hosting on your own Flutter engine
+
+If your app runs its own long-lived or headless Flutter engine (for example a foreground service
+that keeps a connection open and needs to present incoming calls), set callkeep up on that engine
+with `WebtritCallkeep.attachToEngine`. See
+[`docs/external-flutter-engines.md`](docs/external-flutter-engines.md).
+
 ---
 
 ## Android: SMS-triggered incoming call
