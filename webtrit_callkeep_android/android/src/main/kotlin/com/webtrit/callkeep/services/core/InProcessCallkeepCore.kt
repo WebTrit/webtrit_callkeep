@@ -12,6 +12,7 @@ import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.PIncomingCallErrorEnum
 import com.webtrit.callkeep.common.ContextHolder
+import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
@@ -240,19 +241,30 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
         onError: (PIncomingCallError?) -> Unit,
     ) {
         val callId = metadata.callId
-        // Register as pending before handing off to the backend so that answerCall() can
-        // find the call via core.isPending() during the broadcast-lag window, regardless
-        // of which entry point initiated the incoming call (ForegroundService,
-        // SignalingIsolateService, BackgroundPushNotificationIsolateBootstrapApi, etc.).
+        // Reserve the pendingCallIds entry before handing off to the backend so that
+        // answerCall() / endCall() issued before DidPushIncomingCall fires can locate
+        // the call via core.isPending() during the broadcast-lag window.
         //
         // addPending() returns true only when this invocation actually inserted the entry.
-        // If a concurrent caller already owns the entry, we must not drain it on failure here —
-        // ownsPending guards that.
-        val ownsPending = tracker.addPending(callId)
+        // If it returns false, a concurrent first invocation (e.g. push-isolate vs
+        // foreground signaling for the same callId) already owns the entry — reject this
+        // duplicate via onError(CALL_ID_ALREADY_EXISTS) rather than letting both proceed
+        // to Telecom, which would cause the second to be silently adopted via the
+        // :callkeep_core CALL_ID_ALREADY_EXISTS path and return null, masking the
+        // duplicate from the caller.
+        val addedPending = tracker.addPending(callId)
+        if (!addedPending) {
+            Log.w(TAG, "startIncomingCall: callId=$callId already pending, rejecting concurrent duplicate")
+            onError(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS))
+            return
+        }
+
+        // From here on we own the pendingCallIds entry. Any failure must drain it so the
+        // next reportNewIncomingCall for the same callId is not rejected as a stale duplicate.
         val drained = AtomicBoolean(false)
 
         fun drainOnce() {
-            if (ownsPending && drained.compareAndSet(false, true)) {
+            if (drained.compareAndSet(false, true)) {
                 tracker.removePending(callId)
             }
         }
@@ -311,6 +323,8 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
     override fun sendSyncConnectionState() = router.sendSyncConnectionState()
 
     companion object {
+        private const val TAG = "InProcessCallkeepCore"
+
         val instance: CallkeepCore = InProcessCallkeepCore()
 
         /**

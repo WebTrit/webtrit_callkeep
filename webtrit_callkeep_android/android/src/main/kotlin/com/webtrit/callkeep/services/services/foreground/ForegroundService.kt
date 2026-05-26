@@ -488,20 +488,6 @@ class ForegroundService :
             return
         }
 
-        // Register as pending before sending to Telecom so that answerCall() / endCall()
-        // issued before DidPushIncomingCall fires can locate the call via core.isPending().
-        // addPending returns true only if this invocation actually inserted the entry.
-        // If it returns false the callId is already pending from a concurrent first invocation —
-        // reject the duplicate immediately rather than letting both proceed to Telecom (which
-        // would cause the second to be silently adopted via the CALL_ID_ALREADY_EXISTS onError
-        // path and return null, masking the duplicate from Flutter).
-        val addedPending = core.addPending(callId)
-        if (!addedPending) {
-            logger.w("reportNewIncomingCall: callId=$callId already pending, rejecting concurrent duplicate")
-            callback(Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS)))
-            return
-        }
-
         // Pre-register the Pigeon callback and safety timeout BEFORE calling startIncomingCall.
         // DidPushIncomingCall can arrive synchronously — during the addNewIncomingCall Telecom
         // call inside startIncomingCall — before the IPC onSuccess callback returns to this
@@ -512,7 +498,11 @@ class ForegroundService :
             Runnable {
                 logger.w("reportNewIncomingCall: Telecom confirmation timeout for callId=$callId, resolving with CALL_REJECTED_BY_SYSTEM")
                 pendingIncomingTimeouts.remove(callId)
-                if (addedPending) core.removePending(callId)
+                // pendingCallIds is owned by InProcessCallkeepCore.startIncomingCall now.
+                // If we got here, neither onSuccess nor onError fired within 5 s — the
+                // internal drain did not run, so we must drain explicitly. removePending
+                // is idempotent.
+                core.removePending(callId)
                 // Mark terminated and endCallDispatched so that a late-arriving HungUp
                 // broadcast (after the timeout) does not cause handleCSReportDeclineCall
                 // to fire performEndCall for a call Flutter already got callRejectedBySystem for.
@@ -600,10 +590,10 @@ class ForegroundService :
 
                     else -> {
                         logger.e("reportNewIncomingCall: startIncomingCall failed callId=$callId, error=$error")
-                        // Roll back the signaling-registered guard and the pending entry so that
-                        // a retry or concurrent push-path registration is not incorrectly suppressed.
+                        // Roll back the signaling-registered guard. The pending entry has already
+                        // been drained by InProcessCallkeepCore.startIncomingCall before invoking
+                        // this onError callback, so no core.removePending(callId) is needed here.
                         core.consumeSignalingRegistered(callId)
-                        if (addedPending) core.removePending(callId)
                         callback(Result.success(error))
                     }
                 }
