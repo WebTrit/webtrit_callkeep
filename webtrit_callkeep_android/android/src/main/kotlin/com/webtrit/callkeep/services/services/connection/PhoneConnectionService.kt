@@ -101,7 +101,12 @@ class PhoneConnectionService : ConnectionService() {
                 Log.w(TAG, "onStartCommand: unknown or missing action '${intent?.action}', ignoring")
                 return START_NOT_STICKY
             }
-        val metadata = intent.extras?.let { CallMetadata.fromBundle(it) }
+        // Use fromBundleOrNull (not fromBundle, which throws on missing
+        // callId): several actions below — TearDownConnections,
+        // CleanConnections, SyncAudioState, SyncConnectionState — don't
+        // carry a callId in their extras, and the rest already null-check
+        // metadata.callId before using it.
+        val metadata = intent.extras?.let { CallMetadata.fromBundleOrNull(it) }
 
         try {
             when (action) {
