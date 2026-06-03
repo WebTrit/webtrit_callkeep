@@ -493,14 +493,27 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
 }
 
 /// Build an AVAudioPlayer for the synthesized call-waiting tone.
+///
+/// The synthesized WAV is written to a temporary file and loaded via
+/// `initWithContentsOfURL:` — the exact same path as the proven ringback player.
+/// (An in-memory `initWithData:` player was silent over the active WebRTC audio
+/// session on a device.)
 - (nullable AVAudioPlayer *)createCallWaitingTonePlayer {
     NSData *wav = [self callWaitingToneWavData];
+    NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"webtrit_call_waiting_tone.wav"];
+    NSError *writeError = nil;
+    if (![wav writeToFile:path options:NSDataWritingAtomic error:&writeError]) {
+        NSLog(@"[Callkeep][createCallWaitingTonePlayer] write failed: %@", writeError);
+        return nil;
+    }
     NSError *error = nil;
-    AVAudioPlayer *player = [[AVAudioPlayer alloc] initWithData:wav error:&error];
+    AVAudioPlayer *player = [[AVAudioPlayer alloc] initWithContentsOfURL:[NSURL fileURLWithPath:path] error:&error];
     if (error != nil) {
         NSLog(@"[Callkeep][createCallWaitingTonePlayer] failed: %@", error);
         return nil;
     }
+    player.numberOfLoops = -1;
+    [player prepareToPlay];
     return player;
 }
 
