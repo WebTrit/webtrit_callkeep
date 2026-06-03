@@ -1,6 +1,7 @@
 #import "WebtritCallkeepPlugin.h"
 
 #import <AVFoundation/AVFoundation.h>
+#import <AudioToolbox/AudioToolbox.h>
 #import <PushKit/PushKit.h>
 #import <CallKit/CallKit.h>
 #import <Intents/Intents.h>
@@ -13,7 +14,18 @@
 static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
 
 @interface WebtritCallkeepPlugin ()<PKPushRegistryDelegate, CXProviderDelegate, WTPPushRegistryHostApi, WTPHostApi, WTPHostSoundApi>
+// Call-waiting tone (WT-1415)
+- (void)ensureCallWaitingSound;
+- (void)replayCallWaitingToneIfActive;
 @end
+
+/// AudioServices completion callback: re-fire the tone while it is still active,
+/// producing a recurrent beep over the live call (the built-in trailing silence
+/// in the sound file sets the cadence).
+static void WTCallWaitingToneCompletion(SystemSoundID soundID, void *clientData) {
+  WebtritCallkeepPlugin *plugin = (__bridge WebtritCallkeepPlugin *)clientData;
+  [plugin replayCallWaitingToneIfActive];
+}
 
 @implementation WebtritCallkeepPlugin {
   NSObject<FlutterPluginRegistrar> *_registrar;
@@ -22,7 +34,8 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   WTPDelegateFlutterApi *_delegateFlutterApi;
   CXProvider *_provider;
   AVAudioPlayer *_ringback;
-  AVAudioPlayer *_callWaitingTone;
+  SystemSoundID _callWaitingSoundID;
+  BOOL _callWaitingActive;
   CXCallController *_callController;
   BOOL _driveIdleTimerDisabled;
 }
@@ -94,12 +107,7 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
       _ringback = [self createRingbackPlayer:iosOptions.ringbackSound];
     }
 
-    // Create the call-waiting tone player up-front (like the ringback player),
-    // so its audio unit is ready before WebRTC takes over the audio session.
-    // A player created lazily mid-call was silent on a device (WT-1415).
-    if (_callWaitingTone == nil) {
-      _callWaitingTone = [self createCallWaitingTonePlayer];
-    }
+    [self ensureCallWaitingSound];
 
     _driveIdleTimerDisabled = iosOptions.driveIdleTimerDisabled;
   } else {
@@ -158,10 +166,7 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
       _ringback = [self createRingbackPlayer:iosOptions.ringbackSound];
     }
 
-    // Create the call-waiting tone player up-front (see restoreSetUp, WT-1415).
-    if (_callWaitingTone == nil) {
-      _callWaitingTone = [self createCallWaitingTonePlayer];
-    }
+    [self ensureCallWaitingSound];
 
     _driveIdleTimerDisabled = iosOptions.driveIdleTimerDisabled;
   } else {
@@ -474,59 +479,53 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
 ///
 /// Driven from Dart (CallBloc) when a second call arrives while another call is
 /// connected — the app layer is the reliable source of that state on iOS, where
-/// foreground WebRTC calls are not fully reflected by CallKit. The tone is
-/// synthesized in memory (no bundled asset) and played through the active
-/// AVAudioSession via AVAudioPlayer — the same mechanism as the ringback player —
-/// so it routes to the earpiece/headset at in-call volume rather than blasting at
-/// ringtone volume (mirrors the Android fix in WT-1388). One loop is "beep-beep"
-/// followed by silence; it repeats until [stopCallWaitingTone] is called.
+/// foreground WebRTC calls are not fully reflected by CallKit.
+///
+/// Played via `AudioServicesPlaySystemSound` rather than `AVAudioPlayer`: while
+/// WebRTC owns the AVAudioSession in VoiceChat mode (voice-processing I/O unit),
+/// an AVAudioPlayer reports playing but is inaudible. System sounds use a separate
+/// playback path that is audible over the active call (WT-1415). The tone repeats
+/// via the system-sound completion callback until [stopCallWaitingTone].
 - (void)playCallWaitingTone:(void (^)(FlutterError * _Nullable))completion {
-    if (_callWaitingTone == nil) {
-        _callWaitingTone = [self createCallWaitingTonePlayer];
-    }
-    if (_callWaitingTone != nil) {
-        _callWaitingTone.numberOfLoops = -1;
-        [_callWaitingTone prepareToPlay];
-        BOOL started = [_callWaitingTone play];
-        NSLog(@"[Callkeep][playCallWaitingTone] started=%d", started);
-    } else {
-        NSLog(@"[Callkeep][playCallWaitingTone] player is nil — cannot play");
+    [self ensureCallWaitingSound];
+    _callWaitingActive = YES;
+    if (_callWaitingSoundID != 0) {
+        AudioServicesPlaySystemSound(_callWaitingSoundID);
     }
     completion(nil);
 }
 
 - (void)stopCallWaitingTone:(void (^)(FlutterError * _Nullable))completion {
-    if (_callWaitingTone != nil && _callWaitingTone.isPlaying) {
-        NSLog(@"[Callkeep][stopCallWaitingTone]");
-        [_callWaitingTone stop];
-        _callWaitingTone.currentTime = 0;
-    }
+    _callWaitingActive = NO;
     completion(nil);
 }
 
-/// Build an AVAudioPlayer for the synthesized call-waiting tone.
-///
-/// The synthesized WAV is written to a temporary file and loaded via
-/// `initWithContentsOfURL:` — the exact same path as the proven ringback player.
-/// (An in-memory `initWithData:` player was silent over the active WebRTC audio
-/// session on a device.)
-- (nullable AVAudioPlayer *)createCallWaitingTonePlayer {
+- (void)replayCallWaitingToneIfActive {
+    if (_callWaitingActive && _callWaitingSoundID != 0) {
+        AudioServicesPlaySystemSound(_callWaitingSoundID);
+    }
+}
+
+/// Register the synthesized call-waiting tone as a CoreAudio system sound (once).
+- (void)ensureCallWaitingSound {
+    if (_callWaitingSoundID != 0) {
+        return;
+    }
     NSData *wav = [self callWaitingToneWavData];
     NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"webtrit_call_waiting_tone.wav"];
     NSError *writeError = nil;
     if (![wav writeToFile:path options:NSDataWritingAtomic error:&writeError]) {
-        NSLog(@"[Callkeep][createCallWaitingTonePlayer] write failed: %@", writeError);
-        return nil;
+        NSLog(@"[Callkeep][ensureCallWaitingSound] write failed: %@", writeError);
+        return;
     }
-    NSError *error = nil;
-    AVAudioPlayer *player = [[AVAudioPlayer alloc] initWithContentsOfURL:[NSURL fileURLWithPath:path] error:&error];
-    if (error != nil) {
-        NSLog(@"[Callkeep][createCallWaitingTonePlayer] failed: %@", error);
-        return nil;
+    SystemSoundID soundID = 0;
+    OSStatus status = AudioServicesCreateSystemSoundID((__bridge CFURLRef)[NSURL fileURLWithPath:path], &soundID);
+    if (status != kAudioServicesNoError) {
+        NSLog(@"[Callkeep][ensureCallWaitingSound] create failed: %d", (int)status);
+        return;
     }
-    player.numberOfLoops = -1;
-    [player prepareToPlay];
-    return player;
+    _callWaitingSoundID = soundID;
+    AudioServicesAddSystemSoundCompletion(_callWaitingSoundID, NULL, NULL, WTCallWaitingToneCompletion, (__bridge void *)self);
 }
 
 /// Synthesize a 16-bit mono PCM WAV (8 kHz) for one call-waiting tone cycle:
