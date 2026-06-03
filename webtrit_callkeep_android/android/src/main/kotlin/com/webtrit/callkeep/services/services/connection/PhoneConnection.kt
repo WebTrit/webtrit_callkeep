@@ -122,17 +122,18 @@ class PhoneConnection internal constructor(
     /**
      * Invoked by the system when the incoming call interface should be displayed.
      *
-     * If there is already an active or held call, play a soft call-waiting tone through
-     * the voice call stream instead of the full ringtone. The ringtone uses TYPE_RINGTONE
-     * which routes through the earpiece at full ringtone volume during an active call,
-     * and can cause pain if the user has the phone pressed to their ear (WT-1388).
+     * If there is already an active or held call, suppress the full ringtone: the
+     * ringtone uses TYPE_RINGTONE which routes through the earpiece at full ringtone
+     * volume during an active call and can cause pain if the user has the phone
+     * pressed to their ear (WT-1388). In that case the soft call-waiting tone is
+     * played by the app via the sound API ([WebtritCallkeepSound.playCallWaitingTone]),
+     * so the trigger is consistent across iOS and Android (WT-1415).
      */
     override fun onShowIncomingCallUi() {
         logger.d("Showing incoming call UI for callId: $callId")
         notificationManager.showIncomingCallNotification(metadata)
         if (PhoneConnectionService.connectionManager.hasActiveOrHoldingConnection()) {
-            logger.d("Active call detected — playing call-waiting tone instead of ringtone for callId: $callId")
-            audioManager.startCallWaitingTone()
+            logger.d("Active call detected — suppressing ringtone; app plays the call-waiting tone for callId: $callId")
         } else {
             audioManager.startRingtone(metadata.ringtonePath)
         }
@@ -150,7 +151,6 @@ class PhoneConnection internal constructor(
     override fun onSilence() {
         logger.d("Silencing ringtone for callId: $callId")
         audioManager.stopRingtone()
-        audioManager.stopCallWaitingTone()
     }
 
     /**
@@ -185,7 +185,6 @@ class PhoneConnection internal constructor(
         notificationManager.cancelIncomingNotification(hasAnswered)
         notificationManager.cancelActiveCallNotification(callId)
         audioManager.stopRingtone()
-        audioManager.stopCallWaitingTone()
 
         dispatcher(eventForDisconnectCause(disconnectCause), metadata)
         onDisconnectCallback.invoke(this)
@@ -574,7 +573,6 @@ class PhoneConnection internal constructor(
     private fun onActiveConnection() {
         logger.i("Connection became active for callId: $callId")
         audioManager.stopRingtone()
-        audioManager.stopCallWaitingTone()
         // IncomingCallService release (IC_RELEASE_WITH_ANSWER) is intentionally NOT triggered
         // here from :callkeep_core. ForegroundService.handleCSReportAnswerCall() owns that
         // trigger and sets pendingReleaseCallback before firing it, ensuring performAnswerCall

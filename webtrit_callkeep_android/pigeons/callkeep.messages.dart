@@ -281,6 +281,12 @@ abstract class PHostSoundApi {
 
   @async
   void stopRingbackSound();
+
+  @async
+  void playCallWaitingTone();
+
+  @async
+  void stopCallWaitingTone();
 }
 
 @FlutterApi()

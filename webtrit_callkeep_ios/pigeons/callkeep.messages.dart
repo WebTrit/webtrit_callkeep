@@ -4,8 +4,8 @@ import 'package:pigeon/pigeon.dart';
   PigeonOptions(
     dartOut: 'lib/src/common/callkeep.pigeon.dart',
     dartTestOut: 'test/src/common/test_callkeep.pigeon.dart',
-    objcHeaderOut: 'ios/Classes/Generated.h',
-    objcSourceOut: 'ios/Classes/Generated.m',
+    objcHeaderOut: 'ios/webtrit_callkeep_ios/Sources/webtrit_callkeep_ios/include/webtrit_callkeep_ios/Generated.h',
+    objcSourceOut: 'ios/webtrit_callkeep_ios/Sources/webtrit_callkeep_ios/Generated.m',
     objcOptions: ObjcOptions(
       prefix: 'WT',
     ),
@@ -290,4 +290,12 @@ abstract class PHostSoundApi {
   @ObjCSelector('stopRingbackSound')
   @async
   void stopRingbackSound();
+
+  @ObjCSelector('playCallWaitingTone')
+  @async
+  void playCallWaitingTone();
+
+  @ObjCSelector('stopCallWaitingTone')
+  @async
+  void stopCallWaitingTone();
 }

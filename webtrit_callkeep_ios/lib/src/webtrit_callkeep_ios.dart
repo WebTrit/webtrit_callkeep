@@ -191,6 +191,16 @@ class WebtritCallkeep extends WebtritCallkeepPlatform {
   Future<void> stopRingbackSound() {
     return _soundApi.stopRingbackSound();
   }
+
+  @override
+  Future<void> playCallWaitingTone() {
+    return _soundApi.playCallWaitingTone();
+  }
+
+  @override
+  Future<void> stopCallWaitingTone() {
+    return _soundApi.stopCallWaitingTone();
+  }
 }
 
 class _CallkeepDelegateRelay implements PDelegateFlutterApi {

@@ -22,6 +22,7 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   WTPDelegateFlutterApi *_delegateFlutterApi;
   CXProvider *_provider;
   AVAudioPlayer *_ringback;
+  AVAudioPlayer *_callWaitingTone;
   CXCallController *_callController;
   BOOL _driveIdleTimerDisabled;
 }
@@ -449,10 +450,122 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
     completion(nil);
 }
 
-- (void)stopRingbackSound:(void (^)(FlutterError * _Nullable))completion{ 
+- (void)stopRingbackSound:(void (^)(FlutterError * _Nullable))completion{
     if(_ringback != nil)[_ringback pause];
-    
+
     completion(nil);
+}
+
+#pragma mark - WTPHostSoundApi - call-waiting tone (WT-1415)
+
+/// Play a soft, recurrent call-waiting beep over the active call audio.
+///
+/// Driven from Dart (CallBloc) when a second call arrives while another call is
+/// connected — the app layer is the reliable source of that state on iOS, where
+/// foreground WebRTC calls are not fully reflected by CallKit. The tone is
+/// synthesized in memory (no bundled asset) and played through the active
+/// AVAudioSession via AVAudioPlayer — the same mechanism as the ringback player —
+/// so it routes to the earpiece/headset at in-call volume rather than blasting at
+/// ringtone volume (mirrors the Android fix in WT-1388). One loop is "beep-beep"
+/// followed by silence; it repeats until [stopCallWaitingTone] is called.
+- (void)playCallWaitingTone:(void (^)(FlutterError * _Nullable))completion {
+    if (_callWaitingTone == nil) {
+        _callWaitingTone = [self createCallWaitingTonePlayer];
+    }
+    if (_callWaitingTone != nil) {
+        _callWaitingTone.numberOfLoops = -1;
+        [_callWaitingTone prepareToPlay];
+        BOOL started = [_callWaitingTone play];
+        NSLog(@"[Callkeep][playCallWaitingTone] started=%d", started);
+    } else {
+        NSLog(@"[Callkeep][playCallWaitingTone] player is nil — cannot play");
+    }
+    completion(nil);
+}
+
+- (void)stopCallWaitingTone:(void (^)(FlutterError * _Nullable))completion {
+    if (_callWaitingTone != nil && _callWaitingTone.isPlaying) {
+        NSLog(@"[Callkeep][stopCallWaitingTone]");
+        [_callWaitingTone stop];
+        _callWaitingTone.currentTime = 0;
+    }
+    completion(nil);
+}
+
+/// Build an AVAudioPlayer for the synthesized call-waiting tone.
+- (nullable AVAudioPlayer *)createCallWaitingTonePlayer {
+    NSData *wav = [self callWaitingToneWavData];
+    NSError *error = nil;
+    AVAudioPlayer *player = [[AVAudioPlayer alloc] initWithData:wav error:&error];
+    if (error != nil) {
+        NSLog(@"[Callkeep][createCallWaitingTonePlayer] failed: %@", error);
+        return nil;
+    }
+    return player;
+}
+
+/// Synthesize a 16-bit mono PCM WAV (8 kHz) for one call-waiting tone cycle:
+/// beep (400 ms) — gap (200 ms) — beep (400 ms) — silence (2000 ms), 440 Hz,
+/// matching the ~3 s cadence of the Android call-waiting tone.
+- (NSData *)callWaitingToneWavData {
+    const double sampleRate = 8000.0;
+    const double frequency = 440.0;
+    const double amplitude = 0.5;
+    const NSUInteger segmentCount = 4;
+    const double segmentFreq[4] = {frequency, 0.0, frequency, 0.0};
+    const double segmentMs[4] = {400.0, 200.0, 400.0, 2000.0};
+
+    NSMutableData *samples = [NSMutableData data];
+    double phase = 0.0;
+    const double phaseIncrement = 2.0 * M_PI * frequency / sampleRate;
+    for (NSUInteger s = 0; s < segmentCount; s++) {
+        NSUInteger frames = (NSUInteger)(sampleRate * segmentMs[s] / 1000.0);
+        BOOL tone = segmentFreq[s] > 0.0;
+        for (NSUInteger i = 0; i < frames; i++) {
+            int16_t value = 0;
+            if (tone) {
+                value = (int16_t)(sin(phase) * amplitude * INT16_MAX);
+                phase += phaseIncrement;
+                if (phase > 2.0 * M_PI) {
+                    phase -= 2.0 * M_PI;
+                }
+            } else {
+                phase = 0.0;
+            }
+            [samples appendBytes:&value length:sizeof(int16_t)];
+        }
+    }
+    return [self wavDataFromPCM:samples sampleRate:(uint32_t)sampleRate channels:1 bitsPerSample:16];
+}
+
+/// Wrap raw little-endian PCM samples in a minimal RIFF/WAVE container.
+- (NSData *)wavDataFromPCM:(NSData *)pcm
+                sampleRate:(uint32_t)sampleRate
+                  channels:(uint16_t)channels
+             bitsPerSample:(uint16_t)bitsPerSample {
+    uint32_t dataSize = (uint32_t)pcm.length;
+    uint16_t blockAlign = channels * (bitsPerSample / 8);
+    uint32_t byteRate = sampleRate * blockAlign;
+    uint32_t chunkSize = 36 + dataSize;
+    uint16_t audioFormat = 1; // PCM
+    uint16_t fmtChunkSize = 16;
+
+    NSMutableData *wav = [NSMutableData data];
+    [wav appendBytes:"RIFF" length:4];
+    [wav appendBytes:&chunkSize length:4];
+    [wav appendBytes:"WAVE" length:4];
+    [wav appendBytes:"fmt " length:4];
+    [wav appendBytes:&fmtChunkSize length:4];
+    [wav appendBytes:&audioFormat length:2];
+    [wav appendBytes:&channels length:2];
+    [wav appendBytes:&sampleRate length:4];
+    [wav appendBytes:&byteRate length:4];
+    [wav appendBytes:&blockAlign length:2];
+    [wav appendBytes:&bitsPerSample length:2];
+    [wav appendBytes:"data" length:4];
+    [wav appendBytes:&dataSize length:4];
+    [wav appendData:pcm];
+    return wav;
 }
 
 #pragma mark - FlutterApplicationLifeCycleDelegate

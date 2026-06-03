@@ -231,6 +231,16 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
+  Future<void> playCallWaitingTone() {
+    return _soundApi.playCallWaitingTone();
+  }
+
+  @override
+  Future<void> stopCallWaitingTone() {
+    return _soundApi.stopCallWaitingTone();
+  }
+
+  @override
   Future<CallkeepConnection?> getConnection(String callId) async {
     return _connectionsApi.getConnection(callId).then((value) => value?.toCallkeep());
   }

@@ -1221,4 +1221,38 @@ void SetUpWTPHostSoundApiWithSuffix(id<FlutterBinaryMessenger> binaryMessenger, 
       [channel setMessageHandler:nil];
     }
   }
+  {
+    FlutterBasicMessageChannel *channel =
+      [[FlutterBasicMessageChannel alloc]
+        initWithName:[NSString stringWithFormat:@"%@%@", @"dev.flutter.pigeon.webtrit_callkeep_ios.PHostSoundApi.playCallWaitingTone", messageChannelSuffix]
+        binaryMessenger:binaryMessenger
+        codec:WTGetGeneratedCodec()];
+    if (api) {
+      NSCAssert([api respondsToSelector:@selector(playCallWaitingTone:)], @"WTPHostSoundApi api (%@) doesn't respond to @selector(playCallWaitingTone:)", api);
+      [channel setMessageHandler:^(id _Nullable message, FlutterReply callback) {
+        [api playCallWaitingTone:^(FlutterError *_Nullable error) {
+          callback(wrapResult(nil, error));
+        }];
+      }];
+    } else {
+      [channel setMessageHandler:nil];
+    }
+  }
+  {
+    FlutterBasicMessageChannel *channel =
+      [[FlutterBasicMessageChannel alloc]
+        initWithName:[NSString stringWithFormat:@"%@%@", @"dev.flutter.pigeon.webtrit_callkeep_ios.PHostSoundApi.stopCallWaitingTone", messageChannelSuffix]
+        binaryMessenger:binaryMessenger
+        codec:WTGetGeneratedCodec()];
+    if (api) {
+      NSCAssert([api respondsToSelector:@selector(stopCallWaitingTone:)], @"WTPHostSoundApi api (%@) doesn't respond to @selector(stopCallWaitingTone:)", api);
+      [channel setMessageHandler:^(id _Nullable message, FlutterReply callback) {
+        [api stopCallWaitingTone:^(FlutterError *_Nullable error) {
+          callback(wrapResult(nil, error));
+        }];
+      }];
+    } else {
+      [channel setMessageHandler:nil];
+    }
+  }
 }
