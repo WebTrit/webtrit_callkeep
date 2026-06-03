@@ -93,7 +93,14 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
     if (iosOptions.ringbackSound != nil) {
       _ringback = [self createRingbackPlayer:iosOptions.ringbackSound];
     }
- 
+
+    // Create the call-waiting tone player up-front (like the ringback player),
+    // so its audio unit is ready before WebRTC takes over the audio session.
+    // A player created lazily mid-call was silent on a device (WT-1415).
+    if (_callWaitingTone == nil) {
+      _callWaitingTone = [self createCallWaitingTonePlayer];
+    }
+
     _driveIdleTimerDisabled = iosOptions.driveIdleTimerDisabled;
   } else {
 #ifdef DEBUG
@@ -150,7 +157,12 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
     if (_ringback == nil && iosOptions.ringbackSound != nil) {
       _ringback = [self createRingbackPlayer:iosOptions.ringbackSound];
     }
-    
+
+    // Create the call-waiting tone player up-front (see restoreSetUp, WT-1415).
+    if (_callWaitingTone == nil) {
+      _callWaitingTone = [self createCallWaitingTonePlayer];
+    }
+
     _driveIdleTimerDisabled = iosOptions.driveIdleTimerDisabled;
   } else {
 #ifdef DEBUG
