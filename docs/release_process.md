@@ -5,11 +5,11 @@ How a `webtrit_callkeep` release is versioned and tagged.
 ## Versioning model
 
 This is a federated plugin monorepo. The consumer-facing package is the umbrella
-**`webtrit_callkeep`** — its `version:` is the release version of the whole plugin.
+**`webtrit_callkeep`** - its `version:` is the release version of the whole plugin.
 
 The platform packages (`webtrit_callkeep_android`, `webtrit_callkeep_ios`,
-`webtrit_callkeep_platform_interface`, `…_macos`, `…_linux`, `…_web`, `…_windows`) are internal,
-wired together by relative paths, and are **not** independently versioned — they stay at
+`webtrit_callkeep_platform_interface`, `..._macos`, `..._linux`, `..._web`, `..._windows`) are internal,
+wired together by relative paths, and are **not** independently versioned - they stay at
 `0.0.0+0`. Only the umbrella carries the meaningful version.
 
 Versions follow `X.Y.Z+N` (semantic version `X.Y.Z` plus an optional build number `N`).
@@ -21,13 +21,13 @@ git tag  X.Y.Z   ==   webtrit_callkeep/pubspec.yaml  version: X.Y.Z+N
 ```
 
 The tag name equals the `X.Y.Z` part of the umbrella `version:`, and the tag points at the commit
-where that version is already set. Tags are **immutable** — never move a published tag.
+where that version is already set. Tags are **immutable** - never move a published tag.
 
 ## Cutting a release
 
 1. Bump the umbrella version in `webtrit_callkeep/pubspec.yaml` to `X.Y.Z+N`. This is the
    version-bump commit. (Platform packages are left at `0.0.0+0`.)
-2. Tag **that** commit — not an earlier one:
+2. Tag **that** commit - not an earlier one:
    ```bash
    git tag -a X.Y.Z -m "release X.Y.Z"
    git push origin X.Y.Z
