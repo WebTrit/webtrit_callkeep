@@ -42,3 +42,27 @@ where that version is already set. Tags are **immutable** - never move a publish
 A CI check validates the invariant on tag push: it reads `webtrit_callkeep/pubspec.yaml` at the
 tagged commit and fails if the `X.Y.Z` part of `version:` does not equal the tag name. This makes
 every published tag a reliable, immutable pointer to its exact release.
+
+## Tag corrections
+
+Tags are immutable; we do not move them. The one exception is repairing a historically broken tag
+(one that predates the invariant above and points at a commit whose `version:` does not match).
+When a tag must be corrected, force-move it AND record it here, because anyone who already fetched
+the old tag must re-fetch:
+
+```bash
+git fetch --tags -f
+```
+
+Use a descriptive annotated tag message when correcting, e.g.:
+
+```bash
+git tag -f -a 0.0.2 6ae789f -m "release 0.0.2 (corrected: previous tag was on a pre-bump commit with version 0.3.5+0)"
+git push -f origin 0.0.2
+```
+
+### Log
+
+| Date       | Tag   | From (old commit)        | To (correct commit)      | Reason                                                |
+|------------|-------|--------------------------|--------------------------|-------------------------------------------------------|
+| 2026-06-04 | 0.0.2 | `0922c30` (version 0.3.5+0) | `6ae789f` (version 0.0.2+0) | Original tag predated the version-bump commit on `release/0.0.2`. |
