@@ -66,3 +66,8 @@ git push -f origin 0.0.2
 | Date       | Tag   | From (old commit)        | To (correct commit)      | Reason                                                |
 |------------|-------|--------------------------|--------------------------|-------------------------------------------------------|
 | 2026-06-04 | 0.0.2 | `0922c30` (version 0.3.5+0) | `6ae789f` (version 0.0.2+0) | Original tag predated the version-bump commit on `release/0.0.2`. |
+| 2026-06-04 | 0.3.1 | `da8884c` (version 0.3.0+0) | `086c118` (version 0.3.1+0) | Original tag predated the version-bump commit on `release/0.3.1`. |
+
+> `0.2.0` is also broken (tag has version 0.1.2+0) but **cannot be corrected by re-tagging**: no
+> commit on `release/0.2.0` ever set `version:` to `0.2.0`. Fixing it would require adding a new
+> version-bump commit, so it is left as-is for now.
