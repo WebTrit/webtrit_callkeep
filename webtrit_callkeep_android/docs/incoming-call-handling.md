@@ -10,7 +10,7 @@ Related: step-by-step flows in [call-flows.md](call-flows.md); services in
 hosting callkeep on an app-owned engine in
 [../../docs/external-flutter-engines.md](../../docs/external-flutter-engines.md).
 
-Colour: blue = callkeep, orange = host app, grey = external (Telecom / system UI), yellow = decision.
+Color: blue = callkeep, orange = host app, grey = external (Telecom / system UI), yellow = decision.
 
 ## Who owns the background work
 
