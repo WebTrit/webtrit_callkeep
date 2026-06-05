@@ -39,9 +39,10 @@ where that version is already set. Tags are **immutable** - never move a publish
 
 ## Enforcement
 
-A CI check validates the invariant on tag push: it reads `webtrit_callkeep/pubspec.yaml` at the
-tagged commit and fails if the `X.Y.Z` part of `version:` does not equal the tag name. This makes
-every published tag a reliable, immutable pointer to its exact release.
+A CI check (`.github/workflows/tag-version-check.yaml`) validates the invariant on tag push: it
+reads `webtrit_callkeep/pubspec.yaml` at the tagged commit and fails if the `X.Y.Z` part of
+`version:` does not equal the tag name. This makes every published tag a reliable, immutable
+pointer to its exact release.
 
 ## Tag corrections
 
