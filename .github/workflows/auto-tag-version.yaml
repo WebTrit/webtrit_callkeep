@@ -28,7 +28,10 @@ jobs:
       - name: Create version tag if missing
         run: |
           set -euo pipefail
-          VERSION_FIELD=$(grep -m1 '^version:' webtrit_callkeep/pubspec.yaml | awk '{print $2}')
+          # awk (not grep|awk): returns 0 even with no match, so a missing
+          # version yields an empty VERSION and reaches the error below
+          # instead of aborting on pipefail.
+          VERSION_FIELD=$(awk '/^version:/{print $2; exit}' webtrit_callkeep/pubspec.yaml)
           VERSION="${VERSION_FIELD%%+*}"
           if [ -z "$VERSION" ]; then
             echo "::error::Could not read version from webtrit_callkeep/pubspec.yaml"
