@@ -335,9 +335,10 @@ class ForegroundService :
                             flutterDelegateApi?.performStartCall(
                                 callMetaData.callId,
                                 callMetaData.handle!!.toPHandle(),
-                                // handle is force-unwrapped above, so name always resolves to the
-                                // display name or the number here, never null.
-                                callMetaData.name!!,
+                                // Pass the resolved label (display name or number), or null when
+                                // unknown; the pigeon contract is nullable and the Flutter client
+                                // decides how to render an unknown caller.
+                                callMetaData.name,
                                 callMetaData.hasVideo ?: false,
                             ) {}
                             finish(Result.success(null))
