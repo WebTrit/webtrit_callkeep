@@ -75,8 +75,9 @@ internal class StandaloneIncomingCallNotificationBuilder : NotificationBuilder()
         val answerIntent = createActionIntent(meta, StandaloneServiceAction.AnswerCall)
         val declineIntent = createActionIntent(meta, StandaloneServiceAction.DeclineCall)
 
+        val callerName = meta.name ?: context.getString(R.string.unknown_caller)
         val title = context.getString(R.string.incoming_call_title)
-        val text = context.getString(R.string.incoming_call_description, meta.name)
+        val text = context.getString(R.string.incoming_call_description, callerName)
 
         val builder =
             baseBuilder(title, text).apply {
@@ -97,7 +98,7 @@ internal class StandaloneIncomingCallNotificationBuilder : NotificationBuilder()
             val person =
                 Person
                     .Builder()
-                    .setName(meta.name)
+                    .setName(callerName)
                     .setImportant(true)
                     .build()
             builder

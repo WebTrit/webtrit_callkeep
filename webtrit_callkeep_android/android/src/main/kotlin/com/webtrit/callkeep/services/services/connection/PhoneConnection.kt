@@ -543,8 +543,23 @@ class PhoneConnection internal constructor(
         metadata = metadata.mergeWith(requestCallMetadata)
         extras = metadata.toBundle()
 
-        setAddress(metadata.number.toUri(), TelecomManager.PRESENTATION_ALLOWED)
-        setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
+        val number = metadata.number
+        if (number != null) {
+            setAddress(number.toUri(), TelecomManager.PRESENTATION_ALLOWED)
+        } else {
+            // No real number to present; mark the address as unknown rather than
+            // surfacing a placeholder string as the caller's phone number.
+            setAddress(null, TelecomManager.PRESENTATION_UNKNOWN)
+        }
+
+        val name = metadata.name
+        if (name != null) {
+            setCallerDisplayName(name, TelecomManager.PRESENTATION_ALLOWED)
+        } else {
+            // No display name or number to show; let the Telecom UI render its own
+            // "unknown" label rather than a fabricated placeholder.
+            setCallerDisplayName(null, TelecomManager.PRESENTATION_UNKNOWN)
+        }
 
         if (previousHasVideo != metadata.hasVideo) {
             metadata.hasVideo?.let { applyVideoState(it) }
@@ -919,7 +934,12 @@ class PhoneConnection internal constructor(
             onDisconnectCallback = onDisconnect,
             timeout = ConnectionTimeout.createOutgoingConnectionTimeout(context),
         ).apply {
-            setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
+            val name = metadata.name
+            if (name != null) {
+                setCallerDisplayName(name, TelecomManager.PRESENTATION_ALLOWED)
+            } else {
+                setCallerDisplayName(null, TelecomManager.PRESENTATION_UNKNOWN)
+            }
             setInitialized()
             setDialing()
         }

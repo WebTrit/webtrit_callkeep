@@ -80,8 +80,9 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
         val icDecline = R.drawable.ic_call_hungup
         val icAnswer = R.drawable.ic_call_answer
 
+        val callerName = meta.name ?: context.getString(R.string.unknown_caller)
         val title = context.getString(R.string.incoming_call_title)
-        val description = context.getString(R.string.incoming_call_description, meta.name)
+        val description = context.getString(R.string.incoming_call_description, callerName)
 
         val answerButton = R.string.answer_call_button_text
         val declineButton = R.string.decline_button_text
@@ -111,7 +112,7 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
             val person =
                 Person
                     .Builder()
-                    .setName(meta.name)
+                    .setName(callerName)
                     .setImportant(true)
                     .build()
             val style = Notification.CallStyle.forIncomingCall(person, declineIntent, answerIntent)
@@ -133,8 +134,9 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
         val meta =
             requireNotNull(callMetaData) { "Call metadata must be set before updating the notification." }
 
+        val callerName = meta.name ?: context.getString(R.string.unknown_caller)
         val title = context.getString(R.string.incoming_call_title)
-        val description = context.getString(R.string.incoming_call_description, meta.name)
+        val description = context.getString(R.string.incoming_call_description, callerName)
 
         return NotificationCompat
             .Builder(context, INCOMING_CALL_NOTIFICATION_CHANNEL_ID)
