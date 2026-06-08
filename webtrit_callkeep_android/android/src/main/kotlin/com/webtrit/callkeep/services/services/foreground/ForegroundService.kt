@@ -33,6 +33,7 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.EmergencyNumberException
 import com.webtrit.callkeep.models.FailedCallInfo
 import com.webtrit.callkeep.models.FailureMetadata
+import com.webtrit.callkeep.models.InvalidCallMetadataException
 import com.webtrit.callkeep.models.OutgoingFailureSource
 import com.webtrit.callkeep.models.OutgoingFailureType
 import com.webtrit.callkeep.models.toAudioDevice
@@ -332,9 +333,23 @@ class ForegroundService :
                             // Outgoing call is now active in Telecom — promote from pending.
                             core.promote(callMetaData.callId, callMetaData, PCallkeepConnectionState.STATE_DIALING)
                             syncScreenWakelock()
+                            val handle = callMetaData.handle
+                            if (handle == null) {
+                                // Should not happen for a confirmed outgoing call. Fail the request
+                                // through the normal channel instead of crashing on handle!! or
+                                // leaving a ghost call that Telecom shows but Flutter never learns of.
+                                val error =
+                                    InvalidCallMetadataException(
+                                        "OngoingCall confirmed for ${callMetaData.callId} without a handle",
+                                    )
+                                logger.e("$logContext: ${error.message}")
+                                saveFailedOutgoingCall(metadata, OutgoingFailureSource.CS_CALLBACK, error)
+                                finish(Result.failure(error))
+                                return
+                            }
                             flutterDelegateApi?.performStartCall(
                                 callMetaData.callId,
-                                callMetaData.handle!!.toPHandle(),
+                                handle.toPHandle(),
                                 // Pass the resolved label (display name or number), or null when
                                 // unknown; the pigeon contract is nullable and the Flutter client
                                 // decides how to render an unknown caller.
@@ -993,8 +1008,15 @@ class ForegroundService :
                 return@let
             }
 
+            val handle = metadata.handle
+            if (handle == null) {
+                // Cannot build a PHandle without a number; skip rather than crash on a
+                // malformed/handle-less broadcast (the call is already promoted above).
+                logger.w("handleCSReportDidPushIncomingCall: missing handle for callId=${metadata.callId}; skipping didPushIncomingCall")
+                return@let
+            }
             flutterDelegateApi?.didPushIncomingCall(
-                handleArg = metadata.handle!!.toPHandle(),
+                handleArg = handle.toPHandle(),
                 displayNameArg = metadata.displayName,
                 videoArg = metadata.hasVideo ?: false,
                 callIdArg = metadata.callId,

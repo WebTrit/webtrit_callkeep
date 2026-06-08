@@ -20,6 +20,7 @@ import com.webtrit.callkeep.common.TelephonyUtils
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.EmergencyNumberException
 import com.webtrit.callkeep.models.FailureMetadata
+import com.webtrit.callkeep.models.InvalidCallMetadataException
 import com.webtrit.callkeep.models.OutgoingFailureType
 import com.webtrit.callkeep.services.broadcaster.CallCommandEvent
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
@@ -680,7 +681,7 @@ class PhoneConnectionService : ConnectionService() {
 
             val number =
                 metadata.number
-                    ?: throw IllegalArgumentException(
+                    ?: throw InvalidCallMetadataException(
                         "startOutgoingCall: missing destination number for callId=${metadata.callId}",
                     )
             val uri: Uri = Uri.fromParts(PhoneAccount.SCHEME_TEL, number, null)

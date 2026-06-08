@@ -55,7 +55,7 @@ data class CallMetadata(
      * with a placeholder string here; each consumer (Telecom presentation, notification text,
      * the Flutter client) decides how to render an unknown caller.
      */
-    val name: String? get() = displayName?.takeIf { it.isNotEmpty() } ?: number
+    val name: String? get() = displayName?.takeIf { it.isNotBlank() } ?: number
 
     fun toBundle(): Bundle =
         Bundle().apply {
