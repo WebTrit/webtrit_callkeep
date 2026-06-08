@@ -47,7 +47,15 @@ data class CallMetadata(
     val acceptedTime: Long? = null,
 ) {
     val number: String? get() = handle?.number
-    val name: String get() = displayName?.takeIf { it.isNotEmpty() } ?: number.orEmpty()
+
+    /**
+     * Best human-readable label for the call: the display name, falling back to the number.
+     *
+     * Returns `null` when neither is known. The absence is propagated rather than replaced
+     * with a placeholder string here; each consumer (Telecom presentation, notification text,
+     * the Flutter client) decides how to render an unknown caller.
+     */
+    val name: String? get() = displayName?.takeIf { it.isNotEmpty() } ?: number
 
     fun toBundle(): Bundle =
         Bundle().apply {

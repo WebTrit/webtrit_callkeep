@@ -259,14 +259,14 @@ class CallMetadataUpdateTest {
 
     /**
      * Scenario: Missing Number and Missing Name (WT-1141).
-     * With neither a display name nor a handle, `name` must fall back to an empty
-     * string rather than the old "Undefined" placeholder.
+     * With neither a display name nor a handle, `name` must be null (an absence for
+     * consumers to render) rather than a placeholder such as "Undefined" or "".
      */
     @Test
-    fun `name is empty when display name and handle are absent`() {
+    fun `name is null when display name and handle are absent`() {
         val metadata = CallMetadata(callId = "anonymous")
 
-        assertEquals("", metadata.name)
+        assertNull(metadata.name)
     }
 
     /**

@@ -335,7 +335,9 @@ class ForegroundService :
                             flutterDelegateApi?.performStartCall(
                                 callMetaData.callId,
                                 callMetaData.handle!!.toPHandle(),
-                                callMetaData.name,
+                                // handle is non-null here, so name resolves to the number at worst;
+                                // orEmpty() only satisfies the non-null pigeon contract.
+                                callMetaData.name.orEmpty(),
                                 callMetaData.hasVideo ?: false,
                             ) {}
                             finish(Result.success(null))
