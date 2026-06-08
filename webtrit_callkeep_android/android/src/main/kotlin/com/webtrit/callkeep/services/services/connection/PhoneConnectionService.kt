@@ -678,11 +678,16 @@ class PhoneConnectionService : ConnectionService() {
         ) {
             Log.i(TAG, "onOutgoingCall, callId: ${metadata.callId}")
 
-            val uri: Uri = Uri.fromParts(PhoneAccount.SCHEME_TEL, metadata.number, null)
+            val number =
+                metadata.number
+                    ?: throw IllegalArgumentException(
+                        "startOutgoingCall: missing destination number for callId=${metadata.callId}",
+                    )
+            val uri: Uri = Uri.fromParts(PhoneAccount.SCHEME_TEL, number, null)
             val telephonyUtils = TelephonyUtils(context)
 
-            if (telephonyUtils.isEmergencyNumber(metadata.number)) {
-                Log.i(TAG, "onOutgoingCall, trying to call on emergency number: ${metadata.number}")
+            if (telephonyUtils.isEmergencyNumber(number)) {
+                Log.i(TAG, "onOutgoingCall, trying to call on emergency number: $number")
 
                 val failureMetadata =
                     FailureMetadata(

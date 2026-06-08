@@ -46,8 +46,8 @@ data class CallMetadata(
     val createdTime: Long? = null,
     val acceptedTime: Long? = null,
 ) {
-    val number: String get() = handle?.number ?: "Undefined"
-    val name: String get() = displayName?.takeIf { it.isNotEmpty() } ?: number
+    val number: String? get() = handle?.number
+    val name: String get() = displayName?.takeIf { it.isNotEmpty() } ?: number.orEmpty()
 
     fun toBundle(): Bundle =
         Bundle().apply {

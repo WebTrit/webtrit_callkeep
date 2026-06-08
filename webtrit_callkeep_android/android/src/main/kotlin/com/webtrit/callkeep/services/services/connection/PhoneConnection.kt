@@ -543,7 +543,14 @@ class PhoneConnection internal constructor(
         metadata = metadata.mergeWith(requestCallMetadata)
         extras = metadata.toBundle()
 
-        setAddress(metadata.number.toUri(), TelecomManager.PRESENTATION_ALLOWED)
+        val number = metadata.number
+        if (number != null) {
+            setAddress(number.toUri(), TelecomManager.PRESENTATION_ALLOWED)
+        } else {
+            // No real number to present; mark the address as unknown rather than
+            // surfacing a placeholder string as the caller's phone number.
+            setAddress(null, TelecomManager.PRESENTATION_UNKNOWN)
+        }
         setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
 
         if (previousHasVideo != metadata.hasVideo) {
