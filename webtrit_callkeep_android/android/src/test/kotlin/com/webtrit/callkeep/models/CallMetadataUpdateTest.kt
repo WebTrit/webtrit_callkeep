@@ -1,13 +1,17 @@
 package com.webtrit.callkeep.models
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * Tests for [CallMetadata.mergeWith].
+ * Tests for [CallMetadata.mergeWith] and for the derived [CallMetadata.number]/[CallMetadata.name]
+ * getters.
  *
  * Verifies that partial updates (patching) work correctly, ensuring that
- * specific fields can be updated without resetting other fields to null/defaults.
+ * specific fields can be updated without resetting other fields to null/defaults,
+ * and that a missing number is surfaced as an absence rather than a literal
+ * placeholder string (see WT-1141).
  */
 class CallMetadataUpdateTest {
     /**
@@ -227,5 +231,108 @@ class CallMetadataUpdateTest {
         val result = initial.mergeWith(update)
 
         assertEquals(true, result.speakerOnVideo)
+    }
+
+    /**
+     * Scenario: Missing Number (WT-1141).
+     * When no handle is set, `number` must be null (an absence to be decided by
+     * callers), NOT a literal placeholder string such as "Undefined" that would
+     * leak into the Telecom UI as the caller's phone number.
+     */
+    @Test
+    fun `number is null when handle is absent`() {
+        val metadata = CallMetadata(callId = "no-handle")
+
+        assertNull(metadata.number)
+    }
+
+    /**
+     * Scenario: Number Present.
+     * When a handle is set, `number` returns the handle's number verbatim.
+     */
+    @Test
+    fun `number returns handle value when handle is present`() {
+        val metadata = CallMetadata(callId = "with-handle", handle = CallHandle("100"))
+
+        assertEquals("100", metadata.number)
+    }
+
+    /**
+     * Scenario: Missing Number and Missing Name (WT-1141).
+     * With neither a display name nor a handle, `name` must fall back to an empty
+     * string rather than the old "Undefined" placeholder.
+     */
+    @Test
+    fun `name is empty when display name and handle are absent`() {
+        val metadata = CallMetadata(callId = "anonymous")
+
+        assertEquals("", metadata.name)
+    }
+
+    /**
+     * Scenario: Name Fallback To Number.
+     * Without a display name, `name` falls back to the number.
+     */
+    @Test
+    fun `name falls back to number when display name is absent`() {
+        val metadata = CallMetadata(callId = "fallback", handle = CallHandle("555001"))
+
+        assertEquals("555001", metadata.name)
+    }
+
+    /**
+     * Scenario: Blank Name Fallback.
+     * An empty (blank) display name must not win over the number.
+     */
+    @Test
+    fun `name falls back to number when display name is blank`() {
+        val metadata =
+            CallMetadata(
+                callId = "blank-name",
+                displayName = "",
+                handle = CallHandle("555002"),
+            )
+
+        assertEquals("555002", metadata.name)
+    }
+
+    /**
+     * Scenario: Name Preference.
+     * A non-empty display name takes precedence over the number.
+     */
+    @Test
+    fun `name prefers display name over number`() {
+        val metadata =
+            CallMetadata(
+                callId = "named",
+                displayName = "Alice",
+                handle = CallHandle("555003"),
+            )
+
+        assertEquals("Alice", metadata.name)
+    }
+
+    /**
+     * Scenario: Number Survives Partial Update (WT-1141).
+     * A partial update without a handle must preserve the existing handle, so the
+     * number is not lost (and does not regress to a placeholder) during merges.
+     */
+    @Test
+    fun `mergeWith preserves number when update omits handle`() {
+        val initial =
+            CallMetadata(
+                callId = "merge-keep-number",
+                handle = CallHandle("100"),
+            )
+        val update =
+            CallMetadata(
+                callId = "merge-keep-number",
+                hasMute = true,
+            )
+
+        val result = initial.mergeWith(update)
+
+        assertEquals("100", result.number)
+        assertEquals(true, result.hasMute)
     }
 }
