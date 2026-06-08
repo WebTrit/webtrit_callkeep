@@ -9,6 +9,7 @@ import androidx.core.content.ContextCompat
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.BatteryModeHelper
 import com.webtrit.callkeep.common.PermissionsHelper
+import com.webtrit.callkeep.common.TelephonyUtils
 import com.webtrit.callkeep.common.toAndroidPermissions
 import com.webtrit.callkeep.common.toPPermissionResults
 import io.flutter.plugin.common.PluginRegistry
@@ -71,6 +72,23 @@ class PermissionsApi(
                 batteryMode.isRestricted() -> PCallkeepAndroidBatteryMode.RESTRICTED
                 batteryMode.isOptimized() -> PCallkeepAndroidBatteryMode.OPTIMIZED
                 else -> PCallkeepAndroidBatteryMode.UNKNOWN
+            }
+        callback.invoke(Result.success(mode))
+    }
+
+    /**
+     * Reports whether incoming calls are delivered via the Telecom
+     * [android.telecom.ConnectionService] path or the limited standalone
+     * foreground-service path used when the device lacks
+     * `android.software.telecom`. Mirrors the same feature gate the router uses,
+     * so the value reflects the actually active delivery path.
+     */
+    override fun getCallDeliveryMode(callback: (Result<PCallkeepAndroidCallDeliveryMode>) -> Unit) {
+        val mode =
+            if (TelephonyUtils.isTelecomSupported(context)) {
+                PCallkeepAndroidCallDeliveryMode.TELECOM
+            } else {
+                PCallkeepAndroidCallDeliveryMode.STANDALONE
             }
         callback.invoke(Result.success(mode))
     }

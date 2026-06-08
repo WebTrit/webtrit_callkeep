@@ -305,6 +305,21 @@ void main() {
       expect(await WebtritCallkeepPlatform.instance.getBatteryMode(), CallkeepAndroidBatteryMode.restricted);
     });
 
+    test('getCallDeliveryMode returns telecom', () async {
+      _mockPigeon('$_prefix.PHostPermissionsApi.getCallDeliveryMode', PCallkeepAndroidCallDeliveryMode.telecom);
+      expect(await WebtritCallkeepPlatform.instance.getCallDeliveryMode(), CallkeepAndroidCallDeliveryMode.telecom);
+    });
+
+    test('getCallDeliveryMode returns standalone', () async {
+      _mockPigeon('$_prefix.PHostPermissionsApi.getCallDeliveryMode', PCallkeepAndroidCallDeliveryMode.standalone);
+      expect(await WebtritCallkeepPlatform.instance.getCallDeliveryMode(), CallkeepAndroidCallDeliveryMode.standalone);
+    });
+
+    test('getCallDeliveryMode returns unknown', () async {
+      _mockPigeon('$_prefix.PHostPermissionsApi.getCallDeliveryMode', PCallkeepAndroidCallDeliveryMode.unknown);
+      expect(await WebtritCallkeepPlatform.instance.getCallDeliveryMode(), CallkeepAndroidCallDeliveryMode.unknown);
+    });
+
     test('requestPermissions maps readPhoneState to granted', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMessageHandler(
         '$_prefix.PHostPermissionsApi.requestPermissions',
