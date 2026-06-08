@@ -282,14 +282,26 @@ class CallMetadataUpdateTest {
 
     /**
      * Scenario: Blank Name Fallback.
-     * An empty (blank) display name must not win over the number.
+     * A blank display name (empty or whitespace-only) must not win over the number.
      */
     @Test
-    fun `name falls back to number when display name is blank`() {
+    fun `name falls back to number when display name is empty`() {
         val metadata =
             CallMetadata(
-                callId = "blank-name",
+                callId = "empty-name",
                 displayName = "",
+                handle = CallHandle("555002"),
+            )
+
+        assertEquals("555002", metadata.name)
+    }
+
+    @Test
+    fun `name falls back to number when display name is whitespace only`() {
+        val metadata =
+            CallMetadata(
+                callId = "whitespace-name",
+                displayName = "   ",
                 handle = CallHandle("555002"),
             )
 
