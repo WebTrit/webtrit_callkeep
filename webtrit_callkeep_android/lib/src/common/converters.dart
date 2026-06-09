@@ -198,6 +198,19 @@ extension PCallkeepAndroidBatteryModeConverter on PCallkeepAndroidBatteryMode {
   }
 }
 
+extension PCallkeepAndroidCallDeliveryModeConverter on PCallkeepAndroidCallDeliveryMode {
+  CallkeepAndroidCallDeliveryMode toCallkeep() {
+    switch (this) {
+      case PCallkeepAndroidCallDeliveryMode.telecom:
+        return CallkeepAndroidCallDeliveryMode.telecom;
+      case PCallkeepAndroidCallDeliveryMode.standalone:
+        return CallkeepAndroidCallDeliveryMode.standalone;
+      case PCallkeepAndroidCallDeliveryMode.unknown:
+        return CallkeepAndroidCallDeliveryMode.unknown;
+    }
+  }
+}
+
 extension CallkeepLifecycleTypeConverter on CallkeepLifecycleEvent {
   PCallkeepLifecycleEvent toPigeon() {
     switch (this) {

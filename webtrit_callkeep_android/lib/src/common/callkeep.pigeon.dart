@@ -45,6 +45,8 @@ enum PSpecialPermissionStatusTypeEnum { denied, granted, unknown }
 
 enum PCallkeepAndroidBatteryMode { unrestricted, optimized, restricted, unknown }
 
+enum PCallkeepAndroidCallDeliveryMode { telecom, standalone, unknown }
+
 enum PHandleTypeEnum { generic, number, email }
 
 enum PCallInfoConsts { uuid, dtmf, isVideo, number, name }
@@ -816,6 +818,9 @@ class _PigeonCodec extends StandardMessageCodec {
     } else if (value is PCallkeepConnection) {
       buffer.putUint8(154);
       writeValue(buffer, value.encode());
+    } else if (value is PCallkeepAndroidCallDeliveryMode) {
+      buffer.putUint8(155);
+      writeValue(buffer, value.index);
     } else {
       super.writeValue(buffer, value);
     }
@@ -886,6 +891,9 @@ class _PigeonCodec extends StandardMessageCodec {
         return PCallkeepDisconnectCause.decode(readValue(buffer)!);
       case 154:
         return PCallkeepConnection.decode(readValue(buffer)!);
+      case 155:
+        final int? value = readValue(buffer) as int?;
+        return value == null ? null : PCallkeepAndroidCallDeliveryMode.values[value];
       default:
         return super.readValueOfType(type, buffer);
     }
@@ -1195,6 +1203,34 @@ class PHostPermissionsApi {
       );
     } else {
       return (pigeonVar_replyList[0] as PCallkeepAndroidBatteryMode?)!;
+    }
+  }
+
+  Future<PCallkeepAndroidCallDeliveryMode> getCallDeliveryMode() async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.getCallDeliveryMode$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final List<Object?>? pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else if (pigeonVar_replyList[0] == null) {
+      throw PlatformException(
+        code: 'null-error',
+        message: 'Host platform returned null value for non-null return value.',
+      );
+    } else {
+      return (pigeonVar_replyList[0] as PCallkeepAndroidCallDeliveryMode?)!;
     }
   }
 

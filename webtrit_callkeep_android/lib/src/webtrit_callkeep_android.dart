@@ -197,6 +197,11 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
+  Future<CallkeepAndroidCallDeliveryMode> getCallDeliveryMode() {
+    return _permissionsApi.getCallDeliveryMode().then((value) => value.toCallkeep());
+  }
+
+  @override
   Future<Map<String, dynamic>> getDiagnosticReport() async {
     final rawData = await _diagnosticsApi.getDiagnosticReport();
     return rawData.cast<String, dynamic>();

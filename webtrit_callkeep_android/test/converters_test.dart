@@ -421,6 +421,24 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
+  // PCallkeepAndroidCallDeliveryModeConverter
+  // ---------------------------------------------------------------------------
+
+  group('PCallkeepAndroidCallDeliveryModeConverter.toCallkeep()', () {
+    test('telecom maps to CallkeepAndroidCallDeliveryMode.telecom', () {
+      expect(PCallkeepAndroidCallDeliveryMode.telecom.toCallkeep(), CallkeepAndroidCallDeliveryMode.telecom);
+    });
+
+    test('standalone maps to CallkeepAndroidCallDeliveryMode.standalone', () {
+      expect(PCallkeepAndroidCallDeliveryMode.standalone.toCallkeep(), CallkeepAndroidCallDeliveryMode.standalone);
+    });
+
+    test('unknown maps to CallkeepAndroidCallDeliveryMode.unknown', () {
+      expect(PCallkeepAndroidCallDeliveryMode.unknown.toCallkeep(), CallkeepAndroidCallDeliveryMode.unknown);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
   // CallkeepLifecycleTypeConverter (CallkeepLifecycleEvent -> PCallkeepLifecycleEvent)
   // ---------------------------------------------------------------------------
 

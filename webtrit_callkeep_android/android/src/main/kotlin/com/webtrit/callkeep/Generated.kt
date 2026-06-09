@@ -135,6 +135,19 @@ enum class PCallkeepAndroidBatteryMode(
     }
 }
 
+enum class PCallkeepAndroidCallDeliveryMode(
+    val raw: Int,
+) {
+    TELECOM(0),
+    STANDALONE(1),
+    UNKNOWN(2),
+    ;
+
+    companion object {
+        fun ofRaw(raw: Int): PCallkeepAndroidCallDeliveryMode? = values().firstOrNull { it.raw == raw }
+    }
+}
+
 enum class PHandleTypeEnum(
     val raw: Int,
 ) {
@@ -968,6 +981,12 @@ private open class GeneratedPigeonCodec : StandardMessageCodec() {
                 }
             }
 
+            155.toByte() -> {
+                return (readValue(buffer) as Long?)?.let {
+                    PCallkeepAndroidCallDeliveryMode.ofRaw(it.toInt())
+                }
+            }
+
             else -> {
                 super.readValueOfType(type, buffer)
             }
@@ -1107,6 +1126,11 @@ private open class GeneratedPigeonCodec : StandardMessageCodec() {
             is PCallkeepConnection -> {
                 stream.write(154)
                 writeValue(stream, value.toList())
+            }
+
+            is PCallkeepAndroidCallDeliveryMode -> {
+                stream.write(155)
+                writeValue(stream, value.raw)
             }
 
             else -> {
@@ -1325,6 +1349,8 @@ interface PHostPermissionsApi {
 
     fun getBatteryMode(callback: (Result<PCallkeepAndroidBatteryMode>) -> Unit)
 
+    fun getCallDeliveryMode(callback: (Result<PCallkeepAndroidCallDeliveryMode>) -> Unit)
+
     fun requestPermissions(
         permissions: List<PCallkeepPermission>,
         callback: (Result<List<PPermissionResult>>) -> Unit,
@@ -1406,6 +1432,24 @@ interface PHostPermissionsApi {
                 if (api != null) {
                     channel.setMessageHandler { _, reply ->
                         api.getBatteryMode { result: Result<PCallkeepAndroidBatteryMode> ->
+                            val error = result.exceptionOrNull()
+                            if (error != null) {
+                                reply.reply(GeneratedPigeonUtils.wrapError(error))
+                            } else {
+                                val data = result.getOrNull()
+                                reply.reply(GeneratedPigeonUtils.wrapResult(data))
+                            }
+                        }
+                    }
+                } else {
+                    channel.setMessageHandler(null)
+                }
+            }
+            run {
+                val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.getCallDeliveryMode$separatedMessageChannelSuffix", codec)
+                if (api != null) {
+                    channel.setMessageHandler { _, reply ->
+                        api.getCallDeliveryMode { result: Result<PCallkeepAndroidCallDeliveryMode> ->
                             val error = result.exceptionOrNull()
                             if (error != null) {
                                 reply.reply(GeneratedPigeonUtils.wrapError(error))
