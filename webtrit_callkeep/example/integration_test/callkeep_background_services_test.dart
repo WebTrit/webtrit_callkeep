@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -367,6 +368,47 @@ void main() {
       await waitFor(latch.future, label: 'performEndCall on tearDown');
 
       expect(delegate.endCallIds.where((c) => c == id).length, 1);
+    });
+
+    // -----------------------------------------------------------------------
+    // releaseCall / handoffCall — channel availability contract
+    //
+    // Both methods are designed for the push background isolate context: they
+    // communicate with IncomingCallService via a Pigeon channel that is only
+    // registered when that service attaches (via a real FCM push). Without a
+    // running IncomingCallService the channel handler is null, so the Dart
+    // side receives a null reply and throws PlatformException("channel-error").
+    //
+    // These tests verify that contract so callers know to catch PlatformException
+    // when the service is unavailable (e.g. app in foreground, no push in flight).
+    // -----------------------------------------------------------------------
+
+    testWidgets('releaseCall throws PlatformException when IncomingCallService is not running', (WidgetTester _) async {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+        markTestSkipped('Android only');
+        return;
+      }
+
+      // IncomingCallService is never running in integration tests (requires FCM).
+      // releaseCall must throw a PlatformException to signal the unavailable channel.
+      await expectLater(
+        AndroidCallkeepServices.backgroundPushNotificationService.releaseCall('any-id'),
+        throwsA(isA<PlatformException>()),
+      );
+    });
+
+    testWidgets('handoffCall throws PlatformException when IncomingCallService is not running', (WidgetTester _) async {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+        markTestSkipped('Android only');
+        return;
+      }
+
+      // IncomingCallService is never running in integration tests (requires FCM).
+      // handoffCall must throw a PlatformException to signal the unavailable channel.
+      await expectLater(
+        AndroidCallkeepServices.backgroundPushNotificationService.handoffCall('any-id'),
+        throwsA(isA<PlatformException>()),
+      );
     });
   });
 }
