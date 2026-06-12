@@ -27,12 +27,12 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
     }
 
     private fun createCallActionIntent(action: String): PendingIntent {
-        requireNotNull(callMetaData) { "Call metadata must be set before creating the intent." }
+        val metadata = requireNotNull(callMetaData) { "Call metadata must be set before creating the intent." }
 
         val intent =
             Intent(context, IncomingCallService::class.java).apply {
                 this.action = action
-                putExtras(callMetaData!!.toBundle())
+                putExtras(metadata.toBundle())
             }
         return PendingIntent.getService(
             context,

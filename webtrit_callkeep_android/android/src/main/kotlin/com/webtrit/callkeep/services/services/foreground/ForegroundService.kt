@@ -1114,9 +1114,13 @@ class ForegroundService :
         logger.d("handleCSReportAudioDeviceSet")
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
+            val audioDevice = callMetaData.audioDevice ?: run {
+                logger.w("handleCSReportAudioDeviceSet: audioDevice not set for callId=${callMetaData.callId}")
+                return
+            }
             flutterDelegateApi?.performAudioDeviceSet(
                 callMetaData.callId,
-                callMetaData.audioDevice!!.toPAudioDevice(),
+                audioDevice.toPAudioDevice(),
             ) {}
         }
     }

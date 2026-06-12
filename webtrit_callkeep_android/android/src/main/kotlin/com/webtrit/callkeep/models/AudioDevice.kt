@@ -26,7 +26,8 @@ class AudioDevice(
     companion object {
         fun fromBundle(bundle: Bundle?): AudioDevice? =
             bundle?.let {
-                val type = AudioDeviceType.valueOf(it.getString("type")!!)
+                val typeStr = it.getString("type") ?: return@let null
+                val type = runCatching { AudioDeviceType.valueOf(typeStr) }.getOrNull() ?: return@let null
                 val name = it.getString("name")
                 val id = it.getString("id")
                 AudioDevice(type, name, id)
