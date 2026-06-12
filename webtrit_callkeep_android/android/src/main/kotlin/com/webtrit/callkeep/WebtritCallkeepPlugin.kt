@@ -262,8 +262,9 @@ class WebtritCallkeepPlugin :
             binding.addRequestPermissionsResultListener(it)
         }
 
-        lifeCycle = (binding.lifecycle as HiddenLifecycleReference).lifecycle
-        lifeCycle!!.addObserver(this)
+        val lifecycle = (binding.lifecycle as HiddenLifecycleReference).lifecycle
+        lifeCycle = lifecycle
+        lifecycle.addObserver(this)
 
         // Register the proxy immediately so setUp() calls from Dart are never lost
         // during the asynchronous bindService() window.
@@ -324,8 +325,9 @@ class WebtritCallkeepPlugin :
 
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
         Log.i(TAG, "onReattachedToActivityForConfigChanges id:${binding.hashCode()}")
-        lifeCycle = (binding.lifecycle as HiddenLifecycleReference).lifecycle
-        lifeCycle!!.addObserver(this)
+        val lifecycle = (binding.lifecycle as HiddenLifecycleReference).lifecycle
+        lifeCycle = lifecycle
+        lifecycle.addObserver(this)
     }
 
     override fun onStateChanged(
@@ -390,7 +392,7 @@ class WebtritCallkeepPlugin :
 
     private fun bindForegroundService(activity: Context) {
         val intent = Intent(activity, ForegroundService::class.java)
-        serviceConnection =
+        val foregroundServiceConnection =
             object : ServiceConnection {
                 override fun onServiceConnected(
                     name: ComponentName?,
@@ -417,7 +419,8 @@ class WebtritCallkeepPlugin :
                     foregroundService = null
                 }
             }
-        activity.bindService(intent, serviceConnection!!, Context.BIND_AUTO_CREATE)
+        serviceConnection = foregroundServiceConnection
+        activity.bindService(intent, foregroundServiceConnection, Context.BIND_AUTO_CREATE)
     }
 
     private fun unbindAndStopForegroundService(activity: Context) {
