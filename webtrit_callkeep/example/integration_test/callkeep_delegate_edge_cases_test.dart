@@ -50,11 +50,19 @@ void main() {
       globalTearDownNeeded = false;
 
       final id = nextTestId();
+
+      // Set up the push latch BEFORE reportNewIncomingCall so we never miss it.
+      final pushLatch = Completer<void>();
+      delegate.onDidPushIncomingCall = (cid, err) {
+        if (cid == id && !pushLatch.isCompleted) pushLatch.complete();
+      };
+
       await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Alice');
-      // Poll until the PhoneConnection is established (FGS broadcast delivered).
-      // A fixed delay is not enough after 80+ tests when FGS latency accumulates;
-      // polling converges as soon as the connection is ready regardless of load.
-      await waitForConnection(id, timeout: const Duration(seconds: 30));
+
+      // didPushIncomingCall fires when PhoneConnection is established (FGS broadcast
+      // delivered). This is more reliable than polling CallkeepConnections or a
+      // fixed sleep after 80+ tests when FGS and Telecom latency accumulate.
+      await waitFor(pushLatch.future, label: 'didPushIncomingCall', timeout: const Duration(seconds: 60));
 
       final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {

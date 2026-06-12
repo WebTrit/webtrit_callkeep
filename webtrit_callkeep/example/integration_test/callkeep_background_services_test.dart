@@ -314,6 +314,11 @@ void main() {
       await callkeep.endCall(id);
       await waitFor(endLatch.future, label: 'performEndCall for first call');
 
+      // Wait until Telecom fully removes the connection before re-registering.
+      // After 100+ tests Telecom may be slow to clean up; re-reporting too early
+      // returns callRejectedBySystem because the previous slot is still occupied.
+      await waitForConnectionGone(id, timeout: const Duration(seconds: 15));
+
       // Transfer-back: new incoming call reusing the same callId must succeed.
       final err = await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Hank');
 
