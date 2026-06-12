@@ -316,7 +316,7 @@ class ForegroundService :
             callback(result)
         }
 
-        receiver =
+        val callEventReceiver =
             object : BroadcastReceiver() {
                 override fun onReceive(
                     context: Context?,
@@ -383,11 +383,12 @@ class ForegroundService :
                     }
                 }
             }
+        receiver = callEventReceiver
 
         core.registerConnectionEvents(
             baseContext,
             listOf(CallLifecycleEvent.OngoingCall, CallLifecycleEvent.OutgoingFailure),
-            receiver!!,
+            callEventReceiver,
             exported = false,
         )
 
@@ -736,7 +737,7 @@ class ForegroundService :
             callback.invoke(Result.success(Unit))
         }
 
-        tearDownAckReceiver =
+        val ackReceiver =
             object : BroadcastReceiver() {
                 override fun onReceive(
                     context: Context?,
@@ -748,22 +749,24 @@ class ForegroundService :
                     }
                 }
             }
+        tearDownAckReceiver = ackReceiver
 
         core.registerConnectionEvents(
             baseContext,
             listOf(CallCommandEvent.TearDownComplete),
-            tearDownAckReceiver!!,
+            ackReceiver,
             exported = false,
         )
 
         // Safety timeout: if TearDownComplete never arrives (e.g. CS was not running),
         // proceed anyway so tearDown() always resolves.
-        tearDownTimeoutRunnable =
+        val timeoutRunnable =
             Runnable {
                 logger.w("tearDown: TearDownComplete ack timed out, proceeding")
                 finishTearDown()
             }
-        mainHandler.postDelayed(tearDownTimeoutRunnable!!, TEAR_DOWN_ACK_TIMEOUT_MS)
+        tearDownTimeoutRunnable = timeoutRunnable
+        mainHandler.postDelayed(timeoutRunnable, TEAR_DOWN_ACK_TIMEOUT_MS)
 
         core.sendTearDownConnections()
     }
@@ -1111,9 +1114,13 @@ class ForegroundService :
         logger.d("handleCSReportAudioDeviceSet")
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
+            val audioDevice = callMetaData.audioDevice ?: run {
+                logger.w("handleCSReportAudioDeviceSet: audioDevice not set for callId=${callMetaData.callId}")
+                return
+            }
             flutterDelegateApi?.performAudioDeviceSet(
                 callMetaData.callId,
-                callMetaData.audioDevice!!.toPAudioDevice(),
+                audioDevice.toPAudioDevice(),
             ) {}
         }
     }
