@@ -154,8 +154,10 @@ class PermissionsApi(
             }
         } catch (e: Exception) {
             handler.removeCallbacks(runnable)
-            timeoutRunnable = null
-            pendingPermissionCallback = null
+            synchronized(this) {
+                timeoutRunnable = null
+                pendingPermissionCallback = null
+            }
             callback.invoke(Result.failure(e))
         }
     }

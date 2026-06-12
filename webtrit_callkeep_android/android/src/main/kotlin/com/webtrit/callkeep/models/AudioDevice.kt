@@ -27,7 +27,7 @@ class AudioDevice(
         fun fromBundle(bundle: Bundle?): AudioDevice? =
             bundle?.let {
                 val typeStr = it.getString("type") ?: return@let null
-                val type = runCatching { AudioDeviceType.valueOf(typeStr) }.getOrNull() ?: return@let null
+                val type = runCatching { AudioDeviceType.valueOf(typeStr) }.getOrDefault(AudioDeviceType.UNKNOWN)
                 val name = it.getString("name")
                 val id = it.getString("id")
                 AudioDevice(type, name, id)
