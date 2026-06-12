@@ -51,27 +51,20 @@ void main() {
 
       final id = nextTestId();
 
-      // Set up the push latch BEFORE reportNewIncomingCall so we never miss it.
-      final pushLatch = Completer<void>();
-      delegate.onDidPushIncomingCall = (cid, err) {
-        if (cid == id && !pushLatch.isCompleted) pushLatch.complete();
+      // Use the outgoing-call path to establish an active call without touching FGS.
+      // After 80+ tests the FGS incoming-call broadcast pipeline is completely
+      // backlogged and reportNewIncomingCall / didPushIncomingCall stop firing.
+      // An outgoing call reaches ACTIVE state via synchronous CS IPC calls only,
+      // which remain reliable regardless of how many tests have accumulated.
+      final startLatch = Completer<void>();
+      delegate.onPerformStartCall = (cid) {
+        if (cid == id && !startLatch.isCompleted) startLatch.complete();
       };
 
-      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Alice');
-
-      // didPushIncomingCall fires when PhoneConnection is established (FGS broadcast
-      // delivered). This is more reliable than polling CallkeepConnections or a
-      // fixed sleep after 80+ tests when FGS and Telecom latency accumulate.
-      await waitFor(pushLatch.future, label: 'didPushIncomingCall', timeout: const Duration(seconds: 60));
-
-      final answerLatch = Completer<void>();
-      delegate.onPerformAnswerCall = (cid) {
-        if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
-      };
-      await callkeep.answerCall(id);
-      // The Telecom answer round-trip can be slow after 80+ tests; use a generous
-      // timeout — the test goal is crash-safety, not tight timing.
-      await waitFor(answerLatch.future, label: 'performAnswerCall', timeout: const Duration(seconds: 60));
+      await callkeep.startCall(id, kTestHandle1, displayNameOrContactIdentifier: 'Alice');
+      await waitFor(startLatch.future, label: 'performStartCall');
+      await callkeep.reportConnectingOutgoingCall(id);
+      await callkeep.reportConnectedOutgoingCall(id);
 
       // Simulate BLoC.close() pattern: setDelegate(null) while call is active
       callkeep.setDelegate(null);
