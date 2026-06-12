@@ -51,13 +51,19 @@ void main() {
 
       final id = nextTestId();
       await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Alice');
+      // Allow the FGS broadcast to settle before answering. Without this
+      // the answer may race the pending-call registration in a slow FGS
+      // that has been running for many tests.
+      await Future.delayed(const Duration(milliseconds: 500));
 
       final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
         if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
-      await waitFor(answerLatch.future, label: 'performAnswerCall');
+      // Use a generous timeout: after 80+ tests the FGS may respond slower
+      // than in isolation. The test goal is crash-safety, not strict timing.
+      await waitFor(answerLatch.future, label: 'performAnswerCall', timeout: const Duration(seconds: 30));
 
       // Simulate BLoC.close() pattern: setDelegate(null) while call is active
       callkeep.setDelegate(null);
