@@ -961,8 +961,9 @@ class ConnectionTimeout(
      */
     fun start(timeoutCallback: () -> Unit) {
         cancel()
-        timeoutRunnable = Runnable(timeoutCallback)
-        handler.postDelayed(timeoutRunnable!!, timeoutDurationMs)
+        val runnable = Runnable(timeoutCallback)
+        timeoutRunnable = runnable
+        handler.postDelayed(runnable, timeoutDurationMs)
     }
 
     /**

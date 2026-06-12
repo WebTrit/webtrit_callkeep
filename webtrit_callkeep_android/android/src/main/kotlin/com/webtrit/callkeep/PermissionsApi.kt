@@ -128,7 +128,7 @@ class PermissionsApi(
             pendingPermissionCallback = callback
         }
 
-        timeoutRunnable =
+        val runnable =
             Runnable {
                 synchronized(this) {
                     if (pendingPermissionCallback != null) {
@@ -140,8 +140,9 @@ class PermissionsApi(
                     }
                 }
             }
+        timeoutRunnable = runnable
 
-        handler.postDelayed(timeoutRunnable!!, PERMISSION_REQUEST_TIMEOUT_MS)
+        handler.postDelayed(runnable, PERMISSION_REQUEST_TIMEOUT_MS)
 
         try {
             activity.runOnUiThread {
@@ -152,7 +153,7 @@ class PermissionsApi(
                 )
             }
         } catch (e: Exception) {
-            handler.removeCallbacks(timeoutRunnable!!)
+            handler.removeCallbacks(runnable)
             timeoutRunnable = null
             pendingPermissionCallback = null
             callback.invoke(Result.failure(e))
