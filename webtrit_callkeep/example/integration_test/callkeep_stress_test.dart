@@ -5,119 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 
-// ---------------------------------------------------------------------------
-// Shared test fixtures
-// ---------------------------------------------------------------------------
-
-const _options = CallkeepOptions(
-  ios: CallkeepIOSOptions(
-    localizedName: 'Integration Tests',
-    maximumCallGroups: 2,
-    maximumCallsPerCallGroup: 1,
-    supportedHandleTypes: {CallkeepHandleType.number},
-  ),
-  android: CallkeepAndroidOptions(),
-);
-
-const _handle1 = CallkeepHandle.number('380000000000');
-const _handle2 = CallkeepHandle.number('380000000001');
-
-// Each test gets fresh IDs to avoid CALL_ID_ALREADY_TERMINATED from prior runs.
-// Android ConnectionManager keeps terminated connections in its registry until
-// the process restarts, so reusing IDs across setUp/tearDown cycles fails.
-var _idCounter = 0;
-String _nextId() => 'stress-${_idCounter++}';
-
-// ---------------------------------------------------------------------------
-// Recording delegate
-// ---------------------------------------------------------------------------
-
-class _RecordingDelegate implements CallkeepDelegate {
-  final answerCallIds = <String>[];
-  final endCallIds = <String>[];
-  final didPushEvents = <({String callId, CallkeepIncomingCallError? error})>[];
-  final audioDevicesUpdateEvents = <({String callId, List<CallkeepAudioDevice> devices})>[];
-
-  void Function(String callId)? onPerformAnswerCall;
-  void Function(String callId)? onPerformEndCall;
-  void Function(String callId, List<CallkeepAudioDevice> devices)? onPerformAudioDevicesUpdate;
-
-  @override
-  void continueStartCallIntent(
-    CallkeepHandle handle,
-    String? displayName,
-    bool video,
-  ) {}
-
-  @override
-  void didPushIncomingCall(
-    CallkeepHandle handle,
-    String? displayName,
-    bool video,
-    String callId,
-    CallkeepIncomingCallError? error,
-  ) {
-    didPushEvents.add((callId: callId, error: error));
-  }
-
-  @override
-  void didActivateAudioSession() {}
-
-  @override
-  void didDeactivateAudioSession() {}
-
-  @override
-  void didReset() {}
-
-  @override
-  Future<bool> performStartCall(
-    String callId,
-    CallkeepHandle handle,
-    String? displayName,
-    bool video,
-  ) =>
-      Future.value(true);
-
-  @override
-  Future<bool> performAnswerCall(String callId) {
-    answerCallIds.add(callId);
-    onPerformAnswerCall?.call(callId);
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performEndCall(String callId) {
-    endCallIds.add(callId);
-    onPerformEndCall?.call(callId);
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performSetHeld(String callId, bool onHold) => Future.value(true);
-
-  @override
-  Future<bool> performSetMuted(String callId, bool muted) => Future.value(true);
-
-  @override
-  Future<bool> performSendDTMF(String callId, String key) => Future.value(true);
-
-  @override
-  Future<bool> performAudioDeviceSet(
-    String callId,
-    CallkeepAudioDevice device,
-  ) =>
-      Future.value(true);
-
-  @override
-  Future<bool> performAudioDevicesUpdate(
-    String callId,
-    List<CallkeepAudioDevice> devices,
-  ) {
-    audioDevicesUpdateEvents.add((callId: callId, devices: devices));
-    onPerformAudioDevicesUpdate?.call(callId, devices);
-    return Future.value(true);
-  }
-}
+import 'helpers/callkeep_test_helpers.dart';
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -127,7 +15,7 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   late Callkeep callkeep;
-  late _RecordingDelegate delegate;
+  late RecordingDelegate delegate;
   // When a test calls tearDown() itself, set this to false so the global
   // tearDown fixture skips it. A second tearDown on an already-torn-down
   // Android ForegroundService can re-fire performEndCall for already-ended
@@ -137,12 +25,12 @@ void main() {
   setUp(() async {
     globalTearDownNeeded = true;
     callkeep = Callkeep();
-    delegate = _RecordingDelegate();
+    delegate = RecordingDelegate();
     // ForegroundService binding is async: the PHostApi Pigeon channel is only
     // registered after onServiceConnected fires. On the very first test the
     // setUp() call may arrive before that happens, producing a channel-error.
     // Retry with backoff until the service is ready.
-    await callkeep.setUp(_options);
+    await callkeep.setUp(kTestOptions);
     // Set the delegate only after setUp succeeds so that the unawaited
     // onDelegateSet() Pigeon call does not produce an unhandled channel-error.
     callkeep.setDelegate(delegate);
@@ -184,7 +72,7 @@ void main() {
     testWidgets('tearDown then re-setUp works', (WidgetTester _) async {
       globalTearDownNeeded = false;
       await callkeep.tearDown();
-      await callkeep.setUp(_options);
+      await callkeep.setUp(kTestOptions);
       expect(await callkeep.isSetUp(), isTrue);
     });
   });
@@ -195,23 +83,23 @@ void main() {
 
   group('reportNewIncomingCall - deduplication', () {
     testWidgets('fresh call ID succeeds', (WidgetTester _) async {
-      final id = _nextId();
+      final id = nextTestId();
 
       final err = await callkeep.reportNewIncomingCall(
         id,
-        _handle1,
+        kTestHandle1,
         displayName: 'Call 1',
       );
       expect(err, isNull);
     });
 
     testWidgets('second report with same ID returns callIdAlreadyExists', (WidgetTester _) async {
-      final id = _nextId();
+      final id = nextTestId();
 
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Call');
       final err = await callkeep.reportNewIncomingCall(
         id,
-        _handle1,
+        kTestHandle1,
         displayName: 'Call',
       );
 
@@ -219,12 +107,12 @@ void main() {
     });
 
     testWidgets('spam 4x same ID - only first succeeds', (WidgetTester _) async {
-      final id = _nextId();
+      final id = nextTestId();
       final results = <CallkeepIncomingCallError?>[];
 
       for (var i = 0; i < 4; i++) {
         results.add(
-          await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call'),
+          await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Call'),
         );
       }
 
@@ -235,17 +123,17 @@ void main() {
     });
 
     testWidgets('two different call IDs both succeed', (WidgetTester _) async {
-      final id1 = _nextId();
-      final id2 = _nextId();
+      final id1 = nextTestId();
+      final id2 = nextTestId();
 
       final err1 = await callkeep.reportNewIncomingCall(
         id1,
-        _handle1,
+        kTestHandle1,
         displayName: 'Call 1',
       );
       final err2 = await callkeep.reportNewIncomingCall(
         id2,
-        _handle2,
+        kTestHandle2,
         displayName: 'Call 2',
       );
 
@@ -267,8 +155,8 @@ void main() {
 
   group('call lifecycle', () {
     testWidgets('answerCall triggers performAnswerCall callback', (WidgetTester _) async {
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Call');
 
       final completer = Completer<String>();
       delegate.onPerformAnswerCall = completer.complete;
@@ -283,8 +171,8 @@ void main() {
     });
 
     testWidgets('endCall on incoming call triggers performEndCall callback', (WidgetTester _) async {
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Call');
 
       final completer = Completer<String>();
       delegate.onPerformEndCall = completer.complete;
@@ -299,8 +187,8 @@ void main() {
     });
 
     testWidgets('endCall after answerCall triggers performEndCall', (WidgetTester _) async {
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Call');
 
       final answerCompleter = Completer<String>();
       delegate.onPerformAnswerCall = answerCompleter.complete;
@@ -319,8 +207,8 @@ void main() {
     });
 
     testWidgets('endCall twice - second call returns error, delegate fires once', (WidgetTester _) async {
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Call');
 
       final completer = Completer<String>();
       delegate.onPerformEndCall = completer.complete;
@@ -340,11 +228,11 @@ void main() {
 
   group('stress - rapid succession', () {
     testWidgets('report two calls then end both - each performEndCall fires once', (WidgetTester _) async {
-      final id1 = _nextId();
-      final id2 = _nextId();
+      final id1 = nextTestId();
+      final id2 = nextTestId();
 
-      final err1 = await callkeep.reportNewIncomingCall(id1, _handle1, displayName: 'Call 1');
-      final err2 = await callkeep.reportNewIncomingCall(id2, _handle2, displayName: 'Call 2');
+      final err1 = await callkeep.reportNewIncomingCall(id1, kTestHandle1, displayName: 'Call 1');
+      final err2 = await callkeep.reportNewIncomingCall(id2, kTestHandle2, displayName: 'Call 2');
 
       // On devices that do not support concurrent self-managed calls (standard
       // Android 11+, Huawei, other OEMs), the second call is rejected by Telecom
@@ -380,10 +268,10 @@ void main() {
     });
 
     testWidgets('spam same ID concurrently - exactly one succeeds', (WidgetTester _) async {
-      final id = _nextId();
+      final id = nextTestId();
       final futures = List.generate(
         4,
-        (_) => callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call'),
+        (_) => callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Call'),
       );
       final results = await Future.wait(futures);
 
@@ -393,11 +281,11 @@ void main() {
 
     testWidgets('tearDown while calls are active triggers performEndCall for each', (WidgetTester _) async {
       globalTearDownNeeded = false; // we call tearDown() ourselves below
-      final id1 = _nextId();
-      final id2 = _nextId();
+      final id1 = nextTestId();
+      final id2 = nextTestId();
 
-      final err1 = await callkeep.reportNewIncomingCall(id1, _handle1, displayName: 'Call 1');
-      final err2 = await callkeep.reportNewIncomingCall(id2, _handle2, displayName: 'Call 2');
+      final err1 = await callkeep.reportNewIncomingCall(id1, kTestHandle1, displayName: 'Call 1');
+      final err2 = await callkeep.reportNewIncomingCall(id2, kTestHandle2, displayName: 'Call 2');
 
       // On OEM devices that do not support concurrent self-managed calls (e.g.
       // Huawei), the second call is rejected and never confirmed to Flutter, so
@@ -459,8 +347,8 @@ void main() {
         return;
       }
 
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Call');
 
       final endCompleter = Completer<String>();
       // Filter by expected ID so stale performEndCall from earlier tests don't
@@ -509,13 +397,13 @@ void main() {
         return;
       }
 
-      final id = _nextId();
+      final id = nextTestId();
 
       // Do NOT await — start the incoming call and immediately decline.
       // Attach an error handler so a transient channel error does not
       // become an unhandled async exception that destabilises the test.
       callkeep
-          .reportNewIncomingCall(id, _handle1, displayName: 'Call')
+          .reportNewIncomingCall(id, kTestHandle1, displayName: 'Call')
           // ignore: unawaited_futures
           .catchError((_) => null as CallkeepIncomingCallError?);
 
@@ -541,8 +429,8 @@ void main() {
         return;
       }
 
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Call');
 
       final endCompleter = Completer<String>();
       delegate.onPerformEndCall = endCompleter.complete;
@@ -551,7 +439,7 @@ void main() {
 
       // After cleanup, re-reporting the same callId must succeed — stale
       // DISCONNECTED connections are treated as absent (transfer-back support).
-      final err = await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+      final err = await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Call');
 
       expect(
         err,
@@ -595,11 +483,11 @@ void main() {
         return;
       }
 
-      final id = _nextId();
+      final id = nextTestId();
 
       // Step 1+2: push isolate reports the call; Telecom creates the connection
       // and (with the fix) removes it from pendingCallIds.
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Call');
 
       // Step 3: answer the call — sets hasAnswered = true on the PhoneConnection.
       final answerCompleter = Completer<String>();
@@ -613,7 +501,7 @@ void main() {
       // Step 4: main process CallBloc calls reportNewIncomingCall again.
       final err = await callkeep.reportNewIncomingCall(
         id,
-        _handle1,
+        kTestHandle1,
         displayName: 'Call',
       );
 
@@ -646,9 +534,9 @@ void main() {
     /// The multi-call tearDown property is covered by the stress group test.
     testWidgets('tearDown fires performEndCall for an active call', (WidgetTester _) async {
       globalTearDownNeeded = false; // we call tearDown() ourselves below
-      final id = _nextId();
+      final id = nextTestId();
 
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Call');
 
       final latch = Completer<void>();
       delegate.onPerformEndCall = (receivedId) {
@@ -674,8 +562,8 @@ void main() {
 
     testWidgets('tearDown fires performEndCall exactly once per call', (WidgetTester _) async {
       globalTearDownNeeded = false; // we call tearDown() ourselves below
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Call');
 
       final latch = Completer<void>();
       delegate.onPerformEndCall = (receivedId) {
@@ -700,8 +588,8 @@ void main() {
     /// if the broadcast confirmation never arrives (e.g. callkeep_core process
     /// killed). Verify no indefinite hang.
     testWidgets('endCall future always resolves within timeout', (WidgetTester _) async {
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Call');
 
       await callkeep.endCall(id).timeout(
             const Duration(seconds: 10),
@@ -716,9 +604,9 @@ void main() {
     /// "count equals active calls" invariant.
     testWidgets('tearDown callback count equals number of active calls', (WidgetTester _) async {
       globalTearDownNeeded = false; // we call tearDown() ourselves below
-      final id = _nextId();
+      final id = nextTestId();
 
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Call');
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Call');
 
       final latch = Completer<void>();
       delegate.onPerformEndCall = (receivedId) {
@@ -751,17 +639,17 @@ void main() {
         return;
       }
 
-      final id = _nextId();
+      final id = nextTestId();
 
       AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(id, _handle1, displayName: 'Call');
+          .reportNewIncomingCall(id, kTestHandle1, displayName: 'Call');
 
       // Give the push path time to register the connection
       await Future.delayed(const Duration(milliseconds: 300));
 
       final err = await callkeep.reportNewIncomingCall(
         id,
-        _handle1,
+        kTestHandle1,
         displayName: 'Call',
       );
 
@@ -774,15 +662,15 @@ void main() {
         return;
       }
 
-      final id = _nextId();
+      final id = nextTestId();
 
       for (var i = 0; i < 3; i++) {
         AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-            .reportNewIncomingCall(id, _handle1, displayName: 'Call');
+            .reportNewIncomingCall(id, kTestHandle1, displayName: 'Call');
 
         final err = await callkeep.reportNewIncomingCall(
           id,
-          _handle1,
+          kTestHandle1,
           displayName: 'Call',
         );
 
@@ -824,8 +712,8 @@ void main() {
         return;
       }
 
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Signaling');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Signaling');
 
       // Wait longer than the :callkeep_core IPC round-trip (~200-300 ms) so
       // that any unsuppressed DidPushIncomingCall broadcast would have arrived.
@@ -848,11 +736,11 @@ void main() {
         return;
       }
 
-      final id = _nextId();
+      final id = nextTestId();
 
       unawaited(
         AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-            .reportNewIncomingCall(id, _handle1, displayName: 'Push'),
+            .reportNewIncomingCall(id, kTestHandle1, displayName: 'Push'),
       );
 
       // Poll until didPushIncomingCall arrives or timeout
@@ -883,8 +771,8 @@ void main() {
         markTestSkipped('Android only');
         return;
       }
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'AudioTest');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'AudioTest');
 
       final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {

@@ -5,150 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 
-// ---------------------------------------------------------------------------
-// Shared fixtures
-// ---------------------------------------------------------------------------
-
-const _options = CallkeepOptions(
-  ios: CallkeepIOSOptions(
-    localizedName: 'Integration Tests',
-    maximumCallGroups: 2,
-    maximumCallsPerCallGroup: 1,
-    supportedHandleTypes: {CallkeepHandleType.number},
-  ),
-  android: CallkeepAndroidOptions(),
-);
-
-const _handle1 = CallkeepHandle.number('380006000000');
-const _handle2 = CallkeepHandle.number('380006000001');
-
-var _idCounter = 0;
-String _nextId() => 'sm-${_idCounter++}';
-
-// ---------------------------------------------------------------------------
-// Recording delegate
-// ---------------------------------------------------------------------------
-
-class _RecordingDelegate implements CallkeepDelegate {
-  final List<String> startCallIds = [];
-  final List<String> answerCallIds = [];
-  final List<String> endCallIds = [];
-  final List<({String callId, bool onHold})> holdEvents = [];
-  final List<({String callId, bool muted})> muteEvents = [];
-  final List<({String callId, String key})> dtmfEvents = [];
-  final List<({String callId, CallkeepAudioDevice device})> audioDeviceEvents = [];
-
-  void Function(String callId)? onPerformStartCall;
-  void Function(String callId)? onPerformAnswerCall;
-  void Function(String callId)? onPerformEndCall;
-  void Function(String callId, bool onHold)? onPerformSetHeld;
-  void Function(String callId, bool muted)? onPerformSetMuted;
-  void Function(String callId, String key)? onPerformSendDTMF;
-
-  @override
-  void continueStartCallIntent(CallkeepHandle handle, String? displayName, bool video) {}
-
-  @override
-  void didPushIncomingCall(
-    CallkeepHandle handle,
-    String? displayName,
-    bool video,
-    String callId,
-    CallkeepIncomingCallError? error,
-  ) {}
-
-  @override
-  void didActivateAudioSession() {}
-
-  @override
-  void didDeactivateAudioSession() {}
-
-  @override
-  void didReset() {}
-
-  @override
-  Future<bool> performStartCall(
-    String callId,
-    CallkeepHandle handle,
-    String? displayName,
-    bool video,
-  ) {
-    startCallIds.add(callId);
-    onPerformStartCall?.call(callId);
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performAnswerCall(String callId) {
-    answerCallIds.add(callId);
-    onPerformAnswerCall?.call(callId);
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performEndCall(String callId) {
-    endCallIds.add(callId);
-    onPerformEndCall?.call(callId);
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performSetHeld(String callId, bool onHold) {
-    holdEvents.add((callId: callId, onHold: onHold));
-    onPerformSetHeld?.call(callId, onHold);
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performSetMuted(String callId, bool muted) {
-    muteEvents.add((callId: callId, muted: muted));
-    onPerformSetMuted?.call(callId, muted);
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performSendDTMF(String callId, String key) {
-    dtmfEvents.add((callId: callId, key: key));
-    onPerformSendDTMF?.call(callId, key);
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performAudioDeviceSet(String callId, CallkeepAudioDevice device) {
-    audioDeviceEvents.add((callId: callId, device: device));
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performAudioDevicesUpdate(String callId, List<CallkeepAudioDevice> devices) => Future.value(true);
-}
-
-// ---------------------------------------------------------------------------
-// Helper: await a delegate callback with timeout
-// ---------------------------------------------------------------------------
-
-Future<T> _waitFor<T>(Future<T> future, {String label = 'callback'}) {
-  return future.timeout(
-    const Duration(seconds: 10),
-    onTimeout: () => throw TimeoutException('$label did not fire within timeout'),
-  );
-}
-
-// Poll until a Telecom connection for callId exists (or timeout). The
-// connection is created asynchronously in :callkeep_core after
-// reportNewIncomingCall, so it is not guaranteed to exist immediately.
-Future<CallkeepConnection?> _waitForConnection(
-  String callId, {
-  Duration timeout = const Duration(seconds: 5),
-}) async {
-  final deadline = DateTime.now().add(timeout);
-  while (DateTime.now().isBefore(deadline)) {
-    final conn = await CallkeepConnections().getConnection(callId);
-    if (conn != null) return conn;
-    await Future.delayed(const Duration(milliseconds: 100));
-  }
-  return null;
-}
+import 'helpers/callkeep_test_helpers.dart';
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -158,14 +15,14 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   late Callkeep callkeep;
-  late _RecordingDelegate delegate;
+  late RecordingDelegate delegate;
   var globalTearDownNeeded = true;
 
   setUp(() async {
     globalTearDownNeeded = true;
     callkeep = Callkeep();
-    delegate = _RecordingDelegate();
-    await callkeep.setUp(_options);
+    delegate = RecordingDelegate();
+    await callkeep.setUp(kTestOptions);
     callkeep.setDelegate(delegate);
   });
 
@@ -185,8 +42,8 @@ void main() {
 
   group('full state machine: answer -> hold -> mute -> unmute -> unhold -> end', () {
     testWidgets('all 6 steps verified with individual latches', (WidgetTester _) async {
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Alice');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Alice');
 
       // Step 1: answer
       final answerLatch = Completer<void>();
@@ -194,7 +51,7 @@ void main() {
         if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
-      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+      await waitFor(answerLatch.future, label: 'performAnswerCall');
 
       // Step 2: hold
       final holdLatch = Completer<void>();
@@ -202,7 +59,7 @@ void main() {
         if (cid == id && onHold && !holdLatch.isCompleted) holdLatch.complete();
       };
       await callkeep.setHeld(id, onHold: true);
-      await _waitFor(holdLatch.future, label: 'performSetHeld(true)');
+      await waitFor(holdLatch.future, label: 'performSetHeld(true)');
 
       // Step 3: mute (filter for muted: true to skip system-initiated false)
       final muteLatch = Completer<void>();
@@ -210,7 +67,7 @@ void main() {
         if (cid == id && muted && !muteLatch.isCompleted) muteLatch.complete();
       };
       await callkeep.setMuted(id, muted: true);
-      await _waitFor(muteLatch.future, label: 'performSetMuted(true)');
+      await waitFor(muteLatch.future, label: 'performSetMuted(true)');
 
       // Step 4: unmute
       final unmuteLatch = Completer<void>();
@@ -218,7 +75,7 @@ void main() {
         if (cid == id && !muted && !unmuteLatch.isCompleted) unmuteLatch.complete();
       };
       await callkeep.setMuted(id, muted: false);
-      await _waitFor(unmuteLatch.future, label: 'performSetMuted(false)');
+      await waitFor(unmuteLatch.future, label: 'performSetMuted(false)');
 
       // Step 5: unhold
       final unholdLatch = Completer<void>();
@@ -226,7 +83,7 @@ void main() {
         if (cid == id && !onHold && !unholdLatch.isCompleted) unholdLatch.complete();
       };
       await callkeep.setHeld(id, onHold: false);
-      await _waitFor(unholdLatch.future, label: 'performSetHeld(false)');
+      await waitFor(unholdLatch.future, label: 'performSetHeld(false)');
 
       // Step 6: end
       final endLatch = Completer<void>();
@@ -234,7 +91,7 @@ void main() {
         if (cid == id && !endLatch.isCompleted) endLatch.complete();
       };
       await callkeep.endCall(id);
-      await _waitFor(endLatch.future, label: 'performEndCall');
+      await waitFor(endLatch.future, label: 'performEndCall');
 
       // Verify event ordering
       expect(delegate.answerCallIds.contains(id), isTrue);
@@ -261,15 +118,15 @@ void main() {
         markTestSkipped('Android only');
         return;
       }
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Bob');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Bob');
 
       final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
         if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
-      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+      await waitFor(answerLatch.future, label: 'performAnswerCall');
 
       // Hold first
       final holdLatch = Completer<void>();
@@ -277,7 +134,7 @@ void main() {
         if (cid == id && onHold && !holdLatch.isCompleted) holdLatch.complete();
       };
       await callkeep.setHeld(id, onHold: true);
-      await _waitFor(holdLatch.future, label: 'performSetHeld(true)');
+      await waitFor(holdLatch.future, label: 'performSetHeld(true)');
 
       // Mute while held
       final muteLatch = Completer<({String callId, bool muted})>();
@@ -288,7 +145,7 @@ void main() {
       };
       await callkeep.setMuted(id, muted: true);
 
-      final event = await _waitFor(muteLatch.future, label: 'performSetMuted(true) while held');
+      final event = await waitFor(muteLatch.future, label: 'performSetMuted(true) while held');
       expect(event.callId, id);
       expect(event.muted, isTrue);
     });
@@ -298,15 +155,15 @@ void main() {
         markTestSkipped('Android only');
         return;
       }
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Carol');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Carol');
 
       final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
         if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
-      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+      await waitFor(answerLatch.future, label: 'performAnswerCall');
 
       // Hold
       final holdLatch = Completer<void>();
@@ -314,7 +171,7 @@ void main() {
         if (cid == id && onHold && !holdLatch.isCompleted) holdLatch.complete();
       };
       await callkeep.setHeld(id, onHold: true);
-      await _waitFor(holdLatch.future, label: 'performSetHeld(true)');
+      await waitFor(holdLatch.future, label: 'performSetHeld(true)');
 
       // Mute first
       final muteLatch = Completer<void>();
@@ -322,7 +179,7 @@ void main() {
         if (cid == id && muted && !muteLatch.isCompleted) muteLatch.complete();
       };
       await callkeep.setMuted(id, muted: true);
-      await _waitFor(muteLatch.future, label: 'performSetMuted(true)');
+      await waitFor(muteLatch.future, label: 'performSetMuted(true)');
 
       // Unmute while held
       final unmuteLatch = Completer<({String callId, bool muted})>();
@@ -333,7 +190,7 @@ void main() {
       };
       await callkeep.setMuted(id, muted: false);
 
-      final event = await _waitFor(unmuteLatch.future, label: 'performSetMuted(false) while held');
+      final event = await waitFor(unmuteLatch.future, label: 'performSetMuted(false) while held');
       expect(event.callId, id);
       expect(event.muted, isFalse);
     });
@@ -349,15 +206,15 @@ void main() {
         markTestSkipped('Android only');
         return;
       }
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Dan');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Dan');
 
       final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
         if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
-      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+      await waitFor(answerLatch.future, label: 'performAnswerCall');
 
       // Hold
       final holdLatch = Completer<void>();
@@ -365,7 +222,7 @@ void main() {
         if (cid == id && onHold && !holdLatch.isCompleted) holdLatch.complete();
       };
       await callkeep.setHeld(id, onHold: true);
-      await _waitFor(holdLatch.future, label: 'performSetHeld(true)');
+      await waitFor(holdLatch.future, label: 'performSetHeld(true)');
 
       // DTMF while held
       final dtmfLatch = Completer<({String callId, String key})>();
@@ -374,7 +231,7 @@ void main() {
       };
       await callkeep.sendDTMF(id, '5');
 
-      final event = await _waitFor(dtmfLatch.future, label: 'performSendDTMF while held');
+      final event = await waitFor(dtmfLatch.future, label: 'performSendDTMF while held');
       expect(event.callId, id);
       expect(event.key, '5');
     });
@@ -390,10 +247,10 @@ void main() {
         markTestSkipped('Android only');
         return;
       }
-      final id1 = _nextId();
-      final id2 = _nextId();
+      final id1 = nextTestId();
+      final id2 = nextTestId();
 
-      await callkeep.reportNewIncomingCall(id1, _handle1, displayName: 'Eve');
+      await callkeep.reportNewIncomingCall(id1, kTestHandle1, displayName: 'Eve');
 
       // Answer id1
       final answer1Latch = Completer<void>();
@@ -401,10 +258,10 @@ void main() {
         if (cid == id1 && !answer1Latch.isCompleted) answer1Latch.complete();
       };
       await callkeep.answerCall(id1);
-      await _waitFor(answer1Latch.future, label: 'performAnswerCall id1');
+      await waitFor(answer1Latch.future, label: 'performAnswerCall id1');
 
       // Report id2
-      await callkeep.reportNewIncomingCall(id2, _handle2, displayName: 'Frank');
+      await callkeep.reportNewIncomingCall(id2, kTestHandle2, displayName: 'Frank');
 
       // Wait for id2's Telecom connection to be created before proceeding.
       // The connection is built asynchronously in :callkeep_core and may not
@@ -413,7 +270,7 @@ void main() {
       // call even when the first is active. If _waitForConnection returns null
       // the device does not support concurrent self-managed calls and the
       // remainder of this scenario cannot be exercised.
-      final conn2 = await _waitForConnection(id2);
+      final conn2 = await waitForConnection(id2);
       if (conn2 == null) {
         markTestSkipped('device does not support concurrent incoming calls');
         return;
@@ -425,7 +282,7 @@ void main() {
         if (cid == id1 && onHold && !holdLatch.isCompleted) holdLatch.complete();
       };
       await callkeep.setHeld(id1, onHold: true);
-      await _waitFor(holdLatch.future, label: 'performSetHeld id1 hold');
+      await waitFor(holdLatch.future, label: 'performSetHeld id1 hold');
 
       // Answer id2
       final answer2Latch = Completer<void>();
@@ -433,7 +290,7 @@ void main() {
         if (cid == id2 && !answer2Latch.isCompleted) answer2Latch.complete();
       };
       await callkeep.answerCall(id2);
-      await _waitFor(answer2Latch.future, label: 'performAnswerCall id2');
+      await waitFor(answer2Latch.future, label: 'performAnswerCall id2');
 
       // Unhold id1
       final unholdLatch = Completer<void>();
@@ -441,7 +298,7 @@ void main() {
         if (cid == id1 && !onHold && !unholdLatch.isCompleted) unholdLatch.complete();
       };
       await callkeep.setHeld(id1, onHold: false);
-      await _waitFor(unholdLatch.future, label: 'performSetHeld id1 unhold');
+      await waitFor(unholdLatch.future, label: 'performSetHeld id1 unhold');
 
       // Verify hold events for id1: hold(true) then hold(false)
       final id1HoldEvents = delegate.holdEvents.where((e) => e.callId == id1).toList();
@@ -458,21 +315,21 @@ void main() {
         markTestSkipped('Android only');
         return;
       }
-      final id1 = _nextId();
-      final id2 = _nextId();
+      final id1 = nextTestId();
+      final id2 = nextTestId();
 
-      await callkeep.reportNewIncomingCall(id1, _handle1, displayName: 'Grace');
+      await callkeep.reportNewIncomingCall(id1, kTestHandle1, displayName: 'Grace');
 
       final answer1Latch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
         if (cid == id1 && !answer1Latch.isCompleted) answer1Latch.complete();
       };
       await callkeep.answerCall(id1);
-      await _waitFor(answer1Latch.future, label: 'performAnswerCall id1');
+      await waitFor(answer1Latch.future, label: 'performAnswerCall id1');
 
-      await callkeep.reportNewIncomingCall(id2, _handle2, displayName: 'Hank');
+      await callkeep.reportNewIncomingCall(id2, kTestHandle2, displayName: 'Hank');
       // Same OEM guard as in the hold-swap test above: skip if Telecom rejects id2.
-      final conn2 = await _waitForConnection(id2);
+      final conn2 = await waitForConnection(id2);
       if (conn2 == null) {
         markTestSkipped('device does not support concurrent incoming calls');
         return;
@@ -484,7 +341,7 @@ void main() {
         if (cid == id1 && onHold && !holdLatch.isCompleted) holdLatch.complete();
       };
       await callkeep.setHeld(id1, onHold: true);
-      await _waitFor(holdLatch.future, label: 'performSetHeld id1');
+      await waitFor(holdLatch.future, label: 'performSetHeld id1');
 
       // Answer id2
       final answer2Latch = Completer<void>();
@@ -492,7 +349,7 @@ void main() {
         if (cid == id2 && !answer2Latch.isCompleted) answer2Latch.complete();
       };
       await callkeep.answerCall(id2);
-      await _waitFor(answer2Latch.future, label: 'performAnswerCall id2');
+      await waitFor(answer2Latch.future, label: 'performAnswerCall id2');
 
       // DTMF on id2 only
       final dtmfLatch = Completer<({String callId, String key})>();
@@ -501,7 +358,7 @@ void main() {
       };
       await callkeep.sendDTMF(id2, '7');
 
-      final event = await _waitFor(dtmfLatch.future, label: 'performSendDTMF id2');
+      final event = await waitFor(dtmfLatch.future, label: 'performSendDTMF id2');
       expect(event.callId, id2);
 
       // id1 must not have received DTMF
@@ -520,15 +377,15 @@ void main() {
         markTestSkipped('Android only');
         return;
       }
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Irene');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Irene');
 
       final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
         if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
-      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+      await waitFor(answerLatch.future, label: 'performAnswerCall');
 
       // Mute
       final muteLatch = Completer<void>();
@@ -536,7 +393,7 @@ void main() {
         if (cid == id && muted && !muteLatch.isCompleted) muteLatch.complete();
       };
       await callkeep.setMuted(id, muted: true);
-      await _waitFor(muteLatch.future, label: 'performSetMuted(true)');
+      await waitFor(muteLatch.future, label: 'performSetMuted(true)');
 
       // Hold
       final holdLatch = Completer<void>();
@@ -544,7 +401,7 @@ void main() {
         if (cid == id && onHold && !holdLatch.isCompleted) holdLatch.complete();
       };
       await callkeep.setHeld(id, onHold: true);
-      await _waitFor(holdLatch.future, label: 'performSetHeld(true)');
+      await waitFor(holdLatch.future, label: 'performSetHeld(true)');
 
       // End
       final endLatch = Completer<void>();
@@ -552,7 +409,7 @@ void main() {
         if (cid == id && !endLatch.isCompleted) endLatch.complete();
       };
       await callkeep.endCall(id);
-      await _waitFor(endLatch.future, label: 'performEndCall');
+      await waitFor(endLatch.future, label: 'performEndCall');
 
       // Each app-initiated callback fires at least once for this callId.
       // Android may fire additional system-initiated mute callbacks (e.g. on
