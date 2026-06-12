@@ -69,8 +69,9 @@ void main() {
         if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
-      // Connection is already established, so performAnswerCall should arrive quickly.
-      await waitFor(answerLatch.future, label: 'performAnswerCall', timeout: const Duration(seconds: 15));
+      // The Telecom answer round-trip can be slow after 80+ tests; use a generous
+      // timeout — the test goal is crash-safety, not tight timing.
+      await waitFor(answerLatch.future, label: 'performAnswerCall', timeout: const Duration(seconds: 60));
 
       // Simulate BLoC.close() pattern: setDelegate(null) while call is active
       callkeep.setDelegate(null);
