@@ -78,6 +78,7 @@ class PhoneConnectionServiceDispatcher(
             ServiceAction.TearDownConnections,
             ServiceAction.ReserveAnswer,
             ServiceAction.NotifyPending,
+            ServiceAction.AddNewIncomingCall,
             ServiceAction.CleanConnections,
             ServiceAction.SyncAudioState,
             ServiceAction.SyncConnectionState,

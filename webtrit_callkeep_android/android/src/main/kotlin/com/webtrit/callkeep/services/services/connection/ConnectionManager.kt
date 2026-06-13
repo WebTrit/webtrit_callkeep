@@ -89,15 +89,13 @@ class ConnectionManager {
     }
 
     /**
-     * Adds [callId] to [pendingCallIds] in response to a [ServiceAction.NotifyPending] IPC
-     * intent from the main process.
+     * Adds [callId] to [pendingCallIds].
      *
      * In the dual-process architecture, [checkAndReservePending] runs in the main-process JVM
      * and populates the main process's [ConnectionManager] instance. The :callkeep_core process
-     * has its own instance whose [pendingCallIds] is never touched by the main process.
-     * This method bridges the gap: the main process sends a [ServiceAction.NotifyPending] intent
-     * just before [TelephonyUtils.addNewIncomingCall], and [PhoneConnectionService.handleNotifyPending]
-     * calls this method, ensuring [isPending] returns true when [onCreateIncomingConnection] fires.
+     * has its own instance whose [pendingCallIds] is populated here, called from
+     * [PhoneConnectionService.handleAddNewIncomingCall] before [TelephonyUtils.addNewIncomingCall],
+     * ensuring [isPending] returns true when [onCreateIncomingConnection] fires.
      *
      * Also removes [callId] from [forcedTerminatedCallIds] in the (theoretically impossible for
      * UUID callIds) case where a new session re-uses the same ID.
