@@ -273,7 +273,19 @@ void main() {
         4,
         (_) => callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Call'),
       );
-      final results = await Future.wait(futures);
+
+      late final List<CallkeepIncomingCallError?> results;
+      try {
+        results = await Future.wait(futures).timeout(const Duration(seconds: 8));
+      } on TimeoutException {
+        fail(
+          'concurrent spam: Future.wait timed out after 8s -- '
+          'one or more reportNewIncomingCall futures never resolved. '
+          'Root cause: pendingIncomingCallbacks[callId] is overwritten then cleared '
+          'by a concurrent duplicate onError handler before DidPushIncomingCall arrives '
+          '(see tasks/callkeep-itest-spam-race/report.md).',
+        );
+      }
 
       final successes = results.where((e) => e == null).length;
       expect(successes, 1, reason: 'exactly one concurrent report must succeed');
