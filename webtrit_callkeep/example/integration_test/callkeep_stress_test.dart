@@ -267,6 +267,14 @@ void main() {
       expect(endedIds.length, expectedIds.length);
     });
 
+    // Verifies that firing reportNewIncomingCall with the same callId four times
+    // concurrently (via Future.wait, no await between launches) results in exactly
+    // one success and three callIdAlreadyExists errors.
+    //
+    // The invariant: ForegroundService must guard pendingIncomingCallbacks so that
+    // only the first registrant owns the map slot. Duplicate onError handlers must
+    // not remove an entry they did not create, which would orphan the first call's
+    // Pigeon callback and cause Future.wait to hang indefinitely.
     testWidgets('spam same ID concurrently - exactly one succeeds', (WidgetTester _) async {
       final id = nextTestId();
       final futures = List.generate(
