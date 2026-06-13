@@ -267,13 +267,32 @@ void main() {
       expect(endedIds.length, expectedIds.length);
     });
 
+    // Verifies that firing reportNewIncomingCall with the same callId four times
+    // concurrently (via Future.wait, no await between launches) results in exactly
+    // one success and three callIdAlreadyExists errors.
+    //
+    // The invariant: ForegroundService must guard pendingIncomingCallbacks so that
+    // only the first registrant owns the map slot. Duplicate onError handlers must
+    // not remove an entry they did not create, which would orphan the first call's
+    // Pigeon callback and cause Future.wait to hang indefinitely.
     testWidgets('spam same ID concurrently - exactly one succeeds', (WidgetTester _) async {
       final id = nextTestId();
       final futures = List.generate(
         4,
         (_) => callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Call'),
       );
-      final results = await Future.wait(futures);
+
+      late final List<CallkeepIncomingCallError?> results;
+      try {
+        results = await Future.wait(futures).timeout(const Duration(seconds: 8));
+      } on TimeoutException {
+        fail(
+          'concurrent spam: Future.wait timed out after 8s -- '
+          'one or more reportNewIncomingCall futures never resolved. '
+          'Root cause: pendingIncomingCallbacks[callId] is overwritten then cleared '
+          'by a concurrent duplicate onError handler before DidPushIncomingCall arrives.',
+        );
+      }
 
       final successes = results.where((e) => e == null).length;
       expect(successes, 1, reason: 'exactly one concurrent report must succeed');
