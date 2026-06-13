@@ -13,6 +13,7 @@ import android.telecom.PhoneAccount
 import android.telecom.PhoneAccountHandle
 import androidx.annotation.RequiresPermission
 import com.webtrit.callkeep.PIncomingCallError
+import com.webtrit.callkeep.PIncomingCallErrorEnum
 import com.webtrit.callkeep.common.AssetCacheManager
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
@@ -773,15 +774,15 @@ class PhoneConnectionService : ConnectionService() {
                         putExtras(metadata.toBundle())
                     }
                 runCatching { context.startService(intent) }
+                    .onSuccess { onSuccess() }
                     .onFailure { e ->
                         // startService can fail with IllegalStateException on Android 8+ when
-                        // the app is in the background. Dispatch HungUp so the main process
-                        // resolves the pending Pigeon callback instead of leaving it hanging.
-                        Log.e(TAG, "startIncomingCall: startService(AddNewIncomingCall) failed for callId=${metadata.callId}, dispatching HungUp: $e")
+                        // the app is in the background. Remove the pending reservation and
+                        // propagate the failure via onError so the Pigeon callback is resolved.
+                        Log.e(TAG, "startIncomingCall: startService(AddNewIncomingCall) failed for callId=${metadata.callId}", e)
                         connectionManager.removePending(metadata.callId)
-                        ConnectionServicePerformBroadcaster.handle.dispatch(context, CallLifecycleEvent.HungUp, metadata.toBundle())
+                        onError(PIncomingCallError(PIncomingCallErrorEnum.UNKNOWN))
                     }
-                onSuccess()
             }, onError = { incomingCallError ->
                 Log.w(TAG, "Incoming call rejected: ${incomingCallError.value}")
                 onError(incomingCallError)
