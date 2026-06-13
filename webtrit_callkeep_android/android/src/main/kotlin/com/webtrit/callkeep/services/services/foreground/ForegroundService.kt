@@ -512,27 +512,39 @@ class ForegroundService :
         // call inside startIncomingCall — before the IPC onSuccess callback returns to this
         // process. Without pre-registration, resolvePendingIncomingCallback finds no entry and
         // the confirmation is lost, causing the 5-second timeout to fire unconditionally.
-        pendingIncomingCallbacks[callId] = callback
-        val timeoutRunnable =
-            Runnable {
-                logger.w("reportNewIncomingCall: Telecom confirmation timeout for callId=$callId, resolving with CALL_REJECTED_BY_SYSTEM")
-                pendingIncomingTimeouts.remove(callId)
-                // pendingCallIds is owned by InProcessCallkeepCore.startIncomingCall now.
-                // If we got here, neither onSuccess nor onError fired within 5 s — the
-                // internal drain did not run, so we must drain explicitly. removePending
-                // is idempotent.
-                core.removePending(callId)
-                // Mark terminated and endCallDispatched so that a late-arriving HungUp
-                // broadcast (after the timeout) does not cause handleCSReportDeclineCall
-                // to fire performEndCall for a call Flutter already got callRejectedBySystem for.
-                core.clearAndMarkEndCallDispatched(callId)
-                resolvePendingIncomingCallback(
-                    callId,
-                    Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_REJECTED_BY_SYSTEM)),
-                )
-            }
-        pendingIncomingTimeouts[callId] = timeoutRunnable
-        mainHandler.postDelayed(timeoutRunnable, INCOMING_CALL_CONFIRMATION_TIMEOUT_MS)
+        //
+        // putIfAbsent is used instead of a plain assignment so that concurrent
+        // reportNewIncomingCall calls with the same callId (all dispatched on the main thread
+        // before any of them completes) cannot overwrite each other's callback. Only the first
+        // caller owns the slot (ownsPendingSlot=true) and registers the timeout; duplicates
+        // skip both registrations and, in their onError handler, must not touch the maps so
+        // the first callback remains in place until DidPushIncomingCall resolves it.
+        val ownsPendingSlot = pendingIncomingCallbacks.putIfAbsent(callId, callback) == null
+        val timeoutRunnable: Runnable
+        if (ownsPendingSlot) {
+            timeoutRunnable =
+                Runnable {
+                    logger.w("reportNewIncomingCall: Telecom confirmation timeout for callId=$callId, resolving with CALL_REJECTED_BY_SYSTEM")
+                    pendingIncomingTimeouts.remove(callId)
+                    // pendingCallIds is owned by InProcessCallkeepCore.startIncomingCall now.
+                    // If we got here, neither onSuccess nor onError fired within 5 s — the
+                    // internal drain did not run, so we must drain explicitly. removePending
+                    // is idempotent.
+                    core.removePending(callId)
+                    // Mark terminated and endCallDispatched so that a late-arriving HungUp
+                    // broadcast (after the timeout) does not cause handleCSReportDeclineCall
+                    // to fire performEndCall for a call Flutter already got callRejectedBySystem for.
+                    core.clearAndMarkEndCallDispatched(callId)
+                    resolvePendingIncomingCallback(
+                        callId,
+                        Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_REJECTED_BY_SYSTEM)),
+                    )
+                }
+            pendingIncomingTimeouts[callId] = timeoutRunnable
+            mainHandler.postDelayed(timeoutRunnable, INCOMING_CALL_CONFIRMATION_TIMEOUT_MS)
+        } else {
+            timeoutRunnable = Runnable {}
+        }
 
         // Mark this callId as signaling-registered BEFORE calling startIncomingCall so
         // that the DidPushIncomingCall broadcast (fired by :callkeep_core during the IPC
@@ -556,11 +568,14 @@ class ForegroundService :
                 // markSignalingRegistered was already called before startIncomingCall.
             },
             onError = { error ->
-                // startIncomingCall failed — cancel the pre-registered timeout and callback
-                // so they do not race with the direct callback invocation below.
+                // Cancel timeout and clear maps only if this call owns the pending slot.
+                // A non-owner (ownsPendingSlot=false) must leave the maps untouched so the
+                // first caller's callback stays in place for DidPushIncomingCall to resolve.
                 mainHandler.removeCallbacks(timeoutRunnable)
-                pendingIncomingTimeouts.remove(callId)
-                pendingIncomingCallbacks.remove(callId)
+                if (ownsPendingSlot) {
+                    pendingIncomingTimeouts.remove(callId)
+                    pendingIncomingCallbacks.remove(callId)
+                }
 
                 when (error?.value) {
                     PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS -> {
