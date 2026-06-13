@@ -520,9 +520,10 @@ class ForegroundService :
         // skip both registrations and, in their onError handler, must not touch the maps so
         // the first callback remains in place until DidPushIncomingCall resolves it.
         val ownsPendingSlot = pendingIncomingCallbacks.putIfAbsent(callId, callback) == null
-        val timeoutRunnable: Runnable
-        if (ownsPendingSlot) {
-            timeoutRunnable =
+        // Non-owners post no timeout and have nothing to cancel in onError — null makes
+        // the ownership contract explicit and avoids allocating a no-op Runnable per call.
+        val timeoutRunnable: Runnable? =
+            if (ownsPendingSlot) {
                 Runnable {
                     logger.w("reportNewIncomingCall: Telecom confirmation timeout for callId=$callId, resolving with CALL_REJECTED_BY_SYSTEM")
                     pendingIncomingTimeouts.remove(callId)
@@ -539,12 +540,13 @@ class ForegroundService :
                         callId,
                         Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_REJECTED_BY_SYSTEM)),
                     )
+                }.also { r ->
+                    pendingIncomingTimeouts[callId] = r
+                    mainHandler.postDelayed(r, INCOMING_CALL_CONFIRMATION_TIMEOUT_MS)
                 }
-            pendingIncomingTimeouts[callId] = timeoutRunnable
-            mainHandler.postDelayed(timeoutRunnable, INCOMING_CALL_CONFIRMATION_TIMEOUT_MS)
-        } else {
-            timeoutRunnable = Runnable {}
-        }
+            } else {
+                null
+            }
 
         // Mark this callId as signaling-registered BEFORE calling startIncomingCall so
         // that the DidPushIncomingCall broadcast (fired by :callkeep_core during the IPC
@@ -571,7 +573,7 @@ class ForegroundService :
                 // Cancel timeout and clear maps only if this call owns the pending slot.
                 // A non-owner (ownsPendingSlot=false) must leave the maps untouched so the
                 // first caller's callback stays in place for DidPushIncomingCall to resolve.
-                mainHandler.removeCallbacks(timeoutRunnable)
+                timeoutRunnable?.let { mainHandler.removeCallbacks(it) }
                 if (ownsPendingSlot) {
                     pendingIncomingTimeouts.remove(callId)
                     pendingIncomingCallbacks.remove(callId)
