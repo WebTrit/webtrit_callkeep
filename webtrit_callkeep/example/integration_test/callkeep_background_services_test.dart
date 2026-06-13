@@ -1,10 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:webtrit_callkeep/webtrit_callkeep.dart';
+
+import 'helpers/callkeep_test_helpers.dart';
 
 // ---------------------------------------------------------------------------
 // Background services integration tests
@@ -25,116 +28,6 @@ import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// Shared fixtures
-// ---------------------------------------------------------------------------
-
-const _options = CallkeepOptions(
-  ios: CallkeepIOSOptions(
-    localizedName: 'BG Service Tests',
-    maximumCallGroups: 2,
-    maximumCallsPerCallGroup: 1,
-    supportedHandleTypes: {CallkeepHandleType.number},
-  ),
-  android: CallkeepAndroidOptions(),
-);
-
-const _handle1 = CallkeepHandle.number('380001000000');
-const _handle2 = CallkeepHandle.number('380001000001');
-
-var _idCounter = 0;
-String _nextId() => 'bg-${_idCounter++}';
-
-// ---------------------------------------------------------------------------
-// Recording delegate
-// ---------------------------------------------------------------------------
-
-class _RecordingDelegate implements CallkeepDelegate {
-  final List<String> answerCallIds = [];
-  final List<String> endCallIds = [];
-
-  void Function(String callId)? onPerformAnswerCall;
-  void Function(String callId)? onPerformEndCall;
-
-  @override
-  void continueStartCallIntent(CallkeepHandle handle, String? displayName, bool video) {}
-
-  @override
-  void didPushIncomingCall(
-    CallkeepHandle handle,
-    String? displayName,
-    bool video,
-    String callId,
-    CallkeepIncomingCallError? error,
-  ) {}
-
-  @override
-  void didActivateAudioSession() {}
-
-  @override
-  void didDeactivateAudioSession() {}
-
-  @override
-  void didReset() {}
-
-  @override
-  Future<bool> performStartCall(String callId, CallkeepHandle handle, String? displayName, bool video) =>
-      Future.value(true);
-
-  @override
-  Future<bool> performAnswerCall(String callId) {
-    answerCallIds.add(callId);
-    onPerformAnswerCall?.call(callId);
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performEndCall(String callId) {
-    endCallIds.add(callId);
-    onPerformEndCall?.call(callId);
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performSetHeld(String callId, bool onHold) => Future.value(true);
-
-  @override
-  Future<bool> performSetMuted(String callId, bool muted) => Future.value(true);
-
-  @override
-  Future<bool> performSendDTMF(String callId, String key) => Future.value(true);
-
-  @override
-  Future<bool> performAudioDeviceSet(String callId, CallkeepAudioDevice device) => Future.value(true);
-
-  @override
-  Future<bool> performAudioDevicesUpdate(String callId, List<CallkeepAudioDevice> devices) => Future.value(true);
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-Future<T> _waitFor<T>(Future<T> future, {String label = 'callback'}) {
-  return future.timeout(
-    const Duration(seconds: 10),
-    onTimeout: () => throw TimeoutException('$label did not fire within timeout'),
-  );
-}
-
-Future<CallkeepConnection?> _waitForConnection(
-  String callId, {
-  Duration timeout = const Duration(seconds: 5),
-}) async {
-  final deadline = DateTime.now().add(timeout);
-  while (DateTime.now().isBefore(deadline)) {
-    final conn = await CallkeepConnections().getConnection(callId);
-    if (conn != null) return conn;
-    await Future.delayed(const Duration(milliseconds: 100));
-  }
-  return null;
-}
-
-// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -142,14 +35,14 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   late Callkeep callkeep;
-  late _RecordingDelegate delegate;
+  late RecordingDelegate delegate;
   var globalTearDownNeeded = true;
 
   setUp(() async {
     globalTearDownNeeded = true;
     callkeep = Callkeep();
-    delegate = _RecordingDelegate();
-    await callkeep.setUp(_options);
+    delegate = RecordingDelegate();
+    await callkeep.setUp(kTestOptions);
     callkeep.setDelegate(delegate);
   });
 
@@ -190,12 +83,12 @@ void main() {
         return;
       }
 
-      final id = _nextId();
+      final id = nextTestId();
 
       await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(id, _handle1, displayName: 'Alice');
+          .reportNewIncomingCall(id, kTestHandle1, displayName: 'Alice');
 
-      final err = await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Alice');
+      final err = await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Alice');
 
       expect(
         err,
@@ -210,13 +103,13 @@ void main() {
         return;
       }
 
-      final id = _nextId();
+      final id = nextTestId();
 
       await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(id, _handle1, displayName: 'Bob');
+          .reportNewIncomingCall(id, kTestHandle1, displayName: 'Bob');
 
       final err = await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(id, _handle1, displayName: 'Bob');
+          .reportNewIncomingCall(id, kTestHandle1, displayName: 'Bob');
 
       expect(
         err,
@@ -231,11 +124,11 @@ void main() {
         return;
       }
 
-      final id = _nextId();
+      final id = nextTestId();
       final futures = List.generate(
         4,
         (_) => AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-            .reportNewIncomingCall(id, _handle1, displayName: 'Charlie'),
+            .reportNewIncomingCall(id, kTestHandle1, displayName: 'Charlie'),
       );
       final results = await Future.wait(futures);
       final successes = results.where((e) => e == null).length;
@@ -265,10 +158,10 @@ void main() {
         return;
       }
 
-      final id = _nextId();
+      final id = nextTestId();
 
       await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(id, _handle1, displayName: 'Dave');
+          .reportNewIncomingCall(id, kTestHandle1, displayName: 'Dave');
 
       final latch = Completer<String>();
       delegate.onPerformEndCall = (cid) {
@@ -279,7 +172,7 @@ void main() {
       // available without a real FCM push, so we end via callkeep directly.
       await callkeep.endCall(id);
 
-      final ended = await _waitFor(latch.future, label: 'performEndCall for push-path call');
+      final ended = await waitFor(latch.future, label: 'performEndCall for push-path call');
       expect(ended, id);
     });
 
@@ -303,20 +196,20 @@ void main() {
         return;
       }
 
-      final id1 = _nextId();
-      final id2 = _nextId();
+      final id1 = nextTestId();
+      final id2 = nextTestId();
 
       await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(id1, _handle1, displayName: 'Eve');
+          .reportNewIncomingCall(id1, kTestHandle1, displayName: 'Eve');
       // Wait for id1 to be promoted (DidPushIncomingCall received) before
       // adding id2. This ensures Telecom sees id1 in RINGING state first.
-      await _waitForConnection(id1);
+      await waitForConnection(id1);
 
       // Register the callback before reporting id2. Telecom may call
       // onCreateIncomingConnectionFailed for id2 (BUSY — id1 is RINGING),
       // which fires performEndCall immediately via the HungUp broadcast path.
       // Registering here ensures that early firing is captured even if
-      // _waitForConnection(id2) times out before endCall(id2) is called.
+      // waitForConnection(id2) times out before endCall(id2) is called.
       final endedIds = <String>[];
       final allDone = Completer<void>();
       delegate.onPerformEndCall = (cid) {
@@ -327,12 +220,12 @@ void main() {
       };
 
       await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(id2, _handle2, displayName: 'Frank');
+          .reportNewIncomingCall(id2, kTestHandle2, displayName: 'Frank');
 
       // On OEM devices that reject concurrent incoming calls, id2 is never
       // promoted (no DidPushIncomingCall). Skip rather than waiting the full
       // _waitForConnection timeout on every run on such devices.
-      final conn2 = await _waitForConnection(id2);
+      final conn2 = await waitForConnection(id2);
       if (conn2 == null) {
         markTestSkipped('device does not support concurrent incoming calls');
         return;
@@ -341,7 +234,7 @@ void main() {
       await callkeep.endCall(id1);
       await callkeep.endCall(id2);
 
-      await _waitFor(allDone.future, label: 'both performEndCall for push-path calls');
+      await waitFor(allDone.future, label: 'both performEndCall for push-path calls');
       expect(endedIds, containsAll([id1, id2]));
     });
 
@@ -364,15 +257,15 @@ void main() {
         return;
       }
 
-      final id = _nextId();
+      final id = nextTestId();
 
       await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(id, _handle1, displayName: 'Grace');
+          .reportNewIncomingCall(id, kTestHandle1, displayName: 'Grace');
       // Wait for the call to be promoted before answering. answerCall() works
       // via the deferred-answer path when the call is still pending, but
       // _waitForConnection guarantees the PhoneConnection exists so the answer
       // goes through the direct path (no race with onCreateIncomingConnection).
-      await _waitForConnection(id);
+      await waitForConnection(id);
 
       // Answer from the main process (simulates push isolate answering the call)
       final answerLatch = Completer<String>();
@@ -380,10 +273,10 @@ void main() {
         if (cid == id && !answerLatch.isCompleted) answerLatch.complete(cid);
       };
       await callkeep.answerCall(id);
-      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+      await waitFor(answerLatch.future, label: 'performAnswerCall');
 
       // Main-process CallBloc arrives late with its own reportNewIncomingCall
-      final err = await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Grace');
+      final err = await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Grace');
 
       expect(
         err,
@@ -408,21 +301,26 @@ void main() {
         return;
       }
 
-      final id = _nextId();
+      final id = nextTestId();
 
       // First call: register → end → wait for delegate notification.
       await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(id, _handle1, displayName: 'Hank');
+          .reportNewIncomingCall(id, kTestHandle1, displayName: 'Hank');
 
       final endLatch = Completer<void>();
       delegate.onPerformEndCall = (cid) {
         if (cid == id && !endLatch.isCompleted) endLatch.complete();
       };
       await callkeep.endCall(id);
-      await _waitFor(endLatch.future, label: 'performEndCall for first call');
+      await waitFor(endLatch.future, label: 'performEndCall for first call');
+
+      // Wait until Telecom fully removes the connection before re-registering.
+      // After 100+ tests Telecom may be slow to clean up; re-reporting too early
+      // returns callRejectedBySystem because the previous slot is still occupied.
+      await waitForConnectionGone(id, timeout: const Duration(seconds: 15));
 
       // Transfer-back: new incoming call reusing the same callId must succeed.
-      final err = await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Hank');
+      final err = await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Hank');
 
       expect(
         err,
@@ -436,7 +334,7 @@ void main() {
         if (cid == id && !endLatch2.isCompleted) endLatch2.complete();
       };
       await callkeep.endCall(id);
-      await _waitFor(endLatch2.future, label: 'performEndCall for transfer-back call');
+      await waitFor(endLatch2.future, label: 'performEndCall for transfer-back call');
     });
 
     // -----------------------------------------------------------------------
@@ -455,16 +353,16 @@ void main() {
       }
 
       globalTearDownNeeded = false;
-      final id = _nextId();
+      final id = nextTestId();
 
       await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(id, _handle1, displayName: 'Irene');
+          .reportNewIncomingCall(id, kTestHandle1, displayName: 'Irene');
 
       // Wait for the push-path call to propagate from :callkeep_core to the
       // main-process connection tracker via IPC before calling tearDown().
       // Without this, tearDown() may call getAll() before the call is visible
       // in the main process and skip the performEndCall dispatch.
-      await _waitForConnection(id);
+      await waitForConnection(id);
 
       final latch = Completer<void>();
       delegate.onPerformEndCall = (cid) {
@@ -472,9 +370,50 @@ void main() {
       };
 
       await callkeep.tearDown();
-      await _waitFor(latch.future, label: 'performEndCall on tearDown');
+      await waitFor(latch.future, label: 'performEndCall on tearDown');
 
       expect(delegate.endCallIds.where((c) => c == id).length, 1);
+    });
+
+    // -----------------------------------------------------------------------
+    // releaseCall / handoffCall — channel availability contract
+    //
+    // Both methods are designed for the push background isolate context: they
+    // communicate with IncomingCallService via a Pigeon channel that is only
+    // registered when that service attaches (via a real FCM push). Without a
+    // running IncomingCallService the channel handler is null, so the Dart
+    // side receives a null reply and throws PlatformException("channel-error").
+    //
+    // These tests verify that contract so callers know to catch PlatformException
+    // when the service is unavailable (e.g. app in foreground, no push in flight).
+    // -----------------------------------------------------------------------
+
+    testWidgets('releaseCall throws PlatformException when IncomingCallService is not running', (WidgetTester _) async {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+        markTestSkipped('Android only');
+        return;
+      }
+
+      // IncomingCallService is never running in integration tests (requires FCM).
+      // releaseCall must throw a PlatformException to signal the unavailable channel.
+      await expectLater(
+        AndroidCallkeepServices.backgroundPushNotificationService.releaseCall('any-id'),
+        throwsA(isA<PlatformException>()),
+      );
+    });
+
+    testWidgets('handoffCall throws PlatformException when IncomingCallService is not running', (WidgetTester _) async {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+        markTestSkipped('Android only');
+        return;
+      }
+
+      // IncomingCallService is never running in integration tests (requires FCM).
+      // handoffCall must throw a PlatformException to signal the unavailable channel.
+      await expectLater(
+        AndroidCallkeepServices.backgroundPushNotificationService.handoffCall('any-id'),
+        throwsA(isA<PlatformException>()),
+      );
     });
   });
 }

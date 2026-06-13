@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 
+import 'helpers/callkeep_test_helpers.dart';
+
 // ---------------------------------------------------------------------------
 // ForegroundService / main-process signaling path — integration tests
 //
@@ -34,99 +36,6 @@ import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 //   answer path, so that answerCall works regardless of broadcast delivery timing.
 // ---------------------------------------------------------------------------
 
-const _options = CallkeepOptions(
-  ios: CallkeepIOSOptions(
-    localizedName: 'ForegroundService Tests',
-    maximumCallGroups: 2,
-    maximumCallsPerCallGroup: 1,
-    supportedHandleTypes: {CallkeepHandleType.number},
-  ),
-  android: CallkeepAndroidOptions(),
-);
-
-const _handle1 = CallkeepHandle.number('380002000000');
-const _handle2 = CallkeepHandle.number('380002000001');
-
-var _idCounter = 0;
-String _nextId() => 'fs-${_idCounter++}';
-
-// ---------------------------------------------------------------------------
-// Recording delegate
-// ---------------------------------------------------------------------------
-
-class _RecordingDelegate implements CallkeepDelegate {
-  final List<String> answerCallIds = [];
-  final List<String> endCallIds = [];
-
-  void Function(String callId)? onPerformAnswerCall;
-  void Function(String callId)? onPerformEndCall;
-
-  @override
-  void continueStartCallIntent(CallkeepHandle handle, String? displayName, bool video) {}
-
-  @override
-  void didPushIncomingCall(
-    CallkeepHandle handle,
-    String? displayName,
-    bool video,
-    String callId,
-    CallkeepIncomingCallError? error,
-  ) {}
-
-  @override
-  void didActivateAudioSession() {}
-
-  @override
-  void didDeactivateAudioSession() {}
-
-  @override
-  void didReset() {}
-
-  @override
-  Future<bool> performStartCall(String callId, CallkeepHandle handle, String? displayName, bool video) =>
-      Future.value(true);
-
-  @override
-  Future<bool> performAnswerCall(String callId) {
-    answerCallIds.add(callId);
-    onPerformAnswerCall?.call(callId);
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performEndCall(String callId) {
-    endCallIds.add(callId);
-    onPerformEndCall?.call(callId);
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performSetHeld(String callId, bool onHold) => Future.value(true);
-
-  @override
-  Future<bool> performSetMuted(String callId, bool muted) => Future.value(true);
-
-  @override
-  Future<bool> performSendDTMF(String callId, String key) => Future.value(true);
-
-  @override
-  Future<bool> performAudioDeviceSet(String callId, CallkeepAudioDevice device) => Future.value(true);
-
-  @override
-  Future<bool> performAudioDevicesUpdate(String callId, List<CallkeepAudioDevice> devices) => Future.value(true);
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-Future<T> _waitFor<T>(Future<T> future, {String label = 'callback'}) {
-  return future.timeout(
-    const Duration(seconds: 10),
-    onTimeout: () => throw TimeoutException('$label did not fire within timeout'),
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -135,14 +44,14 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   late Callkeep callkeep;
-  late _RecordingDelegate delegate;
+  late RecordingDelegate delegate;
   var globalTearDownNeeded = true;
 
   setUp(() async {
     globalTearDownNeeded = true;
     callkeep = Callkeep();
-    delegate = _RecordingDelegate();
-    await callkeep.setUp(_options);
+    delegate = RecordingDelegate();
+    await callkeep.setUp(kTestOptions);
     callkeep.setDelegate(delegate);
   });
 
@@ -177,8 +86,8 @@ void main() {
         return;
       }
 
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Alice');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Alice');
 
       final latch = Completer<String>();
       delegate.onPerformAnswerCall = (cid) {
@@ -189,7 +98,7 @@ void main() {
       // arrives — this is the race condition the fix addresses.
       await callkeep.answerCall(id);
 
-      final answered = await _waitFor(latch.future, label: 'performAnswerCall (immediate)');
+      final answered = await waitFor(latch.future, label: 'performAnswerCall (immediate)');
       expect(answered, id);
     });
 
@@ -202,8 +111,8 @@ void main() {
         return;
       }
 
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Bob');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Bob');
       await Future.delayed(const Duration(milliseconds: 300));
 
       final latch = Completer<String>();
@@ -213,7 +122,7 @@ void main() {
 
       await callkeep.answerCall(id);
 
-      final answered = await _waitFor(latch.future, label: 'performAnswerCall (after broadcast)');
+      final answered = await waitFor(latch.future, label: 'performAnswerCall (after broadcast)');
       expect(answered, id);
     });
 
@@ -225,8 +134,8 @@ void main() {
         return;
       }
 
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Charlie');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Charlie');
 
       final latch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
@@ -234,7 +143,7 @@ void main() {
       };
 
       await callkeep.answerCall(id);
-      await _waitFor(latch.future, label: 'performAnswerCall');
+      await waitFor(latch.future, label: 'performAnswerCall');
 
       // Wait briefly to allow any spurious second callback to arrive.
       await Future.delayed(const Duration(milliseconds: 300));
@@ -252,8 +161,8 @@ void main() {
         return;
       }
 
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Dave', hasVideo: true);
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Dave', hasVideo: true);
 
       final latch = Completer<String>();
       delegate.onPerformAnswerCall = (cid) {
@@ -262,7 +171,7 @@ void main() {
 
       await callkeep.answerCall(id);
 
-      final answered = await _waitFor(latch.future, label: 'performAnswerCall (video)');
+      final answered = await waitFor(latch.future, label: 'performAnswerCall (video)');
       expect(answered, id);
     });
   });
@@ -283,8 +192,8 @@ void main() {
         return;
       }
 
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Eve');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Eve');
 
       final latch = Completer<String>();
       delegate.onPerformEndCall = (cid) {
@@ -293,7 +202,7 @@ void main() {
 
       await callkeep.endCall(id);
 
-      final ended = await _waitFor(latch.future, label: 'performEndCall (immediate decline)');
+      final ended = await waitFor(latch.future, label: 'performEndCall (immediate decline)');
       expect(ended, id);
       expect(delegate.answerCallIds, isEmpty);
     });
@@ -304,8 +213,8 @@ void main() {
         return;
       }
 
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Frank');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Frank');
 
       final latch = Completer<void>();
       delegate.onPerformEndCall = (cid) {
@@ -313,7 +222,7 @@ void main() {
       };
 
       await callkeep.endCall(id);
-      await _waitFor(latch.future, label: 'performEndCall');
+      await waitFor(latch.future, label: 'performEndCall');
 
       await Future.delayed(const Duration(milliseconds: 300));
 
@@ -330,22 +239,22 @@ void main() {
         return;
       }
 
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Grace');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Grace');
 
       final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
         if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
-      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+      await waitFor(answerLatch.future, label: 'performAnswerCall');
 
       final endLatch = Completer<String>();
       delegate.onPerformEndCall = (cid) {
         if (cid == id && !endLatch.isCompleted) endLatch.complete(cid);
       };
       await callkeep.endCall(id);
-      await _waitFor(endLatch.future, label: 'performEndCall');
+      await waitFor(endLatch.future, label: 'performEndCall');
 
       await Future.delayed(const Duration(milliseconds: 300));
 
@@ -371,8 +280,8 @@ void main() {
       }
 
       globalTearDownNeeded = false;
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Hank');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Hank');
 
       final latch = Completer<void>();
       delegate.onPerformEndCall = (cid) {
@@ -380,7 +289,7 @@ void main() {
       };
 
       await callkeep.tearDown();
-      await _waitFor(latch.future, label: 'performEndCall on tearDown');
+      await waitFor(latch.future, label: 'performEndCall on tearDown');
 
       expect(
         delegate.endCallIds.where((c) => c == id).length,
@@ -399,15 +308,15 @@ void main() {
       }
 
       globalTearDownNeeded = false;
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Irene');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Irene');
 
       final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
         if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
-      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+      await waitFor(answerLatch.future, label: 'performAnswerCall');
 
       final endLatch = Completer<void>();
       delegate.onPerformEndCall = (cid) {
@@ -415,7 +324,7 @@ void main() {
       };
 
       await callkeep.tearDown();
-      await _waitFor(endLatch.future, label: 'performEndCall on tearDown');
+      await waitFor(endLatch.future, label: 'performEndCall on tearDown');
 
       await Future.delayed(const Duration(milliseconds: 300));
 
@@ -433,12 +342,12 @@ void main() {
       }
 
       globalTearDownNeeded = false;
-      final id1 = _nextId();
-      final id2 = _nextId();
+      final id1 = nextTestId();
+      final id2 = nextTestId();
 
-      await callkeep.reportNewIncomingCall(id1, _handle1, displayName: 'Jack');
+      await callkeep.reportNewIncomingCall(id1, kTestHandle1, displayName: 'Jack');
       await Future.delayed(const Duration(milliseconds: 200));
-      final err2 = await callkeep.reportNewIncomingCall(id2, _handle2, displayName: 'Kate');
+      final err2 = await callkeep.reportNewIncomingCall(id2, kTestHandle2, displayName: 'Kate');
 
       // On OEM devices that do not support concurrent self-managed calls (e.g.
       // Huawei), the second reportNewIncomingCall returns callRejectedBySystem.
@@ -457,7 +366,7 @@ void main() {
       };
 
       await callkeep.tearDown();
-      await _waitFor(allDone.future, label: 'performEndCall on tearDown for accepted calls');
+      await waitFor(allDone.future, label: 'performEndCall on tearDown for accepted calls');
       expect(endedIds, containsAll(expectedIds.toList()));
     });
   });
@@ -477,11 +386,11 @@ void main() {
         return;
       }
 
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Leo');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Leo');
       await Future.delayed(const Duration(milliseconds: 400));
 
-      final err = await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Leo');
+      final err = await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Leo');
       expect(
         err,
         CallkeepIncomingCallError.callIdAlreadyExists,
@@ -497,17 +406,17 @@ void main() {
         return;
       }
 
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Mia');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Mia');
 
       final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
         if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
-      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+      await waitFor(answerLatch.future, label: 'performAnswerCall');
 
-      final err = await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Mia');
+      final err = await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Mia');
       expect(
         err,
         CallkeepIncomingCallError.callIdAlreadyExistsAndAnswered,
@@ -525,18 +434,18 @@ void main() {
       }
 
       globalTearDownNeeded = false;
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Nick');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Nick');
 
       final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
         if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
-      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+      await waitFor(answerLatch.future, label: 'performAnswerCall');
 
       // Simulate CallBloc arriving late with its own reportNewIncomingCall.
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Nick');
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Nick');
 
       final endLatch = Completer<void>();
       delegate.onPerformEndCall = (cid) {
@@ -544,7 +453,7 @@ void main() {
       };
 
       await callkeep.tearDown();
-      await _waitFor(endLatch.future, label: 'performEndCall on tearDown');
+      await waitFor(endLatch.future, label: 'performEndCall on tearDown');
 
       await Future.delayed(const Duration(milliseconds: 300));
 
@@ -586,15 +495,15 @@ void main() {
         return;
       }
 
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Oscar');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Oscar');
 
       final firstAnswerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
         if (cid == id && !firstAnswerLatch.isCompleted) firstAnswerLatch.complete();
       };
       await callkeep.answerCall(id);
-      await _waitFor(firstAnswerLatch.future, label: 'performAnswerCall (first)');
+      await waitFor(firstAnswerLatch.future, label: 'performAnswerCall (first)');
 
       // Simulate the signaling layer re-reporting the already-answered call
       // (cold-start: reportNewIncomingCall arrives after SyncConnectionState
@@ -605,10 +514,10 @@ void main() {
         if (cid == id && !adoptLatch.isCompleted) adoptLatch.complete();
       };
 
-      final err = await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Oscar');
+      final err = await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Oscar');
       expect(err, CallkeepIncomingCallError.callIdAlreadyExistsAndAnswered);
 
-      await _waitFor(adoptLatch.future, label: 'performAnswerCall (cold-start adoption)');
+      await waitFor(adoptLatch.future, label: 'performAnswerCall (cold-start adoption)');
       expect(delegate.answerCallIds.where((c) => c == id).length, greaterThanOrEqualTo(2));
     });
 
@@ -621,18 +530,18 @@ void main() {
         return;
       }
 
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Paula');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Paula');
 
       final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
         if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
-      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+      await waitFor(answerLatch.future, label: 'performAnswerCall');
 
       // Simulate late-arriving reportNewIncomingCall (cold-start adoption).
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Paula');
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Paula');
 
       // After adoption, endCall must locate the call (via core.exists()) and
       // fire performEndCall — the primary observable failure before the fix.
@@ -642,7 +551,7 @@ void main() {
       };
       await callkeep.endCall(id);
 
-      final ended = await _waitFor(endLatch.future, label: 'performEndCall after adoption');
+      final ended = await waitFor(endLatch.future, label: 'performEndCall after adoption');
       expect(ended, id);
     });
 
@@ -657,18 +566,18 @@ void main() {
       }
 
       globalTearDownNeeded = false;
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Quinn');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Quinn');
 
       final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
         if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
-      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+      await waitFor(answerLatch.future, label: 'performAnswerCall');
 
       // Simulate late-arriving reportNewIncomingCall (cold-start adoption).
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Quinn');
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Quinn');
 
       final endLatch = Completer<void>();
       delegate.onPerformEndCall = (cid) {
@@ -676,7 +585,7 @@ void main() {
       };
 
       await callkeep.tearDown();
-      await _waitFor(endLatch.future, label: 'performEndCall on tearDown');
+      await waitFor(endLatch.future, label: 'performEndCall on tearDown');
 
       await Future.delayed(const Duration(milliseconds: 300));
 
