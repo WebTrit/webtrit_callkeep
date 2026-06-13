@@ -445,7 +445,18 @@ class PhoneConnectionService : ConnectionService() {
     private fun handleAddNewIncomingCall(metadata: CallMetadata) {
         val callId = metadata.callId
         Log.i(TAG, "handleAddNewIncomingCall: callId=$callId")
-        connectionManager.addPendingForIncomingCall(callId)
+        // addPendingForIncomingCall returns false if cleanConnections() already ran and placed
+        // this callId into forcedTerminatedCallIds. That means the TearDownConnections intent
+        // was processed before this AddNewIncomingCall intent -- a stale in-flight IPC from
+        // a session that has already been torn down. In that case we must not call
+        // addNewIncomingCall: doing so would create a PhoneConnection for a closed session
+        // whose HungUp/DidPushIncomingCall broadcasts would arrive in an already-cleared
+        // tracker in the main process.
+        if (!connectionManager.addPendingForIncomingCall(callId)) {
+            Log.w(TAG, "handleAddNewIncomingCall: callId=$callId rejected (post-tearDown stale intent), dispatching HungUp")
+            dispatcher.dispatch(baseContext, CallLifecycleEvent.HungUp, CallMetadata(callId = callId).toBundle())
+            return
+        }
         try {
             TelephonyUtils(baseContext).addNewIncomingCall(metadata)
         } catch (e: Exception) {
