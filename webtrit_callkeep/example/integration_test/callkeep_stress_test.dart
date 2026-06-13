@@ -282,8 +282,7 @@ void main() {
           'concurrent spam: Future.wait timed out after 8s -- '
           'one or more reportNewIncomingCall futures never resolved. '
           'Root cause: pendingIncomingCallbacks[callId] is overwritten then cleared '
-          'by a concurrent duplicate onError handler before DidPushIncomingCall arrives '
-          '(see tasks/callkeep-itest-spam-race/report.md).',
+          'by a concurrent duplicate onError handler before DidPushIncomingCall arrives.',
         );
       }
 
