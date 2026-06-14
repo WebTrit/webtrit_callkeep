@@ -45,9 +45,10 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
     private fun baseNotificationBuilder(
         title: String,
         text: String? = null,
+        smallIcon: Int = R.drawable.ic_notification,
     ): Notification.Builder =
         Notification.Builder(context, INCOMING_CALL_NOTIFICATION_CHANNEL_ID).apply {
-            setSmallIcon(R.drawable.ic_notification)
+            setSmallIcon(smallIcon)
             setCategory(NotificationCompat.CATEGORY_CALL)
             setContentTitle(title)
             text?.let { setContentText(it) }
@@ -80,15 +81,13 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
         val icDecline = R.drawable.ic_call_hungup
         val icAnswer = R.drawable.ic_call_answer
 
-        val callerName = meta.name ?: context.getString(R.string.unknown_caller)
-        val title = context.getString(R.string.incoming_call_title)
-        val description = context.getString(R.string.incoming_call_description, callerName)
+        val content = incomingCallContent(meta)
 
         val answerButton = R.string.answer_call_button_text
         val declineButton = R.string.decline_button_text
 
         val builder =
-            baseNotificationBuilder(title, description).apply {
+            baseNotificationBuilder(content.title, content.description, content.smallIcon).apply {
                 setOngoing(true)
                 // Use full-screen intent only when both the app setting is enabled and the
                 // system permission is granted.  On Android 14+ (API 34) the permission can
@@ -112,7 +111,7 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
             val person =
                 Person
                     .Builder()
-                    .setName(callerName)
+                    .setName(content.callerName)
                     .setImportant(true)
                     .build()
             val style = Notification.CallStyle.forIncomingCall(person, declineIntent, answerIntent)
@@ -134,16 +133,14 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
         val meta =
             requireNotNull(callMetaData) { "Call metadata must be set before updating the notification." }
 
-        val callerName = meta.name ?: context.getString(R.string.unknown_caller)
-        val title = context.getString(R.string.incoming_call_title)
-        val description = context.getString(R.string.incoming_call_description, callerName)
+        val content = incomingCallContent(meta)
 
         return NotificationCompat
             .Builder(context, INCOMING_CALL_NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(content.smallIcon)
             .setCategory(NotificationCompat.CATEGORY_CALL)
-            .setContentTitle(title)
-            .setContentText(description)
+            .setContentTitle(content.title)
+            .setContentText(content.description)
             .setOnlyAlertOnce(true)
             .setSilent(true)
             .setAutoCancel(false)
