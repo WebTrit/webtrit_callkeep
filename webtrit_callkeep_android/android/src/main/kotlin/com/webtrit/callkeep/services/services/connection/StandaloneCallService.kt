@@ -108,40 +108,31 @@ class StandaloneCallService : Service() {
         flags: Int,
         startId: Int,
     ): Int {
-        val action =
-            intent?.action?.let { StandaloneServiceAction.from(it) } ?: run {
-                Log.w(TAG, "onStartCommand: unknown or missing action '${intent?.action}', ignoring")
+        // Parse the intent into a typed command once. Lifecycle commands carry no metadata, so
+        // CallMetadata parsing never runs for them — closing the same eager-parse crash fixed on
+        // the Telecom path (empty Binder-delivered Bundle -> uncaught IllegalArgumentException).
+        val command =
+            intent?.let { StandaloneServiceCommand.from(it) } ?: run {
+                Log.w(TAG, "onStartCommand: unknown, missing, or incomplete action '${intent?.action}', ignoring")
                 return START_NOT_STICKY
             }
-        val metadata = intent.extras?.let { CallMetadata.fromBundle(it) }
 
         // Satisfy the 5-second startForeground() window for call-setup actions, which
         // are the only ones started via startForegroundService(). All other actions
         // arrive via startService() and must NOT call startForeground() here — doing so
         // from a non-foreground-service start crashes the process on some OEM devices.
-        if (action == StandaloneServiceAction.IncomingCall || action == StandaloneServiceAction.OutgoingCall) {
+        if (command.isCallSetup) {
             promoteToForeground()
         }
 
         try {
-            when (action) {
-                StandaloneServiceAction.IncomingCall -> metadata?.let { handleIncomingCall(it) }
-                StandaloneServiceAction.OutgoingCall -> metadata?.let { handleOutgoingCall(it) }
-                StandaloneServiceAction.EstablishCall -> metadata?.let { handleEstablishCall(it) }
-                StandaloneServiceAction.AnswerCall -> metadata?.let { handleAnswerCall(it) }
-                StandaloneServiceAction.DeclineCall -> metadata?.let { handleDeclineCall(it) }
-                StandaloneServiceAction.HungUpCall -> metadata?.let { handleHungUpCall(it) }
-                StandaloneServiceAction.UpdateCall -> metadata?.let { handleUpdateCall(it) }
-                StandaloneServiceAction.SendDtmf -> metadata?.let { handleSendDtmf(it) }
-                StandaloneServiceAction.Holding -> metadata?.let { handleHolding(it) }
-                StandaloneServiceAction.TearDownConnections -> handleTearDownConnections()
-                StandaloneServiceAction.CleanConnections -> handleCleanConnections()
-                StandaloneServiceAction.ReserveAnswer -> metadata?.callId?.let { handleReserveAnswer(it) }
-                StandaloneServiceAction.Muting -> metadata?.let { handleMuting(it) }
-                StandaloneServiceAction.Speaker -> metadata?.let { handleSpeaker(it) }
-                StandaloneServiceAction.AudioDeviceSet -> metadata?.let { handleAudioDeviceSet(it) }
-                StandaloneServiceAction.SyncAudioState -> handleSyncAudioState()
-                StandaloneServiceAction.SyncConnectionState -> handleSyncConnectionState()
+            when (command) {
+                is StandaloneServiceCommand.TearDown -> handleTearDownConnections()
+                is StandaloneServiceCommand.Clean -> handleCleanConnections()
+                is StandaloneServiceCommand.SyncAudio -> handleSyncAudioState()
+                is StandaloneServiceCommand.SyncConnection -> handleSyncConnectionState()
+                is StandaloneServiceCommand.Reserve -> handleReserveAnswer(command.callId)
+                is StandaloneServiceCommand.Call -> dispatchCall(command.action, command.metadata)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Exception with action: ${intent?.action}", e)
@@ -172,6 +163,51 @@ class StandaloneCallService : Service() {
     // -------------------------------------------------------------------------
     // Command handlers
     // -------------------------------------------------------------------------
+
+    /**
+     * Routes a [StandaloneServiceCommand.Call] to its handler. [metadata] is guaranteed non-null
+     * by [StandaloneServiceCommand.from], so the per-action `metadata?.let` guards that previously
+     * silently dropped call actions on a malformed bundle are no longer needed.
+     */
+    private fun dispatchCall(
+        action: StandaloneServiceAction,
+        metadata: CallMetadata,
+    ) {
+        when (action) {
+            StandaloneServiceAction.IncomingCall -> handleIncomingCall(metadata)
+
+            StandaloneServiceAction.OutgoingCall -> handleOutgoingCall(metadata)
+
+            StandaloneServiceAction.EstablishCall -> handleEstablishCall(metadata)
+
+            StandaloneServiceAction.AnswerCall -> handleAnswerCall(metadata)
+
+            StandaloneServiceAction.DeclineCall -> handleDeclineCall(metadata)
+
+            StandaloneServiceAction.HungUpCall -> handleHungUpCall(metadata)
+
+            StandaloneServiceAction.UpdateCall -> handleUpdateCall(metadata)
+
+            StandaloneServiceAction.SendDtmf -> handleSendDtmf(metadata)
+
+            StandaloneServiceAction.Holding -> handleHolding(metadata)
+
+            StandaloneServiceAction.Muting -> handleMuting(metadata)
+
+            StandaloneServiceAction.Speaker -> handleSpeaker(metadata)
+
+            StandaloneServiceAction.AudioDeviceSet -> handleAudioDeviceSet(metadata)
+
+            // Lifecycle and ReserveAnswer actions are modelled as dedicated command types and never
+            // wrapped in Call, so they cannot reach this branch.
+            StandaloneServiceAction.TearDownConnections,
+            StandaloneServiceAction.CleanConnections,
+            StandaloneServiceAction.ReserveAnswer,
+            StandaloneServiceAction.SyncAudioState,
+            StandaloneServiceAction.SyncConnectionState,
+            -> Log.w(TAG, "dispatchCall: unexpected non-call action $action, ignoring")
+        }
+    }
 
     /**
      * Promotes the service to a foreground service.

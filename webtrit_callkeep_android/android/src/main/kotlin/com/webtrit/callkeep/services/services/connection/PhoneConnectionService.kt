@@ -98,31 +98,32 @@ class PhoneConnectionService : ConnectionService() {
         flags: Int,
         startId: Int,
     ): Int {
-        val action =
-            intent?.action?.let { ServiceAction.from(it) } ?: run {
-                Log.w(TAG, "onStartCommand: unknown or missing action '${intent?.action}', ignoring")
+        // Parse the intent into a typed command once, BEFORE the try, but without touching the
+        // call metadata for commands that do not need it. This avoids the crash where
+        // CallMetadata.fromBundle was eagerly invoked on empty Binder-delivered extras for the
+        // no-extras lifecycle commands and threw an uncaught IllegalArgumentException.
+        val command =
+            intent?.let { PhoneServiceCommand.from(it) } ?: run {
+                Log.w(TAG, "onStartCommand: unknown, missing, or incomplete action '${intent?.action}', ignoring")
                 return START_NOT_STICKY
             }
-        val metadata = intent.extras?.let { CallMetadata.fromBundle(it) }
 
         try {
-            when (action) {
+            when (command) {
                 // IPC commands from the main process — handled directly, not routed through the
                 // call-connection dispatcher. Using startService (instead of broadcasts) guarantees
                 // delivery even if the service is starting up: the intent is queued and processed
                 // after onCreate() completes, so these handlers are always reachable.
-                ServiceAction.TearDownConnections -> {
+                is PhoneServiceCommand.TearDown -> {
                     handleTearDownConnections()
                 }
 
-                ServiceAction.ReserveAnswer -> {
-                    metadata?.callId?.let { handleReserveAnswer(it) }
-                        ?: Log.w(TAG, "onStartCommand: ReserveAnswer missing callId")
+                is PhoneServiceCommand.Reserve -> {
+                    handleReserveAnswer(command.callId)
                 }
 
-                ServiceAction.NotifyPending -> {
-                    metadata?.callId?.let { handleNotifyPending(it) }
-                        ?: Log.w(TAG, "onStartCommand: NotifyPending missing callId")
+                is PhoneServiceCommand.Pending -> {
+                    handleNotifyPending(command.callId)
                 }
 
                 // startService() on a ConnectionService from the same app (same UID) is valid:
@@ -137,25 +138,24 @@ class PhoneConnectionService : ConnectionService() {
                 // startService() -> onStartCommand() is an orthogonal IPC channel used throughout
                 // this codebase (NotifyPending, TearDownConnections, ReserveAnswer, etc.) and is
                 // not prohibited by the framework.
-                ServiceAction.AddNewIncomingCall -> {
-                    metadata?.let { handleAddNewIncomingCall(it) }
-                        ?: Log.w(TAG, "onStartCommand: AddNewIncomingCall missing metadata")
+                is PhoneServiceCommand.AddIncoming -> {
+                    handleAddNewIncomingCall(command.metadata)
                 }
 
-                ServiceAction.CleanConnections -> {
+                is PhoneServiceCommand.Clean -> {
                     handleCleanConnections()
                 }
 
-                ServiceAction.SyncAudioState -> {
+                is PhoneServiceCommand.SyncAudio -> {
                     handleSyncAudioState()
                 }
 
-                ServiceAction.SyncConnectionState -> {
+                is PhoneServiceCommand.SyncConnection -> {
                     handleSyncConnectionState()
                 }
 
-                else -> {
-                    phoneConnectionServiceDispatcher.dispatch(action, metadata)
+                is PhoneServiceCommand.CallOp -> {
+                    phoneConnectionServiceDispatcher.dispatch(command.action, command.metadata)
                 }
             }
         } catch (e: Exception) {
