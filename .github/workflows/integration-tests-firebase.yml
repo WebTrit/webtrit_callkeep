@@ -11,8 +11,6 @@ on:
       - "webtrit_callkeep_android/**"
       - "webtrit_callkeep_platform_interface/**"
       - ".github/workflows/integration-tests-firebase.yml"
-    tags:
-      - "*.*.*"
 
 jobs:
   # ── Job 1: discover test files + build all APKs in one runner ────────────────
