@@ -2,9 +2,10 @@ name: Integration Tests (Firebase Test Lab)
 
 on:
   workflow_dispatch:
-  pull_request:
+  push:
     branches:
       - develop
+      - release/*
     paths:
       - "webtrit_callkeep/**"
       - "webtrit_callkeep_android/**"
@@ -16,7 +17,6 @@ jobs:
   setup:
     name: Build all APKs
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
 
     outputs:
       tests: ${{ steps.discover.outputs.tests }}
