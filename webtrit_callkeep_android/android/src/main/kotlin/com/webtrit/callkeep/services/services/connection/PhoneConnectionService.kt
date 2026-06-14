@@ -104,7 +104,13 @@ class PhoneConnectionService : ConnectionService() {
         // no-extras lifecycle commands and threw an uncaught IllegalArgumentException.
         val command =
             intent?.let { PhoneServiceCommand.from(it) } ?: run {
-                Log.w(TAG, "onStartCommand: unknown, missing, or incomplete action '${intent?.action}', ignoring")
+                // Distinguish an unrecognised action from a known action whose required
+                // callId/metadata is missing, so the log points at the actual failure.
+                if (intent?.action?.let { ServiceAction.from(it) } != null) {
+                    Log.w(TAG, "onStartCommand: action '${intent.action}' missing required callId/metadata, ignoring")
+                } else {
+                    Log.w(TAG, "onStartCommand: unknown or missing action '${intent?.action}', ignoring")
+                }
                 return START_NOT_STICKY
             }
 

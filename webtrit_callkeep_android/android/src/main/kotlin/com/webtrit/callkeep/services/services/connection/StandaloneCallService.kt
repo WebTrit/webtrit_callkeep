@@ -127,7 +127,13 @@ class StandaloneCallService : Service() {
         // the Telecom path (empty Binder-delivered Bundle -> uncaught IllegalArgumentException).
         val command =
             intent?.let { StandaloneServiceCommand.from(it) } ?: run {
-                Log.w(TAG, "onStartCommand: unknown, missing, or incomplete action '${intent?.action}', ignoring")
+                // Distinguish an unrecognised action from a known action whose required
+                // callId/metadata is missing, so the log points at the actual failure.
+                if (action != null) {
+                    Log.w(TAG, "onStartCommand: action '$action' missing required callId/metadata, ignoring")
+                } else {
+                    Log.w(TAG, "onStartCommand: unknown or missing action '${intent?.action}', ignoring")
+                }
                 // Release the service if nothing keeps it alive — including the placeholder
                 // foreground we may have just promoted for a call-setup action whose extras did
                 // not parse — so it does not linger as a zombie (foreground) service.
