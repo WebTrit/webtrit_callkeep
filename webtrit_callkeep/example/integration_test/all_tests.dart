@@ -30,14 +30,14 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   group('lifecycle', lifecycle.main);
+  group('delegate_edge_cases', delegate_edge_cases.main);
+  group('foreground_service', foreground_service.main);
+  group('stress', stress.main);
   group('call_scenarios', call_scenarios.main);
   group('client_scenarios', client_scenarios.main);
   group('connections', connections.main);
-  group('delegate_edge_cases', delegate_edge_cases.main);
   group('delivery_mode', delivery_mode.main);
-  group('foreground_service', foreground_service.main);
   group('background_services', background_services.main);
   group('reportendcall_reasons', reportendcall_reasons.main);
   group('state_machine', state_machine.main);
-  group('stress', stress.main);
 }
