@@ -98,12 +98,22 @@ class ServiceCommandTest {
         assertTrue(command is StandaloneServiceCommand.Call)
         command as StandaloneServiceCommand.Call
         assertEquals(StandaloneServiceAction.IncomingCall, command.action)
-        assertTrue(command.isCallSetup)
     }
 
     @Test
     fun standalone_callAction_withoutMetadata_returnsNull() {
         assertNull(StandaloneServiceCommand.from(intent(StandaloneServiceAction.AnswerCall.action, Bundle())))
+    }
+
+    @Test
+    fun standalone_isCallSetup_trueOnlyForIncomingAndOutgoing() {
+        // onStartCommand promotes to foreground based on this predicate computed from the raw
+        // action — independently of whether the command metadata parses — so a call-setup intent
+        // with empty extras still satisfies the startForeground() window.
+        val setup = setOf(StandaloneServiceAction.IncomingCall, StandaloneServiceAction.OutgoingCall)
+        StandaloneServiceAction.entries.forEach { action ->
+            assertEquals(action in setup, action.isCallSetup)
+        }
     }
 
     @Test

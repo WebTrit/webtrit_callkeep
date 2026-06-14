@@ -18,9 +18,6 @@ import com.webtrit.callkeep.models.CallMetadata
  * Every call action carries non-null [CallMetadata]; [Reserve] carries a non-null `callId`.
  */
 sealed class StandaloneServiceCommand {
-    /** True for actions delivered via `startForegroundService`, which must promote to foreground. */
-    open val isCallSetup: Boolean get() = false
-
     data object TearDown : StandaloneServiceCommand()
 
     data object Clean : StandaloneServiceCommand()
@@ -36,12 +33,7 @@ sealed class StandaloneServiceCommand {
     data class Call(
         val action: StandaloneServiceAction,
         val metadata: CallMetadata,
-    ) : StandaloneServiceCommand() {
-        override val isCallSetup: Boolean
-            get() =
-                action == StandaloneServiceAction.IncomingCall ||
-                    action == StandaloneServiceAction.OutgoingCall
-    }
+    ) : StandaloneServiceCommand()
 
     companion object {
         /**

@@ -108,22 +108,32 @@ class StandaloneCallService : Service() {
         flags: Int,
         startId: Int,
     ): Int {
+        val action = intent?.action?.let { StandaloneServiceAction.from(it) }
+
+        // Satisfy the 5-second startForeground() window for call-setup actions, which are the only
+        // ones started via startForegroundService(). This MUST be decided from the raw action (not
+        // the parsed command) and run BEFORE the command-parse bail-out below: if the call-setup
+        // intent arrives with empty/truncated Binder extras, command parsing fails and an early
+        // return without startForeground() would crash the process with
+        // ForegroundServiceDidNotStartInTimeException ~5s later. All other actions arrive via
+        // startService() and must NOT call startForeground() here — doing so from a
+        // non-foreground-service start crashes the process on some OEM devices.
+        if (action?.isCallSetup == true) {
+            promoteToForeground()
+        }
+
         // Parse the intent into a typed command once. Lifecycle commands carry no metadata, so
         // CallMetadata parsing never runs for them — closing the same eager-parse crash fixed on
         // the Telecom path (empty Binder-delivered Bundle -> uncaught IllegalArgumentException).
         val command =
             intent?.let { StandaloneServiceCommand.from(it) } ?: run {
                 Log.w(TAG, "onStartCommand: unknown, missing, or incomplete action '${intent?.action}', ignoring")
+                // Release the service if nothing keeps it alive — including the placeholder
+                // foreground we may have just promoted for a call-setup action whose extras did
+                // not parse — so it does not linger as a zombie (foreground) service.
+                stopIfIdle()
                 return START_NOT_STICKY
             }
-
-        // Satisfy the 5-second startForeground() window for call-setup actions, which
-        // are the only ones started via startForegroundService(). All other actions
-        // arrive via startService() and must NOT call startForeground() here — doing so
-        // from a non-foreground-service start crashes the process on some OEM devices.
-        if (command.isCallSetup) {
-            promoteToForeground()
-        }
 
         try {
             when (command) {
@@ -141,11 +151,20 @@ class StandaloneCallService : Service() {
         // If no calls are active or pending after processing, there is nothing to keep alive.
         // This handles the case where a lifecycle-only command (SyncConnectionState,
         // SyncAudioState, CleanConnections) starts the service when no call is in progress.
+        stopIfIdle()
+
+        return START_NOT_STICKY
+    }
+
+    /**
+     * Stops the service when no call is active or pending. Reached both after normal command
+     * processing and on the command-parse bail-out path, so a call-setup intent that promoted to
+     * foreground but failed to parse does not leave a zombie (foreground) service running.
+     */
+    private fun stopIfIdle() {
         if (callMetadataMap.isEmpty() && pendingAnswers.isEmpty()) {
             stopSelf()
         }
-
-        return START_NOT_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -657,6 +676,15 @@ enum class StandaloneServiceAction {
     ;
 
     val action: String get() = "callkeep_standalone_$name"
+
+    /**
+     * Call-setup actions are the only ones started via [android.content.Context.startForegroundService]
+     * (see [StandaloneCallService.startIncomingCall] / [StandaloneCallService.startOutgoingCall]) and
+     * therefore impose the 5-second [android.app.Service.startForeground] window. Single source of
+     * truth used by [StandaloneCallService.onStartCommand] to promote to foreground from the raw
+     * action, independently of whether the command metadata parses.
+     */
+    val isCallSetup: Boolean get() = this == IncomingCall || this == OutgoingCall
 
     companion object {
         fun from(action: String?): StandaloneServiceAction? = entries.find { it.action == action }
