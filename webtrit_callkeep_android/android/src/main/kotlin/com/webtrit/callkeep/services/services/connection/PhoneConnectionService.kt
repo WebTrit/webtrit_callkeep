@@ -98,31 +98,38 @@ class PhoneConnectionService : ConnectionService() {
         flags: Int,
         startId: Int,
     ): Int {
-        val action =
-            intent?.action?.let { ServiceAction.from(it) } ?: run {
-                Log.w(TAG, "onStartCommand: unknown or missing action '${intent?.action}', ignoring")
+        // Parse the intent into a typed command once, BEFORE the try, but without touching the
+        // call metadata for commands that do not need it. This avoids the crash where
+        // CallMetadata.fromBundle was eagerly invoked on empty Binder-delivered extras for the
+        // no-extras lifecycle commands and threw an uncaught IllegalArgumentException.
+        val command =
+            intent?.let { PhoneServiceCommand.from(it) } ?: run {
+                // Distinguish an unrecognised action from a known action whose required
+                // callId/metadata is missing, so the log points at the actual failure.
+                if (intent?.action?.let { ServiceAction.from(it) } != null) {
+                    Log.w(TAG, "onStartCommand: action '${intent.action}' missing required callId/metadata, ignoring")
+                } else {
+                    Log.w(TAG, "onStartCommand: unknown or missing action '${intent?.action}', ignoring")
+                }
                 return START_NOT_STICKY
             }
-        val metadata = intent.extras?.let { CallMetadata.fromBundle(it) }
 
         try {
-            when (action) {
+            when (command) {
                 // IPC commands from the main process — handled directly, not routed through the
                 // call-connection dispatcher. Using startService (instead of broadcasts) guarantees
                 // delivery even if the service is starting up: the intent is queued and processed
                 // after onCreate() completes, so these handlers are always reachable.
-                ServiceAction.TearDownConnections -> {
+                is PhoneServiceCommand.TearDown -> {
                     handleTearDownConnections()
                 }
 
-                ServiceAction.ReserveAnswer -> {
-                    metadata?.callId?.let { handleReserveAnswer(it) }
-                        ?: Log.w(TAG, "onStartCommand: ReserveAnswer missing callId")
+                is PhoneServiceCommand.Reserve -> {
+                    handleReserveAnswer(command.callId)
                 }
 
-                ServiceAction.NotifyPending -> {
-                    metadata?.callId?.let { handleNotifyPending(it) }
-                        ?: Log.w(TAG, "onStartCommand: NotifyPending missing callId")
+                is PhoneServiceCommand.Pending -> {
+                    handleNotifyPending(command.callId)
                 }
 
                 // startService() on a ConnectionService from the same app (same UID) is valid:
@@ -137,25 +144,24 @@ class PhoneConnectionService : ConnectionService() {
                 // startService() -> onStartCommand() is an orthogonal IPC channel used throughout
                 // this codebase (NotifyPending, TearDownConnections, ReserveAnswer, etc.) and is
                 // not prohibited by the framework.
-                ServiceAction.AddNewIncomingCall -> {
-                    metadata?.let { handleAddNewIncomingCall(it) }
-                        ?: Log.w(TAG, "onStartCommand: AddNewIncomingCall missing metadata")
+                is PhoneServiceCommand.AddIncoming -> {
+                    handleAddNewIncomingCall(command.metadata)
                 }
 
-                ServiceAction.CleanConnections -> {
+                is PhoneServiceCommand.Clean -> {
                     handleCleanConnections()
                 }
 
-                ServiceAction.SyncAudioState -> {
+                is PhoneServiceCommand.SyncAudio -> {
                     handleSyncAudioState()
                 }
 
-                ServiceAction.SyncConnectionState -> {
+                is PhoneServiceCommand.SyncConnection -> {
                     handleSyncConnectionState()
                 }
 
-                else -> {
-                    phoneConnectionServiceDispatcher.dispatch(action, metadata)
+                is PhoneServiceCommand.CallOp -> {
+                    phoneConnectionServiceDispatcher.dispatch(command.action, command.metadata)
                 }
             }
         } catch (e: Exception) {
@@ -176,7 +182,16 @@ class PhoneConnectionService : ConnectionService() {
         connectionManagerPhoneAccount: PhoneAccountHandle,
         request: ConnectionRequest,
     ): Connection {
-        val metadata = CallMetadata.fromBundle(request.extras)
+        // request.extras originates from our own placeOutgoingCall(metadata.toBundle()), so a
+        // missing callId here is a "should never happen" invariant violation (e.g. Binder
+        // truncation / framework edge case). Fail this one connection gracefully instead of
+        // letting CallMetadata.fromBundle throw an uncaught IllegalArgumentException that would
+        // crash the whole :callkeep_core process.
+        val metadata =
+            CallMetadata.fromBundleOrNull(request.extras) ?: run {
+                Log.e(TAG, "onCreateOutgoingConnection: missing callId in request extras, rejecting")
+                return Connection.createFailedConnection(DisconnectCause(DisconnectCause.ERROR))
+            }
 
         // Check if a connection with the same call ID already exists.
         // If so, reject the new connection request to prevent conflicts.
@@ -239,7 +254,15 @@ class PhoneConnectionService : ConnectionService() {
         connectionManagerPhoneAccount: PhoneAccountHandle,
         request: ConnectionRequest,
     ): Connection {
-        val metadata = CallMetadata.fromBundle(request.extras)
+        // request.extras originates from our own addNewIncomingCall(metadata.toBundle()), so a
+        // missing callId here is a "should never happen" invariant violation. Reject this one
+        // connection instead of letting CallMetadata.fromBundle throw an uncaught
+        // IllegalArgumentException that would crash the whole :callkeep_core process.
+        val metadata =
+            CallMetadata.fromBundleOrNull(request.extras) ?: run {
+                Log.e(TAG, "onCreateIncomingConnection: missing callId in request extras, rejecting")
+                return Connection.createFailedConnection(DisconnectCause(DisconnectCause.ERROR))
+            }
         Log.i(TAG, "onCreateIncomingConnection: entry callId=${metadata.callId} account=$connectionManagerPhoneAccount")
 
         // Guard against stale Telecom callbacks that arrive after a tearDown.

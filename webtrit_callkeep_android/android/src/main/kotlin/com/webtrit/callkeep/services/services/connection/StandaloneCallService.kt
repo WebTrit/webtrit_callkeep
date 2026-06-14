@@ -108,40 +108,47 @@ class StandaloneCallService : Service() {
         flags: Int,
         startId: Int,
     ): Int {
-        val action =
-            intent?.action?.let { StandaloneServiceAction.from(it) } ?: run {
-                Log.w(TAG, "onStartCommand: unknown or missing action '${intent?.action}', ignoring")
-                return START_NOT_STICKY
-            }
-        val metadata = intent.extras?.let { CallMetadata.fromBundle(it) }
+        val action = intent?.action?.let { StandaloneServiceAction.from(it) }
 
-        // Satisfy the 5-second startForeground() window for call-setup actions, which
-        // are the only ones started via startForegroundService(). All other actions
-        // arrive via startService() and must NOT call startForeground() here — doing so
-        // from a non-foreground-service start crashes the process on some OEM devices.
-        if (action == StandaloneServiceAction.IncomingCall || action == StandaloneServiceAction.OutgoingCall) {
+        // Satisfy the 5-second startForeground() window for call-setup actions, which are the only
+        // ones started via startForegroundService(). This MUST be decided from the raw action (not
+        // the parsed command) and run BEFORE the command-parse bail-out below: if the call-setup
+        // intent arrives with empty/truncated Binder extras, command parsing fails and an early
+        // return without startForeground() would crash the process with
+        // ForegroundServiceDidNotStartInTimeException ~5s later. All other actions arrive via
+        // startService() and must NOT call startForeground() here — doing so from a
+        // non-foreground-service start crashes the process on some OEM devices.
+        if (action?.isCallSetup == true) {
             promoteToForeground()
         }
 
+        // Parse the intent into a typed command once. Lifecycle commands carry no metadata, so
+        // CallMetadata parsing never runs for them — closing the same eager-parse crash fixed on
+        // the Telecom path (empty Binder-delivered Bundle -> uncaught IllegalArgumentException).
+        val command =
+            intent?.let { StandaloneServiceCommand.from(it) } ?: run {
+                // Distinguish an unrecognised action from a known action whose required
+                // callId/metadata is missing, so the log points at the actual failure.
+                if (action != null) {
+                    Log.w(TAG, "onStartCommand: action '$action' missing required callId/metadata, ignoring")
+                } else {
+                    Log.w(TAG, "onStartCommand: unknown or missing action '${intent?.action}', ignoring")
+                }
+                // Release the service if nothing keeps it alive — including the placeholder
+                // foreground we may have just promoted for a call-setup action whose extras did
+                // not parse — so it does not linger as a zombie (foreground) service.
+                stopIfIdle()
+                return START_NOT_STICKY
+            }
+
         try {
-            when (action) {
-                StandaloneServiceAction.IncomingCall -> metadata?.let { handleIncomingCall(it) }
-                StandaloneServiceAction.OutgoingCall -> metadata?.let { handleOutgoingCall(it) }
-                StandaloneServiceAction.EstablishCall -> metadata?.let { handleEstablishCall(it) }
-                StandaloneServiceAction.AnswerCall -> metadata?.let { handleAnswerCall(it) }
-                StandaloneServiceAction.DeclineCall -> metadata?.let { handleDeclineCall(it) }
-                StandaloneServiceAction.HungUpCall -> metadata?.let { handleHungUpCall(it) }
-                StandaloneServiceAction.UpdateCall -> metadata?.let { handleUpdateCall(it) }
-                StandaloneServiceAction.SendDtmf -> metadata?.let { handleSendDtmf(it) }
-                StandaloneServiceAction.Holding -> metadata?.let { handleHolding(it) }
-                StandaloneServiceAction.TearDownConnections -> handleTearDownConnections()
-                StandaloneServiceAction.CleanConnections -> handleCleanConnections()
-                StandaloneServiceAction.ReserveAnswer -> metadata?.callId?.let { handleReserveAnswer(it) }
-                StandaloneServiceAction.Muting -> metadata?.let { handleMuting(it) }
-                StandaloneServiceAction.Speaker -> metadata?.let { handleSpeaker(it) }
-                StandaloneServiceAction.AudioDeviceSet -> metadata?.let { handleAudioDeviceSet(it) }
-                StandaloneServiceAction.SyncAudioState -> handleSyncAudioState()
-                StandaloneServiceAction.SyncConnectionState -> handleSyncConnectionState()
+            when (command) {
+                is StandaloneServiceCommand.TearDown -> handleTearDownConnections()
+                is StandaloneServiceCommand.Clean -> handleCleanConnections()
+                is StandaloneServiceCommand.SyncAudio -> handleSyncAudioState()
+                is StandaloneServiceCommand.SyncConnection -> handleSyncConnectionState()
+                is StandaloneServiceCommand.Reserve -> handleReserveAnswer(command.callId)
+                is StandaloneServiceCommand.Call -> dispatchCall(command.action, command.metadata)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Exception with action: ${intent?.action}", e)
@@ -150,11 +157,20 @@ class StandaloneCallService : Service() {
         // If no calls are active or pending after processing, there is nothing to keep alive.
         // This handles the case where a lifecycle-only command (SyncConnectionState,
         // SyncAudioState, CleanConnections) starts the service when no call is in progress.
+        stopIfIdle()
+
+        return START_NOT_STICKY
+    }
+
+    /**
+     * Stops the service when no call is active or pending. Reached both after normal command
+     * processing and on the command-parse bail-out path, so a call-setup intent that promoted to
+     * foreground but failed to parse does not leave a zombie (foreground) service running.
+     */
+    private fun stopIfIdle() {
         if (callMetadataMap.isEmpty() && pendingAnswers.isEmpty()) {
             stopSelf()
         }
-
-        return START_NOT_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -172,6 +188,51 @@ class StandaloneCallService : Service() {
     // -------------------------------------------------------------------------
     // Command handlers
     // -------------------------------------------------------------------------
+
+    /**
+     * Routes a [StandaloneServiceCommand.Call] to its handler. [metadata] is guaranteed non-null
+     * by [StandaloneServiceCommand.from], so the per-action `metadata?.let` guards that previously
+     * silently dropped call actions on a malformed bundle are no longer needed.
+     */
+    private fun dispatchCall(
+        action: StandaloneServiceAction,
+        metadata: CallMetadata,
+    ) {
+        when (action) {
+            StandaloneServiceAction.IncomingCall -> handleIncomingCall(metadata)
+
+            StandaloneServiceAction.OutgoingCall -> handleOutgoingCall(metadata)
+
+            StandaloneServiceAction.EstablishCall -> handleEstablishCall(metadata)
+
+            StandaloneServiceAction.AnswerCall -> handleAnswerCall(metadata)
+
+            StandaloneServiceAction.DeclineCall -> handleDeclineCall(metadata)
+
+            StandaloneServiceAction.HungUpCall -> handleHungUpCall(metadata)
+
+            StandaloneServiceAction.UpdateCall -> handleUpdateCall(metadata)
+
+            StandaloneServiceAction.SendDtmf -> handleSendDtmf(metadata)
+
+            StandaloneServiceAction.Holding -> handleHolding(metadata)
+
+            StandaloneServiceAction.Muting -> handleMuting(metadata)
+
+            StandaloneServiceAction.Speaker -> handleSpeaker(metadata)
+
+            StandaloneServiceAction.AudioDeviceSet -> handleAudioDeviceSet(metadata)
+
+            // Lifecycle and ReserveAnswer actions are modelled as dedicated command types and never
+            // wrapped in Call, so they cannot reach this branch.
+            StandaloneServiceAction.TearDownConnections,
+            StandaloneServiceAction.CleanConnections,
+            StandaloneServiceAction.ReserveAnswer,
+            StandaloneServiceAction.SyncAudioState,
+            StandaloneServiceAction.SyncConnectionState,
+            -> Log.w(TAG, "dispatchCall: unexpected non-call action $action, ignoring")
+        }
+    }
 
     /**
      * Promotes the service to a foreground service.
@@ -621,6 +682,15 @@ enum class StandaloneServiceAction {
     ;
 
     val action: String get() = "callkeep_standalone_$name"
+
+    /**
+     * Call-setup actions are the only ones started via [android.content.Context.startForegroundService]
+     * (see [StandaloneCallService.startIncomingCall] / [StandaloneCallService.startOutgoingCall]) and
+     * therefore impose the 5-second [android.app.Service.startForeground] window. Single source of
+     * truth used by [StandaloneCallService.onStartCommand] to promote to foreground from the raw
+     * action, independently of whether the command metadata parses.
+     */
+    val isCallSetup: Boolean get() = this == IncomingCall || this == OutgoingCall
 
     companion object {
         fun from(action: String?): StandaloneServiceAction? = entries.find { it.action == action }
