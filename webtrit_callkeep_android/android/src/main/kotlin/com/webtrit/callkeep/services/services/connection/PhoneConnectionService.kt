@@ -176,7 +176,16 @@ class PhoneConnectionService : ConnectionService() {
         connectionManagerPhoneAccount: PhoneAccountHandle,
         request: ConnectionRequest,
     ): Connection {
-        val metadata = CallMetadata.fromBundle(request.extras)
+        // request.extras originates from our own placeOutgoingCall(metadata.toBundle()), so a
+        // missing callId here is a "should never happen" invariant violation (e.g. Binder
+        // truncation / framework edge case). Fail this one connection gracefully instead of
+        // letting CallMetadata.fromBundle throw an uncaught IllegalArgumentException that would
+        // crash the whole :callkeep_core process.
+        val metadata =
+            CallMetadata.fromBundleOrNull(request.extras) ?: run {
+                Log.e(TAG, "onCreateOutgoingConnection: missing callId in request extras, rejecting")
+                return Connection.createFailedConnection(DisconnectCause(DisconnectCause.ERROR))
+            }
 
         // Check if a connection with the same call ID already exists.
         // If so, reject the new connection request to prevent conflicts.
@@ -239,7 +248,15 @@ class PhoneConnectionService : ConnectionService() {
         connectionManagerPhoneAccount: PhoneAccountHandle,
         request: ConnectionRequest,
     ): Connection {
-        val metadata = CallMetadata.fromBundle(request.extras)
+        // request.extras originates from our own addNewIncomingCall(metadata.toBundle()), so a
+        // missing callId here is a "should never happen" invariant violation. Reject this one
+        // connection instead of letting CallMetadata.fromBundle throw an uncaught
+        // IllegalArgumentException that would crash the whole :callkeep_core process.
+        val metadata =
+            CallMetadata.fromBundleOrNull(request.extras) ?: run {
+                Log.e(TAG, "onCreateIncomingConnection: missing callId in request extras, rejecting")
+                return Connection.createFailedConnection(DisconnectCause(DisconnectCause.ERROR))
+            }
         Log.i(TAG, "onCreateIncomingConnection: entry callId=${metadata.callId} account=$connectionManagerPhoneAccount")
 
         // Guard against stale Telecom callbacks that arrive after a tearDown.
