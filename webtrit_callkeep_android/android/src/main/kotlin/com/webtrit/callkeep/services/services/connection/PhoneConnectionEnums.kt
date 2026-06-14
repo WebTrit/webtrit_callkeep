@@ -18,6 +18,7 @@ enum class ServiceAction {
     SyncAudioState,
     SyncConnectionState,
     NotifyPending,
+    AddNewIncomingCall,
     ;
 
     companion object {
