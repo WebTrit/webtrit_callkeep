@@ -351,18 +351,33 @@ class StandaloneCallService : Service() {
 
     private fun handleDeclineCall(metadata: CallMetadata) {
         Log.i(TAG, "handleDeclineCall: callId=${metadata.callId}")
-        ringtoneManager.stopRingtone()
-        ringtoneManager.stopCallWaitingTone()
+        stopRingtoneUnlessOtherCallRinging(metadata.callId)
         endCall(metadata)
         core.notifyConnectionEvent(CallLifecycleEvent.HungUp, metadata.toBundle())
     }
 
     private fun handleHungUpCall(metadata: CallMetadata) {
         Log.i(TAG, "handleHungUpCall: callId=${metadata.callId}")
-        ringtoneManager.stopRingtone()
-        ringtoneManager.stopCallWaitingTone()
+        stopRingtoneUnlessOtherCallRinging(metadata.callId)
         endCall(metadata)
         core.notifyConnectionEvent(CallLifecycleEvent.HungUp, metadata.toBundle())
+    }
+
+    /**
+     * Stop the shared ringtone / call-waiting tone only when no OTHER call is still ringing.
+     *
+     * The ringtone is a single shared instance (see [CallkeepAudioManager]); stopping it on the
+     * disconnect of one call silences every other call too. When a first incoming call times out
+     * or is declined while a second incoming call is still ringing, the second call must keep
+     * sounding, so the tones are left running until the last ringing call ends.
+     */
+    private fun stopRingtoneUnlessOtherCallRinging(terminatingCallId: String) {
+        if (hasOtherRingingCall(callMetadataMap.keys, answeredCallIds, terminatingCallId)) {
+            Log.d(TAG, "stopRingtoneUnlessOtherCallRinging: keeping tone, another call still ringing")
+            return
+        }
+        ringtoneManager.stopRingtone()
+        ringtoneManager.stopCallWaitingTone()
     }
 
     private fun handleUpdateCall(metadata: CallMetadata) {
@@ -556,6 +571,17 @@ class StandaloneCallService : Service() {
         internal val callMetadataMap: ConcurrentHashMap<String, CallMetadata> = ConcurrentHashMap()
         internal val answeredCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
         internal val pendingAnswers: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
+        /**
+         * `true` when a call other than [excludingCallId] is still ringing, i.e. registered in
+         * [callIds] but not present in [answeredCallIds]. Pure helper so the ringtone-stop guard
+         * is unit-testable without instantiating the service.
+         */
+        internal fun hasOtherRingingCall(
+            callIds: Set<String>,
+            answeredCallIds: Set<String>,
+            excludingCallId: String,
+        ): Boolean = callIds.any { it != excludingCallId && it !in answeredCallIds }
 
         /**
          * Starts an incoming call in standalone mode.
