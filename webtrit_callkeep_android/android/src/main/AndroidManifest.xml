@@ -50,6 +50,16 @@
         android:required="false" />
 
     <application>
+        <!--
+          Telecom-backed connection service. Runs in the dedicated :callkeep_core process and is
+          bound by the Telecom system server (BIND_TELECOM_CONNECTION_SERVICE). Incoming/outgoing
+          calls are reported via TelecomManager.addNewIncomingCall / placeCall, so Telecom itself
+          binds and launches this process (BIND_AUTO_CREATE) even when an app-side startService is
+          blocked by the same OEM "process is bad" throttle described for StandaloneCallService
+          below. App-side startService is used only for in-process IPC on an already-bound service
+          (tear-down, sync, best-effort pending pre-registration), never to start the incoming-call
+          flow.
+        -->
         <service
             android:name=".services.services.connection.PhoneConnectionService"
             android:enabled="true"
