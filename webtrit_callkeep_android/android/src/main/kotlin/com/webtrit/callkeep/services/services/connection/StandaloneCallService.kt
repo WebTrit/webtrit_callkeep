@@ -594,10 +594,12 @@ class StandaloneCallService : Service() {
         // called on the main process thread, hence ConcurrentHashMap.
         internal val callMetadataMap: ConcurrentHashMap<String, CallMetadata> = ConcurrentHashMap()
 
-        // Incoming calls currently registered as ringing (added in handleIncomingCall, removed in
-        // endCall / cleared on teardown+clean). Distinct from callMetadataMap, which also holds
-        // outgoing/dialing calls that never play the ringtone, so the ringtone-stop guard must
-        // consult this set - not the full map - to decide whether another call is still ringing.
+        // Incoming call ids, from registration until the call ends (added in handleIncomingCall,
+        // removed in endCall / cleared on teardown+clean). It is NOT pruned when a call is answered,
+        // so it may contain answered calls; "still ringing" is therefore membership here AND absence
+        // from answeredCallIds (see hasOtherRingingCall). Distinct from callMetadataMap, which also
+        // holds outgoing/dialing calls that never play the ringtone - hence the ringtone-stop guard
+        // consults this set, not the full map, to decide whether another call is still ringing.
         internal val ringingIncomingCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
         internal val answeredCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
         internal val pendingAnswers: MutableSet<String> = ConcurrentHashMap.newKeySet()
