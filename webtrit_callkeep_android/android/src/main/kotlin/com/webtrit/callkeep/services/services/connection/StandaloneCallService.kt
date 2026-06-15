@@ -271,6 +271,7 @@ class StandaloneCallService : Service() {
         Log.i(TAG, "handleIncomingCall: callId=${metadata.callId}")
         promoteToForeground()
         callMetadataMap[metadata.callId] = metadata
+        ringingIncomingCallIds.add(metadata.callId)
         answeredCallIds.remove(metadata.callId)
         if (answeredCallIds.isNotEmpty()) {
             Log.d(TAG, "handleIncomingCall: active call detected — playing call-waiting tone for callId=${metadata.callId}")
@@ -330,6 +331,7 @@ class StandaloneCallService : Service() {
 
         activateAudio()
         fireInitialAudioState(metadata.callId)
+        promoteRemainingRingingToCallWaitingTone(metadata.callId)
 
         core.notifyConnectionEvent(CallLifecycleEvent.AnswerCall, callMetadataMap[metadata.callId]!!.toBundle())
     }
@@ -345,8 +347,22 @@ class StandaloneCallService : Service() {
 
         activateAudio()
         fireInitialAudioState(metadata.callId)
+        promoteRemainingRingingToCallWaitingTone(metadata.callId)
 
         core.notifyConnectionEvent(CallLifecycleEvent.AnswerCall, callMetadataMap[metadata.callId]!!.toBundle())
+    }
+
+    /**
+     * After [answeredCallId] is answered the loud ringtone is stopped, but a second incoming call
+     * may still be ringing. Start the quiet call-waiting tone for it so it is not silently dropped,
+     * matching the start-path branch in [handleIncomingCall] that plays the call-waiting tone when
+     * a call is already active.
+     */
+    private fun promoteRemainingRingingToCallWaitingTone(answeredCallId: String) {
+        if (hasOtherRingingCall(ringingIncomingCallIds, answeredCallIds, answeredCallId)) {
+            Log.d(TAG, "promoteRemainingRingingToCallWaitingTone: another call still ringing")
+            ringtoneManager.startCallWaitingTone()
+        }
     }
 
     private fun handleDeclineCall(metadata: CallMetadata) {
@@ -370,9 +386,13 @@ class StandaloneCallService : Service() {
      * disconnect of one call silences every other call too. When a first incoming call times out
      * or is declined while a second incoming call is still ringing, the second call must keep
      * sounding, so the tones are left running until the last ringing call ends.
+     *
+     * Only incoming calls that have not been answered count as ringing: [ringingIncomingCallIds]
+     * excludes outgoing/dialing calls (which never play the ringtone) and [answeredCallIds]
+     * excludes calls that are already active.
      */
     private fun stopRingtoneUnlessOtherCallRinging(terminatingCallId: String) {
-        if (hasOtherRingingCall(callMetadataMap.keys, answeredCallIds, terminatingCallId)) {
+        if (hasOtherRingingCall(ringingIncomingCallIds, answeredCallIds, terminatingCallId)) {
             Log.d(TAG, "stopRingtoneUnlessOtherCallRinging: keeping tone, another call still ringing")
             return
         }
@@ -416,6 +436,7 @@ class StandaloneCallService : Service() {
             core.notifyConnectionEvent(CallLifecycleEvent.HungUp, meta.toBundle())
         }
         callMetadataMap.clear()
+        ringingIncomingCallIds.clear()
         answeredCallIds.clear()
         pendingAnswers.clear()
         deactivateAudio(force = true)
@@ -426,9 +447,11 @@ class StandaloneCallService : Service() {
     private fun handleCleanConnections() {
         Log.i(TAG, "handleCleanConnections: clearing state")
         callMetadataMap.clear()
+        ringingIncomingCallIds.clear()
         answeredCallIds.clear()
         pendingAnswers.clear()
         deactivateAudio(force = true)
+        ringtoneManager.stopRingtone()
         ringtoneManager.stopCallWaitingTone()
     }
 
@@ -543,6 +566,7 @@ class StandaloneCallService : Service() {
 
     private fun endCall(metadata: CallMetadata) {
         callMetadataMap.remove(metadata.callId)
+        ringingIncomingCallIds.remove(metadata.callId)
         answeredCallIds.remove(metadata.callId)
         pendingAnswers.remove(metadata.callId)
         if (callMetadataMap.isEmpty()) {
@@ -569,19 +593,25 @@ class StandaloneCallService : Service() {
         // Written on the main thread (onStartCommand); read from static dispatch methods
         // called on the main process thread, hence ConcurrentHashMap.
         internal val callMetadataMap: ConcurrentHashMap<String, CallMetadata> = ConcurrentHashMap()
+
+        // Incoming calls currently registered as ringing (added in handleIncomingCall, removed in
+        // endCall / cleared on teardown+clean). Distinct from callMetadataMap, which also holds
+        // outgoing/dialing calls that never play the ringtone, so the ringtone-stop guard must
+        // consult this set - not the full map - to decide whether another call is still ringing.
+        internal val ringingIncomingCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
         internal val answeredCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
         internal val pendingAnswers: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
         /**
          * `true` when a call other than [excludingCallId] is still ringing, i.e. registered in
-         * [callIds] but not present in [answeredCallIds]. Pure helper so the ringtone-stop guard
-         * is unit-testable without instantiating the service.
+         * [ringingCallIds] but not present in [answeredCallIds]. Pure helper so the ringtone-stop
+         * guard is unit-testable without instantiating the service.
          */
         internal fun hasOtherRingingCall(
-            callIds: Set<String>,
+            ringingCallIds: Set<String>,
             answeredCallIds: Set<String>,
             excludingCallId: String,
-        ): Boolean = callIds.any { it != excludingCallId && it !in answeredCallIds }
+        ): Boolean = ringingCallIds.any { it != excludingCallId && it !in answeredCallIds }
 
         /**
          * Starts an incoming call in standalone mode.
