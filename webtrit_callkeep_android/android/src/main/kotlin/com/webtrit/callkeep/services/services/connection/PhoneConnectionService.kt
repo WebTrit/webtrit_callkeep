@@ -132,22 +132,6 @@ class PhoneConnectionService : ConnectionService() {
                     handleNotifyPending(command.callId)
                 }
 
-                // startService() on a ConnectionService from the same app (same UID) is valid:
-                // android:permission="BIND_TELECOM_CONNECTION_SERVICE" restricts cross-UID
-                // bindService() callers only. Same-UID processes bypass the permission check
-                // unconditionally in ActiveServices.startServiceLocked() -> checkComponentPermission().
-                // AOSP: frameworks/base/services/core/java/com/android/server/am/ActiveServices.java
-                //
-                // The official telecom lifecycle only describes the framework-initiated bind path:
-                // "Telecom will bind to a ConnectionService implementation when it wants that
-                //  ConnectionService to place a call." (developer.android.com/develop/connectivity/telecom/dialer-app)
-                // startService() -> onStartCommand() is an orthogonal IPC channel used throughout
-                // this codebase (NotifyPending, TearDownConnections, ReserveAnswer, etc.) and is
-                // not prohibited by the framework.
-                is PhoneServiceCommand.AddIncoming -> {
-                    handleAddNewIncomingCall(command.metadata)
-                }
-
                 is PhoneServiceCommand.Clean -> {
                     handleCleanConnections()
                 }
@@ -265,23 +249,23 @@ class PhoneConnectionService : ConnectionService() {
             }
         Log.i(TAG, "onCreateIncomingConnection: entry callId=${metadata.callId} account=$connectionManagerPhoneAccount")
 
-        // Guard against stale Telecom callbacks that arrive after a tearDown.
+        // Register the pending slot here and guard against stale Telecom callbacks after a tearDown.
         //
-        // handleAddNewIncomingCall calls addPendingForIncomingCall before addNewIncomingCall,
-        // both in the same onStartCommand invocation on the main thread. onCreateIncomingConnection
-        // is also dispatched on the main thread, so isPending is true in the normal path.
+        // startIncomingCall reports the call via TelecomManager.addNewIncomingCall from the
+        // reporting process, so the pending slot is NOT pre-registered in this :callkeep_core
+        // process (its ConnectionManager is a separate JVM instance). Telecom then binds this
+        // service and fires onCreateIncomingConnection on the main thread, where we register it.
         //
         // Strategy:
-        //   - isPending == true  : normal path (common case).
-        //   - isPending == false AND isForcedTerminated : stale post-tearDown callback — reject.
-        //   - isPending == false AND NOT isForcedTerminated : defense-in-depth fallback (should
-        //     not happen with AddNewIncomingCall IPC, but kept for safety).
+        //   - isPending == true  : already registered (e.g. a NotifyPending IPC ran first) - proceed.
+        //   - isPending == false AND isForcedTerminated : stale post-tearDown callback - reject.
+        //   - isPending == false AND NOT isForcedTerminated : normal path - register the slot.
         if (!connectionManager.isPending(metadata.callId)) {
             if (connectionManager.isForcedTerminated(metadata.callId)) {
                 Log.w(TAG, "onCreateIncomingConnection: callId=${metadata.callId} force-terminated by tearDown, rejecting stale callback")
                 return Connection.createFailedConnection(DisconnectCause(DisconnectCause.LOCAL))
             }
-            Log.d(TAG, "onCreateIncomingConnection: callId=${metadata.callId} not pending yet, registering as defense-in-depth fallback")
+            Log.d(TAG, "onCreateIncomingConnection: callId=${metadata.callId} not pending yet, registering pending slot")
             connectionManager.addPendingForIncomingCall(metadata.callId)
         }
 
@@ -377,11 +361,14 @@ class PhoneConnectionService : ConnectionService() {
 
         // Check before removing: if this callId was pending, the failure was for a real call
         // that should be reported to Flutter as ended (e.g., rejected with BUSY because another
-        // incoming call was already ringing). If it was not pending, this is a stale Telecom
-        // callback from a previous session (guarded by isPending in onCreateIncomingConnection)
-        // and should be silently dropped.
-        // pendingCallIds is populated in handleAddNewIncomingCall before addNewIncomingCall, so
-        // this check correctly distinguishes legitimate failures from stale callbacks.
+        // incoming call was already ringing). If it was not pending, this is treated as a stale
+        // Telecom callback and routed to IncomingFailure.
+        //
+        // Since startIncomingCall reports directly via TelecomManager.addNewIncomingCall (no
+        // pre-registration in this process), wasPending can be false even for a genuine fresh
+        // rejection; in that case the main-process confirmation timeout in
+        // ForegroundService.reportNewIncomingCall is the authoritative resolver that fails the
+        // Pigeon callback with CALL_REJECTED_BY_SYSTEM, so the call is not left hung.
         val wasPending = callId != null && connectionManager.isPending(callId)
         callId?.let { connectionManager.removePending(it) }
 
@@ -454,49 +441,13 @@ class PhoneConnectionService : ConnectionService() {
     }
 
     /**
-     * Registers [metadata.callId] as pending and calls [TelephonyUtils.addNewIncomingCall] from
-     * within :callkeep_core, invoked via a [ServiceAction.AddNewIncomingCall] startService intent.
-     *
-     * Running both operations inside this process means they share the same Telecom binder
-     * connection. Because Telecom processes binder calls from the same connection in FIFO order,
-     * any preceding [android.telecom.Connection.destroy] call (also from :callkeep_core) is
-     * guaranteed to be processed before [TelephonyUtils.addNewIncomingCall]. This prevents
-     * [onCreateIncomingConnectionFailed] from firing on callId reuse after a declined call.
-     *
-     * On [TelephonyUtils.addNewIncomingCall] failure, [CallLifecycleEvent.HungUp] is dispatched
-     * so the main process resolves the pending Pigeon callback.
-     */
-    private fun handleAddNewIncomingCall(metadata: CallMetadata) {
-        val callId = metadata.callId
-        Log.i(TAG, "handleAddNewIncomingCall: callId=$callId")
-        // addPendingForIncomingCall returns false if cleanConnections() already ran and placed
-        // this callId into forcedTerminatedCallIds. That means the TearDownConnections intent
-        // was processed before this AddNewIncomingCall intent -- a stale in-flight IPC from
-        // a session that has already been torn down. In that case we must not call
-        // addNewIncomingCall: doing so would create a PhoneConnection for a closed session
-        // whose HungUp/DidPushIncomingCall broadcasts would arrive in an already-cleared
-        // tracker in the main process.
-        if (!connectionManager.addPendingForIncomingCall(callId)) {
-            Log.w(TAG, "handleAddNewIncomingCall: callId=$callId rejected (post-tearDown stale intent), dispatching HungUp")
-            dispatchHungUpAndRemovePending(callId, metadata, removePending = false)
-            return
-        }
-        try {
-            TelephonyUtils(baseContext).addNewIncomingCall(metadata)
-        } catch (e: Exception) {
-            Log.e(TAG, "handleAddNewIncomingCall: addNewIncomingCall failed for callId=$callId, dispatching HungUp", e)
-            dispatchHungUpAndRemovePending(callId, metadata)
-        }
-    }
-
-    /**
      * Removes [callId] from [connectionManager]'s pending set (when [removePending] is true)
      * and dispatches [CallLifecycleEvent.HungUp] so the main process resolves the pending
      * Pigeon callback for this call.
      *
-     * Centralises the removePending + HungUp dispatch pattern that appears in multiple
-     * failure paths ([handleAddNewIncomingCall], [onCreateIncomingConnectionFailed], etc.)
-     * so each site cannot accidentally omit one of the two steps.
+     * Centralises the removePending + HungUp dispatch pattern used by the incoming-call failure
+     * paths (e.g. [onCreateIncomingConnectionFailed]) so each site cannot accidentally omit one
+     * of the two steps.
      *
      * [metadata] is used as the bundle payload when available, giving receivers full call
      * context (handle, displayName, etc.). Pass [removePending] = false when the pending
@@ -675,9 +626,10 @@ class PhoneConnectionService : ConnectionService() {
         /**
          * Sends a [ServiceAction.NotifyPending] command with [callId] to this service via [startService].
          *
-         * Used when only pending registration is needed without immediately following up with
-         * [TelephonyUtils.addNewIncomingCall]. For the incoming call path use
-         * [ServiceAction.AddNewIncomingCall] directly (see [startIncomingCall]).
+         * Best-effort pre-registration of the pending slot in :callkeep_core. The incoming call
+         * path ([startIncomingCall]) does NOT depend on this: it reports directly via
+         * [TelephonyUtils.addNewIncomingCall] and [onCreateIncomingConnection] registers the pending
+         * slot itself once Telecom binds the service.
          */
         fun sendNotifyPending(
             context: Context,
@@ -820,22 +772,25 @@ class PhoneConnectionService : ConnectionService() {
             Log.i(TAG, "startIncomingCall: callId=${metadata.callId}")
 
             ConnectionManager.validateConnectionAddition(metadata = metadata, onSuccess = {
-                // Send AddNewIncomingCall to :callkeep_core so that addPendingForIncomingCall
-                // and addNewIncomingCall both run in the same process as destroy(). This
-                // guarantees FIFO ordering on the shared Telecom binder connection and prevents
-                // onCreateIncomingConnectionFailed on callId reuse after a declined call.
-                val intent =
-                    Intent(context, PhoneConnectionService::class.java).apply {
-                        action = ServiceAction.AddNewIncomingCall.action
-                        putExtras(metadata.toBundle())
+                // Report the incoming call straight to Telecom via TelecomManager.addNewIncomingCall.
+                // The Telecom system server then binds our ConnectionService itself with
+                // BIND_AUTO_CREATE, launching/reviving :callkeep_core even when an app-side
+                // startService cannot - e.g. when an aggressive OEM power manager killed that process
+                // and flagged it "process is bad" (startService then throws SecurityException and the
+                // call is lost). onCreateIncomingConnection registers the pending slot itself.
+                //
+                // On a cold push the self-managed PhoneAccount may not be registered yet
+                // (ForegroundService.registerPhoneAccountWithRetry still in flight), so on the first
+                // failure we re-register and retry once before giving up.
+                runCatching { TelephonyUtils(context).addNewIncomingCall(metadata) }
+                    .recoverCatching {
+                        Log.w(TAG, "startIncomingCall: addNewIncomingCall failed for callId=${metadata.callId}, re-registering PhoneAccount and retrying once", it)
+                        TelephonyUtils(context).registerPhoneAccount()
+                        TelephonyUtils(context).addNewIncomingCall(metadata)
                     }
-                runCatching { context.startService(intent) }
                     .onSuccess { onSuccess() }
                     .onFailure { e ->
-                        // startService can fail with IllegalStateException on Android 8+ when
-                        // the app is in the background. Remove the pending reservation and
-                        // propagate the failure via onError so the Pigeon callback is resolved.
-                        Log.e(TAG, "startIncomingCall: startService(AddNewIncomingCall) failed for callId=${metadata.callId}", e)
+                        Log.e(TAG, "startIncomingCall: addNewIncomingCall failed after re-register for callId=${metadata.callId}", e)
                         connectionManager.removePending(metadata.callId)
                         onError(PIncomingCallError(PIncomingCallErrorEnum.UNKNOWN))
                     }

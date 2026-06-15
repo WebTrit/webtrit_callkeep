@@ -62,14 +62,6 @@ class ServiceCommandTest {
     }
 
     @Test
-    fun phone_addNewIncomingCall_withMetadata_returnsAddIncoming() {
-        val extras = CallMetadata(callId = "call-2").toBundle()
-        val command = PhoneServiceCommand.from(intent(ServiceAction.AddNewIncomingCall.action, extras))
-        assertTrue(command is PhoneServiceCommand.AddIncoming)
-        assertEquals("call-2", (command as PhoneServiceCommand.AddIncoming).metadata.callId)
-    }
-
-    @Test
     fun phone_callOp_withoutExtras_returnsCallOpWithNullMetadata() {
         val command = PhoneServiceCommand.from(intent(ServiceAction.AnswerCall.action, null))
         assertTrue(command is PhoneServiceCommand.CallOp)

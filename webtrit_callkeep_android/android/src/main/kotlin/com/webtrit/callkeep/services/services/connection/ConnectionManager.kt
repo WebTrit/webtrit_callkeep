@@ -92,29 +92,21 @@ class ConnectionManager {
      * Adds [callId] to [pendingCallIds] and returns true, or returns false and does nothing
      * if [callId] is currently in [forcedTerminatedCallIds].
      *
-     * In the dual-process architecture, [checkAndReservePending] runs in the main-process JVM
-     * and populates the main process's [ConnectionManager] instance. The :callkeep_core process
-     * has its own instance whose [pendingCallIds] is populated here, called from
-     * [PhoneConnectionService.handleAddNewIncomingCall] before [TelephonyUtils.addNewIncomingCall],
-     * ensuring [isPending] returns true when [onCreateIncomingConnection] fires.
+     * In the dual-process architecture, [checkAndReservePending] runs in the reporting process
+     * (main or push isolate) and populates that process's [ConnectionManager] instance. The
+     * :callkeep_core process has its own instance whose [pendingCallIds] is populated here, called
+     * from [PhoneConnectionService.onCreateIncomingConnection] once Telecom binds the service - the
+     * incoming call is reported directly via [TelephonyUtils.addNewIncomingCall], so the slot is
+     * not pre-registered in this process. A [ServiceAction.NotifyPending] IPC may also populate it.
      *
-     * Returning false signals to the caller that [cleanConnections] already ran for the session
-     * that owns this callId, meaning the in-flight [ServiceAction.AddNewIncomingCall] intent is
-     * stale: it was queued before tearDown completed and arrived after. In that case the caller
-     * must not invoke [TelephonyUtils.addNewIncomingCall] and must dispatch [CallLifecycleEvent.HungUp]
-     * so the main process resolves the pending Pigeon callback.
-     *
-     * Background: both [ServiceAction.TearDownConnections] and [ServiceAction.AddNewIncomingCall]
-     * are delivered via [startService] and processed serially on :callkeep_core's main thread.
-     * Android guarantees FIFO delivery for same-process same-service intents, so in the normal
-     * path [AddNewIncomingCall] is always processed before the [TearDownConnections] that follows
-     * it in the same session. The guard here closes the narrow window where that ordering is
-     * violated (e.g. a delayed intent from a previous session racing a new one).
+     * Returning false signals that [cleanConnections] already ran for the session that owns this
+     * callId, so this is a stale post-tearDown callback. The caller (onCreateIncomingConnection)
+     * rejects the connection instead of creating a [PhoneConnection] for a closed session.
      */
     fun addPendingForIncomingCall(callId: String): Boolean {
         // If cleanConnections() already ran and captured this callId into forcedTerminatedCallIds,
-        // the AddNewIncomingCall intent is a post-tearDown stale delivery. Reject it so that
-        // addNewIncomingCall is never called and no PhoneConnection is created for a closed session.
+        // this is a post-tearDown stale callback. Reject it so no PhoneConnection is created for a
+        // closed session whose broadcasts would arrive in an already-cleared main-process tracker.
         if (forcedTerminatedCallIds.contains(callId)) {
             logger.w("addPendingForIncomingCall: callId=$callId is force-terminated, rejecting stale in-flight intent")
             return false

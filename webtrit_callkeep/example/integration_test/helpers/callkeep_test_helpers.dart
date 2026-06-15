@@ -185,10 +185,13 @@ Future<void> waitForConnectionGone(
   String callId, {
   Duration timeout = const Duration(seconds: 5),
 }) async {
+  // A disconnected connection is left in the native ConnectionManager map until tearDown, so
+  // getConnection() never returns null for it - treat stateDisconnected as "gone" too, otherwise
+  // this just sleeps the full timeout without observing anything.
   final deadline = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(deadline)) {
     final conn = await CallkeepConnections().getConnection(callId);
-    if (conn == null) return;
+    if (conn == null || conn.state == CallkeepConnectionState.stateDisconnected) return;
     await Future.delayed(const Duration(milliseconds: 100));
   }
 }
