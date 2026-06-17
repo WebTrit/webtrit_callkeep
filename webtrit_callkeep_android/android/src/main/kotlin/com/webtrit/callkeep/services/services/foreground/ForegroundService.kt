@@ -140,6 +140,10 @@ class ForegroundService :
                 handleCSReportConnectionStateChanged(data)
             }
 
+            CallLifecycleEvent.ReEmitIncomingCall -> {
+                handleCSReEmitIncomingCall(data)
+            }
+
             CallLifecycleEvent.DeclineCall -> {
                 handleCSReportDeclineCall(data)
             }
@@ -1074,6 +1078,38 @@ class ForegroundService :
             if (state == CallConnectionState.DISCONNECTED) return@let
             logger.d("handleCSReportConnectionStateChanged: callId=${metadata.callId} state=$state")
             core.updateState(metadata.callId, state)
+        }
+    }
+
+    /**
+     * Re-deliver a still-ringing incoming call to the (freshly attached) Flutter delegate.
+     *
+     * Triggered by [com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent.ReEmitIncomingCall]
+     * from [com.webtrit.callkeep.services.services.connection.PhoneConnectionService.handleReplayConnectionStates]
+     * on delegate attach. Unlike [handleCSReportDidPushIncomingCall] this deliberately does NOT
+     * consult the signaling-registered suppression: the call IS signaling-registered, but the
+     * delegate that received the original DidPushIncomingCall is gone (push->foreground isolate
+     * handoff or hot restart), so the new delegate must still be seeded. A duplicate is harmless --
+     * the Flutter side deduplicates by callId (CallBloc._onCallPushEventIncoming) and enriches the
+     * existing entry with the signaling offer when it arrives.
+     */
+    private fun handleCSReEmitIncomingCall(extras: Bundle?) {
+        logger.d("handleCSReEmitIncomingCall")
+        extras?.let {
+            val metadata = CallMetadata.fromBundle(it)
+            val handle = metadata.handle
+            if (handle == null) {
+                logger.w("handleCSReEmitIncomingCall: missing handle for callId=${metadata.callId}; skipping")
+                return@let
+            }
+            logger.i("handleCSReEmitIncomingCall: re-delivering ringing incoming callId=${metadata.callId} to delegate")
+            flutterDelegateApi?.didPushIncomingCall(
+                handleArg = handle.toPHandle(),
+                displayNameArg = metadata.displayName,
+                videoArg = metadata.hasVideo ?: false,
+                callIdArg = metadata.callId,
+                errorArg = null,
+            ) {}
         }
     }
 

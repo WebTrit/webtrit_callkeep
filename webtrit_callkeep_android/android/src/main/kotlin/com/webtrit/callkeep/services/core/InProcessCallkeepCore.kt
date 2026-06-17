@@ -347,6 +347,7 @@ class InProcessCallkeepCore internal constructor(
         internal val GLOBAL_LISTENER_EVENTS: List<ConnectionEvent> =
             listOf(
                 CallLifecycleEvent.IncomingConnectionReported,
+                CallLifecycleEvent.ReEmitIncomingCall,
                 CallLifecycleEvent.ConnectionStateChanged,
                 CallLifecycleEvent.DeclineCall,
                 CallLifecycleEvent.HungUp,

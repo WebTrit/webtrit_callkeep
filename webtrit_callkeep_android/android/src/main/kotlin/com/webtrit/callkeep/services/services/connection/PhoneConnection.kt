@@ -93,6 +93,14 @@ class PhoneConnection internal constructor(
     var hasAnswered: Boolean = false
         private set
 
+    /**
+     * The current call metadata backing this connection. Exposed so [PhoneConnectionService] can
+     * re-deliver a still-ringing incoming call (with its handle/displayName/video) to a freshly
+     * attached Flutter delegate — see [com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent.ReEmitIncomingCall].
+     */
+    val currentMetadata: CallMetadata
+        get() = metadata
+
     init {
         audioModeIsVoip = true
         connectionProperties = PROPERTY_SELF_MANAGED

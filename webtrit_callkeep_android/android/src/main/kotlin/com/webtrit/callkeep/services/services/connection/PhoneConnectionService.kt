@@ -484,10 +484,18 @@ class PhoneConnectionService : ConnectionService() {
     }
 
     private fun handleReplayConnectionStates() {
-        Log.i(TAG, "handleReplayConnectionStates: re-emitting lifecycle state for answered connections")
+        Log.i(TAG, "handleReplayConnectionStates: re-emitting lifecycle state for answered and ringing connections")
         connectionManager.getConnections().forEach { connection ->
             if (connection.hasAnswered) {
                 performEventHandle(CallLifecycleEvent.AnswerCall, CallMetadata(callId = connection.callId))
+            } else if (connection.state == android.telecom.Connection.STATE_RINGING) {
+                // A still-ringing incoming call whose owning Flutter delegate is freshly attached
+                // (push->foreground isolate handoff or hot restart). The delegate that originally
+                // received DidPushIncomingCall is gone, so the new one has no record of this call.
+                // Re-deliver the full metadata so the main process seeds its call state BEFORE it
+                // processes signaling events (handshake/hangup). Without this the call lives only as
+                // a native connection and an incoming hangup is dropped (no matching ActiveCall).
+                performEventHandle(CallLifecycleEvent.ReEmitIncomingCall, connection.currentMetadata)
             }
         }
     }

@@ -40,6 +40,13 @@ enum class CallLifecycleEvent : ConnectionEvent {
     // from PhoneConnection.onStateChanged (Telecom) / StandaloneCallService transitions. Live states
     // only -- terminal DISCONNECTED stays on the cause-carrying HungUp/DeclineCall events.
     ConnectionStateChanged,
+
+    // Re-delivery of a still-ringing incoming call to a freshly-attached Flutter delegate
+    // (e.g. after a push->foreground isolate handoff or hot restart). Unlike DidPushIncomingCall,
+    // this is NOT gated by the signaling-registered suppression: the new delegate has no record
+    // of the call and must be seeded before it processes signaling events. Emitted by
+    // PhoneConnectionService.handleReplayConnectionStates for connections in STATE_RINGING.
+    ReEmitIncomingCall,
     OutgoingFailure,
     IncomingFailure,
     ConnectionNotFound,
