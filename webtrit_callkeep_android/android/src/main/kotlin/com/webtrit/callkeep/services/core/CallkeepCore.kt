@@ -116,11 +116,6 @@ interface CallkeepCore {
 
     fun markAnswered(callId: String)
 
-    fun markHeld(
-        callId: String,
-        onHold: Boolean,
-    )
-
     /**
      * Mirror the authoritative connection [state] for an already-tracked [callId] (source of truth =
      * the real android.telecom.Connection state via PhoneConnection.onStateChanged, or the

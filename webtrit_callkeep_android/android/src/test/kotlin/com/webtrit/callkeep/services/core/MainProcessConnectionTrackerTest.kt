@@ -137,17 +137,21 @@ class MainProcessConnectionTrackerTest {
     }
 
     @Test
-    fun `updateState — no-op for an untracked call (does not create an entry)`() {
-        tracker.updateState("ghost", CallConnectionState.ACTIVE)
-        assertEquals(null, tracker.getState("ghost"))
-        assertFalse(tracker.exists("ghost"))
+    fun `updateState — writes state unconditionally (survives addPending reset, like the old stampers)`() {
+        // Not gated on connections membership: this is required so the cold-start "already answered"
+        // detection (reportNewIncomingCall) still sees STATE_ACTIVE after an addPending() that clears
+        // the answeredCallIds guard but not connectionStates.
+        tracker.updateState("call-1", CallConnectionState.ACTIVE)
+        assertEquals(PCallkeepConnectionState.STATE_ACTIVE, tracker.getState("call-1"))
+        // It mirrors state only; it does not register the call into connections.
+        assertFalse(tracker.exists("call-1"))
     }
 
     @Test
-    fun `updateState — no-op for a pending-only call (not yet promoted)`() {
+    fun `updateState — state set before promote is preserved (not a registration)`() {
         tracker.addPending("call-1")
         tracker.updateState("call-1", CallConnectionState.ACTIVE)
-        assertEquals(null, tracker.getState("call-1"))
+        assertEquals(PCallkeepConnectionState.STATE_ACTIVE, tracker.getState("call-1"))
     }
 
     // -------------------------------------------------------------------------
@@ -163,10 +167,12 @@ class MainProcessConnectionTrackerTest {
     }
 
     @Test
-    fun `markAnswered — getState advances to STATE_ACTIVE`() {
+    fun `markAnswered — does not stamp state (state is mirrored via updateState)`() {
         tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
         tracker.markAnswered("call-1")
-        assertEquals(PCallkeepConnectionState.STATE_ACTIVE, tracker.getState("call-1"))
+        // markAnswered is a lifecycle guard only now; the ACTIVE state arrives via updateState.
+        assertTrue(tracker.isAnswered("call-1"))
+        assertEquals(PCallkeepConnectionState.STATE_RINGING, tracker.getState("call-1"))
     }
 
     @Test
@@ -235,26 +241,8 @@ class MainProcessConnectionTrackerTest {
         assertFalse(tracker.consumeAnswer("call-1"))
     }
 
-    // -------------------------------------------------------------------------
-    // markHeld
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `markHeld true — getState returns STATE_HOLDING`() {
-        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
-        tracker.markAnswered("call-1")
-        tracker.markHeld("call-1", true)
-        assertEquals(PCallkeepConnectionState.STATE_HOLDING, tracker.getState("call-1"))
-    }
-
-    @Test
-    fun `markHeld false — getState returns STATE_ACTIVE`() {
-        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
-        tracker.markAnswered("call-1")
-        tracker.markHeld("call-1", true)
-        tracker.markHeld("call-1", false)
-        assertEquals(PCallkeepConnectionState.STATE_ACTIVE, tracker.getState("call-1"))
-    }
+    // (hold state is now mirrored via updateState(CallConnectionState.HOLDING/ACTIVE) — see the
+    // updateState tests above; the removed markHeld stamper no longer exists.)
 
     // -------------------------------------------------------------------------
     // getAll
@@ -455,6 +443,10 @@ class MainProcessConnectionTrackerTest {
 
         tracker.markAnswered(id)
         assertTrue(tracker.isAnswered(id))
+        // markAnswered is a guard only; the ACTIVE state arrives via the mirror (updateState),
+        // mirroring the real flow (onStateChanged ACTIVE / Standalone explicit emit).
+        assertEquals(PCallkeepConnectionState.STATE_RINGING, tracker.getState(id))
+        tracker.updateState(id, CallConnectionState.ACTIVE)
         assertEquals(PCallkeepConnectionState.STATE_ACTIVE, tracker.getState(id))
 
         tracker.markTerminated(id)

@@ -36,12 +36,6 @@ interface ConnectionTracker {
     /** Mark [callId] as answered and advance its state to STATE_ACTIVE. */
     fun markAnswered(callId: String)
 
-    /** Update the hold state for [callId] (STATE_HOLDING / STATE_ACTIVE). */
-    fun markHeld(
-        callId: String,
-        onHold: Boolean,
-    )
-
     /**
      * Mirror the authoritative connection [state] for an already-tracked [callId]. Source of truth is
      * the real android.telecom.Connection state (PhoneConnection.onStateChanged) / the StandaloneCallService

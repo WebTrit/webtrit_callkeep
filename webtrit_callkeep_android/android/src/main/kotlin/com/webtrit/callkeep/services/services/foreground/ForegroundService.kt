@@ -594,9 +594,10 @@ class ForegroundService :
                         // a call that is still ringing and one that was already answered via the
                         // notification Answer button while the main process had no UI running.
                         //
-                        // connectionStates[callId] is set to STATE_ACTIVE by markAnswered() when
-                        // the AnswerCall broadcast arrives (fired from :callkeep_core after
-                        // onAnswer()), and is preserved across the addPending() call above.
+                        // connectionStates[callId] is mirrored to STATE_ACTIVE by the
+                        // ConnectionStateChanged event (PhoneConnection.onStateChanged ACTIVE, fired
+                        // from :callkeep_core after onAnswer()); updateState writes it unconditionally
+                        // so it is preserved across the addPending() call above.
                         val existingState = core.getState(callId)
                         if (existingState == PCallkeepConnectionState.STATE_ACTIVE) {
                             // Call answered before the main app started its UI. Adopt as active
@@ -1190,8 +1191,9 @@ class ForegroundService :
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
             val onHold = callMetaData.hasHold ?: false
-            // Keep tracker state in sync so getConnections() reflects HOLDING / ACTIVE correctly.
-            core.markHeld(callMetaData.callId, onHold)
+            // The HOLDING / ACTIVE shadow state is mirrored from the real connection via
+            // ConnectionStateChanged (onStateChanged for Telecom; explicit emit from StandaloneCallService),
+            // so this handler only relays the hold action to Flutter.
             flutterDelegateApi?.performSetHeld(callMetaData.callId, onHold) {}
         }
     }

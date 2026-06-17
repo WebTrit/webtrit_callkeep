@@ -152,11 +152,6 @@ class InProcessCallkeepCore internal constructor(
 
     override fun markAnswered(callId: String) = tracker.markAnswered(callId)
 
-    override fun markHeld(
-        callId: String,
-        onHold: Boolean,
-    ) = tracker.markHeld(callId, onHold)
-
     override fun updateState(
         callId: String,
         state: CallConnectionState,
