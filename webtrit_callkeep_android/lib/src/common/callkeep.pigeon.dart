@@ -152,6 +152,7 @@ enum PEndCallReasonEnum {
   answeredElsewhere,
   declinedElsewhere,
   missed,
+  missedWhileConnecting,
 }
 
 enum PAudioDeviceType {

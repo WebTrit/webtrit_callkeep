@@ -112,21 +112,22 @@ interface ConnectionTracker {
     fun markEndCallDispatched(callId: String): Boolean
 
     /**
-     * Record that the app just ended [callId] (signaling hangup or explicit endCall).
-     * Time-stamped so [wasRecentlyEnded] can expire the mark after a short TTL.
+     * Record that the app ended [callId] while it was never presented in Flutter state (the
+     * call==null signaling-hangup path). Used to reject a stale ghost re-presentation of the same
+     * call: in a push->foreground handoff the connection-state replay can re-drive an incoming call
+     * for a callId the signaling layer already hung up, arriving as a fresh reportNewIncomingCall.
      *
-     * Used to suppress a ghost re-presentation: in a push->foreground handoff the
-     * connection-state replay can re-drive an incoming call for a callId the signaling
-     * layer already hung up, arriving as a fresh reportNewIncomingCall seconds later.
+     * Semantic, not time-based: a transfer-back always reuses a call the app DID know about, so its
+     * end never lands here - the mark therefore distinguishes a ghost from a legitimate reuse
+     * without any timing window.
      */
-    fun markRecentlyEnded(callId: String)
+    fun markEndedWithoutFlutterState(callId: String)
 
     /**
-     * Returns true if [markRecentlyEnded] was called for [callId] within the recent-ended
-     * TTL window. Distinct from [isTerminated]: this is a short-lived, time-bounded mark
-     * so a legitimate same-id call arriving later is NOT blocked (unlike a permanent guard).
+     * Returns true (and removes the mark) if [markEndedWithoutFlutterState] was recorded for
+     * [callId]. Consumed on first read so a genuine later reuse of the same id is not blocked.
      */
-    fun wasRecentlyEnded(callId: String): Boolean
+    fun consumeEndedWithoutFlutterState(callId: String): Boolean
 
     // -------------------------------------------------------------------------
     // Read operations

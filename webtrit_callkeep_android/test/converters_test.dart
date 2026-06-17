@@ -218,6 +218,10 @@ void main() {
     test('missed maps to PEndCallReasonEnum.missed', () {
       expect(CallkeepEndCallReason.missed.toPigeon(), PEndCallReasonEnum.missed);
     });
+
+    test('missedWhileConnecting maps to PEndCallReasonEnum.missedWhileConnecting', () {
+      expect(CallkeepEndCallReason.missedWhileConnecting.toPigeon(), PEndCallReasonEnum.missedWhileConnecting);
+    });
   });
 
   // ---------------------------------------------------------------------------

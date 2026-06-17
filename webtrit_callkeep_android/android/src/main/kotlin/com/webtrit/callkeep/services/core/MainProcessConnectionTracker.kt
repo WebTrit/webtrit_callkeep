@@ -4,7 +4,6 @@ import com.webtrit.callkeep.PCallkeepConnection
 import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PCallkeepDisconnectCause
 import com.webtrit.callkeep.PCallkeepDisconnectCauseType
-import android.os.SystemClock
 import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
 import java.util.concurrent.ConcurrentHashMap
@@ -60,9 +59,12 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
     // last known Pigeon connection state per callId, kept for getConnections() queries
     private val connectionStates = ConcurrentHashMap<String, PCallkeepConnectionState>()
 
-    // callId -> elapsedRealtime() when the app last ended the call. Short-lived (see
-    // RECENTLY_ENDED_TTL_MS); used by reportNewIncomingCall to reject a ghost re-presentation.
-    private val recentlyEndedAtElapsedMs = ConcurrentHashMap<String, Long>()
+    // callIds the app ended while they were never presented in Flutter state (the call==null
+    // signaling-hangup path). Used by reportNewIncomingCall to reject a stale ghost re-presentation
+    // of such a call. Consumed on first read, so a genuine later reuse of the same id is not blocked.
+    // Not time-based: a transfer-back always reuses a call the app DID know, so its end never lands
+    // here - making this a semantic discriminator rather than a timing bet.
+    private val endedWithoutFlutterStateCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
     // -------------------------------------------------------------------------
     // Write operations — called from ForegroundService broadcast receiver
@@ -302,7 +304,7 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         connectionStates.clear()
         directNotifiedCallIds.clear()
         endCallDispatchedCallIds.clear()
-        recentlyEndedAtElapsedMs.clear()
+        endedWithoutFlutterStateCallIds.clear()
     }
 
     // -------------------------------------------------------------------------
@@ -317,26 +319,14 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
 
     override fun markEndCallDispatched(callId: String): Boolean = endCallDispatchedCallIds.add(callId)
 
-    override fun markRecentlyEnded(callId: String) {
-        recentlyEndedAtElapsedMs[callId] = SystemClock.elapsedRealtime()
+    override fun markEndedWithoutFlutterState(callId: String) {
+        endedWithoutFlutterStateCallIds.add(callId)
     }
 
-    override fun wasRecentlyEnded(callId: String): Boolean {
-        val endedAt = recentlyEndedAtElapsedMs[callId] ?: return false
-        val fresh = SystemClock.elapsedRealtime() - endedAt < RECENTLY_ENDED_TTL_MS
-        if (!fresh) recentlyEndedAtElapsedMs.remove(callId)
-        return fresh
-    }
+    override fun consumeEndedWithoutFlutterState(callId: String): Boolean =
+        endedWithoutFlutterStateCallIds.remove(callId)
 
     companion object {
-        /**
-         * How long after the app ends a call a fresh reportNewIncomingCall for the same callId is
-         * treated as a ghost re-presentation and rejected. Comfortably covers the observed
-         * push->foreground handoff replay window (~1-2 s) while staying short enough that a
-         * genuine later re-use of the same callId is not blocked.
-         */
-        private const val RECENTLY_ENDED_TTL_MS = 10_000L
-
         /**
          * Process-wide singleton. All main-process components ([ForegroundService],
          * [com.webtrit.callkeep.ConnectionsApi], etc.) share this single instance so that

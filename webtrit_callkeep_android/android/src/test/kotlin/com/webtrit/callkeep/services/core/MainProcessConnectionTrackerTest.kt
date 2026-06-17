@@ -612,4 +612,41 @@ class MainProcessConnectionTrackerTest {
         val drained = tracker.drainUnconnectedPendingCallIds()
         assertFalse(drained.contains("call-1"))
     }
+
+    // -------------------------------------------------------------------------
+    // markEndedWithoutFlutterState / consumeEndedWithoutFlutterState (ghost-call suppression)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `consumeEndedWithoutFlutterState — false for an unmarked call`() {
+        assertFalse(tracker.consumeEndedWithoutFlutterState("call-1"))
+    }
+
+    @Test
+    fun `consumeEndedWithoutFlutterState — true after marking`() {
+        tracker.markEndedWithoutFlutterState("call-1")
+        assertTrue(tracker.consumeEndedWithoutFlutterState("call-1"))
+    }
+
+    @Test
+    fun `consumeEndedWithoutFlutterState — is one-shot (second read is false)`() {
+        // The ghost replay is rejected once; a genuine later reuse of the same id is not blocked.
+        tracker.markEndedWithoutFlutterState("call-1")
+        assertTrue(tracker.consumeEndedWithoutFlutterState("call-1"))
+        assertFalse(tracker.consumeEndedWithoutFlutterState("call-1"))
+    }
+
+    @Test
+    fun `markEndedWithoutFlutterState — only the marked id is flagged`() {
+        tracker.markEndedWithoutFlutterState("call-1")
+        assertFalse(tracker.consumeEndedWithoutFlutterState("call-2"))
+        assertTrue(tracker.consumeEndedWithoutFlutterState("call-1"))
+    }
+
+    @Test
+    fun `clear — consumeEndedWithoutFlutterState returns false`() {
+        tracker.markEndedWithoutFlutterState("call-1")
+        tracker.clear()
+        assertFalse(tracker.consumeEndedWithoutFlutterState("call-1"))
+    }
 }

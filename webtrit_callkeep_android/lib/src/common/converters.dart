@@ -107,6 +107,8 @@ extension CallkeepEndCallReasonConverter on CallkeepEndCallReason {
         return PEndCallReasonEnum.declinedElsewhere;
       case CallkeepEndCallReason.missed:
         return PEndCallReasonEnum.missed;
+      case CallkeepEndCallReason.missedWhileConnecting:
+        return PEndCallReasonEnum.missedWhileConnecting;
     }
   }
 }

@@ -17,6 +17,7 @@ import com.webtrit.callkeep.PCallRequestErrorEnum
 import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PDelegateFlutterApi
 import com.webtrit.callkeep.PEndCallReason
+import com.webtrit.callkeep.PEndCallReasonEnum
 import com.webtrit.callkeep.PHandle
 import com.webtrit.callkeep.PHostApi
 import com.webtrit.callkeep.PIncomingCallError
@@ -453,17 +454,19 @@ class ForegroundService :
     ) {
         logger.i("reportNewIncomingCall: callId=$callId, handle=$handle")
 
-        // Reject a ghost re-presentation: the app just ended this callId (signaling hangup or
-        // explicit endCall), but a connection-state replay from :callkeep_core re-drove the incoming
-        // call and it arrives here seconds later as a fresh registration. Returning
-        // CALL_ID_ALREADY_TERMINATED short-circuits before any Telecom/IncomingCallService work, so
-        // no second ringtone/notification is shown. The Dart CallBloc already handles this error
-        // (treats it as not-an-error and ends the call), so no call is left stranded in state.
-        // Time-bounded (RECENTLY_ENDED_TTL_MS) so a legitimate later re-use of the same callId is
-        // unaffected -- unlike the permanent isTerminated guard, which is intentionally not checked
-        // here (see below).
-        if (core.wasRecentlyEnded(callId)) {
-            logger.i("reportNewIncomingCall: callId=$callId was recently ended; rejecting as terminated to suppress ghost re-presentation")
+        // Reject a stale ghost re-presentation: the app ended this callId while it was never
+        // presented in Flutter state (a push->foreground handoff where the remote hung up before
+        // CallBloc registered the call - reportEndCall with MISSED_WHILE_CONNECTING armed the guard),
+        // and a connection-state replay from :callkeep_core now re-drives the incoming call as a fresh
+        // registration. Returning CALL_ID_ALREADY_TERMINATED short-circuits before any
+        // Telecom/IncomingCallService work, so no second ringtone/notification is shown. The Dart
+        // CallBloc already handles this error (not treated as a failure; the call is ended), so
+        // nothing is stranded. The guard is consumed on read and is armed ONLY by the never-presented
+        // end - a transfer-back reuses a call the app DID know, so it never arms it and re-report
+        // proceeds normally (the permanent isTerminated guard is intentionally not checked here; see
+        // below).
+        if (core.consumeEndedWithoutFlutterState(callId)) {
+            logger.i("reportNewIncomingCall: callId=$callId ended without Flutter state; rejecting as terminated to suppress ghost re-presentation")
             callback(Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED)))
             return
         }
@@ -864,10 +867,15 @@ class ForegroundService :
         // to cross-process latency. Doing it here lets deliverIncomingToDelegate suppress a
         // late-arriving connection-state replay for a call the app already reported as ended.
         core.markTerminated(callId)
-        // Short-lived mark so a ghost re-presentation (a connection-state replay that re-drives
-        // reportNewIncomingCall for this just-ended callId during a push->foreground handoff) is
-        // rejected rather than ringing again. See reportNewIncomingCall.
-        core.markRecentlyEnded(callId)
+        // When the app ends a call it never presented in Flutter state (MISSED_WHILE_CONNECTING:
+        // the remote hung up an incoming call before CallBloc registered it), arm a one-shot guard
+        // so a stale connection-state replay that re-drives reportNewIncomingCall for the same
+        // callId is rejected rather than ringing again. Only this never-presented end arms it - a
+        // transfer-back always reuses a call the app DID know, so it is unaffected. See
+        // reportNewIncomingCall.
+        if (reason.value == PEndCallReasonEnum.MISSED_WHILE_CONNECTING) {
+            core.markEndedWithoutFlutterState(callId)
+        }
         core.startDeclineCall(callMetaData)
         callback.invoke(Result.success(Unit))
     }
@@ -913,10 +921,6 @@ class ForegroundService :
         callback: (Result<PCallRequestError?>) -> Unit,
     ) {
         logger.i("endCall $callId.")
-
-        // The app is explicitly ending this call; suppress a ghost re-presentation for the same
-        // callId for a short window (see reportNewIncomingCall / MainProcessConnectionTracker).
-        core.markRecentlyEnded(callId)
 
         // If there is a deferred reportNewIncomingCall callback waiting for Telecom
         // confirmation, resolve it immediately with null (success). The call was
