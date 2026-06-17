@@ -716,7 +716,7 @@ void main() {
   // (line 0 / incomingFromOffer), showing two identical ringing entries in the UI.
   //
   // Fix: ForegroundService.reportNewIncomingCall adds the callId to
-  // signalingRegisteredCallIds; handleCSReportDidPushIncomingCall suppresses
+  // reportedIncomingCallIds; handleCSReportDidPushIncomingCall suppresses
   // didPushIncomingCall for those callIds.
   // -------------------------------------------------------------------------
 
