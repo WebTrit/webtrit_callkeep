@@ -111,6 +111,23 @@ interface ConnectionTracker {
      */
     fun markEndCallDispatched(callId: String): Boolean
 
+    /**
+     * Record that the app just ended [callId] (signaling hangup or explicit endCall).
+     * Time-stamped so [wasRecentlyEnded] can expire the mark after a short TTL.
+     *
+     * Used to suppress a ghost re-presentation: in a push->foreground handoff the
+     * connection-state replay can re-drive an incoming call for a callId the signaling
+     * layer already hung up, arriving as a fresh reportNewIncomingCall seconds later.
+     */
+    fun markRecentlyEnded(callId: String)
+
+    /**
+     * Returns true if [markRecentlyEnded] was called for [callId] within the recent-ended
+     * TTL window. Distinct from [isTerminated]: this is a short-lived, time-bounded mark
+     * so a legitimate same-id call arriving later is NOT blocked (unlike a permanent guard).
+     */
+    fun wasRecentlyEnded(callId: String): Boolean
+
     // -------------------------------------------------------------------------
     // Read operations
     // -------------------------------------------------------------------------

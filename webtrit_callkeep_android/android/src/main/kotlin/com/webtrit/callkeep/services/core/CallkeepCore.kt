@@ -160,6 +160,12 @@ interface CallkeepCore {
 
     fun markEndCallDispatched(callId: String): Boolean
 
+    /** Record that the app just ended [callId]; see [ConnectionTracker.markRecentlyEnded]. */
+    fun markRecentlyEnded(callId: String)
+
+    /** Returns true if the app recently ended [callId]; see [ConnectionTracker.wasRecentlyEnded]. */
+    fun wasRecentlyEnded(callId: String): Boolean
+
     // -------------------------------------------------------------------------
     // Connection event receivers
     // -------------------------------------------------------------------------

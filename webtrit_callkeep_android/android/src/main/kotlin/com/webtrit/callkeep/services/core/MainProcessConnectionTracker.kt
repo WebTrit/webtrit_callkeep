@@ -4,6 +4,7 @@ import com.webtrit.callkeep.PCallkeepConnection
 import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PCallkeepDisconnectCause
 import com.webtrit.callkeep.PCallkeepDisconnectCauseType
+import android.os.SystemClock
 import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
 import java.util.concurrent.ConcurrentHashMap
@@ -58,6 +59,10 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
 
     // last known Pigeon connection state per callId, kept for getConnections() queries
     private val connectionStates = ConcurrentHashMap<String, PCallkeepConnectionState>()
+
+    // callId -> elapsedRealtime() when the app last ended the call. Short-lived (see
+    // RECENTLY_ENDED_TTL_MS); used by reportNewIncomingCall to reject a ghost re-presentation.
+    private val recentlyEndedAtElapsedMs = ConcurrentHashMap<String, Long>()
 
     // -------------------------------------------------------------------------
     // Write operations — called from ForegroundService broadcast receiver
@@ -297,6 +302,7 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         connectionStates.clear()
         directNotifiedCallIds.clear()
         endCallDispatchedCallIds.clear()
+        recentlyEndedAtElapsedMs.clear()
     }
 
     // -------------------------------------------------------------------------
@@ -311,7 +317,26 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
 
     override fun markEndCallDispatched(callId: String): Boolean = endCallDispatchedCallIds.add(callId)
 
+    override fun markRecentlyEnded(callId: String) {
+        recentlyEndedAtElapsedMs[callId] = SystemClock.elapsedRealtime()
+    }
+
+    override fun wasRecentlyEnded(callId: String): Boolean {
+        val endedAt = recentlyEndedAtElapsedMs[callId] ?: return false
+        val fresh = SystemClock.elapsedRealtime() - endedAt < RECENTLY_ENDED_TTL_MS
+        if (!fresh) recentlyEndedAtElapsedMs.remove(callId)
+        return fresh
+    }
+
     companion object {
+        /**
+         * How long after the app ends a call a fresh reportNewIncomingCall for the same callId is
+         * treated as a ghost re-presentation and rejected. Comfortably covers the observed
+         * push->foreground handoff replay window (~1-2 s) while staying short enough that a
+         * genuine later re-use of the same callId is not blocked.
+         */
+        private const val RECENTLY_ENDED_TTL_MS = 10_000L
+
         /**
          * Process-wide singleton. All main-process components ([ForegroundService],
          * [com.webtrit.callkeep.ConnectionsApi], etc.) share this single instance so that

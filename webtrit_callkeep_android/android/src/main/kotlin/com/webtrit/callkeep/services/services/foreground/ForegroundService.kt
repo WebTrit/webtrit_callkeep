@@ -453,6 +453,21 @@ class ForegroundService :
     ) {
         logger.i("reportNewIncomingCall: callId=$callId, handle=$handle")
 
+        // Reject a ghost re-presentation: the app just ended this callId (signaling hangup or
+        // explicit endCall), but a connection-state replay from :callkeep_core re-drove the incoming
+        // call and it arrives here seconds later as a fresh registration. Returning
+        // CALL_ID_ALREADY_TERMINATED short-circuits before any Telecom/IncomingCallService work, so
+        // no second ringtone/notification is shown. The Dart CallBloc already handles this error
+        // (treats it as not-an-error and ends the call), so no call is left stranded in state.
+        // Time-bounded (RECENTLY_ENDED_TTL_MS) so a legitimate later re-use of the same callId is
+        // unaffected -- unlike the permanent isTerminated guard, which is intentionally not checked
+        // here (see below).
+        if (core.wasRecentlyEnded(callId)) {
+            logger.i("reportNewIncomingCall: callId=$callId was recently ended; rejecting as terminated to suppress ghost re-presentation")
+            callback(Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED)))
+            return
+        }
+
         // Build metadata before the early check so we can promote the call into the core shadow
         // tracker even when the call is already answered (cold-start race: ReplayConnectionStates
         // fires handleCSReportAnswerCall on delegate attach, marking the call answered before
@@ -849,6 +864,10 @@ class ForegroundService :
         // to cross-process latency. Doing it here lets deliverIncomingToDelegate suppress a
         // late-arriving connection-state replay for a call the app already reported as ended.
         core.markTerminated(callId)
+        // Short-lived mark so a ghost re-presentation (a connection-state replay that re-drives
+        // reportNewIncomingCall for this just-ended callId during a push->foreground handoff) is
+        // rejected rather than ringing again. See reportNewIncomingCall.
+        core.markRecentlyEnded(callId)
         core.startDeclineCall(callMetaData)
         callback.invoke(Result.success(Unit))
     }
@@ -894,6 +913,10 @@ class ForegroundService :
         callback: (Result<PCallRequestError?>) -> Unit,
     ) {
         logger.i("endCall $callId.")
+
+        // The app is explicitly ending this call; suppress a ghost re-presentation for the same
+        // callId for a short window (see reportNewIncomingCall / MainProcessConnectionTracker).
+        core.markRecentlyEnded(callId)
 
         // If there is a deferred reportNewIncomingCall callback waiting for Telecom
         // confirmation, resolve it immediately with null (success). The call was
