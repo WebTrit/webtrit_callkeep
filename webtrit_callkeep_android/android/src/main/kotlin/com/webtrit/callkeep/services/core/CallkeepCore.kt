@@ -10,6 +10,7 @@ import com.webtrit.callkeep.PCallkeepConnection
 import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.PIncomingCallErrorEnum
+import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
 
@@ -115,9 +116,16 @@ interface CallkeepCore {
 
     fun markAnswered(callId: String)
 
-    fun markHeld(
+    /**
+     * Mirror the authoritative connection [state] for [callId] (source of truth = the real
+     * android.telecom.Connection state via PhoneConnection.onStateChanged, or the StandaloneCallService
+     * transitions). Writes state UNCONDITIONALLY — it does NOT register the call and may be called
+     * before promote (state persists across addPending, which the cold-start adoption relies on).
+     * Ignores terminal DISCONNECTED (owned by [markTerminated]).
+     */
+    fun updateState(
         callId: String,
-        onHold: Boolean,
+        state: CallConnectionState,
     )
 
     fun markTerminated(callId: String)

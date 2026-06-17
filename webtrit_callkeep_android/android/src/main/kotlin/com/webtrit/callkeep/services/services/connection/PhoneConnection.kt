@@ -23,6 +23,7 @@ import com.webtrit.callkeep.managers.AudioManager
 import com.webtrit.callkeep.managers.NotificationManager
 import com.webtrit.callkeep.models.AudioDevice
 import com.webtrit.callkeep.models.AudioDeviceType
+import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
@@ -251,6 +252,15 @@ class PhoneConnection internal constructor(
         if ((lastKnownState == STATE_DIALING || lastKnownState == STATE_RINGING) && state == STATE_ACTIVE) {
             onActiveConnection()
         }
+
+        // Mirror the authoritative Telecom state to the main process: the shadow state mirrors the
+        // real connection state instead of inferring a fixed value per lifecycle event. Live states
+        // only -- terminal DISCONNECTED stays on the cause-carrying termination events
+        // (onDisconnect -> HungUp/DeclineCall), which preserve the DisconnectCause.
+        CallConnectionState
+            .fromTelecomState(state)
+            ?.takeIf { it != CallConnectionState.DISCONNECTED }
+            ?.let { dispatcher(CallLifecycleEvent.ConnectionStateChanged, metadata.copy(connectionState = it)) }
 
         lastKnownState = state
     }

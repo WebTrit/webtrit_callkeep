@@ -4,6 +4,7 @@ import com.webtrit.callkeep.PCallkeepConnection
 import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PCallkeepDisconnectCause
 import com.webtrit.callkeep.PCallkeepDisconnectCauseType
+import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
 import java.util.concurrent.ConcurrentHashMap
 
@@ -129,31 +130,49 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
     }
 
     /**
-     * Mark [callId] as answered and advance its state to [PCallkeepConnectionState.STATE_ACTIVE].
+     * Mark [callId] as answered (lifecycle guard for isAnswered/checkIncomingDuplicate).
+     *
+     * Does NOT stamp the connection state: the ACTIVE state is mirrored from the real connection via
+     * [updateState] (PhoneConnection.onStateChanged for Telecom; explicit ConnectionStateChanged from
+     * StandaloneCallService). The initial registration snapshot is still set by [promote].
      */
     override fun markAnswered(callId: String) {
         answeredCallIds.add(callId)
-        connectionStates[callId] = PCallkeepConnectionState.STATE_ACTIVE
     }
 
     /**
-     * Update the hold state for [callId].
-     * Advances its state to [PCallkeepConnectionState.STATE_HOLDING] when [onHold] is true,
-     * or back to [PCallkeepConnectionState.STATE_ACTIVE] when false.
-     * This keeps [getConnections] in sync with the Telecom hold state so that callers never
-     * see a stale ACTIVE state for a held call.
+     * Mirror the authoritative connection [state] for [callId]. The source of truth is the real
+     * android.telecom.Connection state, broadcast from PhoneConnection.onStateChanged (and emitted
+     * explicitly by the no-Telecom StandaloneCallService). Replaces the per-event state stamping that
+     * the removed markAnswered(ACTIVE)/markHeld did; like those it writes [connectionStates]
+     * unconditionally (it is NOT gated on [connections] membership), so the state survives an
+     * [addPending] reset and the cold-start "already answered" detection in reportNewIncomingCall keeps
+     * working. Touches no lifecycle guard set. Termination (STATE_DISCONNECTED) is owned by
+     * [markTerminated] on the cause-carrying events, not by this mirror.
      */
-    override fun markHeld(
+    override fun updateState(
         callId: String,
-        onHold: Boolean,
+        state: CallConnectionState,
     ) {
-        connectionStates[callId] =
-            if (onHold) {
-                PCallkeepConnectionState.STATE_HOLDING
-            } else {
-                PCallkeepConnectionState.STATE_ACTIVE
-            }
+        // Terminal state is owned by markTerminated (via the cause-carrying HungUp/DeclineCall events),
+        // not by this mirror — guard here so a future ConnectionStateChanged(DISCONNECTED) call site
+        // cannot accidentally override the termination path.
+        if (state == CallConnectionState.DISCONNECTED) return
+        connectionStates[callId] = state.toPCallkeepConnectionState()
     }
+
+    // Conversion from the local model enum to the Pigeon enum lives here, at the core boundary,
+    // so model/domain code (CallMetadata) stays free of the generated PCallkeepConnectionState.
+    private fun CallConnectionState.toPCallkeepConnectionState(): PCallkeepConnectionState =
+        when (this) {
+            CallConnectionState.INITIALIZING -> PCallkeepConnectionState.STATE_INITIALIZING
+            CallConnectionState.NEW -> PCallkeepConnectionState.STATE_NEW
+            CallConnectionState.RINGING -> PCallkeepConnectionState.STATE_RINGING
+            CallConnectionState.DIALING -> PCallkeepConnectionState.STATE_DIALING
+            CallConnectionState.ACTIVE -> PCallkeepConnectionState.STATE_ACTIVE
+            CallConnectionState.HOLDING -> PCallkeepConnectionState.STATE_HOLDING
+            CallConnectionState.DISCONNECTED -> PCallkeepConnectionState.STATE_DISCONNECTED
+        }
 
     override fun updateMetadata(metadata: CallMetadata) {
         connections.computeIfPresent(metadata.callId) { _, existing ->

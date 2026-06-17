@@ -13,6 +13,7 @@ import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.PIncomingCallErrorEnum
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
+import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
@@ -151,10 +152,10 @@ class InProcessCallkeepCore internal constructor(
 
     override fun markAnswered(callId: String) = tracker.markAnswered(callId)
 
-    override fun markHeld(
+    override fun updateState(
         callId: String,
-        onHold: Boolean,
-    ) = tracker.markHeld(callId, onHold)
+        state: CallConnectionState,
+    ) = tracker.updateState(callId, state)
 
     override fun markTerminated(callId: String) = tracker.markTerminated(callId)
 
@@ -346,6 +347,7 @@ class InProcessCallkeepCore internal constructor(
         internal val GLOBAL_LISTENER_EVENTS: List<ConnectionEvent> =
             listOf(
                 CallLifecycleEvent.DidPushIncomingCall,
+                CallLifecycleEvent.ConnectionStateChanged,
                 CallLifecycleEvent.DeclineCall,
                 CallLifecycleEvent.HungUp,
                 CallLifecycleEvent.ConnectionNotFound,

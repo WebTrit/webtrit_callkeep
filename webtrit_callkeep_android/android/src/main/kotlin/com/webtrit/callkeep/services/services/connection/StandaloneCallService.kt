@@ -19,6 +19,7 @@ import com.webtrit.callkeep.common.startForegroundServiceCompat
 import com.webtrit.callkeep.managers.NotificationChannelManager
 import com.webtrit.callkeep.models.AudioDevice
 import com.webtrit.callkeep.models.AudioDeviceType
+import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.notifications.StandaloneIncomingCallNotificationBuilder
 import com.webtrit.callkeep.services.broadcaster.CallCommandEvent
@@ -334,6 +335,12 @@ class StandaloneCallService : Service() {
         promoteRemainingRingingToCallWaitingTone(metadata.callId)
 
         core.notifyConnectionEvent(CallLifecycleEvent.AnswerCall, callMetadataMap[metadata.callId]!!.toBundle())
+        // No onStateChanged here (no telecom Connection) — emit the state explicitly so the shadow
+        // mirrors it (replaces the removed markAnswered state-stamping).
+        core.notifyConnectionEvent(
+            CallLifecycleEvent.ConnectionStateChanged,
+            callMetadataMap[metadata.callId]!!.copy(connectionState = CallConnectionState.ACTIVE).toBundle(),
+        )
     }
 
     private fun handleAnswerCall(metadata: CallMetadata) {
@@ -350,6 +357,12 @@ class StandaloneCallService : Service() {
         promoteRemainingRingingToCallWaitingTone(metadata.callId)
 
         core.notifyConnectionEvent(CallLifecycleEvent.AnswerCall, callMetadataMap[metadata.callId]!!.toBundle())
+        // No onStateChanged here (no telecom Connection) — emit the state explicitly so the shadow
+        // mirrors it (replaces the removed markAnswered state-stamping).
+        core.notifyConnectionEvent(
+            CallLifecycleEvent.ConnectionStateChanged,
+            callMetadataMap[metadata.callId]!!.copy(connectionState = CallConnectionState.ACTIVE).toBundle(),
+        )
     }
 
     /**
@@ -425,6 +438,13 @@ class StandaloneCallService : Service() {
         val updated = (callMetadataMap[metadata.callId] ?: metadata).copy(hasHold = onHold)
         callMetadataMap[metadata.callId] = updated
         core.notifyConnectionEvent(CallMediaEvent.ConnectionHolding, updated.toBundle())
+        // No onStateChanged here (no telecom Connection) — emit the state explicitly so the shadow
+        // mirrors it (replaces the removed markHeld state-stamping).
+        val holdState = if (onHold) CallConnectionState.HOLDING else CallConnectionState.ACTIVE
+        core.notifyConnectionEvent(
+            CallLifecycleEvent.ConnectionStateChanged,
+            updated.copy(connectionState = holdState).toBundle(),
+        )
     }
 
     private fun handleTearDownConnections() {
@@ -518,10 +538,14 @@ class StandaloneCallService : Service() {
     }
 
     private fun handleSyncConnectionState() {
-        Log.i(TAG, "handleSyncConnectionState: re-emitting AnswerCall for answered calls")
+        Log.i(TAG, "handleSyncConnectionState: re-emitting AnswerCall + ACTIVE state for answered calls")
         answeredCallIds.forEach { callId ->
             val meta = callMetadataMap[callId] ?: CallMetadata(callId = callId)
             core.notifyConnectionEvent(CallLifecycleEvent.AnswerCall, meta.toBundle())
+            core.notifyConnectionEvent(
+                CallLifecycleEvent.ConnectionStateChanged,
+                meta.copy(connectionState = CallConnectionState.ACTIVE).toBundle(),
+            )
         }
     }
 

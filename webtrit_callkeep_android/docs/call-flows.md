@@ -48,12 +48,13 @@ Triggered by an FCM message or a direct Dart call to `reportNewIncomingCall`.
         |   If not yet: ConnectionManager.reserveAnswer(callId)  (deferred)
         v
 11. PhoneConnectionService.onStartCommand(AnswerCall)
-        |   PhoneConnection.onAnswer()
-        |   STATE_ACTIVE
+        |   PhoneConnection.onAnswer() -> setActive() -> STATE_ACTIVE
+        |   broadcast: ConnectionStateChanged (connectionState = ACTIVE)
         |   broadcast: AnswerCall
         v
-12. ForegroundService receives AnswerCall broadcast
-        |   MainProcessConnectionTracker.markAnswered(callId)
+12. ForegroundService receives the broadcasts
+        |   ConnectionStateChanged -> updateState(callId, ACTIVE)  (mirror)
+        |   AnswerCall -> markAnswered(callId)  (guard)
         |   PDelegateFlutterApi.performAnswerCall(callId)
         v
 13. Dart delegate receives performAnswerCall()
@@ -137,10 +138,12 @@ Triggered when the user initiates a call from the app UI.
         |   CallkeepCore.startEstablishCall(callId)
         v
 9.  PhoneConnectionService: PhoneConnection.setActive() -> STATE_ACTIVE
+        |   broadcast: ConnectionStateChanged (connectionState = ACTIVE)
         |   broadcast: AnswerCall
         v
-10. ForegroundService receives AnswerCall broadcast
-        |   MainProcessConnectionTracker.markAnswered(callId)
+10. ForegroundService receives the broadcasts
+        |   ConnectionStateChanged -> updateState(callId, ACTIVE)  (mirror)
+        |   AnswerCall -> markAnswered(callId)  (guard)
         |   PDelegateFlutterApi.performConnected(callId)
         v
 11. Dart delegate receives performConnected()

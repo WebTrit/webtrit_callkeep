@@ -29,6 +29,7 @@ import com.webtrit.callkeep.common.Platform
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.TelephonyUtils
 import com.webtrit.callkeep.managers.NotificationChannelManager
+import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.EmergencyNumberException
 import com.webtrit.callkeep.models.FailedCallInfo
@@ -133,6 +134,10 @@ class ForegroundService :
         when (event) {
             CallLifecycleEvent.DidPushIncomingCall -> {
                 handleCSReportDidPushIncomingCall(data)
+            }
+
+            CallLifecycleEvent.ConnectionStateChanged -> {
+                handleCSReportConnectionStateChanged(data)
             }
 
             CallLifecycleEvent.DeclineCall -> {
@@ -589,9 +594,10 @@ class ForegroundService :
                         // a call that is still ringing and one that was already answered via the
                         // notification Answer button while the main process had no UI running.
                         //
-                        // connectionStates[callId] is set to STATE_ACTIVE by markAnswered() when
-                        // the AnswerCall broadcast arrives (fired from :callkeep_core after
-                        // onAnswer()), and is preserved across the addPending() call above.
+                        // connectionStates[callId] is mirrored to STATE_ACTIVE by the
+                        // ConnectionStateChanged event (PhoneConnection.onStateChanged ACTIVE, fired
+                        // from :callkeep_core after onAnswer()); updateState writes it unconditionally
+                        // so it is preserved across the addPending() call above.
                         val existingState = core.getState(callId)
                         if (existingState == PCallkeepConnectionState.STATE_ACTIVE) {
                             // Call answered before the main app started its UI. Adopt as active
@@ -1045,6 +1051,22 @@ class ForegroundService :
         }
     }
 
+    /**
+     * Mirror the authoritative connection state carried by ConnectionStateChanged
+     * (PhoneConnection.onStateChanged in :callkeep_core, or StandaloneCallService) into the shadow
+     * state. Live states only; terminal DISCONNECTED is owned by the cause-carrying HungUp/DeclineCall
+     * path (handleCSReportDeclineCall -> markTerminated), so it is ignored here.
+     */
+    private fun handleCSReportConnectionStateChanged(extras: Bundle?) {
+        extras?.let {
+            val metadata = CallMetadata.fromBundle(it)
+            val state = metadata.connectionState ?: return@let
+            if (state == CallConnectionState.DISCONNECTED) return@let
+            logger.d("handleCSReportConnectionStateChanged: callId=${metadata.callId} state=$state")
+            core.updateState(metadata.callId, state)
+        }
+    }
+
     private fun handleCSReportDeclineCall(extras: Bundle?) {
         logger.d("handleCSReportDeclineCall")
         extras?.let {
@@ -1169,8 +1191,9 @@ class ForegroundService :
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
             val onHold = callMetaData.hasHold ?: false
-            // Keep tracker state in sync so getConnections() reflects HOLDING / ACTIVE correctly.
-            core.markHeld(callMetaData.callId, onHold)
+            // The HOLDING / ACTIVE shadow state is mirrored from the real connection via
+            // ConnectionStateChanged (onStateChanged for Telecom; explicit emit from StandaloneCallService),
+            // so this handler only relays the hold action to Flutter.
             flutterDelegateApi?.performSetHeld(callMetaData.callId, onHold) {}
         }
     }

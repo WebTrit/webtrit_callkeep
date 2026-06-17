@@ -67,6 +67,17 @@ Called by Telecom when the call ends (hang-up from either side).
 
 - Dispatches `SentDTMF` broadcast.
 
+### `onStateChanged(state)`
+
+Telecom-driven hook fired on every connection state transition.
+
+- Maps the raw Telecom `state` int via `CallConnectionState.fromTelecomState(state)`.
+- For live states (RINGING/DIALING/ACTIVE/HOLDING) dispatches `ConnectionStateChanged`,
+  carrying the state in `CallMetadata.connectionState` so the main process MIRRORS it into the
+  shadow state rather than inferring a fixed state per event type.
+- Terminal DISCONNECTED is skipped here -- it stays on the cause-carrying `HungUp` / `DeclineCall`
+  dispatched from `onDisconnect()` / `onReject()`.
+
 ### `onCallEndpointChanged(endpoint)` (API 34+) / legacy audio device change
 
 - Dispatches `AudioDeviceSet` broadcast with the new endpoint.

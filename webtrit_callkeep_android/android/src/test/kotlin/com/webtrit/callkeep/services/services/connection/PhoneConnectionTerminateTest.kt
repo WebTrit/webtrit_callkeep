@@ -34,8 +34,13 @@ class PhoneConnectionTerminateTest {
     private val context: Context = RuntimeEnvironment.getApplication()
 
     // Captured dispatcher events — order matters for multi-call assertions.
+    // ConnectionStateChanged is filtered out: these tests assert the termination event/cause
+    // (HungUp vs DeclineCall) and its idempotency; the orthogonal state-mirror events emitted by
+    // onStateChanged during setup/transitions are covered separately.
     private val dispatchedEvents = mutableListOf<ConnectionEvent>()
-    private val dispatcher: PerformDispatchHandle = { event, _ -> dispatchedEvents.add(event) }
+    private val dispatcher: PerformDispatchHandle = { event, _ ->
+        if (event != CallLifecycleEvent.ConnectionStateChanged) dispatchedEvents.add(event)
+    }
 
     // Count of onDisconnectCallback invocations.
     private var disconnectCallbackCount = 0

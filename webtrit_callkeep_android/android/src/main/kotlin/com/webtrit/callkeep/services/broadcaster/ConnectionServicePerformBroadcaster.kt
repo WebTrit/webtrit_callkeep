@@ -31,6 +31,11 @@ enum class CallLifecycleEvent : ConnectionEvent {
     HungUp,
     OngoingCall,
     DidPushIncomingCall,
+    // Carries the authoritative connection state (CallMetadata.connectionState) so the main process
+    // can MIRROR it into the shadow state, instead of inferring a fixed state per event type. Emitted
+    // from PhoneConnection.onStateChanged (Telecom) / StandaloneCallService transitions. Live states
+    // only -- terminal DISCONNECTED stays on the cause-carrying HungUp/DeclineCall events.
+    ConnectionStateChanged,
     OutgoingFailure,
     IncomingFailure,
     ConnectionNotFound,

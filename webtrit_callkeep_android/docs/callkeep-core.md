@@ -66,8 +66,9 @@ CallkeepCore.instance.removeConnectionEventListener(this)
 | `unregisterConnectionEvents(...)`     | Unregister a temporary receiver                          |
 
 **Global events** (routed to all `ConnectionEventListener` subscribers):
-`DidPushIncomingCall`, `DeclineCall`, `HungUp`, `ConnectionNotFound`, `AnswerCall`,
-`AudioDeviceSet`, `AudioDevicesUpdate`, `AudioMuting`, `ConnectionHolding`, `SentDTMF`.
+`DidPushIncomingCall`, `ConnectionStateChanged`, `DeclineCall`, `HungUp`, `ConnectionNotFound`,
+`AnswerCall`, `AudioDeviceSet`, `AudioDevicesUpdate`, `AudioMuting`, `ConnectionHolding`,
+`SentDTMF`.
 
 **Per-call dynamic receivers** (registered ad-hoc, not via listener):
 `OngoingCall`, `OutgoingFailure`, `IncomingFailure`, `TearDownComplete`.
@@ -81,8 +82,8 @@ reports events via `CallkeepCore`. They update `MainProcessConnectionTracker`.
 |------------------------------------|------------------------------------|---------------------------------|
 | `addPending(callId)`               | `NotifyPending` intent from CS     | Registers call as pending       |
 | `promote(callId, metadata, state)` | `DidPushIncomingCall` broadcast    | Full registration with metadata |
-| `markAnswered(callId)`             | `AnswerCall` broadcast             | Transitions to STATE_ACTIVE     |
-| `markHeld(callId, onHold)`         | `ConnectionHolding` broadcast      | Updates hold state              |
+| `markAnswered(callId)`             | `AnswerCall` broadcast             | Marks answered (guard only; no state stamp) |
+| `updateState(callId, state)`       | `ConnectionStateChanged` broadcast | Mirrors authoritative connection state (unconditional; ignores DISCONNECTED) |
 | `markTerminated(callId)`           | `HungUp` / `DeclineCall` broadcast | Moves to terminated set         |
 
 ## Command Dispatch API
