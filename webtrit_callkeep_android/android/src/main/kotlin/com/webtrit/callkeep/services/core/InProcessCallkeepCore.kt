@@ -327,7 +327,7 @@ class InProcessCallkeepCore internal constructor(
 
     override fun sendCleanConnections() = router.sendCleanConnections()
 
-    override fun sendSyncAudioState() = router.sendSyncAudioState()
+    override fun replayAudioState() = router.replayAudioState()
 
     override fun replayConnectionStates() = router.replayConnectionStates()
 

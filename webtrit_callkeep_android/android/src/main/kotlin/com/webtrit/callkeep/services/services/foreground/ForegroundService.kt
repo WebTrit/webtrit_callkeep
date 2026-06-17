@@ -1228,11 +1228,11 @@ class ForegroundService :
         // Ask :callkeep_core to re-emit audio state (device + mute) for any active connections.
         // PhoneConnection.forceUpdateAudioState() runs in the :callkeep_core process and sends
         // CallMediaEvent broadcasts back to the main process, which updates the Flutter UI.
-        // Not gated on the main-process tracker: handleSyncAudioState() iterates the live
+        // Not gated on the main-process tracker: handleReplayAudioState() iterates the live
         // :callkeep_core connections, so it is already a no-op when there are none -- and the
         // local tracker is transiently empty right after the replay above (and during a
         // push->foreground handoff), which would otherwise skip the re-sync exactly when needed.
-        core.sendSyncAudioState()
+        core.replayAudioState()
     }
 
     //

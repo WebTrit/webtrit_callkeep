@@ -43,7 +43,7 @@ class ServiceCommandTest {
     @Test
     fun phone_lifecycleAction_withNullExtras_returnsLifecycleCommand() {
         assertEquals(PhoneServiceCommand.Clean, PhoneServiceCommand.from(intent(ServiceAction.CleanConnections.action, null)))
-        assertEquals(PhoneServiceCommand.SyncAudio, PhoneServiceCommand.from(intent(ServiceAction.SyncAudioState.action, null)))
+        assertEquals(PhoneServiceCommand.ReplayAudio, PhoneServiceCommand.from(intent(ServiceAction.ReplayAudioState.action, null)))
         assertEquals(
             PhoneServiceCommand.ReplayConnections,
             PhoneServiceCommand.from(intent(ServiceAction.ReplayConnectionStates.action, null)),

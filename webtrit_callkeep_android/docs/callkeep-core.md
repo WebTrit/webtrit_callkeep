@@ -118,7 +118,7 @@ These send intents / broadcasts to `PhoneConnectionService` in `:callkeep_core`.
 | `tearDownService(ctx)`           | `startService` intent (`CleanConnections`)    | Reset without hanging up                         |
 | `sendTearDownConnections(ctx)`   | `startService` intent (`TearDownConnections`) | Hang up all + await `TearDownComplete` broadcast |
 | `sendReserveAnswer(ctx, callId)` | `startService` intent                         | Deferred answer for pending call                 |
-| `sendSyncAudioState(ctx)`        | `startService` intent                         | Re-emit audio state after hot-restart            |
+| `replayAudioState(ctx)`        | `startService` intent                         | Re-emit audio state after hot-restart            |
 | `replayConnectionStates(ctx)`   | `startService` intent                         | Replay connection lifecycle to a freshly attached delegate (cold-start/hot-restart) |
 
 ## Related Components

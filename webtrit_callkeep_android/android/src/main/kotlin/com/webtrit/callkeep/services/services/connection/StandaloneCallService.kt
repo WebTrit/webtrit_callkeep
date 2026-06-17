@@ -53,7 +53,7 @@ class StandaloneCallService : Service() {
 
     // Tracks whether startForeground() has been called in this service instance.
     // startForeground() is deferred until an actual call is handled so that lifecycle-only
-    // commands (ReplayConnectionStates, SyncAudioState, etc.) do not post a foreground
+    // commands (ReplayConnectionStates, ReplayAudioState, etc.) do not post a foreground
     // notification when there is no call in progress.
     private var isForeground = false
 
@@ -146,7 +146,7 @@ class StandaloneCallService : Service() {
             when (command) {
                 is StandaloneServiceCommand.TearDown -> handleTearDownConnections()
                 is StandaloneServiceCommand.Clean -> handleCleanConnections()
-                is StandaloneServiceCommand.SyncAudio -> handleSyncAudioState()
+                is StandaloneServiceCommand.ReplayAudio -> handleReplayAudioState()
                 is StandaloneServiceCommand.ReplayConnections -> handleReplayConnectionStates()
                 is StandaloneServiceCommand.Reserve -> handleReserveAnswer(command.callId)
                 is StandaloneServiceCommand.Call -> dispatchCall(command.action, command.metadata)
@@ -157,7 +157,7 @@ class StandaloneCallService : Service() {
 
         // If no calls are active or pending after processing, there is nothing to keep alive.
         // This handles the case where a lifecycle-only command (ReplayConnectionStates,
-        // SyncAudioState, CleanConnections) starts the service when no call is in progress.
+        // ReplayAudioState, CleanConnections) starts the service when no call is in progress.
         stopIfIdle()
 
         return START_NOT_STICKY
@@ -229,7 +229,7 @@ class StandaloneCallService : Service() {
             StandaloneServiceAction.TearDownConnections,
             StandaloneServiceAction.CleanConnections,
             StandaloneServiceAction.ReserveAnswer,
-            StandaloneServiceAction.SyncAudioState,
+            StandaloneServiceAction.ReplayAudioState,
             StandaloneServiceAction.ReplayConnectionStates,
             -> Log.w(TAG, "dispatchCall: unexpected non-call action $action, ignoring")
         }
@@ -532,8 +532,8 @@ class StandaloneCallService : Service() {
         core.notifyConnectionEvent(CallMediaEvent.AudioDeviceSet, updated.toBundle())
     }
 
-    private fun handleSyncAudioState() {
-        Log.i(TAG, "handleSyncAudioState: re-emitting audio state for answered calls")
+    private fun handleReplayAudioState() {
+        Log.i(TAG, "handleReplayAudioState: re-emitting audio state for answered calls")
         answeredCallIds.forEach { callId -> fireInitialAudioState(callId) }
     }
 
@@ -759,7 +759,7 @@ enum class StandaloneServiceAction {
     Muting,
     Speaker,
     AudioDeviceSet,
-    SyncAudioState,
+    ReplayAudioState,
     ReplayConnectionStates,
     ;
 

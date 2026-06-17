@@ -202,7 +202,7 @@ When Flutter hot-restarts (development only) the main process Flutter engine is 
         |
         v
 3.  ForegroundService.replayConnectionStates()
-        |   CallkeepCore.sendSyncAudioState()    -> PhoneConnectionService re-emits audio state
+        |   CallkeepCore.replayAudioState()    -> PhoneConnectionService re-emits audio state
         |   CallkeepCore.replayConnectionStates() -> PhoneConnectionService re-fires AnswerCall
         v
 4.  ForegroundService broadcast handlers receive re-emitted events
