@@ -140,6 +140,10 @@ class ForegroundService :
                 handleCSReportConnectionStateChanged(data)
             }
 
+            CallLifecycleEvent.ReplayIncomingCall -> {
+                handleCSReplayIncomingCall(data)
+            }
+
             CallLifecycleEvent.DeclineCall -> {
                 handleCSReportDeclineCall(data)
             }
@@ -494,7 +498,6 @@ class ForegroundService :
                 // this callback returns but before _CallPerformEvent.answered is processed.
                 core.promote(callId, metadata, PCallkeepConnectionState.STATE_ACTIVE)
                 core.markAnswered(callId)
-                core.markReportedIncoming(callId)
                 flutterDelegateApi?.performAnswerCall(callId) {}
                 logger.i("reportNewIncomingCall: adopted already-answered call callId=$callId, fired performAnswerCall")
             } else {
@@ -550,13 +553,6 @@ class ForegroundService :
                 null
             }
 
-        // Mark this callId as signaling-registered BEFORE calling startIncomingCall so
-        // that the IncomingConnectionReported broadcast (fired by :callkeep_core during the IPC
-        // round-trip) is suppressed even if it arrives before the onSuccess callback runs.
-        // Flutter learns about this call from __onCallSignalingEventIncoming, so the
-        // duplicate push-path didPushIncomingCall must not reach it.
-        core.markReportedIncoming(callId)
-
         // Note: core.startIncomingCall can throw synchronously (e.g. uninitialized
         // ContextHolder). The exception bypasses our onError handler and propagates to
         // Pigeon as channel-error. The 5 s timeoutRunnable above is our safety-net for
@@ -569,7 +565,6 @@ class ForegroundService :
             onSuccess = {
                 logger.d("reportNewIncomingCall: startIncomingCall success callId=$callId")
                 // pendingIncomingCallbacks and timeout are already registered above.
-                // markReportedIncoming was already called before startIncomingCall.
             },
             onError = { error ->
                 // Cancel timeout and clear maps only if this call owns the pending slot.
@@ -636,10 +631,9 @@ class ForegroundService :
 
                     else -> {
                         logger.e("reportNewIncomingCall: startIncomingCall failed callId=$callId, error=$error")
-                        // Roll back the signaling-registered guard. The pending entry has already
-                        // been drained by InProcessCallkeepCore.startIncomingCall before invoking
-                        // this onError callback, so no core.removePending(callId) is needed here.
-                        core.consumeReportedIncoming(callId)
+                        // The pending entry has already been drained by
+                        // InProcessCallkeepCore.startIncomingCall before invoking this onError
+                        // callback, so no core.removePending(callId) is needed here.
                         callback(Result.success(error))
                     }
                 }
@@ -667,7 +661,7 @@ class ForegroundService :
         // directNotifiedCallIds so the stale async HungUp broadcast is suppressed
         // in handleCSReportDeclineCall.
         // core.clear() at the end of tearDown handles all per-session state including
-        // callback guards (directNotified, endCallDispatched, reportedIncoming).
+        // callback guards (directNotified, endCallDispatched).
 
         // Step 1: Collect active call IDs from the core shadow state (promoted connections).
         val activeCallIds = core.getAll().map { it.callId }
@@ -1007,11 +1001,14 @@ class ForegroundService :
         logger.d("handleCSIncomingConnectionReported")
         extras?.let {
             val metadata = CallMetadata.fromBundle(it)
-            // The IncomingConnectionReported event is two concerns: register the connection in the
-            // main-process shadow state, then notify the Flutter delegate. They stay in this single
-            // handler (one cross-process broadcast) so registration is atomic with delivery.
+            // Register-only: record the connection in the main-process shadow state. The foreground
+            // delegate is deliberately NOT notified here. A foreground incoming always reaches the
+            // Flutter delegate by another route: its own signaling (__onCallSignalingEventIncoming)
+            // for calls that arrive while the app is running, or the ReplayIncomingCall replay on
+            // delegate attach for a push->foreground handoff (the connection existed before this
+            // process did). Background incoming is shown by IncomingCallService directly. So there is
+            // no live push-path delivery to make from this event.
             registerIncomingConnection(metadata)
-            deliverIncomingToDelegate(metadata)
         }
     }
 
@@ -1028,30 +1025,21 @@ class ForegroundService :
     }
 
     /**
-     * Notify the Flutter delegate of a reported incoming call via the public `didPushIncomingCall`
-     * callback. This is the only place the public push-incoming notification name is used; the
-     * cross-process event itself is [CallLifecycleEvent.IncomingConnectionReported].
+     * Notify the Flutter delegate of an incoming call via the public `didPushIncomingCall` callback.
+     * The single delivery point to the foreground delegate, used by the connection-state replay
+     * ([handleCSReplayIncomingCall]) to seed a freshly attached delegate. Delivery is unconditional:
+     * the Dart CallBloc deduplicates by callId, so re-delivering a call the app already knows about
+     * (e.g. from signaling) does not create a second ActiveCall.
      */
     private fun deliverIncomingToDelegate(metadata: CallMetadata) {
-        // If this call was registered via reportNewIncomingCall (the foreground signaling path),
-        // Flutter already knows about it through __onCallSignalingEventIncoming. Suppress
-        // didPushIncomingCall to prevent a duplicate push-path entry (line -1) from being added to
-        // state.activeCalls alongside the existing signaling entry (line 0). In the :callkeep_core
-        // separate-process architecture, this broadcast arrives AFTER the reportNewIncomingCall
-        // Pigeon response (IPC round-trip latency), so without this guard the push-path handler
-        // always runs after the signaling handler and creates a second ActiveCall for the same callId.
-        if (core.consumeReportedIncoming(metadata.callId)) {
-            logger.d("deliverIncomingToDelegate: suppressing didPushIncomingCall for app-reported call ${metadata.callId}")
-            return
-        }
-
         val handle = metadata.handle
         if (handle == null) {
             // Cannot build a PHandle without a number; skip rather than crash on a
-            // malformed/handle-less broadcast (the call is already promoted above).
+            // malformed/handle-less broadcast (the call is already promoted in the tracker).
             logger.w("deliverIncomingToDelegate: missing handle for callId=${metadata.callId}; skipping didPushIncomingCall")
             return
         }
+        logger.i("deliverIncomingToDelegate: delivering incoming callId=${metadata.callId} to delegate")
         flutterDelegateApi?.didPushIncomingCall(
             handleArg = handle.toPHandle(),
             displayNameArg = metadata.displayName,
@@ -1077,15 +1065,26 @@ class ForegroundService :
         }
     }
 
+    /**
+     * Deliver a still-ringing incoming call to the (freshly attached) Flutter delegate. This is the
+     * sole foreground delivery of an incoming call: triggered by
+     * [com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent.ReplayIncomingCall] from
+     * [com.webtrit.callkeep.services.services.connection.PhoneConnectionService.handleReplayConnectionStates]
+     * on delegate attach (e.g. a push->foreground isolate handoff or hot restart). The delegate that
+     * received the original report is gone, so the new one must be seeded. A duplicate is harmless --
+     * the Flutter CallBloc deduplicates by callId and enriches the existing entry with the signaling
+     * offer when it arrives.
+     */
+    private fun handleCSReplayIncomingCall(extras: Bundle?) {
+        logger.d("handleCSReplayIncomingCall")
+        extras?.let { deliverIncomingToDelegate(CallMetadata.fromBundle(it)) }
+    }
+
     private fun handleCSReportDeclineCall(extras: Bundle?) {
         logger.d("handleCSReportDeclineCall")
         extras?.let {
             val callMetaData = CallMetadata.fromBundle(it)
             val callId = callMetaData.callId
-
-            // consumeReportedIncoming cleans up any pending signaling guard for this
-            // callId (edge case: call terminates before IncomingConnectionReported arrives).
-            core.consumeReportedIncoming(callId)
 
             // Suppress stale async HungUp/Decline broadcasts for calls that were already
             // directly notified via performEndCall in tearDown(). Without this guard, the

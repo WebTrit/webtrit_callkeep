@@ -17,9 +17,7 @@ Flutter app is backgrounded or killed.
 
 ### Responsibility
 
-Spawned when an FCM push notification (or the dormant SMS trigger — not tested / not actively
-developed, see [incoming-call-handling.md](incoming-call-handling.md)) announces an incoming call.
-It:
+Spawned when an FCM push notification (or SMS trigger) announces an incoming call. It:
 
 1. Starts a short-lived Flutter background isolate.
 2. Shows the incoming-call notification / system UI.
@@ -29,9 +27,9 @@ It:
 ### Lifecycle
 
 - Started via:
-    - `BackgroundPushNotificationIsolateBootstrapApi.reportNewIncomingCall()` (from Dart or a
+  - `BackgroundPushNotificationIsolateBootstrapApi.reportNewIncomingCall()` (from Dart or a
       background message handler).
-    - `NotificationManager.showIncomingCallNotification()` (from FCM handler code).
+  - `NotificationManager.showIncomingCallNotification()` (from FCM handler code).
 - `onCreate()` — calls `startForeground()` with a placeholder notification immediately to avoid
   Android's 10-second ANR window for foreground service start; subscribes to `CallkeepCore`
   events via `CallkeepCore.instance.addConnectionEventListener(this)`.

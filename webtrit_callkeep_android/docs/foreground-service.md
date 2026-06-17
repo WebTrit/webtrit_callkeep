@@ -93,7 +93,8 @@ registered `ConnectionEventListener`. `ForegroundService` does not register its 
 
 | Event                 | Handler                               | Main Action                                                              |
 |-----------------------|---------------------------------------|--------------------------------------------------------------------------|
-| `IncomingConnectionReported`    | `handleCSIncomingConnectionReported()`    | `registerIncomingConnection()` (promote + wakelock + resolve pending Pigeon callback) then `deliverIncomingToDelegate()` (`didPushIncomingCall`) |
+| `IncomingConnectionReported` | `handleCSIncomingConnectionReported()` | Register the call in the tracker (promote + wakelock + resolve pending callback). Register-only -- no delegate notification |
+| `ReplayIncomingCall`     | `handleCSReplayIncomingCall()`        | Deliver the incoming call to a freshly attached delegate via `didPushIncomingCall` (sole foreground delivery) |
 | `ConnectionStateChanged` | `handleCSReportConnectionStateChanged()` | `updateState()` -- mirror the authoritative connection state into the tracker |
 | `AnswerCall`             | `handleCSReportAnswerCall()`             | `markAnswered()` guard in tracker, call `performAnswerCall()` on Dart delegate |
 | `DeclineCall`         | `handleCSReportDeclineCall()`         | `markTerminated()`, call `performEndCall()`                              |

@@ -30,11 +30,12 @@ Triggered by an FCM message or a direct Dart call to `reportNewIncomingCall`.
         |   broadcast: IncomingConnectionReported
         v
 7.  ForegroundService.connectionServicePerformReceiver
-        |   CallkeepCore.promote(callId, meta, state)
-        |
-        |   PDelegateFlutterApi.performIncomingCall(callId, meta)
+        |   CallkeepCore.promote(callId, meta, state)   (register-only)
         v
-8.  Dart delegate receives performIncomingCall()
+8.  Delegate notification (NOT from the event above):
+        |   - call arrived while app running -> Flutter signaling __onCallSignalingEventIncoming
+        |   - push->foreground handoff -> ReplayIncomingCall on delegate attach
+        |     -> PDelegateFlutterApi.didPushIncomingCall(callId, meta)
 ```
 
 **Answer path (user taps answer in notification or UI):**

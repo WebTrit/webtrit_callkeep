@@ -18,6 +18,7 @@ import com.webtrit.callkeep.common.AssetCacheManager
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.TelephonyUtils
+import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.EmergencyNumberException
 import com.webtrit.callkeep.models.FailureMetadata
@@ -484,10 +485,33 @@ class PhoneConnectionService : ConnectionService() {
     }
 
     private fun handleReplayConnectionStates() {
-        Log.i(TAG, "handleReplayConnectionStates: re-emitting lifecycle state for answered connections")
+        Log.i(TAG, "handleReplayConnectionStates: re-emitting lifecycle + connection state for active connections")
         connectionManager.getConnections().forEach { connection ->
-            if (connection.hasAnswered) {
-                performEventHandle(CallLifecycleEvent.AnswerCall, CallMetadata(callId = connection.callId))
+            // Mirror the live Telecom state back into the main-process shadow tracker. On a cold
+            // start the original onStateChanged fired before this process existed, so the state
+            // (e.g. ACTIVE for a call answered via the notification button) is restored only here --
+            // and reportNewIncomingCall's already-answered adoption reads getState() == STATE_ACTIVE.
+            // markAnswered() is a guard only since the state-mirror refactor, so AnswerCall below no
+            // longer repopulates connectionStates; this does. Live states only (DISCONNECTED stays
+            // on the cause-carrying termination events).
+            CallConnectionState
+                .fromTelecomState(connection.state)
+                ?.takeIf { it != CallConnectionState.DISCONNECTED }
+                ?.let { performEventHandle(CallLifecycleEvent.ConnectionStateChanged, connection.currentMetadata.copy(connectionState = it)) }
+
+            // Re-deliver the call-setup event so a freshly attached delegate adopts/shows the call.
+            when {
+                connection.hasAnswered ->
+                    performEventHandle(CallLifecycleEvent.AnswerCall, CallMetadata(callId = connection.callId))
+
+                connection.state == Connection.STATE_RINGING ->
+                    // A still-ringing incoming call whose owning Flutter delegate is freshly attached
+                    // (push->foreground isolate handoff or hot restart). The delegate that originally
+                    // received IncomingConnectionReported is gone, so the new one has no record of this call.
+                    // Re-deliver the full metadata so the main process seeds its call state BEFORE it
+                    // processes signaling events (handshake/hangup). Without this the call lives only
+                    // as a native connection and an incoming hangup is dropped (no matching ActiveCall).
+                    performEventHandle(CallLifecycleEvent.ReplayIncomingCall, connection.currentMetadata)
             }
         }
     }

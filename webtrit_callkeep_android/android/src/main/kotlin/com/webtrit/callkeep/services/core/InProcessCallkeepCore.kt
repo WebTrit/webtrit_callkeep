@@ -186,10 +186,6 @@ class InProcessCallkeepCore internal constructor(
 
     override fun markEndCallDispatched(callId: String): Boolean = tracker.markEndCallDispatched(callId)
 
-    override fun markReportedIncoming(callId: String) = tracker.markReportedIncoming(callId)
-
-    override fun consumeReportedIncoming(callId: String): Boolean = tracker.consumeReportedIncoming(callId)
-
     // -------------------------------------------------------------------------
     // Connection event receivers
     // -------------------------------------------------------------------------
@@ -347,6 +343,7 @@ class InProcessCallkeepCore internal constructor(
         internal val GLOBAL_LISTENER_EVENTS: List<ConnectionEvent> =
             listOf(
                 CallLifecycleEvent.IncomingConnectionReported,
+                CallLifecycleEvent.ReplayIncomingCall,
                 CallLifecycleEvent.ConnectionStateChanged,
                 CallLifecycleEvent.DeclineCall,
                 CallLifecycleEvent.HungUp,
