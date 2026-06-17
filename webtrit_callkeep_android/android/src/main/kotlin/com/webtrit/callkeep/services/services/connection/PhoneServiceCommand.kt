@@ -12,7 +12,7 @@ import com.webtrit.callkeep.models.CallMetadata
  * `CallMetadata.fromBundle` was invoked on the bare intent extras BEFORE the surrounding
  * try/catch: Binder IPC can deliver a non-null but empty [android.os.Bundle] for the no-extras
  * lifecycle commands ([ServiceAction.TearDownConnections], [ServiceAction.CleanConnections],
- * [ServiceAction.SyncAudioState], [ServiceAction.SyncConnectionState]), and the missing-`callId`
+ * [ServiceAction.SyncAudioState], [ServiceAction.ReplayConnectionStates]), and the missing-`callId`
  * `IllegalArgumentException` then propagated uncaught out of `onStartCommand`.
  *
  * With this factory each command type owns exactly the data it needs:
@@ -27,7 +27,7 @@ sealed class PhoneServiceCommand {
 
     data object SyncAudio : PhoneServiceCommand()
 
-    data object SyncConnection : PhoneServiceCommand()
+    data object ReplayConnections : PhoneServiceCommand()
 
     data class Reserve(
         val callId: String,
@@ -63,8 +63,8 @@ sealed class PhoneServiceCommand {
                     SyncAudio
                 }
 
-                ServiceAction.SyncConnectionState -> {
-                    SyncConnection
+                ServiceAction.ReplayConnectionStates -> {
+                    ReplayConnections
                 }
 
                 ServiceAction.ReserveAnswer -> {

@@ -329,7 +329,7 @@ class InProcessCallkeepCore internal constructor(
 
     override fun sendSyncAudioState() = router.sendSyncAudioState()
 
-    override fun sendSyncConnectionState() = router.sendSyncConnectionState()
+    override fun replayConnectionStates() = router.replayConnectionStates()
 
     companion object {
         private const val TAG = "InProcessCallkeepCore"

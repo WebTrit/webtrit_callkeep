@@ -53,7 +53,7 @@ class StandaloneCallService : Service() {
 
     // Tracks whether startForeground() has been called in this service instance.
     // startForeground() is deferred until an actual call is handled so that lifecycle-only
-    // commands (SyncConnectionState, SyncAudioState, etc.) do not post a foreground
+    // commands (ReplayConnectionStates, SyncAudioState, etc.) do not post a foreground
     // notification when there is no call in progress.
     private var isForeground = false
 
@@ -77,7 +77,7 @@ class StandaloneCallService : Service() {
         Log.initFromContext(applicationContext)
         // Register notification channels here as well as in ForegroundService.setUp().
         // This service may start before setUp() is invoked from the Flutter layer
-        // (e.g. when SyncConnectionState is dispatched during app startup). Without this
+        // (e.g. when ReplayConnectionStates is dispatched during app startup). Without this
         // call, startForeground() would crash with
         // CannotPostForegroundServiceNotificationException because the channel does not
         // yet exist in the system.
@@ -147,7 +147,7 @@ class StandaloneCallService : Service() {
                 is StandaloneServiceCommand.TearDown -> handleTearDownConnections()
                 is StandaloneServiceCommand.Clean -> handleCleanConnections()
                 is StandaloneServiceCommand.SyncAudio -> handleSyncAudioState()
-                is StandaloneServiceCommand.SyncConnection -> handleSyncConnectionState()
+                is StandaloneServiceCommand.ReplayConnections -> handleReplayConnectionStates()
                 is StandaloneServiceCommand.Reserve -> handleReserveAnswer(command.callId)
                 is StandaloneServiceCommand.Call -> dispatchCall(command.action, command.metadata)
             }
@@ -156,7 +156,7 @@ class StandaloneCallService : Service() {
         }
 
         // If no calls are active or pending after processing, there is nothing to keep alive.
-        // This handles the case where a lifecycle-only command (SyncConnectionState,
+        // This handles the case where a lifecycle-only command (ReplayConnectionStates,
         // SyncAudioState, CleanConnections) starts the service when no call is in progress.
         stopIfIdle()
 
@@ -230,7 +230,7 @@ class StandaloneCallService : Service() {
             StandaloneServiceAction.CleanConnections,
             StandaloneServiceAction.ReserveAnswer,
             StandaloneServiceAction.SyncAudioState,
-            StandaloneServiceAction.SyncConnectionState,
+            StandaloneServiceAction.ReplayConnectionStates,
             -> Log.w(TAG, "dispatchCall: unexpected non-call action $action, ignoring")
         }
     }
@@ -537,8 +537,8 @@ class StandaloneCallService : Service() {
         answeredCallIds.forEach { callId -> fireInitialAudioState(callId) }
     }
 
-    private fun handleSyncConnectionState() {
-        Log.i(TAG, "handleSyncConnectionState: re-emitting AnswerCall + ACTIVE state for answered calls")
+    private fun handleReplayConnectionStates() {
+        Log.i(TAG, "handleReplayConnectionStates: re-emitting AnswerCall + ACTIVE state for answered calls")
         answeredCallIds.forEach { callId ->
             val meta = callMetadataMap[callId] ?: CallMetadata(callId = callId)
             core.notifyConnectionEvent(CallLifecycleEvent.AnswerCall, meta.toBundle())
@@ -760,7 +760,7 @@ enum class StandaloneServiceAction {
     Speaker,
     AudioDeviceSet,
     SyncAudioState,
-    SyncConnectionState,
+    ReplayConnectionStates,
     ;
 
     val action: String get() = "callkeep_standalone_$name"

@@ -25,8 +25,9 @@
 
 - Calls `CallkeepCore.instance.addConnectionEventListener(this)` to subscribe to all
   `:callkeep_core` events routed through the core's single global receiver.
-- Sends `SyncConnectionState` command to `:callkeep_core` — if the service was killed and
-  restarted, `:callkeep_core` re-emits current connection state so the main process catches up.
+- Sends the `ReplayConnectionStates` command to `:callkeep_core` — when the main process starts
+  fresh (cold start / hot restart), `:callkeep_core` replays (re-fires) its current connection
+  lifecycle so the freshly attached delegate catches up on state it missed.
 
 ### `onBind(intent)`
 

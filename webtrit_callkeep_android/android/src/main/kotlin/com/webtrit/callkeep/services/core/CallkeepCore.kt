@@ -319,13 +319,16 @@ interface CallkeepCore {
     fun sendSyncAudioState()
 
     /**
-     * Sends [ServiceAction.SyncConnectionState] to [PhoneConnectionService].
-     * The service re-fires [CallLifecycleEvent.AnswerCall] for every connection whose
-     * [PhoneConnection.hasAnswered] flag is true. Called from [ForegroundService.onCreate] so
-     * that connections answered before the main process started are reflected in
-     * [MainProcessConnectionTracker.connectionStates].
+     * Asks [PhoneConnectionService] to REPLAY the current connection lifecycle back to the main
+     * process, so a freshly (re)attached delegate is seeded with state it would otherwise have
+     * missed. This is a one-way pull (main -> `:callkeep_core` -> re-fired broadcasts), NOT a
+     * two-way sync: the live `:callkeep_core` connections are the source of truth and simply
+     * re-announce themselves. The service re-fires [CallLifecycleEvent.AnswerCall] for every
+     * connection whose [PhoneConnection.hasAnswered] flag is true. Called from
+     * [ForegroundService.onCreate] so that connections answered before the main process started
+     * are reflected in [MainProcessConnectionTracker.connectionStates] (cold-start race).
      */
-    fun sendSyncConnectionState()
+    fun replayConnectionStates()
 
     companion object {
         /**

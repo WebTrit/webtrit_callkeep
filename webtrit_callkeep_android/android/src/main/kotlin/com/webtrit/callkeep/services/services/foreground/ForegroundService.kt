@@ -192,7 +192,7 @@ class ForegroundService :
         // notification button before the main process/Flutter opens). The re-fired broadcast
         // populates connectionStates so that the CALL_ID_ALREADY_EXISTS handler in
         // reportNewIncomingCall can correctly identify the call as STATE_ACTIVE.
-        core.sendSyncConnectionState()
+        core.replayConnectionStates()
     }
 
     override fun setUp(
@@ -453,7 +453,7 @@ class ForegroundService :
         logger.i("reportNewIncomingCall: callId=$callId, handle=$handle")
 
         // Build metadata before the early check so we can promote the call into the core shadow
-        // tracker even when the call is already answered (cold-start race: SyncConnectionState
+        // tracker even when the call is already answered (cold-start race: ReplayConnectionStates
         // fires handleCSReportAnswerCall during onCreate, marking the call answered before
         // reportNewIncomingCall arrives from the signaling layer).
         val ringtonePath = StorageDelegate.Sound.getRingtonePath(baseContext)

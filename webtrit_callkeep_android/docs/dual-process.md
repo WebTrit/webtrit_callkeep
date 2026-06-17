@@ -51,7 +51,7 @@ Used for **commands** where delivery must be guaranteed (broadcasts can be dropp
 is not yet registered).
 
 - main → `:callkeep_core` commands: `TearDownConnections`, `ReserveAnswer`, `CleanConnections`,
-  `SyncAudioState`, `SyncConnectionState`, and per-call commands (`AnswerCall`, `DeclineCall`,
+  `SyncAudioState`, `ReplayConnectionStates`, and per-call commands (`AnswerCall`, `DeclineCall`,
   `HungUpCall`, `EstablishCall`, `UpdateCall`, `MuteCall`, `HoldCall`, `SpeakerCall`,
   `SetAudioDevice`, `SendDtmf`).
 - `:callkeep_core` → main: `NotifyPending` (incoming call pending before PhoneConnection exists).
@@ -67,8 +67,8 @@ Because the two processes have independent JVM heaps, call state must be explici
 - `:callkeep_core` maintains `ConnectionManager` (
   see [connection-manager.md](connection-manager.md))
   — the authoritative registry of live `PhoneConnection` objects.
-- On app hot-restart, `ForegroundService.syncConnectionState()` sends `SyncAudioState` and
-  `SyncConnectionState` commands so `:callkeep_core` re-fires its current state to a freshly
+- On app hot-restart, `ForegroundService.replayConnectionStates()` sends `SyncAudioState` and
+  `ReplayConnectionStates` commands so `:callkeep_core` re-fires its current state to a freshly
   attached Flutter engine.
 
 ## Critical Rules

@@ -77,7 +77,7 @@ encoded as a string extra.
 | `ReserveAnswer`       | Store deferred answer for `callId` (call `ConnectionManager.reserveAnswer()`)      |
 | `CleanConnections`    | Clear all connections without hanging up                                           |
 | `SyncAudioState`      | Re-emit audio state for all active connections (hot-restart recovery)              |
-| `SyncConnectionState` | Re-fire `AnswerCall` broadcast for all answered connections (hot-restart recovery) |
+| `ReplayConnectionStates` | Re-fire `AnswerCall` broadcast for all answered connections (hot-restart recovery) |
 | `AnswerCall`          | Call `PhoneConnection.onAnswer()` for the specified call                           |
 | `DeclineCall`         | Call `PhoneConnection.onReject()`                                                  |
 | `HungUpCall`          | Call `PhoneConnection.onDisconnect()`                                              |

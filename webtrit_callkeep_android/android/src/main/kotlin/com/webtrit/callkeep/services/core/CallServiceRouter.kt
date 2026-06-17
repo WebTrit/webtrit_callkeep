@@ -155,12 +155,12 @@ class CallServiceRouter(
             },
         )
 
-    fun sendSyncConnectionState() =
+    fun replayConnectionStates() =
         route(
-            telecom = { PhoneConnectionService.sendSyncConnectionState(ctx) },
+            telecom = { PhoneConnectionService.replayConnectionStates(ctx) },
             standalone = {
                 if (StandaloneCallService.isRunning) {
-                    StandaloneCallService.communicate(ctx, StandaloneServiceAction.SyncConnectionState, null)
+                    StandaloneCallService.communicate(ctx, StandaloneServiceAction.ReplayConnectionStates, null)
                 }
             },
         )
