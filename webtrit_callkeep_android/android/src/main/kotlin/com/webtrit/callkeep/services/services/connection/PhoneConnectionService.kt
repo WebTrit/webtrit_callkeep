@@ -334,6 +334,17 @@ class PhoneConnectionService : ConnectionService() {
                 Log.i(TAG, "onCreateIncomingConnection: applying deferred answer for callId=${metadata.callId}")
                 connection.onAnswer()
             }
+        } else {
+            // Notify the main process that an incoming call is registered, deterministically at
+            // creation time. Previously this was emitted later from PhoneConnection.onShowIncomingCallUi
+            // (a system UI callback the framework schedules separately), which made delivery to
+            // Flutter and the reportNewIncomingCall callback resolution depend on UI-show timing.
+            //
+            // Only the not-yet-answered branch emits it: a call with a consumed deferred answer is
+            // being answered immediately (no incoming UI), so it is surfaced to Flutter via the
+            // answer flow instead — matching the previous behaviour where onShowIncomingCallUi
+            // (and therefore DidPushIncomingCall) did not fire for an immediately-answered call.
+            performEventHandle(CallLifecycleEvent.DidPushIncomingCall, metadata)
         }
 
         phoneConnectionServiceDispatcher.dispatchLifecycle(
