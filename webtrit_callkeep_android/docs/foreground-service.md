@@ -25,13 +25,24 @@
 
 - Calls `CallkeepCore.instance.addConnectionEventListener(this)` to subscribe to all
   `:callkeep_core` events routed through the core's single global receiver.
-- Sends the `ReplayConnectionStates` command to `:callkeep_core` — when the main process starts
-  fresh (cold start / hot restart), `:callkeep_core` replays (re-fires) its current connection
-  lifecycle so the freshly attached delegate catches up on state it missed.
+- Does NOT replay connection state: at `onCreate` the Flutter delegate is not yet attached, so a
+  replay fired here would only race the attach. Replay is triggered from `onDelegateSet()`.
 
 ### `onBind(intent)`
 
 - Returns the `IBinder` that `WebtritCallkeepPlugin` uses to obtain the service reference.
+
+### `onDelegateSet()`
+
+- Pigeon callback invoked from Dart (`setDelegate`) once the Flutter delegate is attached and ready
+  to receive events — the deterministic "delegate ready" signal (fires on every attach, including a
+  warm engine re-attach).
+- Sends `ReplayConnectionStates` (ungated) so `:callkeep_core` replays the connection lifecycle to
+  the now-attached delegate: re-fired lifecycle events both repopulate the main-process shadow
+  tracker (`connectionStates`, e.g. for the `CALL_ID_ALREADY_EXISTS` dedup in
+  `reportNewIncomingCall`) and reach Flutter. This is the single, delegate-ready replay point.
+- Then, if the tracker knows of any connections, sends `SyncAudioState` to re-emit audio
+  device/mute state for the Flutter UI.
 
 ### `onDestroy()`
 

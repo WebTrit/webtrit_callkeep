@@ -187,12 +187,9 @@ class ForegroundService :
         logger.d("onCreate")
         core.addConnectionEventListener(this)
         isRunning = true
-        // Ask :callkeep_core to re-fire AnswerCall for every connection that was already
-        // answered before this service started (cold-start race: the user answers via the
-        // notification button before the main process/Flutter opens). The re-fired broadcast
-        // populates connectionStates so that the CALL_ID_ALREADY_EXISTS handler in
-        // reportNewIncomingCall can correctly identify the call as STATE_ACTIVE.
-        core.replayConnectionStates()
+        // Connection-state replay is triggered from onDelegateSet() (the deterministic
+        // "delegate ready" signal), not here: at onCreate the Flutter delegate is not yet
+        // attached, so a replay fired now would only race the attach.
     }
 
     override fun setUp(
@@ -454,7 +451,7 @@ class ForegroundService :
 
         // Build metadata before the early check so we can promote the call into the core shadow
         // tracker even when the call is already answered (cold-start race: ReplayConnectionStates
-        // fires handleCSReportAnswerCall during onCreate, marking the call answered before
+        // fires handleCSReportAnswerCall on delegate attach, marking the call answered before
         // reportNewIncomingCall arrives from the signaling layer).
         val ringtonePath = StorageDelegate.Sound.getRingtonePath(baseContext)
 
@@ -1218,11 +1215,19 @@ class ForegroundService :
      * foreground and re-establishes its communication channel with this service.
      */
     override fun onDelegateSet() {
-        logger.d("onDelegateSet: Flutter delegate attached. Checking for active connections to restore...")
-        val connections = core.getAll()
+        logger.d("onDelegateSet: Flutter delegate attached. Replaying connection state...")
 
+        // Replay the current connection lifecycle now that the delegate is attached and GUARANTEED
+        // to receive the re-fired events. This is the single replay trigger: it fires only once the
+        // Flutter delegate is ready (so re-delivery is not raced/dropped) and on every attach,
+        // including a warm engine re-attach. It is deliberately NOT gated on the local tracker
+        // below: in a push->foreground handoff the main process has no record of the call yet --
+        // the replay from :callkeep_core is exactly what surfaces it to the freshly attached engine.
+        core.replayConnectionStates()
+
+        val connections = core.getAll()
         if (connections.isEmpty()) {
-            Log.d(TAG, "onDelegateSet: No active connections found.")
+            Log.d(TAG, "onDelegateSet: no locally tracked connections; audio re-sync skipped.")
             return
         }
 
