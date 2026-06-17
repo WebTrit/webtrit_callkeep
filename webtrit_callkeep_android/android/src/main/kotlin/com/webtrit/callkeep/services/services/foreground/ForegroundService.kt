@@ -96,7 +96,7 @@ class ForegroundService :
 
     // Pigeon callbacks for reportNewIncomingCall() that are waiting for Telecom confirmation.
     // Populated in startIncomingCall.onSuccess instead of resolving immediately, so that
-    // Flutter only gets "success" once Telecom has actually accepted the call (DidPushIncomingCall)
+    // Flutter only gets "success" once Telecom has actually accepted the call (IncomingConnectionReported)
     // or gets CALL_REJECTED_BY_SYSTEM when Telecom rejects it (HungUp / onCreateIncomingConnectionFailed).
     private val pendingIncomingCallbacks: ConcurrentHashMap<String, (Result<PIncomingCallError?>) -> Unit> =
         ConcurrentHashMap()
@@ -132,8 +132,8 @@ class ForegroundService :
     ) {
         logger.d("onConnectionEvent: ${event.name}")
         when (event) {
-            CallLifecycleEvent.DidPushIncomingCall -> {
-                handleCSReportDidPushIncomingCall(data)
+            CallLifecycleEvent.IncomingConnectionReported -> {
+                handleCSIncomingConnectionReported(data)
             }
 
             CallLifecycleEvent.ConnectionStateChanged -> {
@@ -471,7 +471,7 @@ class ForegroundService :
         // from :callkeep_core and is never updated with answered/terminated transitions.
         //
         // exists() is also checked here to short-circuit duplicate detection without a Telecom
-        // round-trip. When DidPushIncomingCall has already been delivered and promoted the call,
+        // round-trip. When IncomingConnectionReported has already been delivered and promoted the call,
         // the second reportNewIncomingCall must return CALL_ID_ALREADY_EXISTS immediately rather
         // than going to Telecom, which would otherwise trigger the CALL_ID_ALREADY_EXISTS adoption
         // path and return null (masking the duplicate from Flutter).
@@ -510,7 +510,7 @@ class ForegroundService :
         }
 
         // Pre-register the Pigeon callback and safety timeout BEFORE calling startIncomingCall.
-        // DidPushIncomingCall can arrive synchronously — during the addNewIncomingCall Telecom
+        // IncomingConnectionReported can arrive synchronously — during the addNewIncomingCall Telecom
         // call inside startIncomingCall — before the IPC onSuccess callback returns to this
         // process. Without pre-registration, resolvePendingIncomingCallback finds no entry and
         // the confirmation is lost, causing the 5-second timeout to fire unconditionally.
@@ -520,7 +520,7 @@ class ForegroundService :
         // before any of them completes) cannot overwrite each other's callback. Only the first
         // caller owns the slot (ownsPendingSlot=true) and registers the timeout; duplicates
         // skip both registrations and, in their onError handler, must not touch the maps so
-        // the first callback remains in place until DidPushIncomingCall resolves it.
+        // the first callback remains in place until IncomingConnectionReported resolves it.
         val ownsPendingSlot = pendingIncomingCallbacks.putIfAbsent(callId, callback) == null
         // Non-owners post no timeout and have nothing to cancel in onError — null makes
         // the ownership contract explicit and avoids allocating a no-op Runnable per call.
@@ -551,7 +551,7 @@ class ForegroundService :
             }
 
         // Mark this callId as signaling-registered BEFORE calling startIncomingCall so
-        // that the DidPushIncomingCall broadcast (fired by :callkeep_core during the IPC
+        // that the IncomingConnectionReported broadcast (fired by :callkeep_core during the IPC
         // round-trip) is suppressed even if it arrives before the onSuccess callback runs.
         // Flutter learns about this call from __onCallSignalingEventIncoming, so the
         // duplicate push-path didPushIncomingCall must not reach it.
@@ -574,7 +574,7 @@ class ForegroundService :
             onError = { error ->
                 // Cancel timeout and clear maps only if this call owns the pending slot.
                 // A non-owner (ownsPendingSlot=false) must leave the maps untouched so the
-                // first caller's callback stays in place for DidPushIncomingCall to resolve.
+                // first caller's callback stays in place for IncomingConnectionReported to resolve.
                 timeoutRunnable?.let { mainHandler.removeCallbacks(it) }
                 if (ownsPendingSlot) {
                     pendingIncomingTimeouts.remove(callId)
@@ -607,7 +607,7 @@ class ForegroundService :
                         } else {
                             // Call still ringing in Telecom but not yet promoted in the tracker
                             // (narrow race: Telecom created the PhoneConnection before the
-                            // DidPushIncomingCall broadcast was delivered to this process).
+                            // IncomingConnectionReported broadcast was delivered to this process).
                             // Promote into the tracker so answerCall() / endCall() can locate it,
                             // then return CALL_ID_ALREADY_EXISTS so Flutter treats this as a
                             // duplicate rather than a new registration — the call was already
@@ -674,7 +674,7 @@ class ForegroundService :
 
         // Step 1b: Drain any deferred reportNewIncomingCall callbacks that are still waiting
         // for Telecom confirmation. These calls were accepted by startIncomingCall() but
-        // DidPushIncomingCall has not yet arrived. Resolve them with CALL_REJECTED_BY_SYSTEM
+        // IncomingConnectionReported has not yet arrived. Resolve them with CALL_REJECTED_BY_SYSTEM
         // and mark directNotified so that any subsequent HungUp broadcast is suppressed.
         // Must run before drainUnconnectedPendingCallIds() so the callIds are removed from
         // pendingCallIds first, preventing tearDown from also firing performEndCall for them.
@@ -690,7 +690,7 @@ class ForegroundService :
         }
 
         // Step 2: Drain pending calls that were registered with Telecom but whose
-        // PhoneConnection was never created (no DidPushIncomingCall received yet).
+        // PhoneConnection was never created (no IncomingConnectionReported received yet).
         val unconnectedPending = core.drainUnconnectedPendingCallIds()
 
         // Step 3: Notify Flutter for active connections. Mark directNotified
@@ -709,7 +709,7 @@ class ForegroundService :
         // Mark in directNotified BEFORE firing performEndCall so that any async HungUp
         // broadcast from connection.hungUp() (Step 5) is suppressed — this happens when
         // the deferred-answer path caused CS to create a PhoneConnection via reserveAnswer
-        // even though DidPushIncomingCall had not yet arrived and the callId was still pending.
+        // even though IncomingConnectionReported had not yet arrived and the callId was still pending.
         // Also mark terminated + endCallDispatched to match the onDestroy path and prevent
         // a duplicate startHungUpCall IPC if endCall() arrives during the tearDown window.
         unconnectedPending.forEach { callId ->
@@ -859,7 +859,7 @@ class ForegroundService :
         callback: (Result<PCallRequestError?>) -> Unit,
     ) {
         val metadata = CallMetadata(callId = callId)
-        // DidPushIncomingCall is delivered via sendBroadcast() which is async. Between the
+        // IncomingConnectionReported is delivered via sendBroadcast() which is async. Between the
         // moment CS creates the PhoneConnection and the moment the broadcast reaches
         // ForegroundService, core.exists() is false even though the call is live on the
         // CS side. Resolution order:
@@ -1003,49 +1003,62 @@ class ForegroundService :
         }
     }
 
-    private fun handleCSReportDidPushIncomingCall(extras: Bundle?) {
-        logger.d("handleCSReportDidPushIncomingCall")
+    private fun handleCSIncomingConnectionReported(extras: Bundle?) {
+        logger.d("handleCSIncomingConnectionReported")
         extras?.let {
             val metadata = CallMetadata.fromBundle(it)
-            // Promote from pending to fully registered incoming connection.
-            core.promote(metadata.callId, metadata, PCallkeepConnectionState.STATE_RINGING)
-            syncScreenWakelock()
-
-            // Resolve any deferred reportNewIncomingCall Pigeon callback waiting for this
-            // Telecom confirmation. This is the success path: Telecom accepted the call,
-            // so Flutter learns the call is live via the resolved callback (null = no error).
-            resolvePendingIncomingCallback(metadata.callId, Result.success(null))
-
-            // If this call was registered via reportNewIncomingCall (the foreground signaling
-            // path), Flutter already knows about it through __onCallSignalingEventIncoming.
-            // Suppress didPushIncomingCall to prevent a duplicate push-path entry (line -1)
-            // from being added to state.activeCalls alongside the existing signaling entry
-            // (line 0). In the :callkeep_core separate-process architecture, this broadcast
-            // arrives AFTER the reportNewIncomingCall Pigeon response (IPC round-trip latency),
-            // so without this guard the push-path handler always runs after the signaling
-            // handler and creates a second ActiveCall for the same callId.
-            if (core.consumeReportedIncoming(metadata.callId)) {
-                logger.d(
-                    "handleCSReportDidPushIncomingCall: suppressing didPushIncomingCall for app-reported call ${metadata.callId}",
-                )
-                return@let
-            }
-
-            val handle = metadata.handle
-            if (handle == null) {
-                // Cannot build a PHandle without a number; skip rather than crash on a
-                // malformed/handle-less broadcast (the call is already promoted above).
-                logger.w("handleCSReportDidPushIncomingCall: missing handle for callId=${metadata.callId}; skipping didPushIncomingCall")
-                return@let
-            }
-            flutterDelegateApi?.didPushIncomingCall(
-                handleArg = handle.toPHandle(),
-                displayNameArg = metadata.displayName,
-                videoArg = metadata.hasVideo ?: false,
-                callIdArg = metadata.callId,
-                errorArg = null,
-            ) {}
+            // The IncomingConnectionReported event is two concerns: register the connection in the
+            // main-process shadow state, then notify the Flutter delegate. They stay in this single
+            // handler (one cross-process broadcast) so registration is atomic with delivery.
+            registerIncomingConnection(metadata)
+            deliverIncomingToDelegate(metadata)
         }
+    }
+
+    /**
+     * Register a reported incoming connection in the main-process shadow state: promote it from
+     * pending to a fully tracked connection, refresh the screen wakelock, and resolve any deferred
+     * reportNewIncomingCall Pigeon callback (the success path: Telecom accepted the call, so Flutter
+     * learns it is live via the resolved callback, null = no error).
+     */
+    private fun registerIncomingConnection(metadata: CallMetadata) {
+        core.promote(metadata.callId, metadata, PCallkeepConnectionState.STATE_RINGING)
+        syncScreenWakelock()
+        resolvePendingIncomingCallback(metadata.callId, Result.success(null))
+    }
+
+    /**
+     * Notify the Flutter delegate of a reported incoming call via the public `didPushIncomingCall`
+     * callback. This is the only place the public push-incoming notification name is used; the
+     * cross-process event itself is [CallLifecycleEvent.IncomingConnectionReported].
+     */
+    private fun deliverIncomingToDelegate(metadata: CallMetadata) {
+        // If this call was registered via reportNewIncomingCall (the foreground signaling path),
+        // Flutter already knows about it through __onCallSignalingEventIncoming. Suppress
+        // didPushIncomingCall to prevent a duplicate push-path entry (line -1) from being added to
+        // state.activeCalls alongside the existing signaling entry (line 0). In the :callkeep_core
+        // separate-process architecture, this broadcast arrives AFTER the reportNewIncomingCall
+        // Pigeon response (IPC round-trip latency), so without this guard the push-path handler
+        // always runs after the signaling handler and creates a second ActiveCall for the same callId.
+        if (core.consumeReportedIncoming(metadata.callId)) {
+            logger.d("deliverIncomingToDelegate: suppressing didPushIncomingCall for app-reported call ${metadata.callId}")
+            return
+        }
+
+        val handle = metadata.handle
+        if (handle == null) {
+            // Cannot build a PHandle without a number; skip rather than crash on a
+            // malformed/handle-less broadcast (the call is already promoted above).
+            logger.w("deliverIncomingToDelegate: missing handle for callId=${metadata.callId}; skipping didPushIncomingCall")
+            return
+        }
+        flutterDelegateApi?.didPushIncomingCall(
+            handleArg = handle.toPHandle(),
+            displayNameArg = metadata.displayName,
+            videoArg = metadata.hasVideo ?: false,
+            callIdArg = metadata.callId,
+            errorArg = null,
+        ) {}
     }
 
     /**
@@ -1071,7 +1084,7 @@ class ForegroundService :
             val callId = callMetaData.callId
 
             // consumeReportedIncoming cleans up any pending signaling guard for this
-            // callId (edge case: call terminates before DidPushIncomingCall arrives).
+            // callId (edge case: call terminates before IncomingConnectionReported arrives).
             core.consumeReportedIncoming(callId)
 
             // Suppress stale async HungUp/Decline broadcasts for calls that were already
@@ -1305,7 +1318,7 @@ class ForegroundService :
         private const val OUTGOING_CALL_TIMEOUT_MS = 5_000L
         private const val TEAR_DOWN_ACK_TIMEOUT_MS = 3_000L
 
-        // Maximum time to wait for Telecom to confirm an incoming call via DidPushIncomingCall.
+        // Maximum time to wait for Telecom to confirm an incoming call via IncomingConnectionReported.
         // If this elapses without confirmation or rejection, resolve the Pigeon callback with
         // CALL_REJECTED_BY_SYSTEM to avoid leaking the deferred callback.
         private const val INCOMING_CALL_CONFIRMATION_TIMEOUT_MS = 5_000L

@@ -34,7 +34,7 @@ Three additional sets prevent duplicate Dart notifications for the same call:
 |------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `directNotifiedCallIds`      | Calls notified directly during `tearDown()`. Suppresses a subsequent `HungUp` broadcast for the same call.                                                               |
 | `endCallDispatchedCallIds`   | Calls for which `performEndCall()` has already been sent to Dart. Prevents a second dispatch.                                                                            |
-| `signalingRegisteredCallIds` | Calls for which `reportNewIncomingCall()` succeeded. Suppresses the corresponding `DidPushIncomingCall` broadcast (which would result in a duplicate Dart notification). |
+| `signalingRegisteredCallIds` | Calls for which `reportNewIncomingCall()` succeeded. Suppresses the corresponding `IncomingConnectionReported` broadcast (which would result in a duplicate Dart notification). |
 
 ## State Transitions
 

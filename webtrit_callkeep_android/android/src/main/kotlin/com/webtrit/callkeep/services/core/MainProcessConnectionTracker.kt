@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap
  * connection state in the main process.
  *
  * Updated from broadcasts emitted by [com.webtrit.callkeep.services.services.connection.PhoneConnectionService]:
- * - [com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent.DidPushIncomingCall] -> promote incoming
+ * - [com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent.IncomingConnectionReported] -> promote incoming
  * - [com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent.AnswerCall]           -> markAnswered
  * - [com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent.HungUp] /
  *   [com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent.DeclineCall]          -> markTerminated
@@ -57,7 +57,7 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
     private val endCallDispatchedCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
     // callIds successfully registered via ForegroundService.reportNewIncomingCall
-    // (foreground signaling path). Suppresses the DidPushIncomingCall broadcast that
+    // (foreground signaling path). Suppresses the IncomingConnectionReported broadcast that
     // follows via the :callkeep_core IPC round-trip, preventing a duplicate push-path
     // ActiveCall entry alongside the signaling-path entry.
     private val reportedIncomingCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
@@ -96,7 +96,7 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         // reportedIncomingCallIds is intentionally NOT cleared here. addPending is called
         // both by the initial registration site (before markReportedIncoming) and again
         // inside InProcessCallkeepCore.startIncomingCall (after markReportedIncoming). Clearing
-        // it here would erase the guard on the second call and let DidPushIncomingCall through.
+        // it here would erase the guard on the second call and let IncomingConnectionReported through.
         // The guard is cleared by consumeReportedIncoming (normal flow) or markTerminated
         // (call-end cleanup, covers callId reuse).
         return pendingCallIds.add(callId)
@@ -121,7 +121,7 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         endCallDispatchedCallIds.remove(callId)
         directNotifiedCallIds.remove(callId)
         // reportedIncomingCallIds is intentionally NOT cleared here. promote() is called
-        // inside handleCSReportDidPushIncomingCall, immediately before consumeReportedIncoming
+        // inside handleCSIncomingConnectionReported, immediately before consumeReportedIncoming
         // checks the guard. Clearing it here would defeat the suppression and let
         // didPushIncomingCall reach Flutter for signaling-path calls.
         connections[callId] = metadata

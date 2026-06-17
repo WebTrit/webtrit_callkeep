@@ -343,8 +343,8 @@ class PhoneConnectionService : ConnectionService() {
             // Only the not-yet-answered branch emits it: a call with a consumed deferred answer is
             // being answered immediately (no incoming UI), so it is surfaced to Flutter via the
             // answer flow instead — matching the previous behaviour where onShowIncomingCallUi
-            // (and therefore DidPushIncomingCall) did not fire for an immediately-answered call.
-            performEventHandle(CallLifecycleEvent.DidPushIncomingCall, metadata)
+            // (and therefore IncomingConnectionReported) did not fire for an immediately-answered call.
+            performEventHandle(CallLifecycleEvent.IncomingConnectionReported, metadata)
         }
 
         phoneConnectionServiceDispatcher.dispatchLifecycle(

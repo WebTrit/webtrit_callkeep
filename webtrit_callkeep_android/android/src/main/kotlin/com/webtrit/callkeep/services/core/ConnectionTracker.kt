@@ -113,7 +113,7 @@ interface ConnectionTracker {
 
     /**
      * Mark [callId] as having been reported by the host app via
-     * ForegroundService.reportNewIncomingCall. Suppresses the DidPushIncomingCall broadcast
+     * ForegroundService.reportNewIncomingCall. Suppresses the IncomingConnectionReported broadcast
      * that follows via the :callkeep_core IPC round-trip, preventing a duplicate
      * push-path ActiveCall entry in the app's call state.
      */

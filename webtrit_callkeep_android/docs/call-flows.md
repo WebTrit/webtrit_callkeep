@@ -27,7 +27,7 @@ Triggered by an FCM message or a direct Dart call to `reportNewIncomingCall`.
         v
 6.  Telecom --> PhoneConnectionService.onCreateIncomingConnection()
         |   PhoneConnection created (STATE_RINGING)
-        |   broadcast: DidPushIncomingCall
+        |   broadcast: IncomingConnectionReported
         v
 7.  ForegroundService.connectionServicePerformReceiver
         |   CallkeepCore.promote(callId, meta, state)
