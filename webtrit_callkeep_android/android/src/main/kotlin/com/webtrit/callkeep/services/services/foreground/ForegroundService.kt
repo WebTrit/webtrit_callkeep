@@ -140,8 +140,8 @@ class ForegroundService :
                 handleCSReportConnectionStateChanged(data)
             }
 
-            CallLifecycleEvent.ReEmitIncomingCall -> {
-                handleCSReEmitIncomingCall(data)
+            CallLifecycleEvent.ReplayIncomingCall -> {
+                handleCSReplayIncomingCall(data)
             }
 
             CallLifecycleEvent.DeclineCall -> {
@@ -1084,7 +1084,7 @@ class ForegroundService :
     /**
      * Re-deliver a still-ringing incoming call to the (freshly attached) Flutter delegate.
      *
-     * Triggered by [com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent.ReEmitIncomingCall]
+     * Triggered by [com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent.ReplayIncomingCall]
      * from [com.webtrit.callkeep.services.services.connection.PhoneConnectionService.handleReplayConnectionStates]
      * on delegate attach. Unlike [handleCSIncomingConnectionReported] this deliberately does NOT
      * consult the signaling-registered suppression: the call IS signaling-registered, but the
@@ -1093,16 +1093,16 @@ class ForegroundService :
      * the Flutter side deduplicates by callId (CallBloc._onCallPushEventIncoming) and enriches the
      * existing entry with the signaling offer when it arrives.
      */
-    private fun handleCSReEmitIncomingCall(extras: Bundle?) {
-        logger.d("handleCSReEmitIncomingCall")
+    private fun handleCSReplayIncomingCall(extras: Bundle?) {
+        logger.d("handleCSReplayIncomingCall")
         extras?.let {
             val metadata = CallMetadata.fromBundle(it)
             val handle = metadata.handle
             if (handle == null) {
-                logger.w("handleCSReEmitIncomingCall: missing handle for callId=${metadata.callId}; skipping")
+                logger.w("handleCSReplayIncomingCall: missing handle for callId=${metadata.callId}; skipping")
                 return@let
             }
-            logger.i("handleCSReEmitIncomingCall: re-delivering ringing incoming callId=${metadata.callId} to delegate")
+            logger.i("handleCSReplayIncomingCall: re-delivering ringing incoming callId=${metadata.callId} to delegate")
             flutterDelegateApi?.didPushIncomingCall(
                 handleArg = handle.toPHandle(),
                 displayNameArg = metadata.displayName,

@@ -46,7 +46,7 @@ enum class CallLifecycleEvent : ConnectionEvent {
     // this is NOT gated by the signaling-registered suppression: the new delegate has no record
     // of the call and must be seeded before it processes signaling events. Emitted by
     // PhoneConnectionService.handleReplayConnectionStates for connections in STATE_RINGING.
-    ReEmitIncomingCall,
+    ReplayIncomingCall,
     OutgoingFailure,
     IncomingFailure,
     ConnectionNotFound,

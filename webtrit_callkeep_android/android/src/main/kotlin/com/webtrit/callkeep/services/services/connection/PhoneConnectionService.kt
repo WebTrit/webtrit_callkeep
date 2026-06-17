@@ -511,7 +511,7 @@ class PhoneConnectionService : ConnectionService() {
                     // Re-deliver the full metadata so the main process seeds its call state BEFORE it
                     // processes signaling events (handshake/hangup). Without this the call lives only
                     // as a native connection and an incoming hangup is dropped (no matching ActiveCall).
-                    performEventHandle(CallLifecycleEvent.ReEmitIncomingCall, connection.currentMetadata)
+                    performEventHandle(CallLifecycleEvent.ReplayIncomingCall, connection.currentMetadata)
             }
         }
     }
