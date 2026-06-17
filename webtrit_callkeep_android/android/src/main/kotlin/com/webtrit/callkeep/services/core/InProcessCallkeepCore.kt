@@ -186,10 +186,6 @@ class InProcessCallkeepCore internal constructor(
 
     override fun markEndCallDispatched(callId: String): Boolean = tracker.markEndCallDispatched(callId)
 
-    override fun markReportedIncoming(callId: String) = tracker.markReportedIncoming(callId)
-
-    override fun consumeReportedIncoming(callId: String): Boolean = tracker.consumeReportedIncoming(callId)
-
     // -------------------------------------------------------------------------
     // Connection event receivers
     // -------------------------------------------------------------------------

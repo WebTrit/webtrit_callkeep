@@ -28,13 +28,16 @@ State is updated exclusively from broadcast events emitted by `PhoneConnectionSe
 
 ## Callback Guards
 
-Three additional sets prevent duplicate Dart notifications for the same call:
+These sets prevent duplicate Dart notifications for the same call:
 
-| Guard                        | Purpose                                                                                                                                                                  |
-|------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `directNotifiedCallIds`      | Calls notified directly during `tearDown()`. Suppresses a subsequent `HungUp` broadcast for the same call.                                                               |
-| `endCallDispatchedCallIds`   | Calls for which `performEndCall()` has already been sent to Dart. Prevents a second dispatch.                                                                            |
-| `signalingRegisteredCallIds` | Calls for which `reportNewIncomingCall()` succeeded. Suppresses the corresponding `DidPushIncomingCall` broadcast (which would result in a duplicate Dart notification). |
+| Guard                        | Purpose                                                                                                    |
+|------------------------------|------------------------------------------------------------------------------------------------------------|
+| `directNotifiedCallIds`      | Calls notified directly during `tearDown()`. Suppresses a subsequent `HungUp` broadcast for the same call. |
+| `endCallDispatchedCallIds`   | Calls for which `performEndCall()` has already been sent to Dart. Prevents a second dispatch.              |
+
+(The former `signalingRegisteredCallIds` / `reportedIncoming` guard that suppressed `DidPushIncomingCall`
+for app-reported calls was removed: the Dart `CallBloc` deduplicates incoming calls by callId, so a
+push-path `didPushIncomingCall` for an already-known call does not create a second `ActiveCall`.)
 
 ## State Transitions
 

@@ -559,20 +559,16 @@ class MainProcessConnectionTrackerTest {
         //   1. markAnswered()           <- ReplayConnectionStates (cold-start)
         //   2. promote(STATE_ACTIVE)    <- fix step 1
         //   3. markAnswered()           <- fix step 2 (re-mark after promote clears it)
-        //   4. markReportedIncoming()  <- fix step 3
         tracker.markAnswered("call-1") // cold-start
         assertTrue(tracker.isAnswered("call-1"))
 
         tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_ACTIVE) // fix 1
         tracker.markAnswered("call-1") // fix 2
-        tracker.markReportedIncoming("call-1") // fix 3
 
         assertTrue(tracker.exists("call-1"))
         assertTrue(tracker.isAnswered("call-1"))
         assertFalse(tracker.isPending("call-1"))
         assertEquals(PCallkeepConnectionState.STATE_ACTIVE, tracker.getState("call-1"))
-        // DidPushIncomingCall broadcast must be suppressed after adoption
-        assertTrue(tracker.consumeReportedIncoming("call-1"))
     }
 
     @Test
