@@ -499,7 +499,7 @@ class MainProcessConnectionTrackerTest {
     // -------------------------------------------------------------------------
     // cold-start race: markAnswered before addPending/promote
     //
-    // Reproduces the scenario where SyncConnectionState fires
+    // Reproduces the scenario where ReplayConnectionStates fires
     // handleCSReportAnswerCall during ForegroundService.onCreate (marking the
     // call answered via markAnswered) before reportNewIncomingCall arrives
     // from the signaling layer and calls addPending/promote.
@@ -512,7 +512,7 @@ class MainProcessConnectionTrackerTest {
 
     @Test
     fun `cold-start — markAnswered without prior promote — isAnswered returns true`() {
-        // SyncConnectionState calls markAnswered before the call is registered in the
+        // ReplayConnectionStates calls markAnswered before the call is registered in the
         // tracker. The early check in reportNewIncomingCall must detect this.
         tracker.markAnswered("call-1")
         assertTrue(tracker.isAnswered("call-1"))
@@ -556,7 +556,7 @@ class MainProcessConnectionTrackerTest {
     @Test
     fun `cold-start — full fix sequence — promote then markAnswered leaves tracker consistent`() {
         // Verifies the exact sequence executed by the ALREADY_ANSWERED branch fix:
-        //   1. markAnswered()           <- SyncConnectionState (cold-start)
+        //   1. markAnswered()           <- ReplayConnectionStates (cold-start)
         //   2. promote(STATE_ACTIVE)    <- fix step 1
         //   3. markAnswered()           <- fix step 2 (re-mark after promote clears it)
         //   4. markReportedIncoming()  <- fix step 3

@@ -140,8 +140,8 @@ class PhoneConnectionService : ConnectionService() {
                     handleSyncAudioState()
                 }
 
-                is PhoneServiceCommand.SyncConnection -> {
-                    handleSyncConnectionState()
+                is PhoneServiceCommand.ReplayConnections -> {
+                    handleReplayConnectionStates()
                 }
 
                 is PhoneServiceCommand.CallOp -> {
@@ -483,8 +483,8 @@ class PhoneConnectionService : ConnectionService() {
         connectionManager.getConnections().forEach { it.forceUpdateAudioState() }
     }
 
-    private fun handleSyncConnectionState() {
-        Log.i(TAG, "handleSyncConnectionState: re-emitting lifecycle state for answered connections")
+    private fun handleReplayConnectionStates() {
+        Log.i(TAG, "handleReplayConnectionStates: re-emitting lifecycle state for answered connections")
         connectionManager.getConnections().forEach { connection ->
             if (connection.hasAnswered) {
                 performEventHandle(CallLifecycleEvent.AnswerCall, CallMetadata(callId = connection.callId))
@@ -707,19 +707,19 @@ class PhoneConnectionService : ConnectionService() {
         }
 
         /**
-         * Sends [ServiceAction.SyncConnectionState] to [PhoneConnectionService].
+         * Sends [ServiceAction.ReplayConnectionStates] to [PhoneConnectionService].
          * The service will re-fire [CallLifecycleEvent.AnswerCall] for every connection whose
          * [PhoneConnection.hasAnswered] flag is true. This lets the main process
          * ([ForegroundService]) populate [MainProcessConnectionTracker.connectionStates] even
          * when it starts after the AnswerCall broadcast was originally emitted (cold-start race).
          */
-        fun sendSyncConnectionState(context: Context) {
+        fun replayConnectionStates(context: Context) {
             val intent =
                 Intent(context, PhoneConnectionService::class.java).apply {
-                    action = ServiceAction.SyncConnectionState.action
+                    action = ServiceAction.ReplayConnectionStates.action
                 }
             runCatching { context.startService(intent) }
-                .onFailure { e -> Log.w(TAG, "sendSyncConnectionState: startService failed: $e") }
+                .onFailure { e -> Log.w(TAG, "replayConnectionStates: startService failed: $e") }
         }
 
         /**

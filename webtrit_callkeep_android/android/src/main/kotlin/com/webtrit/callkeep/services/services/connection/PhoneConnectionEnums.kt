@@ -16,7 +16,7 @@ enum class ServiceAction {
     ReserveAnswer,
     CleanConnections,
     SyncAudioState,
-    SyncConnectionState,
+    ReplayConnectionStates,
     NotifyPending,
     ;
 

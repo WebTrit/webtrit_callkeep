@@ -45,8 +45,8 @@ class ServiceCommandTest {
         assertEquals(PhoneServiceCommand.Clean, PhoneServiceCommand.from(intent(ServiceAction.CleanConnections.action, null)))
         assertEquals(PhoneServiceCommand.SyncAudio, PhoneServiceCommand.from(intent(ServiceAction.SyncAudioState.action, null)))
         assertEquals(
-            PhoneServiceCommand.SyncConnection,
-            PhoneServiceCommand.from(intent(ServiceAction.SyncConnectionState.action, null)),
+            PhoneServiceCommand.ReplayConnections,
+            PhoneServiceCommand.from(intent(ServiceAction.ReplayConnectionStates.action, null)),
         )
     }
 

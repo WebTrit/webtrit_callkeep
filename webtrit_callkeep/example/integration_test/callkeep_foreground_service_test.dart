@@ -468,7 +468,7 @@ void main() {
   // =========================================================================
   // cold-start adoption — CALL_ID_ALREADY_EXISTS_AND_ANSWERED branch
   //
-  // Regression for the cold-start race where SyncConnectionState fires
+  // Regression for the cold-start race where ReplayConnectionStates fires
   // handleCSReportAnswerCall during ForegroundService.onCreate, marking the
   // call as answered in the main-process tracker BEFORE reportNewIncomingCall
   // arrives from the signaling layer (CallBloc.__onCallSignalingEventIncoming).
@@ -506,7 +506,7 @@ void main() {
       await waitFor(firstAnswerLatch.future, label: 'performAnswerCall (first)');
 
       // Simulate the signaling layer re-reporting the already-answered call
-      // (cold-start: reportNewIncomingCall arrives after SyncConnectionState
+      // (cold-start: reportNewIncomingCall arrives after ReplayConnectionStates
       // already marked the call answered). The ALREADY_ANSWERED branch must
       // fire performAnswerCall directly to trigger WebRTC setup.
       final adoptLatch = Completer<void>();
