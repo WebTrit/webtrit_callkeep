@@ -21,7 +21,8 @@ Called once when the Flutter engine attaches:
   storage so services can access them without a Flutter engine).
 - Registers bootstrap APIs for background isolates:
   - `BackgroundPushNotificationIsolateBootstrapApi` (push-triggered incoming call service)
-  - `SmsReceptionConfigBootstrapApi` (optional SMS fallback)
+  - `SmsReceptionConfigBootstrapApi` (optional SMS fallback — dormant / likely deprecated, see
+    [incoming-call-handling.md](incoming-call-handling.md))
 - Registers `PHostDiagnosticsApi`, `PHostPermissionsApi`, `PHostActivityControlApi`,
   `PHostConnectionsApi`, `PHostSoundApi`.
 
