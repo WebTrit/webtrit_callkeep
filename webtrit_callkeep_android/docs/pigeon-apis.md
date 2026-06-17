@@ -121,6 +121,8 @@ Implemented by: `BackgroundPushNotificationIsolateBootstrapApi`
 ### `SmsReceptionConfigBootstrapApi`
 
 Configures the optional SMS-based incoming call trigger (`IncomingCallSmsTriggerReceiver`).
+**Dormant / likely deprecated**: not tested and not actively developed; see
+[incoming-call-handling.md](incoming-call-handling.md) (SMS-triggered incoming).
 
 ---
 
