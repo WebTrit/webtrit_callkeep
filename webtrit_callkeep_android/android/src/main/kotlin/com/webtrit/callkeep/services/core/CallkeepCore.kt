@@ -311,12 +311,13 @@ interface CallkeepCore {
     fun sendCleanConnections()
 
     /**
-     * Sends [ServiceAction.SyncAudioState] to [PhoneConnectionService].
-     * The service re-emits audio device and mute state for all active connections back to the
-     * main process via broadcasts. Called from [ForegroundService.onDelegateSet] to restore
-     * Flutter audio UI after hot restart.
+     * Asks [PhoneConnectionService] to REPLAY the current audio state (device + mute) for all
+     * active connections back to the main process via broadcasts -- a one-way pull, not a two-way
+     * sync. Called from [ForegroundService.onDelegateSet] to restore the Flutter audio UI once a
+     * freshly attached delegate is ready (cold start / hot restart / warm re-attach). The sibling
+     * of [replayConnectionStates].
      */
-    fun sendSyncAudioState()
+    fun replayAudioState()
 
     /**
      * Asks [PhoneConnectionService] to REPLAY the current connection lifecycle back to the main

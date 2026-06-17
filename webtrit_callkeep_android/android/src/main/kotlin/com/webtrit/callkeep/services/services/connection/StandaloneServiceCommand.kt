@@ -10,7 +10,7 @@ import com.webtrit.callkeep.models.CallMetadata
  * Mirrors [PhoneServiceCommand] for the non-Telecom path. Parsing is done once in [from] so the
  * [CallMetadata] extraction never runs for the no-extras lifecycle commands
  * ([StandaloneServiceAction.TearDownConnections], [StandaloneServiceAction.CleanConnections],
- * [StandaloneServiceAction.SyncAudioState], [StandaloneServiceAction.ReplayConnectionStates]). This
+ * [StandaloneServiceAction.ReplayAudioState], [StandaloneServiceAction.ReplayConnectionStates]). This
  * closes the same latent crash as on the Telecom path: a Binder-delivered empty
  * [android.os.Bundle] would otherwise reach `CallMetadata.fromBundle` and throw an uncaught
  * `IllegalArgumentException`.
@@ -22,7 +22,7 @@ sealed class StandaloneServiceCommand {
 
     data object Clean : StandaloneServiceCommand()
 
-    data object SyncAudio : StandaloneServiceCommand()
+    data object ReplayAudio : StandaloneServiceCommand()
 
     data object ReplayConnections : StandaloneServiceCommand()
 
@@ -52,8 +52,8 @@ sealed class StandaloneServiceCommand {
                     Clean
                 }
 
-                StandaloneServiceAction.SyncAudioState -> {
-                    SyncAudio
+                StandaloneServiceAction.ReplayAudioState -> {
+                    ReplayAudio
                 }
 
                 StandaloneServiceAction.ReplayConnectionStates -> {

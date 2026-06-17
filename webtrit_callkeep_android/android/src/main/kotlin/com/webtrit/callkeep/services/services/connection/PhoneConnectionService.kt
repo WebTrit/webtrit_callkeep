@@ -136,8 +136,8 @@ class PhoneConnectionService : ConnectionService() {
                     handleCleanConnections()
                 }
 
-                is PhoneServiceCommand.SyncAudio -> {
-                    handleSyncAudioState()
+                is PhoneServiceCommand.ReplayAudio -> {
+                    handleReplayAudioState()
                 }
 
                 is PhoneServiceCommand.ReplayConnections -> {
@@ -478,8 +478,8 @@ class PhoneConnectionService : ConnectionService() {
         connectionManager.cleanConnections()
     }
 
-    private fun handleSyncAudioState() {
-        Log.i(TAG, "handleSyncAudioState: re-emitting audio state for all active connections")
+    private fun handleReplayAudioState() {
+        Log.i(TAG, "handleReplayAudioState: re-emitting audio state for all active connections")
         connectionManager.getConnections().forEach { it.forceUpdateAudioState() }
     }
 
@@ -692,18 +692,18 @@ class PhoneConnectionService : ConnectionService() {
         }
 
         /**
-         * Sends [ServiceAction.SyncAudioState] to [PhoneConnectionService].
+         * Sends [ServiceAction.ReplayAudioState] to [PhoneConnectionService].
          * The service will call [PhoneConnection.forceUpdateAudioState] on all active connections,
          * which re-emits audio device and mute state broadcasts back to the main process.
          * Used by [ForegroundService.onDelegateSet] to restore Flutter UI after hot restart.
          */
-        fun sendSyncAudioState(context: Context) {
+        fun replayAudioState(context: Context) {
             val intent =
                 Intent(context, PhoneConnectionService::class.java).apply {
-                    action = ServiceAction.SyncAudioState.action
+                    action = ServiceAction.ReplayAudioState.action
                 }
             runCatching { context.startService(intent) }
-                .onFailure { e -> Log.w(TAG, "sendSyncAudioState: startService failed: $e") }
+                .onFailure { e -> Log.w(TAG, "replayAudioState: startService failed: $e") }
         }
 
         /**
