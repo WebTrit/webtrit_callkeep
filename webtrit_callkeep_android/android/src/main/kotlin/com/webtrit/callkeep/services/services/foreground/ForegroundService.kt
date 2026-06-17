@@ -1086,9 +1086,9 @@ class ForegroundService :
      *
      * Triggered by [com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent.ReEmitIncomingCall]
      * from [com.webtrit.callkeep.services.services.connection.PhoneConnectionService.handleReplayConnectionStates]
-     * on delegate attach. Unlike [handleCSReportDidPushIncomingCall] this deliberately does NOT
+     * on delegate attach. Unlike [handleCSIncomingConnectionReported] this deliberately does NOT
      * consult the signaling-registered suppression: the call IS signaling-registered, but the
-     * delegate that received the original DidPushIncomingCall is gone (push->foreground isolate
+     * delegate that received the original IncomingConnectionReported is gone (push->foreground isolate
      * handoff or hot restart), so the new delegate must still be seeded. A duplicate is harmless --
      * the Flutter side deduplicates by callId (CallBloc._onCallPushEventIncoming) and enriches the
      * existing entry with the signaling offer when it arrives.

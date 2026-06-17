@@ -42,7 +42,7 @@ enum class CallLifecycleEvent : ConnectionEvent {
     ConnectionStateChanged,
 
     // Re-delivery of a still-ringing incoming call to a freshly-attached Flutter delegate
-    // (e.g. after a push->foreground isolate handoff or hot restart). Unlike DidPushIncomingCall,
+    // (e.g. after a push->foreground isolate handoff or hot restart). Unlike IncomingConnectionReported,
     // this is NOT gated by the signaling-registered suppression: the new delegate has no record
     // of the call and must be seeded before it processes signaling events. Emitted by
     // PhoneConnectionService.handleReplayConnectionStates for connections in STATE_RINGING.
