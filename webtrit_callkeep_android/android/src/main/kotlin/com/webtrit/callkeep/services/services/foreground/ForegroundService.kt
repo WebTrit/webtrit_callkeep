@@ -844,6 +844,11 @@ class ForegroundService :
         if (!IncomingCallService.isRunning) {
             PendingBroadcastQueue.post(PendingBroadcastQueue.incomingReleaseKey(callId))
         }
+        // Mark terminated synchronously in the main-process tracker. startDeclineCall only marks
+        // terminated once the DeclineCall broadcast echoes back from :callkeep_core, which is subject
+        // to cross-process latency. Doing it here lets deliverIncomingToDelegate suppress a
+        // late-arriving connection-state replay for a call the app already reported as ended.
+        core.markTerminated(callId)
         core.startDeclineCall(callMetaData)
         callback.invoke(Result.success(Unit))
     }
@@ -1027,11 +1032,19 @@ class ForegroundService :
     /**
      * Notify the Flutter delegate of an incoming call via the public `didPushIncomingCall` callback.
      * The single delivery point to the foreground delegate, used by the connection-state replay
-     * ([handleCSReplayIncomingCall]) to seed a freshly attached delegate. Delivery is unconditional:
-     * the Dart CallBloc deduplicates by callId, so re-delivering a call the app already knows about
+     * ([handleCSReplayIncomingCall]) to seed a freshly attached delegate. A call already terminated
+     * in the main-process tracker is skipped (see below); otherwise delivery is unconditional: the
+     * Dart CallBloc deduplicates by callId, so re-delivering a call the app already knows about
      * (e.g. from signaling) does not create a second ActiveCall.
      */
     private fun deliverIncomingToDelegate(metadata: CallMetadata) {
+        if (core.isTerminated(metadata.callId)) {
+            // The call was already reported ended in the main process (e.g. a signaling hangup
+            // arrived while the connection-state replay was still in flight from :callkeep_core).
+            // Delivering it now would seed a ghost incoming call into CallBloc for a dead call.
+            logger.w("deliverIncomingToDelegate: callId=${metadata.callId} already terminated; skipping seed")
+            return
+        }
         val handle = metadata.handle
         if (handle == null) {
             // Cannot build a PHandle without a number; skip rather than crash on a
