@@ -33,14 +33,19 @@ interface ConnectionTracker {
         state: PCallkeepConnectionState,
     )
 
-    /** Mark [callId] as answered and advance its state to STATE_ACTIVE. */
+    /**
+     * Mark [callId] as answered (lifecycle guard for isAnswered / checkIncomingDuplicate).
+     * Does NOT stamp the connection state — ACTIVE is mirrored via [updateState].
+     */
     fun markAnswered(callId: String)
 
     /**
-     * Mirror the authoritative connection [state] for an already-tracked [callId]. Source of truth is
-     * the real android.telecom.Connection state (PhoneConnection.onStateChanged) / the StandaloneCallService
-     * transitions. Idempotent; never creates an entry, never touches guard sets; ignores terminal states
-     * (DISCONNECTED stays on [markTerminated] via the cause-carrying events).
+     * Mirror the authoritative connection [state] for [callId]. Source of truth is the real
+     * android.telecom.Connection state (PhoneConnection.onStateChanged) / the StandaloneCallService
+     * transitions. Writes the state UNCONDITIONALLY (it does NOT register the call and is not gated on
+     * connections membership): state may be set before [promote] and is preserved across an [addPending]
+     * reset, which the cold-start "already answered" detection relies on. Touches no guard set. Ignores
+     * terminal DISCONNECTED — that is owned by [markTerminated] via the cause-carrying events.
      */
     fun updateState(
         callId: String,

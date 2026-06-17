@@ -117,9 +117,11 @@ interface CallkeepCore {
     fun markAnswered(callId: String)
 
     /**
-     * Mirror the authoritative connection [state] for an already-tracked [callId] (source of truth =
-     * the real android.telecom.Connection state via PhoneConnection.onStateChanged, or the
-     * StandaloneCallService transitions). Idempotent; ignores terminal states.
+     * Mirror the authoritative connection [state] for [callId] (source of truth = the real
+     * android.telecom.Connection state via PhoneConnection.onStateChanged, or the StandaloneCallService
+     * transitions). Writes state UNCONDITIONALLY — it does NOT register the call and may be called
+     * before promote (state persists across addPending, which the cold-start adoption relies on).
+     * Ignores terminal DISCONNECTED (owned by [markTerminated]).
      */
     fun updateState(
         callId: String,

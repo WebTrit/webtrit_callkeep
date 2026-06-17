@@ -440,9 +440,10 @@ class StandaloneCallService : Service() {
         core.notifyConnectionEvent(CallMediaEvent.ConnectionHolding, updated.toBundle())
         // No onStateChanged here (no telecom Connection) — emit the state explicitly so the shadow
         // mirrors it (replaces the removed markHeld state-stamping).
+        val holdState = if (onHold) CallConnectionState.HOLDING else CallConnectionState.ACTIVE
         core.notifyConnectionEvent(
             CallLifecycleEvent.ConnectionStateChanged,
-            updated.copy(connectionState = if (onHold) CallConnectionState.HOLDING else CallConnectionState.ACTIVE).toBundle(),
+            updated.copy(connectionState = holdState).toBundle(),
         )
     }
 

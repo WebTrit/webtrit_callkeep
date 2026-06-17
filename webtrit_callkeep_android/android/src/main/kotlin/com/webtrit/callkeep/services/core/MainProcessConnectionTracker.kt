@@ -154,6 +154,10 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         callId: String,
         state: CallConnectionState,
     ) {
+        // Terminal state is owned by markTerminated (via the cause-carrying HungUp/DeclineCall events),
+        // not by this mirror — guard here so a future ConnectionStateChanged(DISCONNECTED) call site
+        // cannot accidentally override the termination path.
+        if (state == CallConnectionState.DISCONNECTED) return
         connectionStates[callId] = state.toPCallkeepConnectionState()
     }
 
