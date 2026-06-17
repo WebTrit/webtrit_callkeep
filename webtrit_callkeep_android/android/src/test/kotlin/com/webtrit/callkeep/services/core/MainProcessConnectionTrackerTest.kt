@@ -571,7 +571,7 @@ class MainProcessConnectionTrackerTest {
         assertTrue(tracker.isAnswered("call-1"))
         assertFalse(tracker.isPending("call-1"))
         assertEquals(PCallkeepConnectionState.STATE_ACTIVE, tracker.getState("call-1"))
-        // DidPushIncomingCall broadcast must be suppressed after adoption
+        // IncomingConnectionReported broadcast must be suppressed after adoption
         assertTrue(tracker.consumeReportedIncoming("call-1"))
     }
 

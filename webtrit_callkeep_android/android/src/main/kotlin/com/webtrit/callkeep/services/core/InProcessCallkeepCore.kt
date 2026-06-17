@@ -244,7 +244,7 @@ class InProcessCallkeepCore internal constructor(
     ) {
         val callId = metadata.callId
         // Reserve the pendingCallIds entry before handing off to the backend so that
-        // answerCall() / endCall() issued before DidPushIncomingCall fires can locate
+        // answerCall() / endCall() issued before IncomingConnectionReported fires can locate
         // the call via core.isPending() during the broadcast-lag window.
         //
         // addPending() returns true only when this invocation actually inserted the entry.
@@ -346,7 +346,7 @@ class InProcessCallkeepCore internal constructor(
          */
         internal val GLOBAL_LISTENER_EVENTS: List<ConnectionEvent> =
             listOf(
-                CallLifecycleEvent.DidPushIncomingCall,
+                CallLifecycleEvent.IncomingConnectionReported,
                 CallLifecycleEvent.ConnectionStateChanged,
                 CallLifecycleEvent.DeclineCall,
                 CallLifecycleEvent.HungUp,

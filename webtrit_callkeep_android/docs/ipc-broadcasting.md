@@ -22,7 +22,7 @@ The event type is carried as a string extra inside the intent.
 
 | Event                 | Payload                         | Meaning                                          |
 |-----------------------|---------------------------------|--------------------------------------------------|
-| `DidPushIncomingCall`    | `callId`, `CallMetadata` bundle              | Incoming `PhoneConnection` created, UI shown               |
+| `IncomingConnectionReported`    | `callId`, `CallMetadata` bundle              | Incoming `PhoneConnection` created, UI shown               |
 | `AnswerCall`             | `callId`                                     | Answer signal (guard); the ACTIVE state arrives separately via `ConnectionStateChanged` |
 | `ConnectionStateChanged` | `callId`, `CallMetadata` bundle (carries `connectionState`) | Authoritative live connection state to mirror into the shadow state (RINGING/DIALING/ACTIVE/HOLDING). Terminal DISCONNECTED is NOT sent here -- it stays on the cause-carrying `HungUp`/`DeclineCall`. |
 | `DeclineCall`            | `callId`                                     | User rejected the call                                     |

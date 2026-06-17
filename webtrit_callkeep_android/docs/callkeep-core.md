@@ -66,7 +66,7 @@ CallkeepCore.instance.removeConnectionEventListener(this)
 | `unregisterConnectionEvents(...)`     | Unregister a temporary receiver                          |
 
 **Global events** (routed to all `ConnectionEventListener` subscribers):
-`DidPushIncomingCall`, `ConnectionStateChanged`, `DeclineCall`, `HungUp`, `ConnectionNotFound`,
+`IncomingConnectionReported`, `ConnectionStateChanged`, `DeclineCall`, `HungUp`, `ConnectionNotFound`,
 `AnswerCall`, `AudioDeviceSet`, `AudioDevicesUpdate`, `AudioMuting`, `ConnectionHolding`,
 `SentDTMF`.
 
@@ -81,7 +81,7 @@ reports events via `CallkeepCore`. They update `MainProcessConnectionTracker`.
 | Method                             | Triggered by                       | Effect                          |
 |------------------------------------|------------------------------------|---------------------------------|
 | `addPending(callId)`               | `NotifyPending` intent from CS     | Registers call as pending       |
-| `promote(callId, metadata, state)` | `DidPushIncomingCall` broadcast    | Full registration with metadata |
+| `promote(callId, metadata, state)` | `IncomingConnectionReported` broadcast    | Full registration with metadata |
 | `markAnswered(callId)`             | `AnswerCall` broadcast             | Marks answered (guard only; no state stamp) |
 | `updateState(callId, state)`       | `ConnectionStateChanged` broadcast | Mirrors authoritative connection state (unconditional; ignores DISCONNECTED) |
 | `markTerminated(callId)`           | `HungUp` / `DeclineCall` broadcast | Moves to terminated set         |

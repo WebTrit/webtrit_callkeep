@@ -93,7 +93,7 @@ registered `ConnectionEventListener`. `ForegroundService` does not register its 
 
 | Event                 | Handler                               | Main Action                                                              |
 |-----------------------|---------------------------------------|--------------------------------------------------------------------------|
-| `DidPushIncomingCall`    | `handleCSReportDidPushIncomingCall()`    | Promote call in tracker, call `performIncomingCall()` on Dart delegate   |
+| `IncomingConnectionReported`    | `handleCSIncomingConnectionReported()`    | Promote call in tracker, call `performIncomingCall()` on Dart delegate   |
 | `ConnectionStateChanged` | `handleCSReportConnectionStateChanged()` | `updateState()` -- mirror the authoritative connection state into the tracker |
 | `AnswerCall`             | `handleCSReportAnswerCall()`             | `markAnswered()` guard in tracker, call `performAnswerCall()` on Dart delegate |
 | `DeclineCall`         | `handleCSReportDeclineCall()`         | `markTerminated()`, call `performEndCall()`                              |

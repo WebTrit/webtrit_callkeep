@@ -293,7 +293,7 @@ class StandaloneCallService : Service() {
         // for this broadcast to resolve its pendingIncomingCallbacks entry and promote the call
         // into the core shadow state, matching the PhoneConnectionService.onCreateIncomingConnection
         // path in the Telecom-enabled flow.
-        core.notifyConnectionEvent(CallLifecycleEvent.DidPushIncomingCall, metadata.toBundle())
+        core.notifyConnectionEvent(CallLifecycleEvent.IncomingConnectionReported, metadata.toBundle())
 
         // If an answer was reserved before this call was registered (ReserveAnswer arrived first),
         // consume the pending reservation and immediately trigger the answer flow.

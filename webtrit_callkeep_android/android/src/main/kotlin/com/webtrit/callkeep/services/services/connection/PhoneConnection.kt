@@ -128,7 +128,7 @@ class PhoneConnection internal constructor(
      * through the earpiece at full volume during a call and can hurt with the phone to the ear,
      * WT-1388).
      *
-     * The control-plane notification to the main process (DidPushIncomingCall) is NOT emitted
+     * The control-plane notification to the main process (IncomingConnectionReported) is NOT emitted
      * here. It is dispatched deterministically from [PhoneConnectionService.onCreateIncomingConnection]
      * when the connection is created, so it does not depend on this system UI callback's timing
      * (which the framework schedules separately and which is skipped for an immediately-answered call).

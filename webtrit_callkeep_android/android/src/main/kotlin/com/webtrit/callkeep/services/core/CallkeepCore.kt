@@ -166,7 +166,7 @@ interface CallkeepCore {
      *
      * Purpose: de-duplicate the incoming-call notification to Flutter. When the app itself reported
      * the call, Flutter already knows about it (`__onCallSignalingEventIncoming`). The
-     * `DidPushIncomingCall` broadcast that still arrives afterwards via the `:callkeep_core` IPC
+     * `IncomingConnectionReported` broadcast that still arrives afterwards via the `:callkeep_core` IPC
      * round-trip is then suppressed (see [consumeReportedIncoming]) so it does not add a second,
      * push-path ActiveCall (line -1) alongside the existing app-path entry (line 0) for the same callId.
      */
@@ -175,7 +175,7 @@ interface CallkeepCore {
     /**
      * Returns true and clears the mark if [callId] was app-reported (see [markReportedIncoming]).
      *
-     * Consume-on-read: the guard fires at most once per call, so the first `DidPushIncomingCall`
+     * Consume-on-read: the guard fires at most once per call, so the first `IncomingConnectionReported`
      * for an app-reported call is suppressed and any subsequent delivery (e.g. an explicit
      * re-emit to a newly attached delegate) is no longer affected.
      */

@@ -49,7 +49,7 @@ Its responsibilities:
 - Looks up metadata from `ConnectionManager.getPendingMetadata(callId)`.
 - If metadata is not yet available (race condition), falls back to extracting from the `request`
   Bundle.
-- Calls `performEventHandle(DidPushIncomingCall, ...)` to notify the main process.
+- Calls `performEventHandle(IncomingConnectionReported, ...)` to notify the main process.
 - If `ConnectionManager.consumeAnswer(callId)` returns true (deferred answer), calls
   `connection.onAnswer()` immediately.
 
