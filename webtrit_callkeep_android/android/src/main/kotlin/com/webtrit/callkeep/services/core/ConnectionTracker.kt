@@ -101,18 +101,18 @@ interface ConnectionTracker {
     fun markEndCallDispatched(callId: String): Boolean
 
     /**
-     * Mark [callId] as registered via ForegroundService.reportNewIncomingCall
-     * (the foreground signaling path). Suppresses the DidPushIncomingCall broadcast
+     * Mark [callId] as having been reported by the host app via
+     * ForegroundService.reportNewIncomingCall. Suppresses the DidPushIncomingCall broadcast
      * that follows via the :callkeep_core IPC round-trip, preventing a duplicate
      * push-path ActiveCall entry in the app's call state.
      */
-    fun markSignalingRegistered(callId: String)
+    fun markReportedIncoming(callId: String)
 
     /**
-     * Returns true and removes the mark if [callId] was signaling-registered.
+     * Returns true and removes the mark if [callId] was app-reported (see [markReportedIncoming]).
      * Consuming on first read ensures the guard fires at most once per call.
      */
-    fun consumeSignalingRegistered(callId: String): Boolean
+    fun consumeReportedIncoming(callId: String): Boolean
 
     // -------------------------------------------------------------------------
     // Read operations

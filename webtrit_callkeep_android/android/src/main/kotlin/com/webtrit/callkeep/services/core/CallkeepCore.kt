@@ -152,9 +152,9 @@ interface CallkeepCore {
 
     fun markEndCallDispatched(callId: String): Boolean
 
-    fun markSignalingRegistered(callId: String)
+    fun markReportedIncoming(callId: String)
 
-    fun consumeSignalingRegistered(callId: String): Boolean
+    fun consumeReportedIncoming(callId: String): Boolean
 
     // -------------------------------------------------------------------------
     // Connection event receivers

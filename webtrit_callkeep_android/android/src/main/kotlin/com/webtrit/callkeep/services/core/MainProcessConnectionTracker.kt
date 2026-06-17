@@ -59,7 +59,7 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
     // (foreground signaling path). Suppresses the DidPushIncomingCall broadcast that
     // follows via the :callkeep_core IPC round-trip, preventing a duplicate push-path
     // ActiveCall entry alongside the signaling-path entry.
-    private val signalingRegisteredCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    private val reportedIncomingCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
     // last known Pigeon connection state per callId, kept for getConnections() queries
     private val connectionStates = ConcurrentHashMap<String, PCallkeepConnectionState>()
@@ -92,11 +92,11 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         pendingAnswers.remove(callId)
         endCallDispatchedCallIds.remove(callId)
         directNotifiedCallIds.remove(callId)
-        // signalingRegisteredCallIds is intentionally NOT cleared here. addPending is called
-        // both by the initial registration site (before markSignalingRegistered) and again
-        // inside InProcessCallkeepCore.startIncomingCall (after markSignalingRegistered). Clearing
+        // reportedIncomingCallIds is intentionally NOT cleared here. addPending is called
+        // both by the initial registration site (before markReportedIncoming) and again
+        // inside InProcessCallkeepCore.startIncomingCall (after markReportedIncoming). Clearing
         // it here would erase the guard on the second call and let DidPushIncomingCall through.
-        // The guard is cleared by consumeSignalingRegistered (normal flow) or markTerminated
+        // The guard is cleared by consumeReportedIncoming (normal flow) or markTerminated
         // (call-end cleanup, covers callId reuse).
         return pendingCallIds.add(callId)
     }
@@ -119,8 +119,8 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         pendingAnswers.remove(callId)
         endCallDispatchedCallIds.remove(callId)
         directNotifiedCallIds.remove(callId)
-        // signalingRegisteredCallIds is intentionally NOT cleared here. promote() is called
-        // inside handleCSReportDidPushIncomingCall, immediately before consumeSignalingRegistered
+        // reportedIncomingCallIds is intentionally NOT cleared here. promote() is called
+        // inside handleCSReportDidPushIncomingCall, immediately before consumeReportedIncoming
         // checks the guard. Clearing it here would defeat the suppression and let
         // didPushIncomingCall reach Flutter for signaling-path calls.
         connections[callId] = metadata
@@ -170,7 +170,7 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         answeredCallIds.remove(callId)
         pendingCallIds.remove(callId)
         pendingAnswers.remove(callId)
-        signalingRegisteredCallIds.remove(callId)
+        reportedIncomingCallIds.remove(callId)
         connectionStates[callId] = PCallkeepConnectionState.STATE_DISCONNECTED
     }
 
@@ -295,7 +295,7 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         connectionStates.clear()
         directNotifiedCallIds.clear()
         endCallDispatchedCallIds.clear()
-        signalingRegisteredCallIds.clear()
+        reportedIncomingCallIds.clear()
     }
 
     // -------------------------------------------------------------------------
@@ -310,11 +310,11 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
 
     override fun markEndCallDispatched(callId: String): Boolean = endCallDispatchedCallIds.add(callId)
 
-    override fun markSignalingRegistered(callId: String) {
-        signalingRegisteredCallIds.add(callId)
+    override fun markReportedIncoming(callId: String) {
+        reportedIncomingCallIds.add(callId)
     }
 
-    override fun consumeSignalingRegistered(callId: String): Boolean = signalingRegisteredCallIds.remove(callId)
+    override fun consumeReportedIncoming(callId: String): Boolean = reportedIncomingCallIds.remove(callId)
 
     companion object {
         /**

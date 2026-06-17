@@ -492,7 +492,7 @@ class ForegroundService :
                 // this callback returns but before _CallPerformEvent.answered is processed.
                 core.promote(callId, metadata, PCallkeepConnectionState.STATE_ACTIVE)
                 core.markAnswered(callId)
-                core.markSignalingRegistered(callId)
+                core.markReportedIncoming(callId)
                 flutterDelegateApi?.performAnswerCall(callId) {}
                 logger.i("reportNewIncomingCall: adopted already-answered call callId=$callId, fired performAnswerCall")
             } else {
@@ -553,7 +553,7 @@ class ForegroundService :
         // round-trip) is suppressed even if it arrives before the onSuccess callback runs.
         // Flutter learns about this call from __onCallSignalingEventIncoming, so the
         // duplicate push-path didPushIncomingCall must not reach it.
-        core.markSignalingRegistered(callId)
+        core.markReportedIncoming(callId)
 
         // Note: core.startIncomingCall can throw synchronously (e.g. uninitialized
         // ContextHolder). The exception bypasses our onError handler and propagates to
@@ -567,7 +567,7 @@ class ForegroundService :
             onSuccess = {
                 logger.d("reportNewIncomingCall: startIncomingCall success callId=$callId")
                 // pendingIncomingCallbacks and timeout are already registered above.
-                // markSignalingRegistered was already called before startIncomingCall.
+                // markReportedIncoming was already called before startIncomingCall.
             },
             onError = { error ->
                 // Cancel timeout and clear maps only if this call owns the pending slot.
@@ -636,7 +636,7 @@ class ForegroundService :
                         // Roll back the signaling-registered guard. The pending entry has already
                         // been drained by InProcessCallkeepCore.startIncomingCall before invoking
                         // this onError callback, so no core.removePending(callId) is needed here.
-                        core.consumeSignalingRegistered(callId)
+                        core.consumeReportedIncoming(callId)
                         callback(Result.success(error))
                     }
                 }
@@ -664,7 +664,7 @@ class ForegroundService :
         // directNotifiedCallIds so the stale async HungUp broadcast is suppressed
         // in handleCSReportDeclineCall.
         // core.clear() at the end of tearDown handles all per-session state including
-        // callback guards (directNotified, endCallDispatched, signalingRegistered).
+        // callback guards (directNotified, endCallDispatched, reportedIncoming).
 
         // Step 1: Collect active call IDs from the core shadow state (promoted connections).
         val activeCallIds = core.getAll().map { it.callId }
@@ -1021,9 +1021,9 @@ class ForegroundService :
             // arrives AFTER the reportNewIncomingCall Pigeon response (IPC round-trip latency),
             // so without this guard the push-path handler always runs after the signaling
             // handler and creates a second ActiveCall for the same callId.
-            if (core.consumeSignalingRegistered(metadata.callId)) {
+            if (core.consumeReportedIncoming(metadata.callId)) {
                 logger.d(
-                    "handleCSReportDidPushIncomingCall: suppressing didPushIncomingCall for signaling-registered call ${metadata.callId}",
+                    "handleCSReportDidPushIncomingCall: suppressing didPushIncomingCall for app-reported call ${metadata.callId}",
                 )
                 return@let
             }
@@ -1051,9 +1051,9 @@ class ForegroundService :
             val callMetaData = CallMetadata.fromBundle(it)
             val callId = callMetaData.callId
 
-            // consumeSignalingRegistered cleans up any pending signaling guard for this
+            // consumeReportedIncoming cleans up any pending signaling guard for this
             // callId (edge case: call terminates before DidPushIncomingCall arrives).
-            core.consumeSignalingRegistered(callId)
+            core.consumeReportedIncoming(callId)
 
             // Suppress stale async HungUp/Decline broadcasts for calls that were already
             // directly notified via performEndCall in tearDown(). Without this guard, the
