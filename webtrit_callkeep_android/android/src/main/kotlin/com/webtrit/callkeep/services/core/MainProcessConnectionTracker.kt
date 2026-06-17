@@ -56,12 +56,6 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
     // performEndCall for a Telecom-terminated call. Prevents duplicate performEndCall.
     private val endCallDispatchedCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
-    // callIds successfully registered via ForegroundService.reportNewIncomingCall
-    // (foreground signaling path). Suppresses the IncomingConnectionReported broadcast that
-    // follows via the :callkeep_core IPC round-trip, preventing a duplicate push-path
-    // ActiveCall entry alongside the signaling-path entry.
-    private val reportedIncomingCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
-
     // last known Pigeon connection state per callId, kept for getConnections() queries
     private val connectionStates = ConcurrentHashMap<String, PCallkeepConnectionState>()
 
@@ -93,12 +87,6 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         pendingAnswers.remove(callId)
         endCallDispatchedCallIds.remove(callId)
         directNotifiedCallIds.remove(callId)
-        // reportedIncomingCallIds is intentionally NOT cleared here. addPending is called
-        // both by the initial registration site (before markReportedIncoming) and again
-        // inside InProcessCallkeepCore.startIncomingCall (after markReportedIncoming). Clearing
-        // it here would erase the guard on the second call and let IncomingConnectionReported through.
-        // The guard is cleared by consumeReportedIncoming (normal flow) or markTerminated
-        // (call-end cleanup, covers callId reuse).
         return pendingCallIds.add(callId)
     }
 
@@ -120,10 +108,6 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         pendingAnswers.remove(callId)
         endCallDispatchedCallIds.remove(callId)
         directNotifiedCallIds.remove(callId)
-        // reportedIncomingCallIds is intentionally NOT cleared here. promote() is called
-        // inside handleCSIncomingConnectionReported, immediately before consumeReportedIncoming
-        // checks the guard. Clearing it here would defeat the suppression and let
-        // didPushIncomingCall reach Flutter for signaling-path calls.
         connections[callId] = metadata
         pendingCallIds.remove(callId)
         connectionStates[callId] = state
@@ -189,7 +173,6 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         answeredCallIds.remove(callId)
         pendingCallIds.remove(callId)
         pendingAnswers.remove(callId)
-        reportedIncomingCallIds.remove(callId)
         connectionStates[callId] = PCallkeepConnectionState.STATE_DISCONNECTED
     }
 
@@ -314,7 +297,6 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         connectionStates.clear()
         directNotifiedCallIds.clear()
         endCallDispatchedCallIds.clear()
-        reportedIncomingCallIds.clear()
     }
 
     // -------------------------------------------------------------------------
@@ -328,12 +310,6 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
     override fun consumeDirectNotified(callId: String): Boolean = directNotifiedCallIds.remove(callId)
 
     override fun markEndCallDispatched(callId: String): Boolean = endCallDispatchedCallIds.add(callId)
-
-    override fun markReportedIncoming(callId: String) {
-        reportedIncomingCallIds.add(callId)
-    }
-
-    override fun consumeReportedIncoming(callId: String): Boolean = reportedIncomingCallIds.remove(callId)
 
     companion object {
         /**

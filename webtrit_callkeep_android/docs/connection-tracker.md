@@ -28,13 +28,17 @@ State is updated exclusively from broadcast events emitted by `PhoneConnectionSe
 
 ## Callback Guards
 
-Three additional sets prevent duplicate Dart notifications for the same call:
+These sets prevent duplicate Dart notifications for the same call:
 
-| Guard                        | Purpose                                                                                                                                                                  |
-|------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `directNotifiedCallIds`      | Calls notified directly during `tearDown()`. Suppresses a subsequent `HungUp` broadcast for the same call.                                                               |
-| `endCallDispatchedCallIds`   | Calls for which `performEndCall()` has already been sent to Dart. Prevents a second dispatch.                                                                            |
-| `signalingRegisteredCallIds` | Calls for which `reportNewIncomingCall()` succeeded. Suppresses the corresponding `IncomingConnectionReported` broadcast (which would result in a duplicate Dart notification). |
+| Guard                        | Purpose                                                                                                    |
+|------------------------------|------------------------------------------------------------------------------------------------------------|
+| `directNotifiedCallIds`      | Calls notified directly during `tearDown()`. Suppresses a subsequent `HungUp` broadcast for the same call. |
+| `endCallDispatchedCallIds`   | Calls for which `performEndCall()` has already been sent to Dart. Prevents a second dispatch.              |
+
+(The `IncomingConnectionReported` event is register-only and does not notify the Flutter delegate,
+so no app-reported suppression guard is needed. The foreground delegate is notified of an incoming
+call by its own signaling, or by `ReplayIncomingCall` on delegate attach; the Dart `CallBloc`
+deduplicates by callId.)
 
 ## State Transitions
 
