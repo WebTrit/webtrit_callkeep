@@ -41,8 +41,9 @@
   the now-attached delegate: re-fired lifecycle events both repopulate the main-process shadow
   tracker (`connectionStates`, e.g. for the `CALL_ID_ALREADY_EXISTS` dedup in
   `reportNewIncomingCall`) and reach Flutter. This is the single, delegate-ready replay point.
-- Then, if the tracker knows of any connections, sends `SyncAudioState` to re-emit audio
-  device/mute state for the Flutter UI.
+- Also sends `SyncAudioState` to re-emit audio device/mute state for the Flutter UI. Not gated on
+  the main-process tracker: the `:callkeep_core` handler iterates its live connections (a no-op when
+  there are none), and the local tracker is transiently empty right after the replay above.
 
 ### `onDestroy()`
 
