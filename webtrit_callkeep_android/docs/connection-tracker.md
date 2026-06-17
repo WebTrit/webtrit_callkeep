@@ -22,7 +22,7 @@ State is updated exclusively from broadcast events emitted by `PhoneConnectionSe
 | `connections`       | `ConcurrentHashMap<String, CallMetadata>`             | Non-terminated calls with full metadata                                 |
 | `connectionStates`  | `ConcurrentHashMap<String, PCallkeepConnectionState>` | Telecom state snapshot per call                                         |
 | `pendingCallIds`    | `MutableSet<String>`                                  | Calls sent to Telecom, `PhoneConnection` not yet created                |
-| `answeredCallIds`   | `MutableSet<String>`                                  | Calls that have reached STATE_ACTIVE                                    |
+| `answeredCallIds`   | `MutableSet<String>`                                  | Answer guard (calls the user answered); the ACTIVE state itself is mirrored via `updateState` |
 | `terminatedCallIds` | `MutableSet<String>`                                  | Ended calls (never removed, to detect stale events)                     |
 | `pendingAnswers`    | `MutableSet<String>`                                  | Deferred answers (user pressed answer before `PhoneConnection` existed) |
 
@@ -48,11 +48,12 @@ promote(callId, metadata, state)
     connectionStates[callId] = state
 
 markAnswered(callId)
-    answeredCallIds += callId
-    connectionStates[callId] = STATE_ACTIVE
+    answeredCallIds += callId          # guard only -- does NOT stamp connectionStates
 
-markHeld(callId, onHold)
-    connectionStates[callId] = STATE_HOLDING or STATE_ACTIVE
+updateState(callId, state)
+    connectionStates[callId] = state   # writes UNCONDITIONALLY (not gated on connections
+                                       # membership; callable before promote). DISCONNECTED
+                                       # is ignored -- terminal state is owned by markTerminated.
 
 markTerminated(callId)
     connections -= callId

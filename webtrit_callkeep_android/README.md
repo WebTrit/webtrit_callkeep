@@ -77,7 +77,11 @@ The public API is covered by integration tests located in
 | `callkeep_delegate_edge_cases_test.dart`   | `setDelegate(null)` mid-call, delegate swap, `didPushIncomingCall`, audio session callbacks |
 | `callkeep_client_scenarios_test.dart`      | `answerCall` idempotency, ringback sound, async `performEndCall` contract                   |
 | `callkeep_reportendcall_reasons_test.dart` | All `CallkeepEndCallReason` values via `reportEndCall`                                      |
+| `callkeep_delivery_mode_test.dart`         | `getCallDeliveryMode` query (Android only) and the no-op behaviour on non-Android          |
 | `callkeep_stress_test.dart`                | Concurrent duplicate reports, rapid tearDown, spam scenarios                                |
+
+`all_tests.dart` is an aggregator entry point that runs every suite above in a single driver
+invocation (used for web `flutter drive` and full-suite device runs).
 
 Run on a connected device or emulator from the example app directory:
 
@@ -109,7 +113,7 @@ flutter pub run pigeon --input pigeons/callkeep.messages.dart
 # From this directory
 flutter pub get
 flutter analyze lib test
-dart format --line-length 80 --set-exit-if-changed lib test
+dart format --line-length 120 --set-exit-if-changed lib test
 ```
 
 ---
