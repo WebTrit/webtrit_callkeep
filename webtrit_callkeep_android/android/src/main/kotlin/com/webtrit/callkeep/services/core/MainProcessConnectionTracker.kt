@@ -4,6 +4,7 @@ import com.webtrit.callkeep.PCallkeepConnection
 import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PCallkeepDisconnectCause
 import com.webtrit.callkeep.PCallkeepDisconnectCauseType
+import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
 import java.util.concurrent.ConcurrentHashMap
 
@@ -154,6 +155,36 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
                 PCallkeepConnectionState.STATE_ACTIVE
             }
     }
+
+    /**
+     * Mirror the authoritative connection [state] for [callId]. The source of truth is the real
+     * android.telecom.Connection state, broadcast from PhoneConnection.onStateChanged (and emitted
+     * explicitly by the no-Telecom StandaloneCallService). Idempotent; only updates a call already
+     * tracked (registered via [promote]) — never creates an entry and never touches the lifecycle
+     * guard sets. Termination (STATE_DISCONNECTED) is owned by [markTerminated] on the cause-carrying
+     * events, not by this mirror.
+     */
+    override fun updateState(
+        callId: String,
+        state: CallConnectionState,
+    ) {
+        if (connections.containsKey(callId)) {
+            connectionStates[callId] = state.toPCallkeepConnectionState()
+        }
+    }
+
+    // Conversion from the local model enum to the Pigeon enum lives here, at the core boundary,
+    // so model/domain code (CallMetadata) stays free of the generated PCallkeepConnectionState.
+    private fun CallConnectionState.toPCallkeepConnectionState(): PCallkeepConnectionState =
+        when (this) {
+            CallConnectionState.INITIALIZING -> PCallkeepConnectionState.STATE_INITIALIZING
+            CallConnectionState.NEW -> PCallkeepConnectionState.STATE_NEW
+            CallConnectionState.RINGING -> PCallkeepConnectionState.STATE_RINGING
+            CallConnectionState.DIALING -> PCallkeepConnectionState.STATE_DIALING
+            CallConnectionState.ACTIVE -> PCallkeepConnectionState.STATE_ACTIVE
+            CallConnectionState.HOLDING -> PCallkeepConnectionState.STATE_HOLDING
+            CallConnectionState.DISCONNECTED -> PCallkeepConnectionState.STATE_DISCONNECTED
+        }
 
     override fun updateMetadata(metadata: CallMetadata) {
         connections.computeIfPresent(metadata.callId) { _, existing ->

@@ -10,6 +10,7 @@ import com.webtrit.callkeep.PCallkeepConnection
 import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.PIncomingCallErrorEnum
+import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
 
@@ -118,6 +119,16 @@ interface CallkeepCore {
     fun markHeld(
         callId: String,
         onHold: Boolean,
+    )
+
+    /**
+     * Mirror the authoritative connection [state] for an already-tracked [callId] (source of truth =
+     * the real android.telecom.Connection state via PhoneConnection.onStateChanged, or the
+     * StandaloneCallService transitions). Idempotent; ignores terminal states.
+     */
+    fun updateState(
+        callId: String,
+        state: CallConnectionState,
     )
 
     fun markTerminated(callId: String)

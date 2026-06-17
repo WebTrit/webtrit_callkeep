@@ -2,6 +2,7 @@ package com.webtrit.callkeep.services.core
 
 import com.webtrit.callkeep.PCallkeepConnection
 import com.webtrit.callkeep.PCallkeepConnectionState
+import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
 
 /**
@@ -39,6 +40,17 @@ interface ConnectionTracker {
     fun markHeld(
         callId: String,
         onHold: Boolean,
+    )
+
+    /**
+     * Mirror the authoritative connection [state] for an already-tracked [callId]. Source of truth is
+     * the real android.telecom.Connection state (PhoneConnection.onStateChanged) / the StandaloneCallService
+     * transitions. Idempotent; never creates an entry, never touches guard sets; ignores terminal states
+     * (DISCONNECTED stays on [markTerminated] via the cause-carrying events).
+     */
+    fun updateState(
+        callId: String,
+        state: CallConnectionState,
     )
 
     /**

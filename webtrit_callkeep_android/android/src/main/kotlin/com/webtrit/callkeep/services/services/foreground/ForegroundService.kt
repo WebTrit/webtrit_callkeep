@@ -29,6 +29,7 @@ import com.webtrit.callkeep.common.Platform
 import com.webtrit.callkeep.common.StorageDelegate
 import com.webtrit.callkeep.common.TelephonyUtils
 import com.webtrit.callkeep.managers.NotificationChannelManager
+import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.EmergencyNumberException
 import com.webtrit.callkeep.models.FailedCallInfo
@@ -133,6 +134,10 @@ class ForegroundService :
         when (event) {
             CallLifecycleEvent.DidPushIncomingCall -> {
                 handleCSReportDidPushIncomingCall(data)
+            }
+
+            CallLifecycleEvent.ConnectionStateChanged -> {
+                handleCSReportConnectionStateChanged(data)
             }
 
             CallLifecycleEvent.DeclineCall -> {
@@ -1042,6 +1047,22 @@ class ForegroundService :
                 callIdArg = metadata.callId,
                 errorArg = null,
             ) {}
+        }
+    }
+
+    /**
+     * Mirror the authoritative connection state carried by ConnectionStateChanged
+     * (PhoneConnection.onStateChanged in :callkeep_core, or StandaloneCallService) into the shadow
+     * state. Live states only; terminal DISCONNECTED is owned by the cause-carrying HungUp/DeclineCall
+     * path (handleCSReportDeclineCall -> markTerminated), so it is ignored here.
+     */
+    private fun handleCSReportConnectionStateChanged(extras: Bundle?) {
+        extras?.let {
+            val metadata = CallMetadata.fromBundle(it)
+            val state = metadata.connectionState ?: return@let
+            if (state == CallConnectionState.DISCONNECTED) return@let
+            logger.d("handleCSReportConnectionStateChanged: callId=${metadata.callId} state=$state")
+            core.updateState(metadata.callId, state)
         }
     }
 

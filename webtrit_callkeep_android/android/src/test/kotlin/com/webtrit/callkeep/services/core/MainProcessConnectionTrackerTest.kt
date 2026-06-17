@@ -2,6 +2,7 @@ package com.webtrit.callkeep.services.core
 
 import android.os.Build
 import com.webtrit.callkeep.PCallkeepConnectionState
+import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -115,6 +116,38 @@ class MainProcessConnectionTrackerTest {
         tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
         assertTrue(tracker.exists("call-1"))
         assertFalse(tracker.isPending("call-1"))
+    }
+
+    // -------------------------------------------------------------------------
+    // updateState (state mirror)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `updateState — mirrors local state into the pigeon state for a promoted call`() {
+        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
+        tracker.updateState("call-1", CallConnectionState.ACTIVE)
+        assertEquals(PCallkeepConnectionState.STATE_ACTIVE, tracker.getState("call-1"))
+    }
+
+    @Test
+    fun `updateState — maps HOLDING`() {
+        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_ACTIVE)
+        tracker.updateState("call-1", CallConnectionState.HOLDING)
+        assertEquals(PCallkeepConnectionState.STATE_HOLDING, tracker.getState("call-1"))
+    }
+
+    @Test
+    fun `updateState — no-op for an untracked call (does not create an entry)`() {
+        tracker.updateState("ghost", CallConnectionState.ACTIVE)
+        assertEquals(null, tracker.getState("ghost"))
+        assertFalse(tracker.exists("ghost"))
+    }
+
+    @Test
+    fun `updateState — no-op for a pending-only call (not yet promoted)`() {
+        tracker.addPending("call-1")
+        tracker.updateState("call-1", CallConnectionState.ACTIVE)
+        assertEquals(null, tracker.getState("call-1"))
     }
 
     // -------------------------------------------------------------------------
