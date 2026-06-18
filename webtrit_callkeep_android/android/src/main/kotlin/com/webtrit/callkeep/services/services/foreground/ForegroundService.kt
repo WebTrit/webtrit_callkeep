@@ -17,6 +17,7 @@ import com.webtrit.callkeep.PCallRequestErrorEnum
 import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PDelegateFlutterApi
 import com.webtrit.callkeep.PEndCallReason
+import com.webtrit.callkeep.PEndCallReasonEnum
 import com.webtrit.callkeep.PHandle
 import com.webtrit.callkeep.PHostApi
 import com.webtrit.callkeep.PIncomingCallError
@@ -453,6 +454,24 @@ class ForegroundService :
     ) {
         logger.i("reportNewIncomingCall: callId=$callId, handle=$handle")
 
+        // Reject a stale ghost re-presentation: the app ended this callId while it was never
+        // presented in Flutter state (a push->foreground handoff where the remote hung up before
+        // CallBloc registered the call - reportEndCall with MISSED_WHILE_CONNECTING armed the guard),
+        // and a connection-state replay from :callkeep_core now re-drives the incoming call as a fresh
+        // registration. Returning CALL_ID_ALREADY_TERMINATED short-circuits before any
+        // Telecom/IncomingCallService work, so no second ringtone/notification is shown. The Dart
+        // CallBloc already handles this error (not treated as a failure; the call is ended), so
+        // nothing is stranded. The guard is sticky (a stale handshake replays the dead incoming
+        // several times, so every re-presentation must be rejected) and is armed ONLY by the
+        // never-presented end - a transfer-back reuses a call the app DID know, so it never arms it
+        // and re-report proceeds normally (the permanent isTerminated guard is intentionally not
+        // checked here; see below).
+        if (core.wasEndedWithoutFlutterState(callId)) {
+            logger.i("reportNewIncomingCall: callId=$callId ended without Flutter state; rejecting as terminated to suppress ghost re-presentation")
+            callback(Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED)))
+            return
+        }
+
         // Build metadata before the early check so we can promote the call into the core shadow
         // tracker even when the call is already answered (cold-start race: ReplayConnectionStates
         // fires handleCSReportAnswerCall on delegate attach, marking the call answered before
@@ -844,6 +863,20 @@ class ForegroundService :
         if (!IncomingCallService.isRunning) {
             PendingBroadcastQueue.post(PendingBroadcastQueue.incomingReleaseKey(callId))
         }
+        // Mark terminated synchronously in the main-process tracker. startDeclineCall only marks
+        // terminated once the DeclineCall broadcast echoes back from :callkeep_core, which is subject
+        // to cross-process latency. Doing it here lets deliverIncomingToDelegate suppress a
+        // late-arriving connection-state replay for a call the app already reported as ended.
+        core.markTerminated(callId)
+        // When the app ends a call it never presented in Flutter state (MISSED_WHILE_CONNECTING:
+        // the remote hung up an incoming call before CallBloc registered it), arm a one-shot guard
+        // so a stale connection-state replay that re-drives reportNewIncomingCall for the same
+        // callId is rejected rather than ringing again. Only this never-presented end arms it - a
+        // transfer-back always reuses a call the app DID know, so it is unaffected. See
+        // reportNewIncomingCall.
+        if (reason.value == PEndCallReasonEnum.MISSED_WHILE_CONNECTING) {
+            core.markEndedWithoutFlutterState(callId)
+        }
         core.startDeclineCall(callMetaData)
         callback.invoke(Result.success(Unit))
     }
@@ -1027,11 +1060,19 @@ class ForegroundService :
     /**
      * Notify the Flutter delegate of an incoming call via the public `didPushIncomingCall` callback.
      * The single delivery point to the foreground delegate, used by the connection-state replay
-     * ([handleCSReplayIncomingCall]) to seed a freshly attached delegate. Delivery is unconditional:
-     * the Dart CallBloc deduplicates by callId, so re-delivering a call the app already knows about
+     * ([handleCSReplayIncomingCall]) to seed a freshly attached delegate. A call already terminated
+     * in the main-process tracker is skipped (see below); otherwise delivery is unconditional: the
+     * Dart CallBloc deduplicates by callId, so re-delivering a call the app already knows about
      * (e.g. from signaling) does not create a second ActiveCall.
      */
     private fun deliverIncomingToDelegate(metadata: CallMetadata) {
+        if (core.isTerminated(metadata.callId)) {
+            // The call was already reported ended in the main process (e.g. a signaling hangup
+            // arrived while the connection-state replay was still in flight from :callkeep_core).
+            // Delivering it now would seed a ghost incoming call into CallBloc for a dead call.
+            logger.w("deliverIncomingToDelegate: callId=${metadata.callId} already terminated; skipping seed")
+            return
+        }
         val handle = metadata.handle
         if (handle == null) {
             // Cannot build a PHandle without a number; skip rather than crash on a

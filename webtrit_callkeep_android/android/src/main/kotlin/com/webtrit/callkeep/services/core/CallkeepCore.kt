@@ -160,6 +160,12 @@ interface CallkeepCore {
 
     fun markEndCallDispatched(callId: String): Boolean
 
+    /** See [ConnectionTracker.markEndedWithoutFlutterState]. */
+    fun markEndedWithoutFlutterState(callId: String)
+
+    /** See [ConnectionTracker.wasEndedWithoutFlutterState]. */
+    fun wasEndedWithoutFlutterState(callId: String): Boolean
+
     // -------------------------------------------------------------------------
     // Connection event receivers
     // -------------------------------------------------------------------------

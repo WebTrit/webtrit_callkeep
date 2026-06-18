@@ -77,7 +77,7 @@ class PHandle {
   late String value;
 }
 
-enum PEndCallReasonEnum { failed, remoteEnded, unanswered, answeredElsewhere, declinedElsewhere, missed }
+enum PEndCallReasonEnum { failed, remoteEnded, unanswered, answeredElsewhere, declinedElsewhere, missed, missedWhileConnecting }
 
 // TODO: See https://github.com/flutter/flutter/issues/87307
 class PEndCallReason {

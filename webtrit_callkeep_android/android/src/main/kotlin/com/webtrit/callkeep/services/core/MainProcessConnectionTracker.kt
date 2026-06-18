@@ -59,6 +59,14 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
     // last known Pigeon connection state per callId, kept for getConnections() queries
     private val connectionStates = ConcurrentHashMap<String, PCallkeepConnectionState>()
 
+    // callIds the app ended while they were never presented in Flutter state (the call==null
+    // signaling-hangup path). Used by reportNewIncomingCall to reject EVERY stale ghost
+    // re-presentation of such a call (a stale handshake can replay the dead incoming several times,
+    // so this is a sticky flag, not one-shot). Cleared on tearDown via clear(). Not time-based: a
+    // transfer-back always reuses a call the app DID know, so its end never lands here - making this
+    // a semantic discriminator rather than a timing bet, and safe to keep sticky.
+    private val endedWithoutFlutterStateCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
     // -------------------------------------------------------------------------
     // Write operations — called from ForegroundService broadcast receiver
     // -------------------------------------------------------------------------
@@ -297,6 +305,7 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         connectionStates.clear()
         directNotifiedCallIds.clear()
         endCallDispatchedCallIds.clear()
+        endedWithoutFlutterStateCallIds.clear()
     }
 
     // -------------------------------------------------------------------------
@@ -310,6 +319,13 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
     override fun consumeDirectNotified(callId: String): Boolean = directNotifiedCallIds.remove(callId)
 
     override fun markEndCallDispatched(callId: String): Boolean = endCallDispatchedCallIds.add(callId)
+
+    override fun markEndedWithoutFlutterState(callId: String) {
+        endedWithoutFlutterStateCallIds.add(callId)
+    }
+
+    override fun wasEndedWithoutFlutterState(callId: String): Boolean =
+        endedWithoutFlutterStateCallIds.contains(callId)
 
     companion object {
         /**

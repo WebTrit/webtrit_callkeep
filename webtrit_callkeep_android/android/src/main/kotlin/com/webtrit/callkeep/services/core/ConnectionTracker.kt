@@ -111,6 +111,25 @@ interface ConnectionTracker {
      */
     fun markEndCallDispatched(callId: String): Boolean
 
+    /**
+     * Record that the app ended [callId] while it was never presented in Flutter state (the
+     * call==null signaling-hangup path). Used to reject a stale ghost re-presentation of the same
+     * call: in a push->foreground handoff the connection-state replay can re-drive an incoming call
+     * for a callId the signaling layer already hung up, arriving as a fresh reportNewIncomingCall.
+     *
+     * Semantic, not time-based: a transfer-back always reuses a call the app DID know about, so its
+     * end never lands here - the mark therefore distinguishes a ghost from a legitimate reuse
+     * without any timing window.
+     */
+    fun markEndedWithoutFlutterState(callId: String)
+
+    /**
+     * Returns true if [markEndedWithoutFlutterState] was recorded for [callId]. Sticky (not removed
+     * on read): a stale handshake can replay the dead incoming several times, so every
+     * re-presentation must be rejected, not just the first. Cleared on tearDown via [clear].
+     */
+    fun wasEndedWithoutFlutterState(callId: String): Boolean
+
     // -------------------------------------------------------------------------
     // Read operations
     // -------------------------------------------------------------------------

@@ -612,4 +612,43 @@ class MainProcessConnectionTrackerTest {
         val drained = tracker.drainUnconnectedPendingCallIds()
         assertFalse(drained.contains("call-1"))
     }
+
+    // -------------------------------------------------------------------------
+    // markEndedWithoutFlutterState / wasEndedWithoutFlutterState (ghost-call suppression)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `wasEndedWithoutFlutterState — false for an unmarked call`() {
+        assertFalse(tracker.wasEndedWithoutFlutterState("call-1"))
+    }
+
+    @Test
+    fun `wasEndedWithoutFlutterState — true after marking`() {
+        tracker.markEndedWithoutFlutterState("call-1")
+        assertTrue(tracker.wasEndedWithoutFlutterState("call-1"))
+    }
+
+    @Test
+    fun `wasEndedWithoutFlutterState — is sticky across repeated reads`() {
+        // A stale handshake can replay the dead incoming several times; every re-presentation must
+        // be rejected, so the flag must survive repeated reads (not one-shot).
+        tracker.markEndedWithoutFlutterState("call-1")
+        assertTrue(tracker.wasEndedWithoutFlutterState("call-1"))
+        assertTrue(tracker.wasEndedWithoutFlutterState("call-1"))
+        assertTrue(tracker.wasEndedWithoutFlutterState("call-1"))
+    }
+
+    @Test
+    fun `markEndedWithoutFlutterState — only the marked id is flagged`() {
+        tracker.markEndedWithoutFlutterState("call-1")
+        assertFalse(tracker.wasEndedWithoutFlutterState("call-2"))
+        assertTrue(tracker.wasEndedWithoutFlutterState("call-1"))
+    }
+
+    @Test
+    fun `clear — wasEndedWithoutFlutterState returns false`() {
+        tracker.markEndedWithoutFlutterState("call-1")
+        tracker.clear()
+        assertFalse(tracker.wasEndedWithoutFlutterState("call-1"))
+    }
 }

@@ -275,7 +275,8 @@ enum class PEndCallReasonEnum(val raw: Int) {
   UNANSWERED(2),
   ANSWERED_ELSEWHERE(3),
   DECLINED_ELSEWHERE(4),
-  MISSED(5);
+  MISSED(5),
+  MISSED_WHILE_CONNECTING(6);
 
   companion object {
     fun ofRaw(raw: Int): PEndCallReasonEnum? {
