@@ -124,10 +124,11 @@ interface ConnectionTracker {
     fun markEndedWithoutFlutterState(callId: String)
 
     /**
-     * Returns true (and removes the mark) if [markEndedWithoutFlutterState] was recorded for
-     * [callId]. Consumed on first read so a genuine later reuse of the same id is not blocked.
+     * Returns true if [markEndedWithoutFlutterState] was recorded for [callId]. Sticky (not removed
+     * on read): a stale handshake can replay the dead incoming several times, so every
+     * re-presentation must be rejected, not just the first. Cleared on tearDown via [clear].
      */
-    fun consumeEndedWithoutFlutterState(callId: String): Boolean
+    fun wasEndedWithoutFlutterState(callId: String): Boolean
 
     // -------------------------------------------------------------------------
     // Read operations

@@ -60,10 +60,11 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
     private val connectionStates = ConcurrentHashMap<String, PCallkeepConnectionState>()
 
     // callIds the app ended while they were never presented in Flutter state (the call==null
-    // signaling-hangup path). Used by reportNewIncomingCall to reject a stale ghost re-presentation
-    // of such a call. Consumed on first read, so a genuine later reuse of the same id is not blocked.
-    // Not time-based: a transfer-back always reuses a call the app DID know, so its end never lands
-    // here - making this a semantic discriminator rather than a timing bet.
+    // signaling-hangup path). Used by reportNewIncomingCall to reject EVERY stale ghost
+    // re-presentation of such a call (a stale handshake can replay the dead incoming several times,
+    // so this is a sticky flag, not one-shot). Cleared on tearDown via clear(). Not time-based: a
+    // transfer-back always reuses a call the app DID know, so its end never lands here - making this
+    // a semantic discriminator rather than a timing bet, and safe to keep sticky.
     private val endedWithoutFlutterStateCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
     // -------------------------------------------------------------------------
@@ -323,8 +324,8 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         endedWithoutFlutterStateCallIds.add(callId)
     }
 
-    override fun consumeEndedWithoutFlutterState(callId: String): Boolean =
-        endedWithoutFlutterStateCallIds.remove(callId)
+    override fun wasEndedWithoutFlutterState(callId: String): Boolean =
+        endedWithoutFlutterStateCallIds.contains(callId)
 
     companion object {
         /**

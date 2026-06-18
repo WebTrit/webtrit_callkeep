@@ -461,11 +461,12 @@ class ForegroundService :
         // registration. Returning CALL_ID_ALREADY_TERMINATED short-circuits before any
         // Telecom/IncomingCallService work, so no second ringtone/notification is shown. The Dart
         // CallBloc already handles this error (not treated as a failure; the call is ended), so
-        // nothing is stranded. The guard is consumed on read and is armed ONLY by the never-presented
-        // end - a transfer-back reuses a call the app DID know, so it never arms it and re-report
-        // proceeds normally (the permanent isTerminated guard is intentionally not checked here; see
-        // below).
-        if (core.consumeEndedWithoutFlutterState(callId)) {
+        // nothing is stranded. The guard is sticky (a stale handshake replays the dead incoming
+        // several times, so every re-presentation must be rejected) and is armed ONLY by the
+        // never-presented end - a transfer-back reuses a call the app DID know, so it never arms it
+        // and re-report proceeds normally (the permanent isTerminated guard is intentionally not
+        // checked here; see below).
+        if (core.wasEndedWithoutFlutterState(callId)) {
             logger.i("reportNewIncomingCall: callId=$callId ended without Flutter state; rejecting as terminated to suppress ghost re-presentation")
             callback(Result.success(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_TERMINATED)))
             return

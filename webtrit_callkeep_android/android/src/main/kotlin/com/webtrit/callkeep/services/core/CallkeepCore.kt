@@ -163,8 +163,8 @@ interface CallkeepCore {
     /** See [ConnectionTracker.markEndedWithoutFlutterState]. */
     fun markEndedWithoutFlutterState(callId: String)
 
-    /** See [ConnectionTracker.consumeEndedWithoutFlutterState]. */
-    fun consumeEndedWithoutFlutterState(callId: String): Boolean
+    /** See [ConnectionTracker.wasEndedWithoutFlutterState]. */
+    fun wasEndedWithoutFlutterState(callId: String): Boolean
 
     // -------------------------------------------------------------------------
     // Connection event receivers

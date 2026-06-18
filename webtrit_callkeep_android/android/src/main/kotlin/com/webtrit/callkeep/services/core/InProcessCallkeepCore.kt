@@ -188,8 +188,8 @@ class InProcessCallkeepCore internal constructor(
 
     override fun markEndedWithoutFlutterState(callId: String) = tracker.markEndedWithoutFlutterState(callId)
 
-    override fun consumeEndedWithoutFlutterState(callId: String): Boolean =
-        tracker.consumeEndedWithoutFlutterState(callId)
+    override fun wasEndedWithoutFlutterState(callId: String): Boolean =
+        tracker.wasEndedWithoutFlutterState(callId)
 
     // -------------------------------------------------------------------------
     // Connection event receivers
