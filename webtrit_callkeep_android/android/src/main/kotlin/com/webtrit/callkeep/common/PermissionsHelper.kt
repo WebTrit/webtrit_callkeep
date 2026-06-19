@@ -48,7 +48,9 @@ class PermissionsHelper(
      */
     fun isXiaomiFamily(): Boolean {
         val brand = (Build.MANUFACTURER ?: "").lowercase()
-        return brand == "xiaomi" || brand == "redmi" || brand == "poco"
+        // Substring match (not exact equality) to catch reported variants such as
+        // "Xiaomi Communications"; mirrors the detection in CallDiagnostics.
+        return brand.contains("xiaomi") || brand.contains("redmi") || brand.contains("poco")
     }
 
     /**
