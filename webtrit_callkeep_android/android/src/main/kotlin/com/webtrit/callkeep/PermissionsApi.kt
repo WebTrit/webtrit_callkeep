@@ -59,9 +59,12 @@ class PermissionsApi(
      * capability does not apply.
      */
     override fun getBackgroundActivityStartPermissionStatus(callback: (Result<PSpecialPermissionStatusTypeEnum>) -> Unit) {
-        val granted = PermissionsHelper(context).isBackgroundActivityStartGranted()
         val status =
-            if (granted) PSpecialPermissionStatusTypeEnum.GRANTED else PSpecialPermissionStatusTypeEnum.DENIED
+            when (PermissionsHelper(context).isBackgroundActivityStartGranted()) {
+                true -> PSpecialPermissionStatusTypeEnum.GRANTED
+                false -> PSpecialPermissionStatusTypeEnum.DENIED
+                null -> PSpecialPermissionStatusTypeEnum.UNKNOWN
+            }
         callback.invoke(Result.success(status))
     }
 

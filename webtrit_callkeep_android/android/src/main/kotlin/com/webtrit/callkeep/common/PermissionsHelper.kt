@@ -56,11 +56,13 @@ class PermissionsHelper(
      * in background" capability (OP_BACKGROUND_START_ACTIVITY). There is no public
      * API for it, so this reads the hidden AppOps op via reflection.
      *
-     * - Non Xiaomi-family devices: treated as granted (capability does not apply).
-     * - Xiaomi-family where the op cannot be read: treated as denied, so the app
-     *   can surface guidance rather than silently failing on the lock screen.
+     * @return `true` granted (or the capability does not apply on this device),
+     *   `false` explicitly denied, `null` when the state cannot be determined
+     *   (op not readable on this build). Callers should treat `null` as unknown
+     *   rather than denied, to avoid prompting users who may already have granted
+     *   it on builds where the hidden op is inaccessible.
      */
-    fun isBackgroundActivityStartGranted(): Boolean {
+    fun isBackgroundActivityStartGranted(): Boolean? {
         if (!isXiaomiFamily()) return true
         return try {
             val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
@@ -73,10 +75,19 @@ class PermissionsHelper(
                 )
             val mode =
                 method.invoke(appOps, OP_BACKGROUND_START_ACTIVITY, context.applicationInfo.uid, context.packageName) as Int
-            mode == android.app.AppOpsManager.MODE_ALLOWED
+            // MODE_DEFAULT/MODE_FOREGROUND are effectively allowed on MIUI; only an
+            // explicit MODE_IGNORED/MODE_ERRORED denies showing over the lock screen.
+            when (mode) {
+                android.app.AppOpsManager.MODE_ALLOWED,
+                android.app.AppOpsManager.MODE_DEFAULT,
+                android.app.AppOpsManager.MODE_FOREGROUND,
+                -> true
+
+                else -> false
+            }
         } catch (e: Throwable) {
-            Log.w(TAG, "Unable to read background-activity-start AppOp; treating as denied: ${e.message}")
-            false
+            Log.w(TAG, "Unable to read background-activity-start AppOp; reporting unknown: ${e.message}")
+            null
         }
     }
 
