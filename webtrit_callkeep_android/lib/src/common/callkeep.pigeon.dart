@@ -1350,6 +1350,43 @@ class PHostPermissionsApi {
     ;
   }
 
+  Future<PSpecialPermissionStatusTypeEnum> getBackgroundActivityStartPermissionStatus() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.getBackgroundActivityStartPermissionStatus$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as PSpecialPermissionStatusTypeEnum;
+  }
+
+  Future<void> openBackgroundActivityStartSettings() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.openBackgroundActivityStartSettings$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+  }
+
   Future<void> openSettings() async {
     final pigeonVar_channelName = 'dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.openSettings$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(

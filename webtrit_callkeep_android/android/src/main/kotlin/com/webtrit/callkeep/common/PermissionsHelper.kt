@@ -41,6 +41,75 @@ class PermissionsHelper(
         context.startActivity(intent)
     }
 
+    /**
+     * Whether this device is a Xiaomi-family build (MIUI/HyperOS), where the
+     * "display pop-up windows while running in background" capability gates
+     * showing an Activity over the lock screen.
+     */
+    fun isXiaomiFamily(): Boolean {
+        val brand = (Build.MANUFACTURER ?: "").lowercase()
+        return brand == "xiaomi" || brand == "redmi" || brand == "poco"
+    }
+
+    /**
+     * Best-effort check of the MIUI/HyperOS "display pop-up windows while running
+     * in background" capability (OP_BACKGROUND_START_ACTIVITY). There is no public
+     * API for it, so this reads the hidden AppOps op via reflection.
+     *
+     * - Non Xiaomi-family devices: treated as granted (capability does not apply).
+     * - Xiaomi-family where the op cannot be read: treated as denied, so the app
+     *   can surface guidance rather than silently failing on the lock screen.
+     */
+    fun isBackgroundActivityStartGranted(): Boolean {
+        if (!isXiaomiFamily()) return true
+        return try {
+            val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+            val method =
+                android.app.AppOpsManager::class.java.getMethod(
+                    "checkOpNoThrow",
+                    Int::class.javaPrimitiveType,
+                    Int::class.javaPrimitiveType,
+                    String::class.java,
+                )
+            val mode =
+                method.invoke(appOps, OP_BACKGROUND_START_ACTIVITY, context.applicationInfo.uid, context.packageName) as Int
+            mode == android.app.AppOpsManager.MODE_ALLOWED
+        } catch (e: Throwable) {
+            Log.w(TAG, "Unable to read background-activity-start AppOp; treating as denied: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * Opens the MIUI/HyperOS "Other permissions" editor where the
+     * "display pop-up windows while running in background" toggle lives.
+     * Falls back to app details settings, then to the common settings.
+     */
+    fun launchBackgroundActivityStartSettings() {
+        val pkg = context.packageName
+        val candidates =
+            listOf(
+                Intent()
+                    .setClassName("com.miui.securitycenter", "com.miui.permcenter.permissions.PermissionsEditorActivity")
+                    .putExtra("extra_pkgname", pkg),
+                Intent("miui.intent.action.APP_PERM_EDITOR").putExtra("extra_pkgname", pkg),
+                Intent(
+                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    android.net.Uri.fromParts("package", pkg, null),
+                ),
+            )
+        for (intent in candidates) {
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            try {
+                context.startActivity(intent)
+                return
+            } catch (e: Exception) {
+                Log.w(TAG, "Background-activity-start settings intent not available: ${e.message}")
+            }
+        }
+        launchSettings()
+    }
+
     fun hasCameraPermission(): Boolean {
         val cameraPermission = context.checkSelfPermission(Manifest.permission.CAMERA)
         return cameraPermission == PackageManager.PERMISSION_GRANTED
@@ -64,5 +133,8 @@ class PermissionsHelper(
 
     companion object {
         private const val TAG = "PermissionsHelper"
+
+        // MIUI/HyperOS AppOps op for "display pop-up windows while running in background".
+        private const val OP_BACKGROUND_START_ACTIVITY = 10021
     }
 }
