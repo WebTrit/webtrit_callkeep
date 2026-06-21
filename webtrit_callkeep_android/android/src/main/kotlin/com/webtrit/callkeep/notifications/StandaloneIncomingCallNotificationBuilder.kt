@@ -55,9 +55,10 @@ internal class StandaloneIncomingCallNotificationBuilder : NotificationBuilder()
     private fun baseBuilder(
         title: String,
         text: String,
+        smallIcon: Int = R.drawable.ic_notification,
     ): Notification.Builder =
         Notification.Builder(context, INCOMING_CALL_NOTIFICATION_CHANNEL_ID).apply {
-            setSmallIcon(R.drawable.ic_notification)
+            setSmallIcon(smallIcon)
             setCategory(NotificationCompat.CATEGORY_CALL)
             setContentTitle(title)
             setContentText(text)
@@ -75,11 +76,10 @@ internal class StandaloneIncomingCallNotificationBuilder : NotificationBuilder()
         val answerIntent = createActionIntent(meta, StandaloneServiceAction.AnswerCall)
         val declineIntent = createActionIntent(meta, StandaloneServiceAction.DeclineCall)
 
-        val title = context.getString(R.string.incoming_call_title)
-        val text = context.getString(R.string.incoming_call_description, meta.name)
+        val content = incomingCallContent(meta)
 
         val builder =
-            baseBuilder(title, text).apply {
+            baseBuilder(content.title, content.description, content.smallIcon).apply {
                 // Guard against a null launch intent before calling buildOpenAppIntent: if no
                 // launchable activity exists, PendingIntent.getActivity() would receive a null
                 // Intent and behave unpredictably on some API levels.
@@ -97,7 +97,7 @@ internal class StandaloneIncomingCallNotificationBuilder : NotificationBuilder()
             val person =
                 Person
                     .Builder()
-                    .setName(meta.name)
+                    .setName(content.callerName)
                     .setImportant(true)
                     .build()
             builder

@@ -30,7 +30,23 @@ enum class CallLifecycleEvent : ConnectionEvent {
     DeclineCall,
     HungUp,
     OngoingCall,
-    DidPushIncomingCall,
+    // An incoming PhoneConnection was created in :callkeep_core (onCreateIncomingConnection). The
+    // main process registers it in the shadow state and then notifies the Flutter delegate via the
+    // public didPushIncomingCall callback. Named after the cross-process fact (a connection was
+    // reported), NOT the public callback -- the handler does register + deliver, not just deliver.
+    IncomingConnectionReported,
+    // Carries the authoritative connection state (CallMetadata.connectionState) so the main process
+    // can MIRROR it into the shadow state, instead of inferring a fixed state per event type. Emitted
+    // from PhoneConnection.onStateChanged (Telecom) / StandaloneCallService transitions. Live states
+    // only -- terminal DISCONNECTED stays on the cause-carrying HungUp/DeclineCall events.
+    ConnectionStateChanged,
+
+    // Re-delivery of a still-ringing incoming call to a freshly-attached Flutter delegate
+    // (e.g. after a push->foreground isolate handoff or hot restart). Unlike IncomingConnectionReported,
+    // this is NOT gated by the signaling-registered suppression: the new delegate has no record
+    // of the call and must be seeded before it processes signaling events. Emitted by
+    // PhoneConnectionService.handleReplayConnectionStates for connections in STATE_RINGING.
+    ReplayIncomingCall,
     OutgoingFailure,
     IncomingFailure,
     ConnectionNotFound,

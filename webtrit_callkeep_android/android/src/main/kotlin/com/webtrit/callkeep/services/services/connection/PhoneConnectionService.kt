@@ -13,13 +13,16 @@ import android.telecom.PhoneAccount
 import android.telecom.PhoneAccountHandle
 import androidx.annotation.RequiresPermission
 import com.webtrit.callkeep.PIncomingCallError
+import com.webtrit.callkeep.PIncomingCallErrorEnum
 import com.webtrit.callkeep.common.AssetCacheManager
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.TelephonyUtils
+import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.EmergencyNumberException
 import com.webtrit.callkeep.models.FailureMetadata
+import com.webtrit.callkeep.models.InvalidCallMetadataException
 import com.webtrit.callkeep.models.OutgoingFailureType
 import com.webtrit.callkeep.services.broadcaster.CallCommandEvent
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
@@ -96,47 +99,54 @@ class PhoneConnectionService : ConnectionService() {
         flags: Int,
         startId: Int,
     ): Int {
-        val action =
-            intent?.action?.let { ServiceAction.from(it) } ?: run {
-                Log.w(TAG, "onStartCommand: unknown or missing action '${intent?.action}', ignoring")
+        // Parse the intent into a typed command once, BEFORE the try, but without touching the
+        // call metadata for commands that do not need it. This avoids the crash where
+        // CallMetadata.fromBundle was eagerly invoked on empty Binder-delivered extras for the
+        // no-extras lifecycle commands and threw an uncaught IllegalArgumentException.
+        val command =
+            intent?.let { PhoneServiceCommand.from(it) } ?: run {
+                // Distinguish an unrecognised action from a known action whose required
+                // callId/metadata is missing, so the log points at the actual failure.
+                if (intent?.action?.let { ServiceAction.from(it) } != null) {
+                    Log.w(TAG, "onStartCommand: action '${intent.action}' missing required callId/metadata, ignoring")
+                } else {
+                    Log.w(TAG, "onStartCommand: unknown or missing action '${intent?.action}', ignoring")
+                }
                 return START_NOT_STICKY
             }
-        val metadata = intent.extras?.let { CallMetadata.fromBundle(it) }
 
         try {
-            when (action) {
+            when (command) {
                 // IPC commands from the main process — handled directly, not routed through the
                 // call-connection dispatcher. Using startService (instead of broadcasts) guarantees
                 // delivery even if the service is starting up: the intent is queued and processed
                 // after onCreate() completes, so these handlers are always reachable.
-                ServiceAction.TearDownConnections -> {
+                is PhoneServiceCommand.TearDown -> {
                     handleTearDownConnections()
                 }
 
-                ServiceAction.ReserveAnswer -> {
-                    metadata?.callId?.let { handleReserveAnswer(it) }
-                        ?: Log.w(TAG, "onStartCommand: ReserveAnswer missing callId")
+                is PhoneServiceCommand.Reserve -> {
+                    handleReserveAnswer(command.callId)
                 }
 
-                ServiceAction.NotifyPending -> {
-                    metadata?.callId?.let { handleNotifyPending(it) }
-                        ?: Log.w(TAG, "onStartCommand: NotifyPending missing callId")
+                is PhoneServiceCommand.Pending -> {
+                    handleNotifyPending(command.callId)
                 }
 
-                ServiceAction.CleanConnections -> {
+                is PhoneServiceCommand.Clean -> {
                     handleCleanConnections()
                 }
 
-                ServiceAction.SyncAudioState -> {
-                    handleSyncAudioState()
+                is PhoneServiceCommand.ReplayAudio -> {
+                    handleReplayAudioState()
                 }
 
-                ServiceAction.SyncConnectionState -> {
-                    handleSyncConnectionState()
+                is PhoneServiceCommand.ReplayConnections -> {
+                    handleReplayConnectionStates()
                 }
 
-                else -> {
-                    phoneConnectionServiceDispatcher.dispatch(action, metadata)
+                is PhoneServiceCommand.CallOp -> {
+                    phoneConnectionServiceDispatcher.dispatch(command.action, command.metadata)
                 }
             }
         } catch (e: Exception) {
@@ -157,7 +167,16 @@ class PhoneConnectionService : ConnectionService() {
         connectionManagerPhoneAccount: PhoneAccountHandle,
         request: ConnectionRequest,
     ): Connection {
-        val metadata = CallMetadata.fromBundle(request.extras)
+        // request.extras originates from our own placeOutgoingCall(metadata.toBundle()), so a
+        // missing callId here is a "should never happen" invariant violation (e.g. Binder
+        // truncation / framework edge case). Fail this one connection gracefully instead of
+        // letting CallMetadata.fromBundle throw an uncaught IllegalArgumentException that would
+        // crash the whole :callkeep_core process.
+        val metadata =
+            CallMetadata.fromBundleOrNull(request.extras) ?: run {
+                Log.e(TAG, "onCreateOutgoingConnection: missing callId in request extras, rejecting")
+                return Connection.createFailedConnection(DisconnectCause(DisconnectCause.ERROR))
+            }
 
         // Check if a connection with the same call ID already exists.
         // If so, reject the new connection request to prevent conflicts.
@@ -220,30 +239,34 @@ class PhoneConnectionService : ConnectionService() {
         connectionManagerPhoneAccount: PhoneAccountHandle,
         request: ConnectionRequest,
     ): Connection {
-        val metadata = CallMetadata.fromBundle(request.extras)
+        // request.extras originates from our own addNewIncomingCall(metadata.toBundle()), so a
+        // missing callId here is a "should never happen" invariant violation. Reject this one
+        // connection instead of letting CallMetadata.fromBundle throw an uncaught
+        // IllegalArgumentException that would crash the whole :callkeep_core process.
+        val metadata =
+            CallMetadata.fromBundleOrNull(request.extras) ?: run {
+                Log.e(TAG, "onCreateIncomingConnection: missing callId in request extras, rejecting")
+                return Connection.createFailedConnection(DisconnectCause(DisconnectCause.ERROR))
+            }
         Log.i(TAG, "onCreateIncomingConnection: entry callId=${metadata.callId} account=$connectionManagerPhoneAccount")
 
-        // Guard against stale Telecom callbacks that arrive after a tearDown.
+        // Register the pending slot here and guard against stale Telecom callbacks after a tearDown.
         //
-        // Both onCreateIncomingConnection (posted to this service's main-thread handler by the
-        // Telecom binder stub) and handleNotifyPending (posted via startService -> onStartCommand)
-        // run on the same main thread, but their relative arrival order is non-deterministic:
-        // Telecom's dispatch path through TelecomManager is independent of ActivityManager's
-        // startService delivery, so onCreateIncomingConnection can fire before isPending is true.
+        // startIncomingCall reports the call via TelecomManager.addNewIncomingCall from the
+        // reporting process, so the pending slot is NOT pre-registered in this :callkeep_core
+        // process (its ConnectionManager is a separate JVM instance). Telecom then binds this
+        // service and fires onCreateIncomingConnection on the main thread, where we register it.
         //
         // Strategy:
-        //   - isPending == true  : normal path, NotifyPending arrived first (common case).
-        //   - isPending == false AND isForcedTerminated : stale post-tearDown callback — reject.
-        //   - isPending == false AND NOT isForcedTerminated : NotifyPending IPC delayed (race
-        //     window) — register as pending now so the rest of the flow sees consistent state.
+        //   - isPending == true  : already registered (e.g. a NotifyPending IPC ran first) - proceed.
+        //   - isPending == false AND isForcedTerminated : stale post-tearDown callback - reject.
+        //   - isPending == false AND NOT isForcedTerminated : normal path - register the slot.
         if (!connectionManager.isPending(metadata.callId)) {
             if (connectionManager.isForcedTerminated(metadata.callId)) {
                 Log.w(TAG, "onCreateIncomingConnection: callId=${metadata.callId} force-terminated by tearDown, rejecting stale callback")
                 return Connection.createFailedConnection(DisconnectCause(DisconnectCause.LOCAL))
             }
-            // NotifyPending IPC has not arrived yet — register as pending now.
-            // handleNotifyPending will call addPendingForIncomingCall later (idempotent).
-            Log.d(TAG, "onCreateIncomingConnection: callId=${metadata.callId} not pending yet, accepting (NotifyPending race window)")
+            Log.d(TAG, "onCreateIncomingConnection: callId=${metadata.callId} not pending yet, registering pending slot")
             connectionManager.addPendingForIncomingCall(metadata.callId)
         }
 
@@ -312,6 +335,17 @@ class PhoneConnectionService : ConnectionService() {
                 Log.i(TAG, "onCreateIncomingConnection: applying deferred answer for callId=${metadata.callId}")
                 connection.onAnswer()
             }
+        } else {
+            // Notify the main process that an incoming call is registered, deterministically at
+            // creation time. Previously this was emitted later from PhoneConnection.onShowIncomingCallUi
+            // (a system UI callback the framework schedules separately), which made delivery to
+            // Flutter and the reportNewIncomingCall callback resolution depend on UI-show timing.
+            //
+            // Only the not-yet-answered branch emits it: a call with a consumed deferred answer is
+            // being answered immediately (no incoming UI), so it is surfaced to Flutter via the
+            // answer flow instead — matching the previous behaviour where onShowIncomingCallUi
+            // (and therefore IncomingConnectionReported) did not fire for an immediately-answered call.
+            performEventHandle(CallLifecycleEvent.IncomingConnectionReported, metadata)
         }
 
         phoneConnectionServiceDispatcher.dispatchLifecycle(
@@ -339,11 +373,14 @@ class PhoneConnectionService : ConnectionService() {
 
         // Check before removing: if this callId was pending, the failure was for a real call
         // that should be reported to Flutter as ended (e.g., rejected with BUSY because another
-        // incoming call was already ringing). If it was not pending, this is a stale Telecom
-        // callback from a previous session (guarded by isPending in onCreateIncomingConnection)
-        // and should be silently dropped.
-        // Note: pendingCallIds in :callkeep_core is now populated via NotifyPending IPC, so this
-        // check correctly distinguishes legitimate failures from stale callbacks.
+        // incoming call was already ringing). If it was not pending, this is treated as a stale
+        // Telecom callback and routed to IncomingFailure.
+        //
+        // Since startIncomingCall reports directly via TelecomManager.addNewIncomingCall (no
+        // pre-registration in this process), wasPending can be false even for a genuine fresh
+        // rejection; in that case the main-process confirmation timeout in
+        // ForegroundService.reportNewIncomingCall is the authoritative resolver that fails the
+        // Pigeon callback with CALL_REJECTED_BY_SYSTEM, so the call is not left hung.
         val wasPending = callId != null && connectionManager.isPending(callId)
         callId?.let { connectionManager.removePending(it) }
 
@@ -352,10 +389,11 @@ class PhoneConnectionService : ConnectionService() {
 
         Log.e(TAG, "$failureMessage — Telecom rejected the incoming call registration")
 
-        if (wasPending && callId != null) {
+        if (wasPending) {
+            // wasPending = callId != null && isPending(callId), so both are non-null here.
             // Notify Flutter that this call ended so it can clean up its call state.
             Log.i(TAG, "onCreateIncomingConnectionFailed: firing HungUp for pending callId=$callId")
-            dispatcher.dispatch(baseContext, CallLifecycleEvent.HungUp, CallMetadata(callId = callId).toBundle())
+            dispatchHungUpAndRemovePending(callId!!, callMetadata!!, removePending = false)
         } else {
             val failureMetadata = FailureMetadata(callMetadata, failureMessage).toBundle()
             dispatcher.dispatch(baseContext, CallLifecycleEvent.IncomingFailure, failureMetadata)
@@ -414,21 +452,66 @@ class PhoneConnectionService : ConnectionService() {
         connectionManager.addPendingForIncomingCall(callId)
     }
 
+    /**
+     * Removes [callId] from [connectionManager]'s pending set (when [removePending] is true)
+     * and dispatches [CallLifecycleEvent.HungUp] so the main process resolves the pending
+     * Pigeon callback for this call.
+     *
+     * Centralises the removePending + HungUp dispatch pattern used by the incoming-call failure
+     * paths (e.g. [onCreateIncomingConnectionFailed]) so each site cannot accidentally omit one
+     * of the two steps.
+     *
+     * [metadata] is used as the bundle payload when available, giving receivers full call
+     * context (handle, displayName, etc.). Pass [removePending] = false when the pending
+     * slot was never added (e.g. [addPendingForIncomingCall] returned false).
+     */
+    private fun dispatchHungUpAndRemovePending(
+        callId: String,
+        metadata: CallMetadata,
+        removePending: Boolean = true,
+    ) {
+        if (removePending) connectionManager.removePending(callId)
+        dispatcher.dispatch(baseContext, CallLifecycleEvent.HungUp, metadata.toBundle())
+    }
+
     private fun handleCleanConnections() {
         Log.i(TAG, "handleCleanConnections: clearing all connections")
         connectionManager.cleanConnections()
     }
 
-    private fun handleSyncAudioState() {
-        Log.i(TAG, "handleSyncAudioState: re-emitting audio state for all active connections")
+    private fun handleReplayAudioState() {
+        Log.i(TAG, "handleReplayAudioState: re-emitting audio state for all active connections")
         connectionManager.getConnections().forEach { it.forceUpdateAudioState() }
     }
 
-    private fun handleSyncConnectionState() {
-        Log.i(TAG, "handleSyncConnectionState: re-emitting lifecycle state for answered connections")
+    private fun handleReplayConnectionStates() {
+        Log.i(TAG, "handleReplayConnectionStates: re-emitting lifecycle + connection state for active connections")
         connectionManager.getConnections().forEach { connection ->
-            if (connection.hasAnswered) {
-                performEventHandle(CallLifecycleEvent.AnswerCall, CallMetadata(callId = connection.callId))
+            // Mirror the live Telecom state back into the main-process shadow tracker. On a cold
+            // start the original onStateChanged fired before this process existed, so the state
+            // (e.g. ACTIVE for a call answered via the notification button) is restored only here --
+            // and reportNewIncomingCall's already-answered adoption reads getState() == STATE_ACTIVE.
+            // markAnswered() is a guard only since the state-mirror refactor, so AnswerCall below no
+            // longer repopulates connectionStates; this does. Live states only (DISCONNECTED stays
+            // on the cause-carrying termination events).
+            CallConnectionState
+                .fromTelecomState(connection.state)
+                ?.takeIf { it != CallConnectionState.DISCONNECTED }
+                ?.let { performEventHandle(CallLifecycleEvent.ConnectionStateChanged, connection.currentMetadata.copy(connectionState = it)) }
+
+            // Re-deliver the call-setup event so a freshly attached delegate adopts/shows the call.
+            when {
+                connection.hasAnswered ->
+                    performEventHandle(CallLifecycleEvent.AnswerCall, CallMetadata(callId = connection.callId))
+
+                connection.state == Connection.STATE_RINGING ->
+                    // A still-ringing incoming call whose owning Flutter delegate is freshly attached
+                    // (push->foreground isolate handoff or hot restart). The delegate that originally
+                    // received IncomingConnectionReported is gone, so the new one has no record of this call.
+                    // Re-deliver the full metadata so the main process seeds its call state BEFORE it
+                    // processes signaling events (handshake/hangup). Without this the call lives only
+                    // as a native connection and an incoming hangup is dropped (no matching ActiveCall).
+                    performEventHandle(CallLifecycleEvent.ReplayIncomingCall, connection.currentMetadata)
             }
         }
     }
@@ -578,11 +661,10 @@ class PhoneConnectionService : ConnectionService() {
         /**
          * Sends a [ServiceAction.NotifyPending] command with [callId] to this service via [startService].
          *
-         * Must be called from the main process before [TelephonyUtils.addNewIncomingCall] so that
-         * :callkeep_core's [ConnectionManager.pendingCallIds] is populated before Telecom triggers
-         * [onCreateIncomingConnection]. This bridges the dual-process gap: [checkAndReservePending]
-         * runs in the main-process JVM (a different [ConnectionManager] instance), so :callkeep_core
-         * never sees those entries without this explicit IPC notification.
+         * Best-effort pre-registration of the pending slot in :callkeep_core. The incoming call
+         * path ([startIncomingCall]) does NOT depend on this: it reports directly via
+         * [TelephonyUtils.addNewIncomingCall] and [onCreateIncomingConnection] registers the pending
+         * slot itself once Telecom binds the service.
          */
         fun sendNotifyPending(
             context: Context,
@@ -634,34 +716,34 @@ class PhoneConnectionService : ConnectionService() {
         }
 
         /**
-         * Sends [ServiceAction.SyncAudioState] to [PhoneConnectionService].
+         * Sends [ServiceAction.ReplayAudioState] to [PhoneConnectionService].
          * The service will call [PhoneConnection.forceUpdateAudioState] on all active connections,
          * which re-emits audio device and mute state broadcasts back to the main process.
          * Used by [ForegroundService.onDelegateSet] to restore Flutter UI after hot restart.
          */
-        fun sendSyncAudioState(context: Context) {
+        fun replayAudioState(context: Context) {
             val intent =
                 Intent(context, PhoneConnectionService::class.java).apply {
-                    action = ServiceAction.SyncAudioState.action
+                    action = ServiceAction.ReplayAudioState.action
                 }
             runCatching { context.startService(intent) }
-                .onFailure { e -> Log.w(TAG, "sendSyncAudioState: startService failed: $e") }
+                .onFailure { e -> Log.w(TAG, "replayAudioState: startService failed: $e") }
         }
 
         /**
-         * Sends [ServiceAction.SyncConnectionState] to [PhoneConnectionService].
+         * Sends [ServiceAction.ReplayConnectionStates] to [PhoneConnectionService].
          * The service will re-fire [CallLifecycleEvent.AnswerCall] for every connection whose
          * [PhoneConnection.hasAnswered] flag is true. This lets the main process
          * ([ForegroundService]) populate [MainProcessConnectionTracker.connectionStates] even
          * when it starts after the AnswerCall broadcast was originally emitted (cold-start race).
          */
-        fun sendSyncConnectionState(context: Context) {
+        fun replayConnectionStates(context: Context) {
             val intent =
                 Intent(context, PhoneConnectionService::class.java).apply {
-                    action = ServiceAction.SyncConnectionState.action
+                    action = ServiceAction.ReplayConnectionStates.action
                 }
             runCatching { context.startService(intent) }
-                .onFailure { e -> Log.w(TAG, "sendSyncConnectionState: startService failed: $e") }
+                .onFailure { e -> Log.w(TAG, "replayConnectionStates: startService failed: $e") }
         }
 
         /**
@@ -678,11 +760,16 @@ class PhoneConnectionService : ConnectionService() {
         ) {
             Log.i(TAG, "onOutgoingCall, callId: ${metadata.callId}")
 
-            val uri: Uri = Uri.fromParts(PhoneAccount.SCHEME_TEL, metadata.number, null)
+            val number =
+                metadata.number
+                    ?: throw InvalidCallMetadataException(
+                        "startOutgoingCall: missing destination number for callId=${metadata.callId}",
+                    )
+            val uri: Uri = Uri.fromParts(PhoneAccount.SCHEME_TEL, number, null)
             val telephonyUtils = TelephonyUtils(context)
 
-            if (telephonyUtils.isEmergencyNumber(metadata.number)) {
-                Log.i(TAG, "onOutgoingCall, trying to call on emergency number: ${metadata.number}")
+            if (telephonyUtils.isEmergencyNumber(number)) {
+                Log.i(TAG, "onOutgoingCall, trying to call on emergency number: $number")
 
                 val failureMetadata =
                     FailureMetadata(
@@ -720,27 +807,28 @@ class PhoneConnectionService : ConnectionService() {
             Log.i(TAG, "startIncomingCall: callId=${metadata.callId}")
 
             ConnectionManager.validateConnectionAddition(metadata = metadata, onSuccess = {
-                try {
-                    // Notify :callkeep_core's ConnectionManager about the pending callId before
-                    // calling addNewIncomingCall. This ensures that onCreateIncomingConnection's
-                    // isPending gate accepts the connection: checkAndReservePending ran in the
-                    // main-process JVM (a different ConnectionManager instance), so we must
-                    // explicitly tell :callkeep_core via IPC.
-                    sendNotifyPending(context, metadata.callId)
-                    TelephonyUtils(context).addNewIncomingCall(metadata)
-                    onSuccess()
-                } catch (e: Exception) {
-                    // addNewIncomingCall failed (e.g. SecurityException, IllegalArgumentException).
-                    // Roll back the pending reservation so future reports for this callId are not
-                    // permanently rejected with CALL_ID_ALREADY_EXISTS.
-                    Log.e(
-                        TAG,
-                        "startIncomingCall: addNewIncomingCall failed for callId=${metadata.callId}, rolling back pending",
-                        e,
-                    )
-                    connectionManager.removePending(metadata.callId)
-                    onError(null)
-                }
+                // Report the incoming call straight to Telecom via TelecomManager.addNewIncomingCall.
+                // The Telecom system server then binds our ConnectionService itself with
+                // BIND_AUTO_CREATE, launching/reviving :callkeep_core even when an app-side
+                // startService cannot - e.g. when an aggressive OEM power manager killed that process
+                // and flagged it "process is bad" (startService then throws SecurityException and the
+                // call is lost). onCreateIncomingConnection registers the pending slot itself.
+                //
+                // On a cold push the self-managed PhoneAccount may not be registered yet
+                // (ForegroundService.registerPhoneAccountWithRetry still in flight), so on the first
+                // failure we re-register and retry once before giving up.
+                runCatching { TelephonyUtils(context).addNewIncomingCall(metadata) }
+                    .recoverCatching {
+                        Log.w(TAG, "startIncomingCall: addNewIncomingCall failed for callId=${metadata.callId}, re-registering PhoneAccount and retrying once", it)
+                        TelephonyUtils(context).registerPhoneAccount()
+                        TelephonyUtils(context).addNewIncomingCall(metadata)
+                    }
+                    .onSuccess { onSuccess() }
+                    .onFailure { e ->
+                        Log.e(TAG, "startIncomingCall: addNewIncomingCall failed after re-register for callId=${metadata.callId}", e)
+                        connectionManager.removePending(metadata.callId)
+                        onError(PIncomingCallError(PIncomingCallErrorEnum.UNKNOWN))
+                    }
             }, onError = { incomingCallError ->
                 Log.w(TAG, "Incoming call rejected: ${incomingCallError.value}")
                 onError(incomingCallError)

@@ -4,6 +4,7 @@ import com.webtrit.callkeep.PCallkeepConnection
 import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PCallkeepDisconnectCause
 import com.webtrit.callkeep.PCallkeepDisconnectCauseType
+import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
 import java.util.concurrent.ConcurrentHashMap
 
@@ -12,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap
  * connection state in the main process.
  *
  * Updated from broadcasts emitted by [com.webtrit.callkeep.services.services.connection.PhoneConnectionService]:
- * - [com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent.DidPushIncomingCall] -> promote incoming
+ * - [com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent.IncomingConnectionReported] -> promote incoming
  * - [com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent.AnswerCall]           -> markAnswered
  * - [com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent.HungUp] /
  *   [com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent.DeclineCall]          -> markTerminated
@@ -55,14 +56,16 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
     // performEndCall for a Telecom-terminated call. Prevents duplicate performEndCall.
     private val endCallDispatchedCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
-    // callIds successfully registered via ForegroundService.reportNewIncomingCall
-    // (foreground signaling path). Suppresses the DidPushIncomingCall broadcast that
-    // follows via the :callkeep_core IPC round-trip, preventing a duplicate push-path
-    // ActiveCall entry alongside the signaling-path entry.
-    private val signalingRegisteredCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
-
     // last known Pigeon connection state per callId, kept for getConnections() queries
     private val connectionStates = ConcurrentHashMap<String, PCallkeepConnectionState>()
+
+    // callIds the app ended while they were never presented in Flutter state (the call==null
+    // signaling-hangup path). Used by reportNewIncomingCall to reject EVERY stale ghost
+    // re-presentation of such a call (a stale handshake can replay the dead incoming several times,
+    // so this is a sticky flag, not one-shot). Cleared on tearDown via clear(). Not time-based: a
+    // transfer-back always reuses a call the app DID know, so its end never lands here - making this
+    // a semantic discriminator rather than a timing bet, and safe to keep sticky.
+    private val endedWithoutFlutterStateCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
     // -------------------------------------------------------------------------
     // Write operations — called from ForegroundService broadcast receiver
@@ -92,12 +95,6 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         pendingAnswers.remove(callId)
         endCallDispatchedCallIds.remove(callId)
         directNotifiedCallIds.remove(callId)
-        // signalingRegisteredCallIds is intentionally NOT cleared here. addPending is called
-        // both by the initial registration site (before markSignalingRegistered) and again
-        // inside InProcessCallkeepCore.startIncomingCall (after markSignalingRegistered). Clearing
-        // it here would erase the guard on the second call and let DidPushIncomingCall through.
-        // The guard is cleared by consumeSignalingRegistered (normal flow) or markTerminated
-        // (call-end cleanup, covers callId reuse).
         return pendingCallIds.add(callId)
     }
 
@@ -119,41 +116,55 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         pendingAnswers.remove(callId)
         endCallDispatchedCallIds.remove(callId)
         directNotifiedCallIds.remove(callId)
-        // signalingRegisteredCallIds is intentionally NOT cleared here. promote() is called
-        // inside handleCSReportDidPushIncomingCall, immediately before consumeSignalingRegistered
-        // checks the guard. Clearing it here would defeat the suppression and let
-        // didPushIncomingCall reach Flutter for signaling-path calls.
         connections[callId] = metadata
         pendingCallIds.remove(callId)
         connectionStates[callId] = state
     }
 
     /**
-     * Mark [callId] as answered and advance its state to [PCallkeepConnectionState.STATE_ACTIVE].
+     * Mark [callId] as answered (lifecycle guard for isAnswered/checkIncomingDuplicate).
+     *
+     * Does NOT stamp the connection state: the ACTIVE state is mirrored from the real connection via
+     * [updateState] (PhoneConnection.onStateChanged for Telecom; explicit ConnectionStateChanged from
+     * StandaloneCallService). The initial registration snapshot is still set by [promote].
      */
     override fun markAnswered(callId: String) {
         answeredCallIds.add(callId)
-        connectionStates[callId] = PCallkeepConnectionState.STATE_ACTIVE
     }
 
     /**
-     * Update the hold state for [callId].
-     * Advances its state to [PCallkeepConnectionState.STATE_HOLDING] when [onHold] is true,
-     * or back to [PCallkeepConnectionState.STATE_ACTIVE] when false.
-     * This keeps [getConnections] in sync with the Telecom hold state so that callers never
-     * see a stale ACTIVE state for a held call.
+     * Mirror the authoritative connection [state] for [callId]. The source of truth is the real
+     * android.telecom.Connection state, broadcast from PhoneConnection.onStateChanged (and emitted
+     * explicitly by the no-Telecom StandaloneCallService). Replaces the per-event state stamping that
+     * the removed markAnswered(ACTIVE)/markHeld did; like those it writes [connectionStates]
+     * unconditionally (it is NOT gated on [connections] membership), so the state survives an
+     * [addPending] reset and the cold-start "already answered" detection in reportNewIncomingCall keeps
+     * working. Touches no lifecycle guard set. Termination (STATE_DISCONNECTED) is owned by
+     * [markTerminated] on the cause-carrying events, not by this mirror.
      */
-    override fun markHeld(
+    override fun updateState(
         callId: String,
-        onHold: Boolean,
+        state: CallConnectionState,
     ) {
-        connectionStates[callId] =
-            if (onHold) {
-                PCallkeepConnectionState.STATE_HOLDING
-            } else {
-                PCallkeepConnectionState.STATE_ACTIVE
-            }
+        // Terminal state is owned by markTerminated (via the cause-carrying HungUp/DeclineCall events),
+        // not by this mirror — guard here so a future ConnectionStateChanged(DISCONNECTED) call site
+        // cannot accidentally override the termination path.
+        if (state == CallConnectionState.DISCONNECTED) return
+        connectionStates[callId] = state.toPCallkeepConnectionState()
     }
+
+    // Conversion from the local model enum to the Pigeon enum lives here, at the core boundary,
+    // so model/domain code (CallMetadata) stays free of the generated PCallkeepConnectionState.
+    private fun CallConnectionState.toPCallkeepConnectionState(): PCallkeepConnectionState =
+        when (this) {
+            CallConnectionState.INITIALIZING -> PCallkeepConnectionState.STATE_INITIALIZING
+            CallConnectionState.NEW -> PCallkeepConnectionState.STATE_NEW
+            CallConnectionState.RINGING -> PCallkeepConnectionState.STATE_RINGING
+            CallConnectionState.DIALING -> PCallkeepConnectionState.STATE_DIALING
+            CallConnectionState.ACTIVE -> PCallkeepConnectionState.STATE_ACTIVE
+            CallConnectionState.HOLDING -> PCallkeepConnectionState.STATE_HOLDING
+            CallConnectionState.DISCONNECTED -> PCallkeepConnectionState.STATE_DISCONNECTED
+        }
 
     override fun updateMetadata(metadata: CallMetadata) {
         connections.computeIfPresent(metadata.callId) { _, existing ->
@@ -170,7 +181,6 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         answeredCallIds.remove(callId)
         pendingCallIds.remove(callId)
         pendingAnswers.remove(callId)
-        signalingRegisteredCallIds.remove(callId)
         connectionStates[callId] = PCallkeepConnectionState.STATE_DISCONNECTED
     }
 
@@ -295,7 +305,7 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
         connectionStates.clear()
         directNotifiedCallIds.clear()
         endCallDispatchedCallIds.clear()
-        signalingRegisteredCallIds.clear()
+        endedWithoutFlutterStateCallIds.clear()
     }
 
     // -------------------------------------------------------------------------
@@ -310,11 +320,12 @@ class MainProcessConnectionTracker internal constructor() : ConnectionTracker {
 
     override fun markEndCallDispatched(callId: String): Boolean = endCallDispatchedCallIds.add(callId)
 
-    override fun markSignalingRegistered(callId: String) {
-        signalingRegisteredCallIds.add(callId)
+    override fun markEndedWithoutFlutterState(callId: String) {
+        endedWithoutFlutterStateCallIds.add(callId)
     }
 
-    override fun consumeSignalingRegistered(callId: String): Boolean = signalingRegisteredCallIds.remove(callId)
+    override fun wasEndedWithoutFlutterState(callId: String): Boolean =
+        endedWithoutFlutterStateCallIds.contains(callId)
 
     companion object {
         /**

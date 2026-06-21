@@ -5,134 +5,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 
-// ---------------------------------------------------------------------------
-// Shared fixtures
-// ---------------------------------------------------------------------------
-
-const _options = CallkeepOptions(
-  ios: CallkeepIOSOptions(
-    localizedName: 'Integration Tests',
-    maximumCallGroups: 2,
-    maximumCallsPerCallGroup: 1,
-    supportedHandleTypes: {CallkeepHandleType.number},
-  ),
-  android: CallkeepAndroidOptions(),
-);
-
-const _handle1 = CallkeepHandle.number('380007000000');
-
-var _idCounter = 0;
-String _nextId() => 'client-${_idCounter++}';
-
-// ---------------------------------------------------------------------------
-// Recording delegate
-// ---------------------------------------------------------------------------
-
-class _RecordingDelegate implements CallkeepDelegate {
-  final List<String> startCallIds = [];
-  final List<String> answerCallIds = [];
-  final List<String> endCallIds = [];
-  final List<({String callId, bool onHold})> holdEvents = [];
-  final List<({String callId, bool muted})> muteEvents = [];
-  final List<({String callId, String key})> dtmfEvents = [];
-
-  void Function(String callId)? onPerformAnswerCall;
-  void Function(String callId)? onPerformEndCall;
-
-  /// Override-able performEndCall handler for async contract tests
-  Future<bool> Function(String callId)? performEndCallOverride;
-  Future<bool> Function(String callId)? performAnswerCallOverride;
-
-  @override
-  void continueStartCallIntent(CallkeepHandle handle, String? displayName, bool video) {}
-
-  @override
-  void didPushIncomingCall(
-    CallkeepHandle handle,
-    String? displayName,
-    bool video,
-    String callId,
-    CallkeepIncomingCallError? error,
-  ) {}
-
-  @override
-  void didActivateAudioSession() {}
-
-  @override
-  void didDeactivateAudioSession() {}
-
-  @override
-  void didReset() {}
-
-  @override
-  Future<bool> performStartCall(
-    String callId,
-    CallkeepHandle handle,
-    String? displayName,
-    bool video,
-  ) {
-    startCallIds.add(callId);
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performAnswerCall(String callId) {
-    if (performAnswerCallOverride != null) return performAnswerCallOverride!(callId);
-    answerCallIds.add(callId);
-    onPerformAnswerCall?.call(callId);
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performEndCall(String callId) {
-    if (performEndCallOverride != null) return performEndCallOverride!(callId);
-    endCallIds.add(callId);
-    onPerformEndCall?.call(callId);
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performSetHeld(String callId, bool onHold) {
-    holdEvents.add((callId: callId, onHold: onHold));
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performSetMuted(String callId, bool muted) {
-    muteEvents.add((callId: callId, muted: muted));
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performSendDTMF(String callId, String key) {
-    dtmfEvents.add((callId: callId, key: key));
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performAudioDeviceSet(String callId, CallkeepAudioDevice device) => Future.value(true);
-
-  @override
-  Future<bool> performAudioDevicesUpdate(String callId, List<CallkeepAudioDevice> devices) => Future.value(true);
-}
-
-// ---------------------------------------------------------------------------
-// Helper: await a delegate callback with timeout
-// ---------------------------------------------------------------------------
-
-Future<T> _waitFor<T>(Future<T> future, {String label = 'callback'}) {
-  return future.timeout(
-    const Duration(seconds: 10),
-    onTimeout: () => throw TimeoutException('$label did not fire within timeout'),
-  );
-}
+import 'helpers/callkeep_test_helpers.dart';
 
 // ---------------------------------------------------------------------------
 // Standard setUp helper
 // ---------------------------------------------------------------------------
 
 Future<void> _doSetUp(Callkeep callkeep) async {
-  await callkeep.setUp(_options);
+  await callkeep.setUp(kTestOptions);
 }
 
 // ---------------------------------------------------------------------------
@@ -143,13 +23,13 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   late Callkeep callkeep;
-  late _RecordingDelegate delegate;
+  late RecordingDelegate delegate;
   var globalTearDownNeeded = true;
 
   setUp(() async {
     globalTearDownNeeded = true;
     callkeep = Callkeep();
-    delegate = _RecordingDelegate();
+    delegate = RecordingDelegate();
     await _doSetUp(callkeep);
     callkeep.setDelegate(delegate);
   });
@@ -174,15 +54,15 @@ void main() {
         markTestSkipped('Android only');
         return;
       }
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Alice');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Alice');
 
       final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
         if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
-      await _waitFor(answerLatch.future, label: 'performAnswerCall first');
+      await waitFor(answerLatch.future, label: 'performAnswerCall first');
 
       // Allow Telecom to register answered state
       await Future.delayed(const Duration(milliseconds: 200));
@@ -203,15 +83,15 @@ void main() {
         markTestSkipped('Android only');
         return;
       }
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Bob');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Bob');
 
       final endLatch = Completer<void>();
       delegate.onPerformEndCall = (cid) {
         if (cid == id && !endLatch.isCompleted) endLatch.complete();
       };
       await callkeep.endCall(id);
-      await _waitFor(endLatch.future, label: 'performEndCall');
+      await waitFor(endLatch.future, label: 'performEndCall');
 
       final err = await callkeep.answerCall(id);
       expect(err, isNotNull);
@@ -233,15 +113,15 @@ void main() {
       // performEndCall for this call ID and pollute the count assertion.
       globalTearDownNeeded = false;
 
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Carol');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Carol');
 
       final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
         if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
-      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+      await waitFor(answerLatch.future, label: 'performAnswerCall');
 
       await callkeep.reportEndCall(id, 'Carol', CallkeepEndCallReason.remoteEnded);
       await Future.delayed(const Duration(milliseconds: 400));
@@ -301,12 +181,12 @@ void main() {
         markTestSkipped('Android only');
         return;
       }
-      final id = _nextId();
+      final id = nextTestId();
 
       // Delegate returns false from performAnswerCall
       delegate.performAnswerCallOverride = (_) => Future.value(false);
 
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Dan');
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Dan');
       final err = await callkeep.answerCall(id);
 
       await Future.delayed(const Duration(milliseconds: 300));
@@ -329,8 +209,8 @@ void main() {
       }
       globalTearDownNeeded = false;
 
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Eve');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Eve');
 
       // Simulate BLoC.close(): remove delegate before tearDown
       callkeep.setDelegate(null);
@@ -359,15 +239,15 @@ void main() {
         markTestSkipped('Android only');
         return;
       }
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Frank');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Frank');
 
       final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
         if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
-      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+      await waitFor(answerLatch.future, label: 'performAnswerCall');
 
       final signalingDone = Completer<void>();
       delegate.performEndCallOverride = (cid) async {
@@ -401,15 +281,15 @@ void main() {
         markTestSkipped('Android only');
         return;
       }
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Grace');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Grace');
 
       final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
         if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
-      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+      await waitFor(answerLatch.future, label: 'performAnswerCall');
 
       delegate.performEndCallOverride = (_) => Future.value(false);
 
@@ -429,8 +309,8 @@ void main() {
         markTestSkipped('Android only');
         return;
       }
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Hank');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Hank');
 
       // Immediately end without waiting for any answer — push race scenario
       final err = await callkeep.endCall(id);

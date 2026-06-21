@@ -66,8 +66,9 @@ CallkeepCore.instance.removeConnectionEventListener(this)
 | `unregisterConnectionEvents(...)`     | Unregister a temporary receiver                          |
 
 **Global events** (routed to all `ConnectionEventListener` subscribers):
-`DidPushIncomingCall`, `DeclineCall`, `HungUp`, `ConnectionNotFound`, `AnswerCall`,
-`AudioDeviceSet`, `AudioDevicesUpdate`, `AudioMuting`, `ConnectionHolding`, `SentDTMF`.
+`IncomingConnectionReported`, `ConnectionStateChanged`, `DeclineCall`, `HungUp`, `ConnectionNotFound`,
+`AnswerCall`, `AudioDeviceSet`, `AudioDevicesUpdate`, `AudioMuting`, `ConnectionHolding`,
+`SentDTMF`.
 
 **Per-call dynamic receivers** (registered ad-hoc, not via listener):
 `OngoingCall`, `OutgoingFailure`, `IncomingFailure`, `TearDownComplete`.
@@ -80,9 +81,9 @@ reports events via `CallkeepCore`. They update `MainProcessConnectionTracker`.
 | Method                             | Triggered by                       | Effect                          |
 |------------------------------------|------------------------------------|---------------------------------|
 | `addPending(callId)`               | `NotifyPending` intent from CS     | Registers call as pending       |
-| `promote(callId, metadata, state)` | `DidPushIncomingCall` broadcast    | Full registration with metadata |
-| `markAnswered(callId)`             | `AnswerCall` broadcast             | Transitions to STATE_ACTIVE     |
-| `markHeld(callId, onHold)`         | `ConnectionHolding` broadcast      | Updates hold state              |
+| `promote(callId, metadata, state)` | `IncomingConnectionReported` broadcast    | Full registration with metadata |
+| `markAnswered(callId)`             | `AnswerCall` broadcast             | Marks answered (guard only; no state stamp) |
+| `updateState(callId, state)`       | `ConnectionStateChanged` broadcast | Mirrors authoritative connection state (unconditional; ignores DISCONNECTED) |
 | `markTerminated(callId)`           | `HungUp` / `DeclineCall` broadcast | Moves to terminated set         |
 
 ## Command Dispatch API
@@ -117,8 +118,8 @@ These send intents / broadcasts to `PhoneConnectionService` in `:callkeep_core`.
 | `tearDownService(ctx)`           | `startService` intent (`CleanConnections`)    | Reset without hanging up                         |
 | `sendTearDownConnections(ctx)`   | `startService` intent (`TearDownConnections`) | Hang up all + await `TearDownComplete` broadcast |
 | `sendReserveAnswer(ctx, callId)` | `startService` intent                         | Deferred answer for pending call                 |
-| `sendSyncAudioState(ctx)`        | `startService` intent                         | Re-emit audio state after hot-restart            |
-| `sendSyncConnectionState(ctx)`   | `startService` intent                         | Re-emit connection state after hot-restart       |
+| `replayAudioState(ctx)`        | `startService` intent                         | Re-emit audio state after hot-restart            |
+| `replayConnectionStates(ctx)`   | `startService` intent                         | Replay connection lifecycle to a freshly attached delegate (cold-start/hot-restart) |
 
 ## Related Components
 

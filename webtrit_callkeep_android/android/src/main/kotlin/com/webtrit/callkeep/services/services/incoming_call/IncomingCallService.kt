@@ -183,7 +183,15 @@ class IncomingCallService :
         }
 
         return when (action) {
-            PushNotificationServiceEnums.IC_INITIALIZE.name -> handleLaunch(metadata!!)
+            PushNotificationServiceEnums.IC_INITIALIZE.name -> {
+                if (metadata == null) {
+                    Log.w(TAG, "onStartCommand: IC_INITIALIZE missing metadata, stopping")
+                    stopSelf()
+                    START_NOT_STICKY
+                } else {
+                    handleLaunch(metadata)
+                }
+            }
 
             // IC_RELEASE_WITH_ANSWER / IC_RELEASE_WITH_DECLINE are now delivered via
             // releaseReceiver (BroadcastReceiver registered in onCreate). They no longer
@@ -191,9 +199,21 @@ class IncomingCallService :
             // of startService(), so the service is never restarted after it has stopped.
 
             // Listen push notification actions (Only notify connection service)
-            NotificationAction.Answer.action -> reportAnswerToConnectionService(metadata!!)
+            NotificationAction.Answer.action -> {
+                if (metadata != null) reportAnswerToConnectionService(metadata)
+                else {
+                    Log.w(TAG, "onStartCommand: Answer action missing metadata")
+                    START_NOT_STICKY
+                }
+            }
 
-            NotificationAction.Decline.action -> reportHungUpToConnectionService(metadata!!)
+            NotificationAction.Decline.action -> {
+                if (metadata != null) reportHungUpToConnectionService(metadata)
+                else {
+                    Log.w(TAG, "onStartCommand: Decline action missing metadata")
+                    START_NOT_STICKY
+                }
+            }
 
             else -> handleUnknownAction(action)
         }

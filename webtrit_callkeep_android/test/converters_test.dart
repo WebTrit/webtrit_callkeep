@@ -218,6 +218,10 @@ void main() {
     test('missed maps to PEndCallReasonEnum.missed', () {
       expect(CallkeepEndCallReason.missed.toPigeon(), PEndCallReasonEnum.missed);
     });
+
+    test('missedWhileConnecting maps to PEndCallReasonEnum.missedWhileConnecting', () {
+      expect(CallkeepEndCallReason.missedWhileConnecting.toPigeon(), PEndCallReasonEnum.missedWhileConnecting);
+    });
   });
 
   // ---------------------------------------------------------------------------
@@ -417,6 +421,24 @@ void main() {
 
     test('unknown maps to CallkeepAndroidBatteryMode.unknown', () {
       expect(PCallkeepAndroidBatteryMode.unknown.toCallkeep(), CallkeepAndroidBatteryMode.unknown);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // PCallkeepAndroidCallDeliveryModeConverter
+  // ---------------------------------------------------------------------------
+
+  group('PCallkeepAndroidCallDeliveryModeConverter.toCallkeep()', () {
+    test('telecom maps to CallkeepAndroidCallDeliveryMode.telecom', () {
+      expect(PCallkeepAndroidCallDeliveryMode.telecom.toCallkeep(), CallkeepAndroidCallDeliveryMode.telecom);
+    });
+
+    test('standalone maps to CallkeepAndroidCallDeliveryMode.standalone', () {
+      expect(PCallkeepAndroidCallDeliveryMode.standalone.toCallkeep(), CallkeepAndroidCallDeliveryMode.standalone);
+    });
+
+    test('unknown maps to CallkeepAndroidCallDeliveryMode.unknown', () {
+      expect(PCallkeepAndroidCallDeliveryMode.unknown.toCallkeep(), CallkeepAndroidCallDeliveryMode.unknown);
     });
   });
 

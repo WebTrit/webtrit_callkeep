@@ -2,6 +2,7 @@ package com.webtrit.callkeep.services.core
 
 import android.os.Build
 import com.webtrit.callkeep.PCallkeepConnectionState
+import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -118,6 +119,42 @@ class MainProcessConnectionTrackerTest {
     }
 
     // -------------------------------------------------------------------------
+    // updateState (state mirror)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `updateState — mirrors local state into the pigeon state for a promoted call`() {
+        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
+        tracker.updateState("call-1", CallConnectionState.ACTIVE)
+        assertEquals(PCallkeepConnectionState.STATE_ACTIVE, tracker.getState("call-1"))
+    }
+
+    @Test
+    fun `updateState — maps HOLDING`() {
+        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_ACTIVE)
+        tracker.updateState("call-1", CallConnectionState.HOLDING)
+        assertEquals(PCallkeepConnectionState.STATE_HOLDING, tracker.getState("call-1"))
+    }
+
+    @Test
+    fun `updateState — writes state unconditionally (survives addPending reset, like the old stampers)`() {
+        // Not gated on connections membership: this is required so the cold-start "already answered"
+        // detection (reportNewIncomingCall) still sees STATE_ACTIVE after an addPending() that clears
+        // the answeredCallIds guard but not connectionStates.
+        tracker.updateState("call-1", CallConnectionState.ACTIVE)
+        assertEquals(PCallkeepConnectionState.STATE_ACTIVE, tracker.getState("call-1"))
+        // It mirrors state only; it does not register the call into connections.
+        assertFalse(tracker.exists("call-1"))
+    }
+
+    @Test
+    fun `updateState — state set before promote is preserved (not a registration)`() {
+        tracker.addPending("call-1")
+        tracker.updateState("call-1", CallConnectionState.ACTIVE)
+        assertEquals(PCallkeepConnectionState.STATE_ACTIVE, tracker.getState("call-1"))
+    }
+
+    // -------------------------------------------------------------------------
     // markAnswered
     // -------------------------------------------------------------------------
 
@@ -130,10 +167,12 @@ class MainProcessConnectionTrackerTest {
     }
 
     @Test
-    fun `markAnswered — getState advances to STATE_ACTIVE`() {
+    fun `markAnswered — does not stamp state (state is mirrored via updateState)`() {
         tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
         tracker.markAnswered("call-1")
-        assertEquals(PCallkeepConnectionState.STATE_ACTIVE, tracker.getState("call-1"))
+        // markAnswered is a lifecycle guard only now; the ACTIVE state arrives via updateState.
+        assertTrue(tracker.isAnswered("call-1"))
+        assertEquals(PCallkeepConnectionState.STATE_RINGING, tracker.getState("call-1"))
     }
 
     @Test
@@ -202,26 +241,8 @@ class MainProcessConnectionTrackerTest {
         assertFalse(tracker.consumeAnswer("call-1"))
     }
 
-    // -------------------------------------------------------------------------
-    // markHeld
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `markHeld true — getState returns STATE_HOLDING`() {
-        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
-        tracker.markAnswered("call-1")
-        tracker.markHeld("call-1", true)
-        assertEquals(PCallkeepConnectionState.STATE_HOLDING, tracker.getState("call-1"))
-    }
-
-    @Test
-    fun `markHeld false — getState returns STATE_ACTIVE`() {
-        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
-        tracker.markAnswered("call-1")
-        tracker.markHeld("call-1", true)
-        tracker.markHeld("call-1", false)
-        assertEquals(PCallkeepConnectionState.STATE_ACTIVE, tracker.getState("call-1"))
-    }
+    // (hold state is now mirrored via updateState(CallConnectionState.HOLDING/ACTIVE) — see the
+    // updateState tests above; the removed markHeld stamper no longer exists.)
 
     // -------------------------------------------------------------------------
     // getAll
@@ -422,6 +443,10 @@ class MainProcessConnectionTrackerTest {
 
         tracker.markAnswered(id)
         assertTrue(tracker.isAnswered(id))
+        // markAnswered is a guard only; the ACTIVE state arrives via the mirror (updateState),
+        // mirroring the real flow (onStateChanged ACTIVE / Standalone explicit emit).
+        assertEquals(PCallkeepConnectionState.STATE_RINGING, tracker.getState(id))
+        tracker.updateState(id, CallConnectionState.ACTIVE)
         assertEquals(PCallkeepConnectionState.STATE_ACTIVE, tracker.getState(id))
 
         tracker.markTerminated(id)
@@ -474,7 +499,7 @@ class MainProcessConnectionTrackerTest {
     // -------------------------------------------------------------------------
     // cold-start race: markAnswered before addPending/promote
     //
-    // Reproduces the scenario where SyncConnectionState fires
+    // Reproduces the scenario where ReplayConnectionStates fires
     // handleCSReportAnswerCall during ForegroundService.onCreate (marking the
     // call answered via markAnswered) before reportNewIncomingCall arrives
     // from the signaling layer and calls addPending/promote.
@@ -487,7 +512,7 @@ class MainProcessConnectionTrackerTest {
 
     @Test
     fun `cold-start — markAnswered without prior promote — isAnswered returns true`() {
-        // SyncConnectionState calls markAnswered before the call is registered in the
+        // ReplayConnectionStates calls markAnswered before the call is registered in the
         // tracker. The early check in reportNewIncomingCall must detect this.
         tracker.markAnswered("call-1")
         assertTrue(tracker.isAnswered("call-1"))
@@ -531,23 +556,19 @@ class MainProcessConnectionTrackerTest {
     @Test
     fun `cold-start — full fix sequence — promote then markAnswered leaves tracker consistent`() {
         // Verifies the exact sequence executed by the ALREADY_ANSWERED branch fix:
-        //   1. markAnswered()           <- SyncConnectionState (cold-start)
+        //   1. markAnswered()           <- ReplayConnectionStates (cold-start)
         //   2. promote(STATE_ACTIVE)    <- fix step 1
         //   3. markAnswered()           <- fix step 2 (re-mark after promote clears it)
-        //   4. markSignalingRegistered()  <- fix step 3
         tracker.markAnswered("call-1") // cold-start
         assertTrue(tracker.isAnswered("call-1"))
 
         tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_ACTIVE) // fix 1
         tracker.markAnswered("call-1") // fix 2
-        tracker.markSignalingRegistered("call-1") // fix 3
 
         assertTrue(tracker.exists("call-1"))
         assertTrue(tracker.isAnswered("call-1"))
         assertFalse(tracker.isPending("call-1"))
         assertEquals(PCallkeepConnectionState.STATE_ACTIVE, tracker.getState("call-1"))
-        // DidPushIncomingCall broadcast must be suppressed after adoption
-        assertTrue(tracker.consumeSignalingRegistered("call-1"))
     }
 
     @Test
@@ -590,5 +611,44 @@ class MainProcessConnectionTrackerTest {
 
         val drained = tracker.drainUnconnectedPendingCallIds()
         assertFalse(drained.contains("call-1"))
+    }
+
+    // -------------------------------------------------------------------------
+    // markEndedWithoutFlutterState / wasEndedWithoutFlutterState (ghost-call suppression)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `wasEndedWithoutFlutterState — false for an unmarked call`() {
+        assertFalse(tracker.wasEndedWithoutFlutterState("call-1"))
+    }
+
+    @Test
+    fun `wasEndedWithoutFlutterState — true after marking`() {
+        tracker.markEndedWithoutFlutterState("call-1")
+        assertTrue(tracker.wasEndedWithoutFlutterState("call-1"))
+    }
+
+    @Test
+    fun `wasEndedWithoutFlutterState — is sticky across repeated reads`() {
+        // A stale handshake can replay the dead incoming several times; every re-presentation must
+        // be rejected, so the flag must survive repeated reads (not one-shot).
+        tracker.markEndedWithoutFlutterState("call-1")
+        assertTrue(tracker.wasEndedWithoutFlutterState("call-1"))
+        assertTrue(tracker.wasEndedWithoutFlutterState("call-1"))
+        assertTrue(tracker.wasEndedWithoutFlutterState("call-1"))
+    }
+
+    @Test
+    fun `markEndedWithoutFlutterState — only the marked id is flagged`() {
+        tracker.markEndedWithoutFlutterState("call-1")
+        assertFalse(tracker.wasEndedWithoutFlutterState("call-2"))
+        assertTrue(tracker.wasEndedWithoutFlutterState("call-1"))
+    }
+
+    @Test
+    fun `clear — wasEndedWithoutFlutterState returns false`() {
+        tracker.markEndedWithoutFlutterState("call-1")
+        tracker.clear()
+        assertFalse(tracker.wasEndedWithoutFlutterState("call-1"))
     }
 }

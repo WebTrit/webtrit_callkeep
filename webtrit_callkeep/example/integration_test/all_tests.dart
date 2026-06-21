@@ -19,6 +19,7 @@ import 'callkeep_call_scenarios_test.dart' as call_scenarios;
 import 'callkeep_client_scenarios_test.dart' as client_scenarios;
 import 'callkeep_connections_test.dart' as connections;
 import 'callkeep_delegate_edge_cases_test.dart' as delegate_edge_cases;
+import 'callkeep_delivery_mode_test.dart' as delivery_mode;
 import 'callkeep_foreground_service_test.dart' as foreground_service;
 import 'callkeep_lifecycle_test.dart' as lifecycle;
 import 'callkeep_reportendcall_reasons_test.dart' as reportendcall_reasons;
@@ -29,13 +30,17 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   group('lifecycle', lifecycle.main);
+  group('delegate_edge_cases', delegate_edge_cases.main);
+  group('foreground_service', foreground_service.main);
+  group('stress', stress.main);
   group('call_scenarios', call_scenarios.main);
   group('client_scenarios', client_scenarios.main);
   group('connections', connections.main);
-  group('delegate_edge_cases', delegate_edge_cases.main);
-  group('foreground_service', foreground_service.main);
+  group('delivery_mode', delivery_mode.main);
+  // The transfer-back test is load-sensitive (same-callId reuse races the prior call's
+  // cross-process destroy() once the suite has backed Telecom up); it runs reliably standalone.
+  background_services.skipTransferBackUnderLoad = true;
   group('background_services', background_services.main);
   group('reportendcall_reasons', reportendcall_reasons.main);
   group('state_machine', state_machine.main);
-  group('stress', stress.main);
 }

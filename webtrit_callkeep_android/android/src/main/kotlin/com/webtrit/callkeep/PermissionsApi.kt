@@ -9,6 +9,7 @@ import androidx.core.content.ContextCompat
 import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.BatteryModeHelper
 import com.webtrit.callkeep.common.PermissionsHelper
+import com.webtrit.callkeep.common.TelephonyUtils
 import com.webtrit.callkeep.common.toAndroidPermissions
 import com.webtrit.callkeep.common.toPPermissionResults
 import io.flutter.plugin.common.PluginRegistry
@@ -76,6 +77,23 @@ class PermissionsApi(
     }
 
     /**
+     * Reports whether incoming calls are delivered via the Telecom
+     * [android.telecom.ConnectionService] path or the limited standalone
+     * foreground-service path used when the device lacks
+     * `android.software.telecom`. Mirrors the same feature gate the router uses,
+     * so the value reflects the actually active delivery path.
+     */
+    override fun getCallDeliveryMode(callback: (Result<PCallkeepAndroidCallDeliveryMode>) -> Unit) {
+        val mode =
+            if (TelephonyUtils.isTelecomSupported(context)) {
+                PCallkeepAndroidCallDeliveryMode.TELECOM
+            } else {
+                PCallkeepAndroidCallDeliveryMode.STANDALONE
+            }
+        callback.invoke(Result.success(mode))
+    }
+
+    /**
      * Requests the given permissions from the user.
      * @param permissions The list of permissions to request.
      * @param callback A callback that will be invoked with the results of the permission request.
@@ -110,7 +128,7 @@ class PermissionsApi(
             pendingPermissionCallback = callback
         }
 
-        timeoutRunnable =
+        val runnable =
             Runnable {
                 synchronized(this) {
                     if (pendingPermissionCallback != null) {
@@ -122,8 +140,9 @@ class PermissionsApi(
                     }
                 }
             }
+        timeoutRunnable = runnable
 
-        handler.postDelayed(timeoutRunnable!!, PERMISSION_REQUEST_TIMEOUT_MS)
+        handler.postDelayed(runnable, PERMISSION_REQUEST_TIMEOUT_MS)
 
         try {
             activity.runOnUiThread {
@@ -134,9 +153,11 @@ class PermissionsApi(
                 )
             }
         } catch (e: Exception) {
-            handler.removeCallbacks(timeoutRunnable!!)
-            timeoutRunnable = null
-            pendingPermissionCallback = null
+            handler.removeCallbacks(runnable)
+            synchronized(this) {
+                timeoutRunnable = null
+                pendingPermissionCallback = null
+            }
             callback.invoke(Result.failure(e))
         }
     }

@@ -39,7 +39,7 @@ Used for **event notifications** that the receiver handles asynchronously.
 - Sender calls `context.sendBroadcast(intent.setPackage(packageName))`.
 - Receiver registers with `registerReceiverCompat`.
 - Events flow in **both directions**:
-  - `:callkeep_core` → main: call lifecycle events (`AnswerCall`, `HungUp`, `DidPushIncomingCall`,
+  - `:callkeep_core` → main: call lifecycle events (`AnswerCall`, `HungUp`, `IncomingConnectionReported`,
       media events, etc.)
   - main → `:callkeep_core`: ack events (`TearDownComplete`)
 
@@ -51,7 +51,7 @@ Used for **commands** where delivery must be guaranteed (broadcasts can be dropp
 is not yet registered).
 
 - main → `:callkeep_core` commands: `TearDownConnections`, `ReserveAnswer`, `CleanConnections`,
-  `SyncAudioState`, `SyncConnectionState`, and per-call commands (`AnswerCall`, `DeclineCall`,
+  `ReplayAudioState`, `ReplayConnectionStates`, and per-call commands (`AnswerCall`, `DeclineCall`,
   `HungUpCall`, `EstablishCall`, `UpdateCall`, `MuteCall`, `HoldCall`, `SpeakerCall`,
   `SetAudioDevice`, `SendDtmf`).
 - `:callkeep_core` → main: `NotifyPending` (incoming call pending before PhoneConnection exists).
@@ -67,8 +67,8 @@ Because the two processes have independent JVM heaps, call state must be explici
 - `:callkeep_core` maintains `ConnectionManager` (
   see [connection-manager.md](connection-manager.md))
   — the authoritative registry of live `PhoneConnection` objects.
-- On app hot-restart, `ForegroundService.syncConnectionState()` sends `SyncAudioState` and
-  `SyncConnectionState` commands so `:callkeep_core` re-fires its current state to a freshly
+- On app hot-restart, `ForegroundService.replayConnectionStates()` sends `ReplayAudioState` and
+  `ReplayConnectionStates` commands so `:callkeep_core` re-fires its current state to a freshly
   attached Flutter engine.
 
 ## Critical Rules

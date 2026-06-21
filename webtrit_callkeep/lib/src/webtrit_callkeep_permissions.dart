@@ -74,6 +74,24 @@ class WebtritCallkeepPermissions {
     return platform.getBatteryMode();
   }
 
+  /// Returns how incoming calls are delivered on this device.
+  ///
+  /// On devices without `android.software.telecom` this reports
+  /// [CallkeepAndroidCallDeliveryMode.standalone], a limited path the system may
+  /// throttle. On non-Android platforms returns
+  /// [CallkeepAndroidCallDeliveryMode.unknown].
+  Future<CallkeepAndroidCallDeliveryMode> getCallDeliveryMode() {
+    if (kIsWeb) {
+      return Future.value(CallkeepAndroidCallDeliveryMode.unknown);
+    }
+
+    if (!Platform.isAndroid) {
+      return Future.value(CallkeepAndroidCallDeliveryMode.unknown);
+    }
+
+    return platform.getCallDeliveryMode();
+  }
+
   /// Requests the specified [permissions] on Android.
   ///
   /// Returns a [Map] where:
