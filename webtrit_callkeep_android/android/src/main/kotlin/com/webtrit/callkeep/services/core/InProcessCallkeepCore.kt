@@ -12,6 +12,7 @@ import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.PIncomingCallErrorEnum
 import com.webtrit.callkeep.common.ContextHolder
+import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
@@ -20,6 +21,7 @@ import com.webtrit.callkeep.services.broadcaster.ConnectionServicePerformBroadca
 import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * In-process implementation of [CallkeepCore].
@@ -31,15 +33,16 @@ import java.util.concurrent.CopyOnWriteArrayList
  *
  * All call sites are unaware of which backend is active — routing is entirely internal to [CallServiceRouter].
  */
-class InProcessCallkeepCore private constructor() : CallkeepCore {
-    private val tracker: ConnectionTracker = MainProcessConnectionTracker.instance
-
+class InProcessCallkeepCore internal constructor(
+    private val tracker: ConnectionTracker = MainProcessConnectionTracker.instance,
+    routerInit: () -> CallServiceRouter = { CallServiceRouter(ContextHolder.context) },
+) : CallkeepCore {
     // The context is read per call (not at construction time) so the singleton can be
     // created early without risking a NullPointerException. ContextHolder.init() must
     // have been called before any CS command method is invoked (guaranteed by Application.onCreate).
     private val context get() = ContextHolder.context
 
-    private val router: CallServiceRouter by lazy { CallServiceRouter(context) }
+    private val router: CallServiceRouter by lazy(routerInit)
 
     // -------------------------------------------------------------------------
     // Listener registry and lazy global BroadcastReceiver
@@ -238,13 +241,58 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
         onSuccess: () -> Unit,
         onError: (PIncomingCallError?) -> Unit,
     ) {
-        // Register as pending before handing off to the backend so that answerCall() can
-        // find the call via core.isPending() during the broadcast-lag window, regardless
-        // of which entry point initiated the incoming call (ForegroundService,
-        // SignalingIsolateService, BackgroundPushNotificationIsolateBootstrapApi, etc.).
-        // addPending() is idempotent — safe to call even if the caller already did so.
-        tracker.addPending(metadata.callId)
-        router.startIncomingCall(metadata, onSuccess, onError)
+        val callId = metadata.callId
+        // Reserve the pendingCallIds entry before handing off to the backend so that
+        // answerCall() / endCall() issued before DidPushIncomingCall fires can locate
+        // the call via core.isPending() during the broadcast-lag window.
+        //
+        // addPending() returns true only when this invocation actually inserted the entry.
+        // If it returns false, a concurrent first invocation (e.g. push-isolate vs
+        // foreground signaling for the same callId) already owns the entry — reject this
+        // duplicate via onError(CALL_ID_ALREADY_EXISTS) rather than letting both proceed
+        // to Telecom, which would cause the second to be silently adopted via the
+        // :callkeep_core CALL_ID_ALREADY_EXISTS path and return null, masking the
+        // duplicate from the caller.
+        val addedPending = tracker.addPending(callId)
+        if (!addedPending) {
+            Log.w(TAG, "startIncomingCall: callId=$callId already pending, rejecting concurrent duplicate")
+            onError(PIncomingCallError(PIncomingCallErrorEnum.CALL_ID_ALREADY_EXISTS))
+            return
+        }
+
+        // From here on we own the pendingCallIds entry. Any failure must drain it so the
+        // next reportNewIncomingCall for the same callId is not rejected as a stale duplicate.
+        val drained = AtomicBoolean(false)
+
+        fun drainOnce() {
+            if (drained.compareAndSet(false, true)) {
+                tracker.removePending(callId)
+            }
+        }
+
+        try {
+            router.startIncomingCall(
+                metadata,
+                onSuccess = onSuccess,
+                onError = { err ->
+                    drainOnce()
+                    onError(err)
+                },
+            )
+        } catch (t: Throwable) {
+            // Synchronous failure (e.g. IllegalStateException from ContextHolder, SecurityException,
+            // any unexpected throw inside the router). Drain so the next reportNewIncomingCall for
+            // this callId is not rejected as "already pending, rejecting concurrent duplicate".
+            //
+            // The throwable is re-thrown rather than converted to onError so the original
+            // exception message + stack trace reach Dart via Pigeon's channel-error envelope
+            // (better diagnostics than a structured PIncomingCallError(INTERNAL) that would
+            // lose t.message). This skips the onError callback path — callers that pre-register
+            // state before invoking this method must handle that themselves; see KDoc on
+            // CallkeepCore.startIncomingCall.
+            drainOnce()
+            throw t
+        }
     }
 
     override fun startAnswerCall(metadata: CallMetadata) = router.startAnswerCall(metadata)
@@ -283,6 +331,8 @@ class InProcessCallkeepCore private constructor() : CallkeepCore {
     override fun sendSyncConnectionState() = router.sendSyncConnectionState()
 
     companion object {
+        private const val TAG = "InProcessCallkeepCore"
+
         val instance: CallkeepCore = InProcessCallkeepCore()
 
         /**

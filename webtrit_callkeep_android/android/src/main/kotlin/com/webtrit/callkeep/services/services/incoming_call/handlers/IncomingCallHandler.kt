@@ -8,6 +8,7 @@ import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Lifecycle
+import com.webtrit.callkeep.WebtritCallkeep
 import com.webtrit.callkeep.common.startForegroundServiceCompat
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.notifications.IncomingCallNotificationBuilder
@@ -109,6 +110,14 @@ class IncomingCallHandler(
     }
 
     private fun maybeInitBackgroundHandling() {
+        // Skip isolate launch when callkeep is hosted on an external engine (attached via
+        // WebtritCallkeep.attachToEngine, e.g. a persistent signaling foreground service). That
+        // engine already owns the background work; callkeep only needs to show the call UI here.
+        // Starting its own isolate would open a duplicate signaling connection.
+        if (WebtritCallkeep.isHostedOnExternalEngine) {
+            Log.d(TAG, "maybeInitBackgroundHandling: hosted on external engine, skipping isolate launch")
+            return
+        }
         // Skip isolate launch when the main Flutter app is active (foreground or recently
         // backgrounded). In that state the main SignalingModule already has an open WebSocket
         // and handles the incoming call. Starting a second background isolate would open a

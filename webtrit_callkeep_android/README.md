@@ -31,6 +31,9 @@ Full architecture documentation lives in [`docs/`](docs/):
 | [docs/ipc-broadcasting.md](docs/ipc-broadcasting.md)                 | Cross-process event catalogue                         |
 | [docs/pigeon-apis.md](docs/pigeon-apis.md)                           | All Pigeon host and Flutter APIs                      |
 
+Diagrams: [docs/incoming-call-handling.md](docs/incoming-call-handling.md) — background-handling
+decision and terminal outcomes.
+
 ---
 
 ## Background modes

@@ -6,6 +6,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import com.webtrit.callkeep.common.AssetCacheManager
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.PermissionsHelper
@@ -23,6 +24,7 @@ class ActiveCallService : Service() {
     override fun onCreate() {
         super.onCreate()
         ContextHolder.init(applicationContext)
+        AssetCacheManager.init(applicationContext)
         Log.initFromContext(applicationContext)
     }
 

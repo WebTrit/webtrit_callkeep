@@ -215,6 +215,24 @@ interface CallkeepCore {
     @RequiresPermission(Manifest.permission.CALL_PHONE)
     fun startOutgoingCall(metadata: CallMetadata)
 
+    /**
+     * Reserves [metadata]'s callId in the pending tracker, then dispatches to the active
+     * call backend (Telecom or standalone).
+     *
+     * Failure modes:
+     * - **Logical errors** are delivered via [onError] with a [PIncomingCallError]. The
+     *   pending reservation is drained before [onError] is invoked.
+     * - **Synchronous exceptions** from the backend (e.g. uninitialized ContextHolder)
+     *   propagate to the caller after the pending reservation is drained. The original
+     *   throwable reaches the Pigeon channel as channel-error, so its message and stack
+     *   trace are preserved for Dart-side diagnostics.
+     *
+     * Callers that pre-register state (Pigeon callbacks, timeouts) before invoking this
+     * method must either: (a) wrap the call in their own try/catch and clean that state
+     * on throw, or (b) rely on a self-cleaning safety-net (e.g. a deferred timeout that
+     * removes the stale entries) — exception propagation will skip [onError] entirely
+     * in the synchronous-throw case.
+     */
     fun startIncomingCall(
         metadata: CallMetadata,
         onSuccess: () -> Unit,

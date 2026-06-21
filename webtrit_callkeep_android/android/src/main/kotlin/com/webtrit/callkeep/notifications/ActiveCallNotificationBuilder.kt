@@ -49,6 +49,8 @@ class ActiveCallNotificationBuilder : NotificationBuilder() {
                     setContentText(text)
                     setAutoCancel(false)
                     setCategory(Notification.CATEGORY_SERVICE)
+                    setGroup(NOTIFICATION_GROUP_KEY)
+                    setStyle(Notification.MediaStyle().setShowActionsInCompactView(0))
                     addAction(hungUpAction)
                 }
 
@@ -72,5 +74,6 @@ class ActiveCallNotificationBuilder : NotificationBuilder() {
     companion object {
         const val TAG = "ACTIVE_CALL_NOTIFICATION"
         const val NOTIFICATION_ID = 1
+        const val NOTIFICATION_GROUP_KEY = "com.webtrit.callkeep.ACTIVE_CALL"
     }
 }
