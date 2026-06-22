@@ -1453,6 +1453,8 @@ interface PHostBackgroundPushNotificationIsolateApi {
 interface PHostPermissionsApi {
   fun getFullScreenIntentPermissionStatus(callback: (Result<PSpecialPermissionStatusTypeEnum>) -> Unit)
   fun openFullScreenIntentSettings(callback: (Result<Unit>) -> Unit)
+  fun getBackgroundActivityStartPermissionStatus(callback: (Result<PSpecialPermissionStatusTypeEnum>) -> Unit)
+  fun openBackgroundActivityStartSettings(callback: (Result<Unit>) -> Unit)
   fun openSettings(callback: (Result<Unit>) -> Unit)
   fun getBatteryMode(callback: (Result<PCallkeepAndroidBatteryMode>) -> Unit)
   /**
@@ -1495,6 +1497,41 @@ interface PHostPermissionsApi {
         if (api != null) {
           channel.setMessageHandler { _, reply ->
             api.openFullScreenIntentSettings{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(GeneratedPigeonUtils.wrapError(error))
+              } else {
+                reply.reply(GeneratedPigeonUtils.wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.getBackgroundActivityStartPermissionStatus$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.getBackgroundActivityStartPermissionStatus{ result: Result<PSpecialPermissionStatusTypeEnum> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(GeneratedPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(GeneratedPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostPermissionsApi.openBackgroundActivityStartSettings$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.openBackgroundActivityStartSettings{ result: Result<Unit> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(GeneratedPigeonUtils.wrapError(error))

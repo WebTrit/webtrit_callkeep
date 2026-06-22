@@ -180,6 +180,19 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('launchFullScreenIntentSettings() has not been implemented.');
   }
 
+  /// Status of the OEM "display pop-up windows while running in background"
+  /// capability (MIUI/HyperOS), which gates showing the incoming-call UI over
+  /// the lock screen. Best-effort; reports granted where it does not apply.
+  Future<CallkeepSpecialPermissionStatus> getBackgroundActivityStartPermissionStatus() {
+    throw UnimplementedError('getBackgroundActivityStartPermissionStatus() has not been implemented.');
+  }
+
+  /// Open the OEM permissions screen hosting the "display pop-up windows while
+  /// running in background" toggle.
+  Future<void> openBackgroundActivityStartSettings() {
+    throw UnimplementedError('openBackgroundActivityStartSettings() has not been implemented.');
+  }
+
   ///  Open the common settings screen
   Future<void> openSettings() {
     throw UnimplementedError('openSettings() has not been implemented.');

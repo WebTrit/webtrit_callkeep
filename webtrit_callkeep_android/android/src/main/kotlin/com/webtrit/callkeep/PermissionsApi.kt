@@ -53,6 +53,35 @@ class PermissionsApi(
     }
 
     /**
+     * Reports the status of the OEM "display pop-up windows while running in
+     * background" capability (MIUI/HyperOS), which gates showing the incoming
+     * call UI over the lock screen. Best-effort; reports granted where the
+     * capability does not apply.
+     */
+    override fun getBackgroundActivityStartPermissionStatus(callback: (Result<PSpecialPermissionStatusTypeEnum>) -> Unit) {
+        val status =
+            when (PermissionsHelper(context).isBackgroundActivityStartGranted()) {
+                true -> PSpecialPermissionStatusTypeEnum.GRANTED
+                false -> PSpecialPermissionStatusTypeEnum.DENIED
+                null -> PSpecialPermissionStatusTypeEnum.UNKNOWN
+            }
+        callback.invoke(Result.success(status))
+    }
+
+    /**
+     * Opens the OEM permissions screen hosting the "display pop-up windows while
+     * running in background" toggle, with a fallback to app settings.
+     */
+    override fun openBackgroundActivityStartSettings(callback: (Result<Unit>) -> Unit) {
+        try {
+            PermissionsHelper(context).launchBackgroundActivityStartSettings()
+            callback.invoke(Result.success(Unit))
+        } catch (e: Exception) {
+            callback.invoke(Result.failure(e))
+        }
+    }
+
+    /**
      * Attempts to open the common system settings screen
      */
     override fun openSettings(callback: (Result<Unit>) -> Unit) {
