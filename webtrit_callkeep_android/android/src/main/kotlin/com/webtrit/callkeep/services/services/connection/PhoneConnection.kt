@@ -45,6 +45,13 @@ class PhoneConnection internal constructor(
     private var isHasSpeaker = false
 
     /**
+     * True when this connection explicitly set MODE_IN_COMMUNICATION because the OEM Telecom
+     * (e.g. MIUI) skipped audio-focus setup for outgoing calls. Used to know whether we need
+     * to reset the audio mode on disconnect.
+     */
+    private var audioModeForced = false
+
+    /**
      * Tracks whether the speaker was manually disabled by the user.
      * Prevents automatic re-enabling during video calls.
      */
@@ -202,6 +209,17 @@ class PhoneConnection internal constructor(
 
         dispatcher(eventForDisconnectCause(disconnectCause), metadata)
         onDisconnectCallback.invoke(this)
+
+        // If we forced MODE_IN_COMMUNICATION in onActiveConnection(), restore NORMAL mode now
+        // that this call is gone. Only reset if no other active/holding calls remain so we
+        // don't disrupt a concurrent call that also needs the VoIP audio path.
+        if (audioModeForced && !PhoneConnectionService.connectionManager.hasActiveOrHoldingConnection()) {
+            val sysAm = context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+            sysAm.mode = android.media.AudioManager.MODE_NORMAL
+            logger.d("onDisconnect: reset audio mode to MODE_NORMAL (last active call ended)")
+        }
+        audioModeForced = false
+
         destroy()
     }
 
@@ -633,6 +651,23 @@ class PhoneConnection internal constructor(
         }
 
         enforceVideoSpeakerLogic()
+
+        // On OEM Telecom implementations (e.g. MIUI Android 9-12) that skip audio-focus setup
+        // for outgoing self-managed calls, callAudioState is never delivered and
+        // AudioManager.setMode(MODE_IN_COMMUNICATION) is never called. Without that mode,
+        // WebRTC's AudioRecord(VOICE_COMMUNICATION) and AudioTrack(STREAM_VOICE_CALL) cannot
+        // access the voice call path on these devices — both mic capture and speaker playback
+        // stall completely. Explicitly set the mode here so WebRTC audio works.
+        // On AOSP, callAudioState is non-null (Telecom already set the mode), so the guard
+        // keeps this change inert on standard Android.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE && callAudioState == null) {
+            val sysAm = context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+            if (sysAm.mode != android.media.AudioManager.MODE_IN_COMMUNICATION) {
+                sysAm.mode = android.media.AudioManager.MODE_IN_COMMUNICATION
+                audioModeForced = true
+                logger.d("onActiveConnection: forced MODE_IN_COMMUNICATION (callAudioState null — OEM workaround)")
+            }
+        }
 
         // Proactively emit audio device state for OEM Telecom implementations that do not
         // call setCallAudioState for outgoing calls (e.g. MIUI Android 12). On AOSP,
