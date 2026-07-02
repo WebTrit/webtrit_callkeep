@@ -378,12 +378,13 @@ class StandaloneCallService : Service() {
         fireInitialAudioState(metadata.callId)
         promoteRemainingRingingToCallWaitingTone(metadata.callId)
 
-        // Mirror PhoneConnection.onAnswer() on the Telecom path, which fires ActivityHolder.start()
-        // after dispatching AnswerCall. Without this, answering from the notification leaves the
-        // CallStyle incoming notification (with its Answer button) on screen and never brings the
-        // app UI to the front - the only visible effect of the tap is the ringtone stopping.
+        // Replace the incoming CallStyle notification (which otherwise keeps its Answer button on
+        // screen for the whole call). Bringing the app UI to the front is NOT done here: on
+        // Android 12+ a service launched from a notification action may not start activities
+        // (notification trampoline restriction - "Indirect notification activity start blocked"),
+        // so the Answer action goes through StandaloneAnswerTrampolineActivity, which starts the
+        // host activity itself before forwarding the answer command to this service.
         showActiveCallNotification(callMetadataMap[metadata.callId]!!)
-        ActivityHolder.start(applicationContext)
 
         core.notifyConnectionEvent(CallLifecycleEvent.AnswerCall, callMetadataMap[metadata.callId]!!.toBundle())
         // No onStateChanged here (no telecom Connection) — emit the state explicitly so the shadow
