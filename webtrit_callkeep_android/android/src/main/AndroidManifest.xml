@@ -101,6 +101,24 @@
         <service android:name=".services.services.foreground.ForegroundService" />
 
         <!--
+          Invisible trampoline behind the Answer action of the standalone incoming-call
+          notification. Android 12+ forbids services launched from a notification action from
+          starting activities (notification trampoline restriction), so the Answer PendingIntent
+          targets this activity instead: it forwards the answer command to StandaloneCallService,
+          brings the host app to the front and finishes. showWhenLocked lets the tap work from the
+          lock-screen notification; the empty taskAffinity keeps this ephemeral activity out of
+          the host app's task.
+        -->
+        <activity
+            android:name=".activities.StandaloneAnswerTrampolineActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:showWhenLocked="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <!--
           [Optional Integration] SMS Fallback Receiver
 
           This receiver is used to trigger the foreground service when an incoming call is announced via SMS,
