@@ -12,6 +12,7 @@ import androidx.annotation.Keep
 import androidx.core.app.NotificationCompat
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.R
+import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.AssetCacheManager
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
@@ -21,6 +22,7 @@ import com.webtrit.callkeep.models.AudioDevice
 import com.webtrit.callkeep.models.AudioDeviceType
 import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.notifications.StandaloneActiveCallNotificationBuilder
 import com.webtrit.callkeep.notifications.StandaloneIncomingCallNotificationBuilder
 import com.webtrit.callkeep.services.broadcaster.CallCommandEvent
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
@@ -310,6 +312,21 @@ class StandaloneCallService : Service() {
         startForegroundServiceCompat(this, NOTIFICATION_ID, notification, foregroundServiceType)
     }
 
+    /**
+     * Replaces the foreground incoming-call notification with the ongoing-call variant once the
+     * call is answered or established. The incoming notification is this service's own foreground
+     * notification, so it cannot simply be cancelled (the Telecom path cancels the separate
+     * [com.webtrit.callkeep.services.services.incoming_call.IncomingCallService] notification
+     * instead) - it is re-posted under the same [NOTIFICATION_ID] without Answer/Decline actions.
+     */
+    private fun showActiveCallNotification(metadata: CallMetadata) {
+        val notification =
+            StandaloneActiveCallNotificationBuilder()
+                .apply { setCallMetaData(metadata) }
+                .build()
+        startForegroundServiceCompat(this, NOTIFICATION_ID, notification, foregroundServiceType)
+    }
+
     private fun handleOutgoingCall(metadata: CallMetadata) {
         Log.i(TAG, "handleOutgoingCall: callId=${metadata.callId}")
         promoteToForeground()
@@ -334,6 +351,11 @@ class StandaloneCallService : Service() {
         fireInitialAudioState(metadata.callId)
         promoteRemainingRingingToCallWaitingTone(metadata.callId)
 
+        // Mirror PhoneConnection.establish() on the Telecom path: swap the foreground
+        // notification to the ongoing-call variant and make sure the app UI is visible.
+        showActiveCallNotification(callMetadataMap[metadata.callId]!!)
+        ActivityHolder.start(applicationContext)
+
         core.notifyConnectionEvent(CallLifecycleEvent.AnswerCall, callMetadataMap[metadata.callId]!!.toBundle())
         // No onStateChanged here (no telecom Connection) — emit the state explicitly so the shadow
         // mirrors it (replaces the removed markAnswered state-stamping).
@@ -355,6 +377,14 @@ class StandaloneCallService : Service() {
         activateAudio()
         fireInitialAudioState(metadata.callId)
         promoteRemainingRingingToCallWaitingTone(metadata.callId)
+
+        // Replace the incoming CallStyle notification (which otherwise keeps its Answer button on
+        // screen for the whole call). Bringing the app UI to the front is NOT done here: on
+        // Android 12+ a service launched from a notification action may not start activities
+        // (notification trampoline restriction - "Indirect notification activity start blocked"),
+        // so the Answer action goes through StandaloneAnswerTrampolineActivity, which starts the
+        // host activity itself before forwarding the answer command to this service.
+        showActiveCallNotification(callMetadataMap[metadata.callId]!!)
 
         core.notifyConnectionEvent(CallLifecycleEvent.AnswerCall, callMetadataMap[metadata.callId]!!.toBundle())
         // No onStateChanged here (no telecom Connection) — emit the state explicitly so the shadow
