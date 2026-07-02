@@ -77,6 +77,18 @@ class StandaloneCallService : Service() {
     // guarantees a visible activity (StandaloneAnswerTrampolineActivity for notification
     // answers, the host activity for Dart-initiated answer/establish).
     //
+    // TODO(standalone-active-call): the active-call phase does not belong to this service.
+    // On the Telecom path it is owned by ActiveCallService (phoneCall|microphone|camera with
+    // permission-aware types and its own notification), started via
+    // NotificationManager.showActiveCallNotification() - which is only ever called from
+    // PhoneConnection, so it never runs on the standalone path. Once the standalone answer/
+    // establish/end handlers drive NotificationManager the same way (and this service demotes
+    // itself after the answer instead of re-posting its own ongoing notification), the
+    // microphone type below and showActiveCallNotification()/
+    // StandaloneActiveCallNotificationBuilder can be removed, returning this service to a pure
+    // phone-call-typed connection host. That also brings the camera type for video calls in
+    // the background, which the current shape does not cover.
+    //
     // On API < 31 both getters return null, selecting the 2-arg startForeground() fallback in
     // startForegroundServiceCompat(): type validation is skipped there and the microphone
     // constant does not exist before API 31.
