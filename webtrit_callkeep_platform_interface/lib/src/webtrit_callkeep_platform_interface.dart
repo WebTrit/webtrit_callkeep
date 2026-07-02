@@ -236,6 +236,21 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('stopRingbackSound() has not been implemented.');
   }
 
+  /// Play the call-waiting tone: a soft, recurrent beep mixed into the active
+  /// call audio to signal a second incoming call.
+  ///
+  /// Returns [Future] that resolves on sound was successfully played.
+  Future<void> playCallWaitingTone() {
+    throw UnimplementedError('playCallWaitingTone() has not been implemented.');
+  }
+
+  /// Stop the call-waiting tone.
+  ///
+  /// Returns [Future] that resolves on sound was successfully stopped.
+  Future<void> stopCallWaitingTone() {
+    throw UnimplementedError('stopCallWaitingTone() has not been implemented.');
+  }
+
   /// Get the connection details for the given [callId].
   ///
   /// Returns a [Future] resolving to a [CallkeepConnection] if found, or null otherwise.

@@ -18,13 +18,14 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 
 /**
- * Tests for the call-waiting audio branching logic (WT-1388).
+ * Tests for the call-waiting audio branching logic.
  *
  * When a second incoming call arrives while one call is already active or held,
- * [PhoneConnection.onShowIncomingCallUi] must play a soft call-waiting tone via
- * [AudioManager.startCallWaitingTone] instead of the full ringtone. The ringtone
- * uses TYPE_RINGTONE which routes through the earpiece at full ringtone volume and
- * can hurt the user's ear during an active call.
+ * [PhoneConnection.onShowIncomingCallUi] must suppress the full ringtone: it uses
+ * TYPE_RINGTONE which routes through the earpiece at full ringtone volume and can
+ * hurt the user's ear during an active call. The soft call-waiting tone itself is
+ * driven by the app through the sound API ([SoundApi.playCallWaitingTone]), the
+ * same way as on iOS, so the connection must not auto-play it either.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [Build.VERSION_CODES.UPSIDE_DOWN_CAKE])
@@ -92,27 +93,27 @@ class PhoneConnectionCallWaitingTest {
     }
 
     @Test
-    fun `onShowIncomingCallUi plays call-waiting tone when a call is active`() {
+    fun `onShowIncomingCallUi suppresses all local audio when a call is active`() {
         PhoneConnectionService.connectionManager = managerWithActiveCall()
         val mockAudio = mock(AudioManager::class.java)
         val connection = createConnectionWithAudio(mockAudio)
 
         connection.onShowIncomingCallUi()
 
-        verify(mockAudio).startCallWaitingTone()
         verify(mockAudio, never()).startRingtone(null)
+        verify(mockAudio, never()).startCallWaitingTone()
     }
 
     @Test
-    fun `onShowIncomingCallUi plays call-waiting tone when a call is on hold`() {
+    fun `onShowIncomingCallUi suppresses all local audio when a call is on hold`() {
         PhoneConnectionService.connectionManager = managerWithHeldCall()
         val mockAudio = mock(AudioManager::class.java)
         val connection = createConnectionWithAudio(mockAudio)
 
         connection.onShowIncomingCallUi()
 
-        verify(mockAudio).startCallWaitingTone()
         verify(mockAudio, never()).startRingtone(null)
+        verify(mockAudio, never()).startCallWaitingTone()
     }
 
     @Test

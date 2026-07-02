@@ -1641,6 +1641,8 @@ interface PHostDiagnosticsApi {
 interface PHostSoundApi {
   fun playRingbackSound(callback: (Result<Unit>) -> Unit)
   fun stopRingbackSound(callback: (Result<Unit>) -> Unit)
+  fun playCallWaitingTone(callback: (Result<Unit>) -> Unit)
+  fun stopCallWaitingTone(callback: (Result<Unit>) -> Unit)
 
   companion object {
     /** The codec used by PHostSoundApi. */
@@ -1673,6 +1675,40 @@ interface PHostSoundApi {
         if (api != null) {
           channel.setMessageHandler { _, reply ->
             api.stopRingbackSound{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(GeneratedPigeonUtils.wrapError(error))
+              } else {
+                reply.reply(GeneratedPigeonUtils.wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostSoundApi.playCallWaitingTone$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.playCallWaitingTone{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(GeneratedPigeonUtils.wrapError(error))
+              } else {
+                reply.reply(GeneratedPigeonUtils.wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.webtrit_callkeep_android.PHostSoundApi.stopCallWaitingTone$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.stopCallWaitingTone{ result: Result<Unit> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(GeneratedPigeonUtils.wrapError(error))

@@ -254,6 +254,8 @@ extern void SetUpWTAndroidHelperHostApiWithSuffix(id<FlutterBinaryMessenger> bin
 @protocol WTPHostSoundApi
 - (void)playRingbackSound:(void (^)(FlutterError *_Nullable))completion;
 - (void)stopRingbackSound:(void (^)(FlutterError *_Nullable))completion;
+- (void)playCallWaitingTone:(void (^)(FlutterError *_Nullable))completion;
+- (void)stopCallWaitingTone:(void (^)(FlutterError *_Nullable))completion;
 @end
 
 extern void SetUpWTPHostSoundApi(id<FlutterBinaryMessenger> binaryMessenger, NSObject<WTPHostSoundApi> *_Nullable api);

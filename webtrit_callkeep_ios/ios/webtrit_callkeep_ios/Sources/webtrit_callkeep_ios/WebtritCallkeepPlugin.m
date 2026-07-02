@@ -9,6 +9,7 @@
 #import "Generated.h"
 #import "Converters.h"
 #import "NSUUID+v5.h"
+#import "CallWaitingTonePlayer.h"
 
 static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
 
@@ -22,6 +23,7 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   WTPDelegateFlutterApi *_delegateFlutterApi;
   CXProvider *_provider;
   AVAudioPlayer *_ringback;
+  CallWaitingTonePlayer *_callWaitingTone;
   CXCallController *_callController;
   BOOL _driveIdleTimerDisabled;
 }
@@ -46,6 +48,9 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
     _delegateFlutterApi = [[WTPDelegateFlutterApi alloc] initWithBinaryMessenger:binaryMessenger];
     SetUpWTPHostApi(binaryMessenger, self);
     SetUpWTPHostSoundApi(binaryMessenger, self);
+    // Created eagerly: it has to observe the call engine's lifecycle notifications
+    // from the very first call, not from the first play request.
+    _callWaitingTone = [[CallWaitingTonePlayer alloc] init];
   }
   return self;
 }
@@ -449,9 +454,19 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
     completion(nil);
 }
 
-- (void)stopRingbackSound:(void (^)(FlutterError * _Nullable))completion{ 
+- (void)stopRingbackSound:(void (^)(FlutterError * _Nullable))completion{
     if(_ringback != nil)[_ringback pause];
-    
+
+    completion(nil);
+}
+
+- (void)playCallWaitingTone:(void (^)(FlutterError * _Nullable))completion{
+    [_callWaitingTone play];
+    completion(nil);
+}
+
+- (void)stopCallWaitingTone:(void (^)(FlutterError * _Nullable))completion{
+    [_callWaitingTone stop];
     completion(nil);
 }
 

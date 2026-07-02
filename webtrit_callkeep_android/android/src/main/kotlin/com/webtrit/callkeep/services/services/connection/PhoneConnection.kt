@@ -145,8 +145,10 @@ class PhoneConnection internal constructor(
         logger.d("Showing incoming call UI for callId: $callId")
         notificationManager.showIncomingCallNotification(metadata)
         if (PhoneConnectionService.connectionManager.hasActiveOrHoldingConnection()) {
-            logger.d("Active call detected — playing call-waiting tone instead of ringtone for callId: $callId")
-            audioManager.startCallWaitingTone()
+            // Suppress the full ringtone: TYPE_RINGTONE routes through the earpiece at ringer
+            // volume and hurts the user's ear during an active call. The call-waiting tone
+            // itself is driven by the app through the sound API, same as on iOS.
+            logger.d("Active call detected — suppressing ringtone for callId: $callId")
         } else {
             audioManager.startRingtone(metadata.ringtonePath)
         }

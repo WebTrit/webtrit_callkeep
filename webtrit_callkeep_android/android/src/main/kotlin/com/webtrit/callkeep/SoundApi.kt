@@ -19,4 +19,14 @@ class SoundApi(
         audioManager.stopRingback()
         callback(Result.success(Unit))
     }
+
+    override fun playCallWaitingTone(callback: (Result<Unit>) -> Unit) {
+        audioManager.startCallWaitingTone()
+        callback(Result.success(Unit))
+    }
+
+    override fun stopCallWaitingTone(callback: (Result<Unit>) -> Unit) {
+        audioManager.stopCallWaitingTone()
+        callback(Result.success(Unit))
+    }
 }
