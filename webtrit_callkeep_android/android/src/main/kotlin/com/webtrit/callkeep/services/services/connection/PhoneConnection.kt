@@ -1,6 +1,8 @@
 package com.webtrit.callkeep.services.services.connection
 
 import android.content.Context
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -43,6 +45,19 @@ class PhoneConnection internal constructor(
 ) : Connection() {
     private var isMute = false
     private var isHasSpeaker = false
+
+    /**
+     * True when this connection explicitly set MODE_IN_COMMUNICATION because the OEM Telecom
+     * (e.g. MIUI) skipped audio-focus setup for outgoing calls. Used to know whether we need
+     * to reset the audio mode on disconnect.
+     */
+    private var audioModeForced = false
+
+    /**
+     * Audio focus request held alongside [audioModeForced], for the same OEM Telecom
+     * workaround — released together with the forced mode reset on disconnect.
+     */
+    private var forcedAudioFocusRequest: AudioFocusRequest? = null
 
     /**
      * Tracks whether the speaker was manually disabled by the user.
@@ -202,6 +217,23 @@ class PhoneConnection internal constructor(
 
         dispatcher(eventForDisconnectCause(disconnectCause), metadata)
         onDisconnectCallback.invoke(this)
+
+        // If we forced MODE_IN_COMMUNICATION in onActiveConnection(), restore NORMAL mode now
+        // that this call is gone. Only reset if no other active/holding calls remain so we
+        // don't disrupt a concurrent call that also needs the VoIP audio path.
+        if (audioModeForced && !PhoneConnectionService.connectionManager.hasActiveOrHoldingConnection()) {
+            val sysAm = context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+            sysAm.mode = android.media.AudioManager.MODE_NORMAL
+            logger.d("onDisconnect: reset audio mode to MODE_NORMAL (last active call ended)")
+
+            forcedAudioFocusRequest?.let {
+                sysAm.abandonAudioFocusRequest(it)
+                logger.d("onDisconnect: abandoned call audio focus (OEM workaround)")
+            }
+            forcedAudioFocusRequest = null
+        }
+        audioModeForced = false
+
         destroy()
     }
 
@@ -633,6 +665,45 @@ class PhoneConnection internal constructor(
         }
 
         enforceVideoSpeakerLogic()
+
+        // On OEM Telecom implementations (e.g. MIUI Android 9-12) that skip audio-focus setup
+        // for outgoing self-managed calls, callAudioState is never delivered and
+        // AudioManager.setMode(MODE_IN_COMMUNICATION) is never called. Without that mode,
+        // WebRTC's AudioRecord(VOICE_COMMUNICATION) and AudioTrack(STREAM_VOICE_CALL) cannot
+        // access the voice call path on these devices — both mic capture and speaker playback
+        // stall completely. Explicitly set the mode here so WebRTC audio works.
+        // On AOSP, callAudioState is non-null (Telecom already set the mode), so the guard
+        // keeps this change inert on standard Android.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE && callAudioState == null) {
+            val sysAm = context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+            if (sysAm.mode != android.media.AudioManager.MODE_IN_COMMUNICATION) {
+                sysAm.mode = android.media.AudioManager.MODE_IN_COMMUNICATION
+                audioModeForced = true
+                logger.d("onActiveConnection: forced MODE_IN_COMMUNICATION (callAudioState null — OEM workaround)")
+            }
+
+            // Telecom normally requests call audio focus for us when a self-managed connection
+            // becomes active (CallAudioModeStateMachine); the same OEM bug that skips setMode()
+            // also skips this. Without it, another app's audio focus can keep suppressing
+            // WebRTC's stream even after MODE_IN_COMMUNICATION is set. requestAudioFocusForCall()
+            // is a hidden @SystemApi we can't call, so mirror the intent with the public API.
+            if (forcedAudioFocusRequest == null) {
+                val attributes = AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build()
+                val request = AudioFocusRequest.Builder(android.media.AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                    .setAudioAttributes(attributes)
+                    .build()
+                val result = sysAm.requestAudioFocus(request)
+                if (result == android.media.AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                    forcedAudioFocusRequest = request
+                    logger.d("onActiveConnection: acquired call audio focus (OEM workaround)")
+                } else {
+                    logger.w("onActiveConnection: audio focus request denied (result=$result)")
+                }
+            }
+        }
 
         // Proactively emit audio device state for OEM Telecom implementations that do not
         // call setCallAudioState for outgoing calls (e.g. MIUI Android 12). On AOSP,
