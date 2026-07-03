@@ -280,9 +280,9 @@ class IncomingCallService :
         return START_NOT_STICKY
     }
 
-    private fun performAnswerCall(metadata: CallMetadata): Int {
+    // Called from onConnectionEvent only, never from onStartCommand - no start mode to return.
+    private fun performAnswerCall(metadata: CallMetadata) {
         callLifecycleHandler.performAnswerCall(metadata)
-        return START_STICKY
     }
 
     // Launches the service with the LAUNCH action and cancels the timeout

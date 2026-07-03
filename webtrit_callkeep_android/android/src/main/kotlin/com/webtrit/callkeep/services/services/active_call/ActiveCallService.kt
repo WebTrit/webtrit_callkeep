@@ -49,6 +49,9 @@ class ActiveCallService : Service() {
         activeCallNotificationBuilder.setCallsMetaData(callsMetadata)
         val notification = activeCallNotificationBuilder.build()
 
+        // startForeground must be called even when there are no calls to show: the service may
+        // have been (re)started as foreground and skipping the promotion would kill the process
+        // with ForegroundServiceDidNotStartInTimeException.
         startForegroundServiceCompat(
             this,
             ActiveCallNotificationBuilder.NOTIFICATION_ID,
@@ -56,13 +59,34 @@ class ActiveCallService : Service() {
             getForegroundServiceTypes(callsMetadata),
         )
 
+        if (callsMetadata.isEmpty()) {
+            // Empty metadata means a START_STICKY restart delivered a null intent after the
+            // process was killed. NotificationManager tracks active calls in its own static
+            // list, so nothing will ever stop this orphaned instance - an ongoing notification
+            // left here would be undismissable until the user force-stops the app.
+            Log.w(TAG, "onStartCommand: no calls metadata (null-intent restart), stopping self")
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         return START_STICKY
     }
 
-    private fun hungUpCall() =
-        callsMetadata.firstOrNull()?.let {
-            CallkeepCore.instance.startHungUpCall(it)
-        } ?: CallkeepCore.instance.tearDownService()
+    private fun hungUpCall() {
+        val call = callsMetadata.firstOrNull()
+        if (call != null) {
+            CallkeepCore.instance.startHungUpCall(call)
+        } else {
+            // Hang up tapped on a notification with no known calls (re-posted by a null-intent
+            // restart). tearDownService only tears down the connection services and does not
+            // stop this one, so the notification has to be removed here.
+            Log.w(TAG, "hungUpCall: no calls metadata, tearing down and stopping self")
+            CallkeepCore.instance.tearDownService()
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
+    }
 
     private fun getForegroundServiceTypes(callsMetadata: List<CallMetadata>): Int? =
         when {
@@ -101,5 +125,9 @@ class ActiveCallService : Service() {
     override fun onDestroy() {
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
+    }
+
+    companion object {
+        private const val TAG = "ActiveCallService"
     }
 }
