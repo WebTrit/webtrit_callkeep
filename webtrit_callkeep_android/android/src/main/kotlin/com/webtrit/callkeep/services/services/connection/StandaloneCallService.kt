@@ -59,15 +59,51 @@ class StandaloneCallService : Service() {
     // notification when there is no call in progress.
     private var isForeground = false
 
-    // FOREGROUND_SERVICE_TYPE_MICROPHONE was introduced in API 31 (Android 12).
-    // On API 29-30 the type is unknown to the framework and startForeground() throws
-    // IllegalArgumentException when the requested type does not match the manifest.
-    // Passing null selects the 2-arg startForeground() fallback in startForegroundServiceCompat(),
-    // which skips type validation on older builds.
-    private val foregroundServiceType: Int?
+    // Foreground service type is two-phase (see the manifest comment on this service):
+    //
+    // Ringing / call setup: FOREGROUND_SERVICE_TYPE_PHONE_CALL only. Since Android 14 the
+    // microphone type is in the while-in-use restricted set and CANNOT be promoted from a
+    // background app state - no exemption applies (high-priority FCM and battery-optimization
+    // whitelisting were both verified to still throw SecurityException), so a push-delivered
+    // incoming call would crash the service in a loop until the OS kills the main process.
+    // The phone-call type is not restricted; its only runtime prerequisites are the
+    // FOREGROUND_SERVICE_PHONE_CALL + MANAGE_OWN_CALLS permissions (both declared by the
+    // plugin manifest). It does NOT require the android.software.telecom feature or an
+    // active Telecom connection.
+    //
+    // Active call (answered/established): PHONE_CALL | MICROPHONE. The microphone type is
+    // added so microphone access survives the app going to background mid-call
+    // (while-in-use restriction). Adding it at that point is legal: the answer flow
+    // guarantees a visible activity (StandaloneAnswerTrampolineActivity for notification
+    // answers, the host activity for Dart-initiated answer/establish).
+    //
+    // TODO(standalone-active-call): the active-call phase does not belong to this service.
+    // On the Telecom path it is owned by ActiveCallService (phoneCall|microphone|camera with
+    // permission-aware types and its own notification), started via
+    // NotificationManager.showActiveCallNotification() - which is only ever called from
+    // PhoneConnection, so it never runs on the standalone path. Once the standalone answer/
+    // establish/end handlers drive NotificationManager the same way (and this service demotes
+    // itself after the answer instead of re-posting its own ongoing notification), the
+    // microphone type below and showActiveCallNotification()/
+    // StandaloneActiveCallNotificationBuilder can be removed, returning this service to a pure
+    // phone-call-typed connection host. That also brings the camera type for video calls in
+    // the background, which the current shape does not cover.
+    //
+    // On API < 31 both getters return null, selecting the 2-arg startForeground() fallback in
+    // startForegroundServiceCompat(): type validation is skipped there and the microphone
+    // constant does not exist before API 31.
+    private val ringingForegroundServiceType: Int?
         get() =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
+            } else {
+                null
+            }
+
+    private val activeCallForegroundServiceType: Int?
+        get() =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
             } else {
                 null
             }
@@ -246,16 +282,15 @@ class StandaloneCallService : Service() {
      * [android.app.Service.startForeground] requirement. Also called from
      * [handleIncomingCall] and [handleOutgoingCall] as a no-op guard once already promoted.
      *
-     * Uses [ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE] on API 31+ because this service
-     * is only active on devices that do NOT have [android.software.telecom], making the
-     * phone-call foreground type inappropriate. Microphone type is semantically correct for
-     * a service that manages audio call sessions.
+     * Promotes with [ringingForegroundServiceType] (phone call): this runs while the app may
+     * still be fully in the background (push-delivered incoming call), where the microphone
+     * type is not allowed since Android 14 - see the field comment.
      *
-     * On API 29-30 the microphone type flag did not exist; passing it to [startForeground]
-     * causes the framework to throw [IllegalArgumentException] because the flag is not
-     * recognised in that API level's manifest type validation. The 2-arg [startForeground]
-     * overload (no type) is used instead, which bypasses the type check entirely and is safe
-     * on all API levels below 31.
+     * A [SecurityException] here must not propagate: the service is (re)started by the system
+     * after a crash and the same throw repeats until ActivityManager kills the whole main
+     * process ("crashed too many times"), taking the Flutter engine and any in-flight app
+     * state with it. Degrade instead: log and stop the service (stopping before the 5-second
+     * window expires also avoids ForegroundServiceDidNotStartInTimeException).
      */
     private fun promoteToForeground() {
         if (isForeground) return
@@ -266,7 +301,13 @@ class StandaloneCallService : Service() {
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setOngoing(true)
                 .build()
-        startForegroundServiceCompat(this, NOTIFICATION_ID, placeholder, foregroundServiceType)
+        try {
+            startForegroundServiceCompat(this, NOTIFICATION_ID, placeholder, ringingForegroundServiceType)
+        } catch (e: SecurityException) {
+            Log.e(TAG, "promoteToForeground: startForeground rejected, stopping service to avoid a crash loop", e)
+            stopSelf()
+            return
+        }
         isForeground = true
     }
 
@@ -309,7 +350,9 @@ class StandaloneCallService : Service() {
             StandaloneIncomingCallNotificationBuilder()
                 .apply { setCallMetaData(metadata) }
                 .build()
-        startForegroundServiceCompat(this, NOTIFICATION_ID, notification, foregroundServiceType)
+        // Still the ringing phase - the app may be in the background, so the type must stay
+        // phone-call only (same restriction as in promoteToForeground).
+        startForegroundServiceCompat(this, NOTIFICATION_ID, notification, ringingForegroundServiceType)
     }
 
     /**
@@ -324,7 +367,18 @@ class StandaloneCallService : Service() {
             StandaloneActiveCallNotificationBuilder()
                 .apply { setCallMetaData(metadata) }
                 .build()
-        startForegroundServiceCompat(this, NOTIFICATION_ID, notification, foregroundServiceType)
+        // The call is answered: re-promote with PHONE_CALL | MICROPHONE so microphone access
+        // survives the app going to background mid-call. The answer flow guarantees a visible
+        // activity at this point, which makes adding the restricted microphone type legal on
+        // Android 14+. If a race still leaves the app ineligible (SecurityException), fall back
+        // to the phone-call type: the call proceeds, the microphone works while the app is in
+        // the foreground, only background microphone access is lost.
+        try {
+            startForegroundServiceCompat(this, NOTIFICATION_ID, notification, activeCallForegroundServiceType)
+        } catch (e: SecurityException) {
+            Log.w(TAG, "showActiveCallNotification: microphone type rejected, falling back to phone-call type", e)
+            startForegroundServiceCompat(this, NOTIFICATION_ID, notification, ringingForegroundServiceType)
+        }
     }
 
     private fun handleOutgoingCall(metadata: CallMetadata) {
