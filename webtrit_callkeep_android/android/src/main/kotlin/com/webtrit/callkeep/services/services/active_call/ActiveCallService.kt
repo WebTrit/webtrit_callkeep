@@ -42,7 +42,7 @@ class ActiveCallService : Service() {
 
         callsMetadata =
             intent
-                ?.parcelableArrayList<Bundle>("metadata")
+                ?.parcelableArrayList<Bundle>(EXTRA_CALLS_METADATA)
                 ?.map { CallMetadata.fromBundle(it) }
                 ?.toMutableList() ?: mutableListOf()
 
@@ -88,12 +88,7 @@ class ActiveCallService : Service() {
             // this service is still foreground the startService toward the connection services
             // is exempt from background-start restrictions.
             Log.w(TAG, "onStartCommand: no calls metadata (null-intent restart), tearing down and stopping self")
-            CallkeepCore.instance.tearDownService()
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            // stopSelf(startId), not stopSelf(): a newer start with real metadata may already
-            // be queued behind this one (the recovering app re-posting its call list), and an
-            // unconditional stop would cancel it together with its foreground notification.
-            stopSelf(startId)
+            tearDownAndStop(startId)
             return START_NOT_STICKY
         }
 
@@ -112,14 +107,22 @@ class ActiveCallService : Service() {
             CallkeepCore.instance.startHungUpCall(call)
         } else {
             // Hang up tapped on a notification with no known calls (re-posted by a null-intent
-            // restart). tearDownService only tears down the connection services and does not
-            // stop this one, so the notification has to be removed here. stopSelf(startId)
-            // keeps a newer queued start with real metadata alive.
+            // restart).
             Log.w(TAG, "hungUpCall: no calls metadata, tearing down and stopping self")
-            CallkeepCore.instance.tearDownService()
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf(startId)
+            tearDownAndStop(startId)
         }
+    }
+
+    // Tears down the connection services (a call leg may have survived in :callkeep_core),
+    // removes the notification and stops this instance. tearDownService only tears down the
+    // connection services and does not stop this one, so the notification has to be removed
+    // here. stopSelf(startId), not stopSelf(): a newer start with real metadata may already
+    // be queued behind the current command (the recovering app re-posting its call list), and
+    // an unconditional stop would cancel it together with its foreground notification.
+    private fun tearDownAndStop(startId: Int) {
+        CallkeepCore.instance.tearDownService()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf(startId)
     }
 
     private fun getForegroundServiceTypes(callsMetadata: List<CallMetadata>): Int? =
@@ -162,6 +165,10 @@ class ActiveCallService : Service() {
     }
 
     companion object {
+        // Intent extra carrying the ArrayList<Bundle> of active calls; the writing side is
+        // NotificationManager.upsertActiveCallsService.
+        const val EXTRA_CALLS_METADATA = "metadata"
+
         private const val TAG = "ActiveCallService"
     }
 }

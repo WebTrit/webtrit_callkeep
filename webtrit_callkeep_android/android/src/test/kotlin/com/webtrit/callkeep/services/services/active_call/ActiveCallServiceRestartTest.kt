@@ -43,7 +43,7 @@ class ActiveCallServiceRestartTest {
     private fun metadataIntent(vararg callIds: String): Intent =
         Intent(context, ActiveCallService::class.java).apply {
             putParcelableArrayListExtra(
-                "metadata",
+                ActiveCallService.EXTRA_CALLS_METADATA,
                 ArrayList<Bundle>(callIds.map { CallMetadata(callId = it).toBundle() }),
             )
         }
@@ -54,6 +54,13 @@ class ActiveCallServiceRestartTest {
             metadata?.toBundle()?.let { putExtras(it) }
         }
 
+    private fun assertStoppedAndNotificationRemoved(service: ActiveCallService) {
+        val shadow = shadowOf(service)
+        assertTrue("service must stop itself", shadow.isStoppedBySelf)
+        assertTrue("foreground must be stopped", shadow.isForegroundStopped)
+        assertTrue("notification must be removed", shadow.notificationShouldRemoved)
+    }
+
     @Test
     fun `null-intent restart stops self and removes the notification`() {
         val service = buildService()
@@ -61,10 +68,7 @@ class ActiveCallServiceRestartTest {
         val result = service.onStartCommand(null, 0, 1)
 
         assertEquals(Service.START_NOT_STICKY, result)
-        val shadow = shadowOf(service)
-        assertTrue("service must stop itself", shadow.isStoppedBySelf)
-        assertTrue("foreground must be stopped", shadow.isForegroundStopped)
-        assertTrue("notification must be removed", shadow.notificationShouldRemoved)
+        assertStoppedAndNotificationRemoved(service)
     }
 
     @Test
@@ -74,10 +78,7 @@ class ActiveCallServiceRestartTest {
         val result = service.onStartCommand(metadataIntent(), 0, 1)
 
         assertEquals(Service.START_NOT_STICKY, result)
-        val shadow = shadowOf(service)
-        assertTrue(shadow.isStoppedBySelf)
-        assertTrue(shadow.isForegroundStopped)
-        assertTrue(shadow.notificationShouldRemoved)
+        assertStoppedAndNotificationRemoved(service)
     }
 
     @Test
@@ -102,10 +103,7 @@ class ActiveCallServiceRestartTest {
         val result = service.onStartCommand(declineIntent(), 0, 1)
 
         assertEquals(Service.START_NOT_STICKY, result)
-        val shadow = shadowOf(service)
-        assertTrue("service must stop itself", shadow.isStoppedBySelf)
-        assertTrue("foreground must be stopped", shadow.isForegroundStopped)
-        assertTrue("notification must be removed", shadow.notificationShouldRemoved)
+        assertStoppedAndNotificationRemoved(service)
     }
 
     @Test
