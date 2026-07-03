@@ -35,7 +35,7 @@ class ActiveCallService : Service() {
     ): Int {
         // Handle the hangup action from the notification
         if (NotificationAction.Decline.action == intent?.action) {
-            hungUpCall()
+            hungUpCall(intent.extras?.let(CallMetadata::fromBundleOrNull))
 
             return START_NOT_STICKY
         }
@@ -97,8 +97,11 @@ class ActiveCallService : Service() {
         return START_STICKY
     }
 
-    private fun hungUpCall() {
-        val call = callsMetadata.firstOrNull()
+    private fun hungUpCall(intentMetadata: CallMetadata?) {
+        // The Decline PendingIntent carries the tapped call's bundle in its extras. When the tap
+        // creates a fresh service instance (process death cleared callsMetadata), that is the
+        // only way left to hang up the specific call instead of tearing everything down.
+        val call = callsMetadata.firstOrNull() ?: intentMetadata
         if (call != null) {
             CallkeepCore.instance.startHungUpCall(call)
         } else {

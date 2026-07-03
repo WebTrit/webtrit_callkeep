@@ -48,9 +48,10 @@ class ActiveCallServiceRestartTest {
             )
         }
 
-    private fun declineIntent(): Intent =
+    private fun declineIntent(metadata: CallMetadata? = null): Intent =
         Intent(context, ActiveCallService::class.java).apply {
             action = NotificationAction.Decline.action
+            metadata?.toBundle()?.let { putExtras(it) }
         }
 
     @Test
@@ -105,6 +106,22 @@ class ActiveCallServiceRestartTest {
         assertTrue("service must stop itself", shadow.isStoppedBySelf)
         assertTrue("foreground must be stopped", shadow.isForegroundStopped)
         assertTrue("notification must be removed", shadow.notificationShouldRemoved)
+    }
+
+    @Test
+    fun `hang up with metadata only in the intent extras hangs up that call and keeps the service`() {
+        // Fresh instance created by the notification's Decline PendingIntent after process
+        // death: the callsMetadata field is empty, but the intent extras carry the tapped
+        // call's bundle (getHungUpCallIntent puts it there). The hangup must be routed to
+        // that call instead of falling into the tear-everything-down branch.
+        val service = buildService()
+
+        val result = service.onStartCommand(declineIntent(CallMetadata(callId = "call-1")), 0, 1)
+
+        assertEquals(Service.START_NOT_STICKY, result)
+        val shadow = shadowOf(service)
+        assertFalse("hangup must be routed, not torn down", shadow.isStoppedBySelf)
+        assertFalse("no notification to remove on a fresh instance", shadow.isForegroundStopped)
     }
 
     @Test
