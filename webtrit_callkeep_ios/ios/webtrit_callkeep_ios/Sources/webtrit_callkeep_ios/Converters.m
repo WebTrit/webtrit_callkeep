@@ -162,6 +162,7 @@ extern CXHandleType WTPHandleTypeEnumToCallKit(WTPHandleTypeEnum value) {
   id supportsVideo = dict[@"supportsVideo"];
   id includesCallsInRecents = dict[@"includesCallsInRecents"];
   id driveIdleTimerDisabled = dict[@"driveIdleTimerDisabled"];
+  id callWaitingToneOwnCallsOnly = dict[@"callWaitingToneOwnCallsOnly"];
 
   return [WTPIOSOptions makeWithLocalizedName:localizedName
                                 ringtoneSound:(ringtoneSound == [NSNull null]) ? nil : ringtoneSound
@@ -174,7 +175,8 @@ extern CXHandleType WTPHandleTypeEnumToCallKit(WTPHandleTypeEnum value) {
                supportsHandleTypeEmailAddress:(supportsHandleTypeEmailAddress == [NSNull null]) ? nil : supportsHandleTypeEmailAddress
                                 supportsVideo:[supportsVideo boolValue]
                        includesCallsInRecents:[includesCallsInRecents boolValue]
-                       driveIdleTimerDisabled:[driveIdleTimerDisabled boolValue]];
+                       driveIdleTimerDisabled:[driveIdleTimerDisabled boolValue]
+                  callWaitingToneOwnCallsOnly:(callWaitingToneOwnCallsOnly == [NSNull null]) ? nil : callWaitingToneOwnCallsOnly];
 }
 - (NSDictionary *)toMap {
   return @{
@@ -190,6 +192,7 @@ extern CXHandleType WTPHandleTypeEnumToCallKit(WTPHandleTypeEnum value) {
     @"supportsVideo": @(self.supportsVideo),
     @"includesCallsInRecents": @(self.includesCallsInRecents),
     @"driveIdleTimerDisabled": @(self.driveIdleTimerDisabled),
+    @"callWaitingToneOwnCallsOnly": (self.callWaitingToneOwnCallsOnly ?: [NSNull null]),
   };
 }
 - (CXProviderConfiguration *)toCallKitWithRegistrar:(NSObject<FlutterPluginRegistrar> *)registrar {
