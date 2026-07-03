@@ -80,7 +80,15 @@ class ActiveCallService : Service() {
             // process was killed. NotificationManager tracks active calls in its own static
             // list, so nothing will ever stop this orphaned instance - an ongoing notification
             // left here would be undismissable until the user force-stops the app.
-            Log.w(TAG, "onStartCommand: no calls metadata (null-intent restart), stopping self")
+            //
+            // A call leg may have survived in :callkeep_core (Telecom keeps that process alive
+            // via its own binding), and this restart is the last signal the main process gets
+            // about it: tear the connection services down so the device is not left stuck in a
+            // zombie Telecom call with no UI to end it. Must run before stopForeground - while
+            // this service is still foreground the startService toward the connection services
+            // is exempt from background-start restrictions.
+            Log.w(TAG, "onStartCommand: no calls metadata (null-intent restart), tearing down and stopping self")
+            CallkeepCore.instance.tearDownService()
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
             return START_NOT_STICKY

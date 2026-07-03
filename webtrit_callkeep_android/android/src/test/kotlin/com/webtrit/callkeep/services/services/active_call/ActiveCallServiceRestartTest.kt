@@ -29,6 +29,7 @@ import org.robolectric.annotation.Config
  * cannot be swiped away, and the Hang up action has no visible effect.
  *
  * The guard: after satisfying the startForeground contract, an instance with no calls
+ * tears down the connection services (a call leg may have survived in :callkeep_core),
  * removes its notification and stops itself; the empty branch of hungUpCall does the same
  * on top of the existing tearDownService fallback.
  */
