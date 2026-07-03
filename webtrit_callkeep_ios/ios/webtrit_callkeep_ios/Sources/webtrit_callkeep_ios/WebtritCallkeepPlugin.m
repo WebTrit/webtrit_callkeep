@@ -9,10 +9,11 @@
 #import "Generated.h"
 #import "Converters.h"
 #import "NSUUID+v5.h"
+#import "CallWaitingTonePlayer.h"
 
 static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
 
-@interface WebtritCallkeepPlugin ()<PKPushRegistryDelegate, CXProviderDelegate, WTPPushRegistryHostApi, WTPHostApi, WTPHostSoundApi>
+@interface WebtritCallkeepPlugin ()<PKPushRegistryDelegate, CXProviderDelegate, CXCallObserverDelegate, WTPPushRegistryHostApi, WTPHostApi, WTPHostSoundApi>
 @end
 
 @implementation WebtritCallkeepPlugin {
@@ -22,6 +23,7 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   WTPDelegateFlutterApi *_delegateFlutterApi;
   CXProvider *_provider;
   AVAudioPlayer *_ringback;
+  CallWaitingTonePlayer *_callWaitingTone;
   CXCallController *_callController;
   BOOL _driveIdleTimerDisabled;
 }
@@ -46,6 +48,9 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
     _delegateFlutterApi = [[WTPDelegateFlutterApi alloc] initWithBinaryMessenger:binaryMessenger];
     SetUpWTPHostApi(binaryMessenger, self);
     SetUpWTPHostSoundApi(binaryMessenger, self);
+    // Created eagerly: it has to observe the call engine's lifecycle notifications
+    // from the very first call, not from the first play request.
+    _callWaitingTone = [[CallWaitingTonePlayer alloc] init];
   }
   return self;
 }
@@ -88,7 +93,8 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
     [_provider setDelegate:self queue:nil];
 
     _callController = [[CXCallController alloc] init];
-      
+    [_callController.callObserver setDelegate:self queue:dispatch_get_main_queue()];
+
     if (iosOptions.ringbackSound != nil) {
       _ringback = [self createRingbackPlayer:iosOptions.ringbackSound];
     }
@@ -144,6 +150,7 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
     }
     if (_callController == nil) {
       _callController = [[CXCallController alloc] init];
+      [_callController.callObserver setDelegate:self queue:dispatch_get_main_queue()];
     }
     
     if (_ringback == nil && iosOptions.ringbackSound != nil) {
@@ -164,8 +171,10 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   NSLog(@"[Callkeep][tearDown]");
 #endif
   if (_callController != nil) {
+    [_callController.callObserver setDelegate:nil queue:nil];
     _callController = nil;
   }
+  [_callWaitingTone stop];
   if (_provider != nil) {
     [_provider invalidate];
     _provider = nil;
@@ -449,9 +458,9 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
     completion(nil);
 }
 
-- (void)stopRingbackSound:(void (^)(FlutterError * _Nullable))completion{ 
+- (void)stopRingbackSound:(void (^)(FlutterError * _Nullable))completion{
     if(_ringback != nil)[_ringback pause];
-    
+
     completion(nil);
 }
 
@@ -675,10 +684,44 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
 
 #pragma mark - CXProviderDelegate
 
+#pragma mark - CXCallObserverDelegate
+
+- (void)callObserver:(CXCallObserver *)callObserver callChanged:(CXCall *)call {
+  [self syncCallWaitingTone:callObserver];
+}
+
+/// Mirrors the Android connection-service behavior: a soft call-waiting beep plays
+/// while one call is connected (or held) and another incoming call is ringing, and
+/// stops as soon as that state ends (answered, declined, hung up on either side).
+- (void)syncCallWaitingTone:(CXCallObserver *)callObserver {
+  BOOL hasConnected = NO;
+  BOOL hasRingingIncoming = NO;
+  for (CXCall *call in callObserver.calls) {
+    if (call.hasEnded) {
+      continue;
+    }
+    if (call.hasConnected) {
+      hasConnected = YES;
+    } else if (!call.outgoing) {
+      hasRingingIncoming = YES;
+    }
+  }
+#ifdef DEBUG
+  NSLog(@"[CallWaitingTone] sync: calls=%lu connected=%d ringingIncoming=%d",
+        (unsigned long)callObserver.calls.count, hasConnected, hasRingingIncoming);
+#endif
+  if (hasConnected && hasRingingIncoming) {
+    [_callWaitingTone play];
+  } else {
+    [_callWaitingTone stop];
+  }
+}
+
 - (void)providerDidReset:(CXProvider *)provider {
 #ifdef DEBUG
   NSLog(@"[Callkeep][CXProviderDelegate][providerDidReset:]");
 #endif
+  [_callWaitingTone stop];
   [_delegateFlutterApi didReset:^(FlutterError *error) {}];
 }
 
@@ -795,6 +838,9 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
 #ifdef DEBUG
   NSLog(@"[CallKeep][CXProviderDelegate][provider:didActivateAudioSession:]");
 #endif
+  // Pre-warm the call-waiting tone player before the Dart side starts the WebRTC
+  // voice-processing engine (playback sources created after it are near-silent).
+  [_callWaitingTone onAudioSessionActivated];
   [_delegateFlutterApi didActivateAudioSession:^(FlutterError *error) {}];
 }
 
@@ -802,6 +848,7 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
 #ifdef DEBUG
   NSLog(@"[CallKeep][CXProviderDelegate][provider:didDeactivateAudioSession:]");
 #endif
+  [_callWaitingTone onAudioSessionDeactivated];
   [_delegateFlutterApi didDeactivateAudioSession:^(FlutterError *error) {}];
 }
 
