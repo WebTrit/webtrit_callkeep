@@ -193,6 +193,18 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('openBackgroundActivityStartSettings() has not been implemented.');
   }
 
+  /// Status of the OEM "show on lock screen" capability (MIUI/HyperOS), which
+  /// gates showing the incoming-call UI over the lock screen. Best-effort;
+  /// reports granted where it does not apply.
+  Future<CallkeepSpecialPermissionStatus> getShowWhenLockedPermissionStatus() {
+    throw UnimplementedError('getShowWhenLockedPermissionStatus() has not been implemented.');
+  }
+
+  /// Open the OEM permissions screen hosting the "show on lock screen" toggle.
+  Future<void> openShowWhenLockedSettings() {
+    throw UnimplementedError('openShowWhenLockedSettings() has not been implemented.');
+  }
+
   ///  Open the common settings screen
   Future<void> openSettings() {
     throw UnimplementedError('openSettings() has not been implemented.');

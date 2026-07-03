@@ -277,6 +277,18 @@ abstract class PHostPermissionsApi {
   @async
   void openBackgroundActivityStartSettings();
 
+  /// Status of the OEM "display pop-up windows while running in background"
+  /// MIUI/HyperOS `OP_SHOW_WHEN_LOCKED` capability, which gates showing the
+  /// incoming-call Activity over the lock screen. Best-effort: reports
+  /// granted on devices where the capability does not apply.
+  @async
+  PSpecialPermissionStatusTypeEnum getShowWhenLockedPermissionStatus();
+
+  /// Opens the OEM permissions screen that hosts the "show on lock screen"
+  /// toggle, with a fallback to app settings.
+  @async
+  void openShowWhenLockedSettings();
+
   @async
   void openSettings();
 

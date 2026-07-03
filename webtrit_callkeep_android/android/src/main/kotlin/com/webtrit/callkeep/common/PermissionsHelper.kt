@@ -123,6 +123,76 @@ class PermissionsHelper(
         launchSettings()
     }
 
+    /**
+     * Best-effort check of the MIUI/HyperOS "show on lock screen" capability
+     * (OP_SHOW_WHEN_LOCKED). There is no public API for it, so this reads the
+     * hidden AppOps op via reflection.
+     *
+     * @return `true` granted (or the capability does not apply on this device),
+     *   `false` explicitly denied, `null` when the state cannot be determined
+     *   (op not readable on this build). Callers should treat `null` as unknown
+     *   rather than denied, to avoid prompting users who may already have granted
+     *   it on builds where the hidden op is inaccessible.
+     */
+    fun isShowWhenLockedGranted(): Boolean? {
+        if (!isXiaomiFamily()) return true
+        return try {
+            val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+            val method =
+                android.app.AppOpsManager::class.java.getMethod(
+                    "checkOpNoThrow",
+                    Int::class.javaPrimitiveType,
+                    Int::class.javaPrimitiveType,
+                    String::class.java,
+                )
+            val mode =
+                method.invoke(appOps, OP_SHOW_WHEN_LOCKED, context.applicationInfo.uid, context.packageName) as Int
+            // MODE_DEFAULT/MODE_FOREGROUND are effectively allowed on MIUI; only an
+            // explicit MODE_IGNORED/MODE_ERRORED denies showing over the lock screen.
+            when (mode) {
+                android.app.AppOpsManager.MODE_ALLOWED,
+                android.app.AppOpsManager.MODE_DEFAULT,
+                android.app.AppOpsManager.MODE_FOREGROUND,
+                -> true
+
+                else -> false
+            }
+        } catch (e: Throwable) {
+            Log.w(TAG, "Unable to read show-when-locked AppOp; reporting unknown: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * Opens the MIUI/HyperOS "Other permissions" editor where the
+     * "show on lock screen" toggle lives. Falls back to app details settings,
+     * then to the common settings.
+     */
+    fun launchShowWhenLockedSettings() {
+        val pkg = context.packageName
+        val candidates =
+            listOf(
+                Intent()
+                    .setClassName("com.miui.securitycenter", "com.miui.permcenter.permissions.PermissionsEditorActivity")
+                    .putExtra("extra_pkgname", pkg),
+                Intent("miui.intent.action.APP_PERM_EDITOR").putExtra("extra_pkgname", pkg),
+                Intent(
+                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    android.net.Uri.fromParts("package", pkg, null),
+                ),
+            )
+        for (intent in candidates) {
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            try {
+                context.startActivity(intent)
+                return
+            } catch (e: Exception) {
+                Log.w(TAG, "Show-when-locked settings intent not available: ${e.message}")
+            }
+        }
+        launchSettings()
+    }
+
     fun hasCameraPermission(): Boolean {
         val cameraPermission = context.checkSelfPermission(Manifest.permission.CAMERA)
         return cameraPermission == PackageManager.PERMISSION_GRANTED
@@ -149,5 +219,8 @@ class PermissionsHelper(
 
         // MIUI/HyperOS AppOps op for "display pop-up windows while running in background".
         private const val OP_BACKGROUND_START_ACTIVITY = 10021
+
+        // MIUI/HyperOS AppOps op for "show on lock screen".
+        private const val OP_SHOW_WHEN_LOCKED = 10020
     }
 }

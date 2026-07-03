@@ -85,6 +85,39 @@ class WebtritCallkeepPermissions {
     return platform.openBackgroundActivityStartSettings();
   }
 
+  /// Status of the OEM "show on lock screen" capability (MIUI/HyperOS), which
+  /// gates showing the incoming-call UI over the lock screen.
+  ///
+  /// On non-Android platforms and web, returns
+  /// [CallkeepSpecialPermissionStatus.granted] (the capability does not apply).
+  Future<CallkeepSpecialPermissionStatus> getShowWhenLockedPermissionStatus() {
+    if (kIsWeb) {
+      return Future.value(CallkeepSpecialPermissionStatus.granted);
+    }
+
+    if (!Platform.isAndroid) {
+      return Future.value(CallkeepSpecialPermissionStatus.granted);
+    }
+
+    return platform.getShowWhenLockedPermissionStatus();
+  }
+
+  /// Attempts to open the OEM permissions screen hosting the "show on lock
+  /// screen" toggle.
+  ///
+  /// On non-Android platforms and web, this call does nothing.
+  Future<void> openShowWhenLockedSettings() {
+    if (kIsWeb) {
+      return Future.value();
+    }
+
+    if (!Platform.isAndroid) {
+      return Future.value();
+    }
+
+    return platform.openShowWhenLockedSettings();
+  }
+
   /// Attempts to open the system settings screen for managing the app's permissions.
   // TODO(Serdun): Add support for iOS.
   Future<void> openSettings() {

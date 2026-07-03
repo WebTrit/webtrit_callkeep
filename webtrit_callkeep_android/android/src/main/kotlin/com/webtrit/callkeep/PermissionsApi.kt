@@ -82,6 +82,34 @@ class PermissionsApi(
     }
 
     /**
+     * Reports the status of the OEM "show on lock screen" capability
+     * (MIUI/HyperOS), which gates showing the incoming call UI over the lock
+     * screen. Best-effort; reports granted where the capability does not apply.
+     */
+    override fun getShowWhenLockedPermissionStatus(callback: (Result<PSpecialPermissionStatusTypeEnum>) -> Unit) {
+        val status =
+            when (PermissionsHelper(context).isShowWhenLockedGranted()) {
+                true -> PSpecialPermissionStatusTypeEnum.GRANTED
+                false -> PSpecialPermissionStatusTypeEnum.DENIED
+                null -> PSpecialPermissionStatusTypeEnum.UNKNOWN
+            }
+        callback.invoke(Result.success(status))
+    }
+
+    /**
+     * Opens the OEM permissions screen hosting the "show on lock screen"
+     * toggle, with a fallback to app settings.
+     */
+    override fun openShowWhenLockedSettings(callback: (Result<Unit>) -> Unit) {
+        try {
+            PermissionsHelper(context).launchShowWhenLockedSettings()
+            callback.invoke(Result.success(Unit))
+        } catch (e: Exception) {
+            callback.invoke(Result.failure(e))
+        }
+    }
+
+    /**
      * Attempts to open the common system settings screen
      */
     override fun openSettings(callback: (Result<Unit>) -> Unit) {
