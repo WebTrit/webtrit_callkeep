@@ -2,10 +2,12 @@
 
 // AVAudioPlayer-based call-waiting tone - see the header for the VP-timing mitigations.
 
+// Mirrors the Android call-waiting tone: ToneGenerator TONE_SUP_CALL_WAITING is a
+// 440 Hz, 300 ms beep, and the connection service re-fires it every 3 seconds -
+// so both platforms produce a single 440 Hz beep with a 3 s cadence.
 static const double kToneFrequencyHz = 440.0;
-static const double kToneOnSec = 0.20;
-static const double kToneGapSec = 0.15;
-static const double kToneTailSec = 2.0;
+static const double kToneOnSec = 0.30;
+static const double kToneTailSec = 2.70;
 static const double kSampleRate = 16000.0;
 static const float kAmplitude = 0.4f;
 
@@ -103,21 +105,19 @@ static const float kAmplitude = 0.4f;
   _player.volume = 1.0;
 }
 
-// 440 Hz "beep-beep" then ~2 s silence, looped: 16-bit PCM mono WAV built in memory.
+// A single 440 Hz beep then silence to a 3 s loop period: 16-bit PCM mono WAV in memory.
 - (NSData *)toneWavData {
   const uint32_t sr = (uint32_t)kSampleRate;
   const uint32_t toneN = (uint32_t)(kSampleRate * kToneOnSec);
-  const uint32_t gapN = (uint32_t)(kSampleRate * kToneGapSec);
   const uint32_t tailN = (uint32_t)(kSampleRate * kToneTailSec);
-  const uint32_t total = toneN + gapN + toneN + tailN;
+  const uint32_t total = toneN + tailN;
 
   NSMutableData *pcm = [NSMutableData dataWithLength:total * sizeof(int16_t)];
   int16_t *samples = (int16_t *)pcm.mutableBytes;
   for (uint32_t i = 0; i < toneN; i++) {
     samples[i] = (int16_t)(kAmplitude * 32767.0f * sinf(2.0f * (float)M_PI * kToneFrequencyHz * i / sr));
   }
-  // The gap and the tail are zero-initialized; the second beep is a copy of the first.
-  memcpy(samples + toneN + gapN, samples, toneN * sizeof(int16_t));
+  // The tail is zero-initialized.
 
   const uint32_t dataLen = (uint32_t)pcm.length;
   const uint32_t byteRate = sr * 2;  // mono, 16-bit
