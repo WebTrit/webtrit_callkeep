@@ -35,7 +35,7 @@ class ActiveCallService : Service() {
     ): Int {
         // Handle the hangup action from the notification
         if (NotificationAction.Decline.action == intent?.action) {
-            hungUpCall(intent.extras?.let(CallMetadata::fromBundleOrNull))
+            hungUpCall(intent.extras?.let(CallMetadata::fromBundleOrNull), startId)
 
             return START_NOT_STICKY
         }
@@ -90,14 +90,20 @@ class ActiveCallService : Service() {
             Log.w(TAG, "onStartCommand: no calls metadata (null-intent restart), tearing down and stopping self")
             CallkeepCore.instance.tearDownService()
             stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
+            // stopSelf(startId), not stopSelf(): a newer start with real metadata may already
+            // be queued behind this one (the recovering app re-posting its call list), and an
+            // unconditional stop would cancel it together with its foreground notification.
+            stopSelf(startId)
             return START_NOT_STICKY
         }
 
         return START_STICKY
     }
 
-    private fun hungUpCall(intentMetadata: CallMetadata?) {
+    private fun hungUpCall(
+        intentMetadata: CallMetadata?,
+        startId: Int,
+    ) {
         // The Decline PendingIntent carries the tapped call's bundle in its extras. When the tap
         // creates a fresh service instance (process death cleared callsMetadata), that is the
         // only way left to hang up the specific call instead of tearing everything down.
@@ -107,11 +113,12 @@ class ActiveCallService : Service() {
         } else {
             // Hang up tapped on a notification with no known calls (re-posted by a null-intent
             // restart). tearDownService only tears down the connection services and does not
-            // stop this one, so the notification has to be removed here.
+            // stop this one, so the notification has to be removed here. stopSelf(startId)
+            // keeps a newer queued start with real metadata alive.
             Log.w(TAG, "hungUpCall: no calls metadata, tearing down and stopping self")
             CallkeepCore.instance.tearDownService()
             stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
+            stopSelf(startId)
         }
     }
 
