@@ -52,12 +52,28 @@ class ActiveCallService : Service() {
         // startForeground must be called even when there are no calls to show: the service may
         // have been (re)started as foreground and skipping the promotion would kill the process
         // with ForegroundServiceDidNotStartInTimeException.
-        startForegroundServiceCompat(
-            this,
-            ActiveCallNotificationBuilder.NOTIFICATION_ID,
-            notification,
-            getForegroundServiceTypes(callsMetadata),
-        )
+        //
+        // On Android 14+ the MICROPHONE type is rejected with SecurityException when the
+        // promotion happens from the background - which is exactly the START_STICKY restart
+        // after a process kill. Fall back to the phone-call type (not while-in-use restricted)
+        // so the promotion, and the empty-metadata guard below, run instead of crash-looping
+        // the restart.
+        try {
+            startForegroundServiceCompat(
+                this,
+                ActiveCallNotificationBuilder.NOTIFICATION_ID,
+                notification,
+                getForegroundServiceTypes(callsMetadata),
+            )
+        } catch (e: SecurityException) {
+            Log.w(TAG, "onStartCommand: typed promotion rejected, falling back to phone-call type", e)
+            startForegroundServiceCompat(
+                this,
+                ActiveCallNotificationBuilder.NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL,
+            )
+        }
 
         if (callsMetadata.isEmpty()) {
             // Empty metadata means a START_STICKY restart delivered a null intent after the
