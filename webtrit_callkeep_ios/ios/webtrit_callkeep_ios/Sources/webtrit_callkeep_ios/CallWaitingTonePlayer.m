@@ -11,14 +11,12 @@ static const float kAmplitude = 0.4f;
 
 @implementation CallWaitingTonePlayer {
   AVAudioPlayer *_player;
-  BOOL _active;
 }
 
 #pragma mark - Public
 
 - (void)play {
   @synchronized(self) {
-    _active = YES;
     [self ensurePlayer];
     [self startPlaybackLocked];
   }
@@ -26,11 +24,7 @@ static const float kAmplitude = 0.4f;
 
 - (void)stop {
   @synchronized(self) {
-    _active = NO;
-    if (_player != nil && _player.isPlaying) {
-      [_player stop];
-      _player.currentTime = 0;
-    }
+    [self haltPlaybackLocked];
   }
 }
 
@@ -38,21 +32,19 @@ static const float kAmplitude = 0.4f;
   @synchronized(self) {
     // Pre-warm BEFORE the app starts WebRTC's voice-processing engine (this callback
     // is delivered natively first; the engine starts only after the Dart roundtrip).
+    // Playback itself is never resumed from here: whether the tone should play is
+    // decided solely by the owner's call-state sync.
     [self ensurePlayer];
     [_player prepareToPlay];
-    NSLog(@"[CallWaitingTone] pre-warmed on session activation (active=%d)", _active);
-    if (_active) {
-      [self startPlaybackLocked];
-    }
+#ifdef DEBUG
+    NSLog(@"[CallWaitingTone] pre-warmed on session activation");
+#endif
   }
 }
 
 - (void)onAudioSessionDeactivated {
   @synchronized(self) {
-    if (_player != nil && _player.isPlaying) {
-      [_player stop];
-      _player.currentTime = 0;
-    }
+    [self haltPlaybackLocked];
   }
 }
 
@@ -60,8 +52,13 @@ static const float kAmplitude = 0.4f;
 
 - (void)startPlaybackLocked {
   if (_player == nil) {
+#ifdef DEBUG
     NSLog(@"[CallWaitingTone] no player - tone skipped");
+#endif
     return;
+  }
+  if (_player.isPlaying) {
+    return;  // already looping; replaying would re-run the session re-assert for nothing
   }
   BOOL ok = [_player play];
   // Mitigation 2 (Apple forums 721535): sources started while voice processing runs play
@@ -72,11 +69,20 @@ static const float kAmplitude = 0.4f;
   BOOL reasserted = [session setCategory:session.category
                              withOptions:session.categoryOptions
                                    error:&error];
-  if (!reasserted || error != nil) {
-    NSLog(@"[CallWaitingTone] category re-assert failed: %@", error);
-  }
+#ifdef DEBUG
   NSLog(@"[CallWaitingTone] play=%d reassert=%d category=%@ mode=%@",
         ok, reasserted, session.category, session.mode);
+#else
+  (void)ok;
+  (void)reasserted;
+#endif
+}
+
+- (void)haltPlaybackLocked {
+  if (_player != nil && _player.isPlaying) {
+    [_player stop];
+    _player.currentTime = 0;
+  }
 }
 
 - (void)ensurePlayer {
@@ -87,7 +93,9 @@ static const float kAmplitude = 0.4f;
   // initWithData (not a temp file: contents-of-URL on a temp WAV returned nil on device).
   _player = [[AVAudioPlayer alloc] initWithData:[self toneWavData] error:&error];
   if (_player == nil || error != nil) {
+#ifdef DEBUG
     NSLog(@"[CallWaitingTone] player init failed: %@", error);
+#endif
     _player = nil;
     return;
   }
@@ -105,14 +113,11 @@ static const float kAmplitude = 0.4f;
 
   NSMutableData *pcm = [NSMutableData dataWithLength:total * sizeof(int16_t)];
   int16_t *samples = (int16_t *)pcm.mutableBytes;
-  uint32_t idx = 0;
-  for (uint32_t i = 0; i < toneN; i++, idx++) {
-    samples[idx] = (int16_t)(kAmplitude * 32767.0f * sinf(2.0f * (float)M_PI * kToneFrequencyHz * i / sr));
+  for (uint32_t i = 0; i < toneN; i++) {
+    samples[i] = (int16_t)(kAmplitude * 32767.0f * sinf(2.0f * (float)M_PI * kToneFrequencyHz * i / sr));
   }
-  idx += gapN;  // zero-initialized
-  for (uint32_t i = 0; i < toneN; i++, idx++) {
-    samples[(uint32_t)(toneN + gapN) + i] = (int16_t)(kAmplitude * 32767.0f * sinf(2.0f * (float)M_PI * kToneFrequencyHz * i / sr));
-  }
+  // The gap and the tail are zero-initialized; the second beep is a copy of the first.
+  memcpy(samples + toneN + gapN, samples, toneN * sizeof(int16_t));
 
   const uint32_t dataLen = (uint32_t)pcm.length;
   const uint32_t byteRate = sr * 2;  // mono, 16-bit

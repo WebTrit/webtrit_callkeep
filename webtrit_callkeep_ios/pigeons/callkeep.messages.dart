@@ -24,6 +24,7 @@ class PIOSOptions {
   late bool supportsVideo;
   late bool includesCallsInRecents;
   late bool driveIdleTimerDisabled;
+  late bool? callWaitingToneOwnCallsOnly;
 }
 
 class PAndroidOptions {
