@@ -49,7 +49,7 @@ Its responsibilities:
 - Looks up metadata from `ConnectionManager.getPendingMetadata(callId)`.
 - If metadata is not yet available (race condition), falls back to extracting from the `request`
   Bundle.
-- Calls `performEventHandle(DidPushIncomingCall, ...)` to notify the main process.
+- Calls `performEventHandle(IncomingConnectionReported, ...)` to notify the main process.
 - If `ConnectionManager.consumeAnswer(callId)` returns true (deferred answer), calls
   `connection.onAnswer()` immediately.
 
@@ -76,8 +76,8 @@ encoded as a string extra.
 | `TearDownConnections` | Call `hungUp()` on every `PhoneConnection`, then broadcast `TearDownComplete`      |
 | `ReserveAnswer`       | Store deferred answer for `callId` (call `ConnectionManager.reserveAnswer()`)      |
 | `CleanConnections`    | Clear all connections without hanging up                                           |
-| `SyncAudioState`      | Re-emit audio state for all active connections (hot-restart recovery)              |
-| `SyncConnectionState` | Re-fire `AnswerCall` broadcast for all answered connections (hot-restart recovery) |
+| `ReplayAudioState`      | Re-emit audio state for all active connections (hot-restart recovery)              |
+| `ReplayConnectionStates` | Re-fire `AnswerCall` broadcast for all answered connections (hot-restart recovery) |
 | `AnswerCall`          | Call `PhoneConnection.onAnswer()` for the specified call                           |
 | `DeclineCall`         | Call `PhoneConnection.onReject()`                                                  |
 | `HungUpCall`          | Call `PhoneConnection.onDisconnect()`                                              |

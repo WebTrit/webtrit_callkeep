@@ -10,6 +10,7 @@ import com.webtrit.callkeep.PCallkeepConnection
 import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.PIncomingCallErrorEnum
+import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
 
@@ -115,9 +116,16 @@ interface CallkeepCore {
 
     fun markAnswered(callId: String)
 
-    fun markHeld(
+    /**
+     * Mirror the authoritative connection [state] for [callId] (source of truth = the real
+     * android.telecom.Connection state via PhoneConnection.onStateChanged, or the StandaloneCallService
+     * transitions). Writes state UNCONDITIONALLY — it does NOT register the call and may be called
+     * before promote (state persists across addPending, which the cold-start adoption relies on).
+     * Ignores terminal DISCONNECTED (owned by [markTerminated]).
+     */
+    fun updateState(
         callId: String,
-        onHold: Boolean,
+        state: CallConnectionState,
     )
 
     fun markTerminated(callId: String)
@@ -152,9 +160,11 @@ interface CallkeepCore {
 
     fun markEndCallDispatched(callId: String): Boolean
 
-    fun markSignalingRegistered(callId: String)
+    /** See [ConnectionTracker.markEndedWithoutFlutterState]. */
+    fun markEndedWithoutFlutterState(callId: String)
 
-    fun consumeSignalingRegistered(callId: String): Boolean
+    /** See [ConnectionTracker.wasEndedWithoutFlutterState]. */
+    fun wasEndedWithoutFlutterState(callId: String): Boolean
 
     // -------------------------------------------------------------------------
     // Connection event receivers
@@ -286,21 +296,25 @@ interface CallkeepCore {
     fun sendCleanConnections()
 
     /**
-     * Sends [ServiceAction.SyncAudioState] to [PhoneConnectionService].
-     * The service re-emits audio device and mute state for all active connections back to the
-     * main process via broadcasts. Called from [ForegroundService.onDelegateSet] to restore
-     * Flutter audio UI after hot restart.
+     * Asks [PhoneConnectionService] to REPLAY the current audio state (device + mute) for all
+     * active connections back to the main process via broadcasts -- a one-way pull, not a two-way
+     * sync. Called from [ForegroundService.onDelegateSet] to restore the Flutter audio UI once a
+     * freshly attached delegate is ready (cold start / hot restart / warm re-attach). The sibling
+     * of [replayConnectionStates].
      */
-    fun sendSyncAudioState()
+    fun replayAudioState()
 
     /**
-     * Sends [ServiceAction.SyncConnectionState] to [PhoneConnectionService].
-     * The service re-fires [CallLifecycleEvent.AnswerCall] for every connection whose
-     * [PhoneConnection.hasAnswered] flag is true. Called from [ForegroundService.onCreate] so
-     * that connections answered before the main process started are reflected in
-     * [MainProcessConnectionTracker.connectionStates].
+     * Asks [PhoneConnectionService] to REPLAY the current connection lifecycle back to the main
+     * process, so a freshly (re)attached delegate is seeded with state it would otherwise have
+     * missed. This is a one-way pull (main -> `:callkeep_core` -> re-fired broadcasts), NOT a
+     * two-way sync: the live `:callkeep_core` connections are the source of truth and simply
+     * re-announce themselves. The service re-fires [CallLifecycleEvent.AnswerCall] for every
+     * connection whose [PhoneConnection.hasAnswered] flag is true. Called from
+     * [ForegroundService.onCreate] so that connections answered before the main process started
+     * are reflected in [MainProcessConnectionTracker.connectionStates] (cold-start race).
      */
-    fun sendSyncConnectionState()
+    fun replayConnectionStates()
 
     companion object {
         /**

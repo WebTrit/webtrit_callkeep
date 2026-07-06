@@ -3,19 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 
-// ---------------------------------------------------------------------------
-// Shared fixtures
-// ---------------------------------------------------------------------------
-
-const _options = CallkeepOptions(
-  ios: CallkeepIOSOptions(
-    localizedName: 'Integration Tests',
-    maximumCallGroups: 2,
-    maximumCallsPerCallGroup: 1,
-    supportedHandleTypes: {CallkeepHandleType.number},
-  ),
-  android: CallkeepAndroidOptions(),
-);
+import 'helpers/callkeep_test_helpers.dart';
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -30,7 +18,7 @@ void main() {
   setUp(() async {
     globalTearDownNeeded = true;
     callkeep = Callkeep();
-    await callkeep.setUp(_options);
+    await callkeep.setUp(kTestOptions);
   });
 
   tearDown(() async {
@@ -76,7 +64,7 @@ void main() {
       // First tearDown
       await callkeep.tearDown();
       // Re-setUp
-      await callkeep.setUp(_options);
+      await callkeep.setUp(kTestOptions);
       expect(await callkeep.isSetUp(), isTrue);
       // Second tearDown
       await callkeep.tearDown();
@@ -97,7 +85,7 @@ void main() {
       final events = <CallkeepStatus>[];
       final sub = callkeep.statusStream.listen(events.add);
 
-      await callkeep.setUp(_options);
+      await callkeep.setUp(kTestOptions);
 
       // Allow async event delivery before cancelling
       await Future.delayed(const Duration(milliseconds: 50));
@@ -138,7 +126,7 @@ void main() {
       final events = <CallkeepStatus>[];
       final sub = callkeep.statusStream.listen(events.add);
 
-      await callkeep.setUp(_options);
+      await callkeep.setUp(kTestOptions);
       await callkeep.tearDown();
       // Allow async event delivery before cancelling
       await Future.delayed(const Duration(milliseconds: 50));
@@ -182,7 +170,7 @@ void main() {
     testWidgets('currentStatus is uninitialized after re-tearDown in second cycle', (WidgetTester _) async {
       globalTearDownNeeded = false;
       await callkeep.tearDown();
-      await callkeep.setUp(_options);
+      await callkeep.setUp(kTestOptions);
       expect(callkeep.currentStatus, CallkeepStatus.active);
       await callkeep.tearDown();
       expect(callkeep.currentStatus, CallkeepStatus.uninitialized);
@@ -199,7 +187,7 @@ void main() {
       await callkeep.tearDown();
       expect(callkeep.currentStatus, CallkeepStatus.uninitialized);
 
-      await callkeep.setUp(_options);
+      await callkeep.setUp(kTestOptions);
       expect(callkeep.currentStatus, CallkeepStatus.active);
       await callkeep.tearDown();
     });
@@ -209,11 +197,11 @@ void main() {
 
       // Cycle 1
       await callkeep.tearDown();
-      await callkeep.setUp(_options);
+      await callkeep.setUp(kTestOptions);
 
       // Cycle 2
       await callkeep.tearDown();
-      await callkeep.setUp(_options);
+      await callkeep.setUp(kTestOptions);
       expect(callkeep.currentStatus, CallkeepStatus.active);
       await callkeep.tearDown();
     });
@@ -222,11 +210,11 @@ void main() {
       globalTearDownNeeded = false;
 
       await callkeep.tearDown();
-      await callkeep.setUp(_options);
+      await callkeep.setUp(kTestOptions);
       expect(await callkeep.isSetUp(), isTrue);
 
       await callkeep.tearDown();
-      await callkeep.setUp(_options);
+      await callkeep.setUp(kTestOptions);
       expect(await callkeep.isSetUp(), isTrue);
       await callkeep.tearDown();
     });

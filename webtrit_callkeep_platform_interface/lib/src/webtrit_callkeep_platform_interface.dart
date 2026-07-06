@@ -190,6 +190,11 @@ abstract class WebtritCallkeepPlatform extends PlatformInterface {
     throw UnimplementedError('getBatteryMode() has not been implemented.');
   }
 
+  /// Returns how incoming calls are delivered (Telecom vs limited standalone).
+  Future<CallkeepAndroidCallDeliveryMode> getCallDeliveryMode() {
+    throw UnimplementedError('getCallDeliveryMode() has not been implemented.');
+  }
+
   /// Requests the specified [permissions] on Android.
   ///
   /// Returns a [Map] where:

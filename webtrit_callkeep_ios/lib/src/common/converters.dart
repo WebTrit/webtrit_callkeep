@@ -95,6 +95,10 @@ extension CallkeepEndCallReasonConverter on CallkeepEndCallReason {
         return PEndCallReasonEnum.declinedElsewhere;
       case CallkeepEndCallReason.missed:
         return PEndCallReasonEnum.missed;
+      case CallkeepEndCallReason.missedWhileConnecting:
+        // iOS has no push->foreground ghost-call path; the never-presented flag is Android-only.
+        // Collapse to remoteEnded so no iOS pigeon/CallKit change is needed.
+        return PEndCallReasonEnum.remoteEnded;
     }
   }
 }

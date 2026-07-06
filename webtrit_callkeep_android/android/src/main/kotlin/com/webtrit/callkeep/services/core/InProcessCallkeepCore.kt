@@ -13,6 +13,7 @@ import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.PIncomingCallErrorEnum
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
+import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
@@ -151,10 +152,10 @@ class InProcessCallkeepCore internal constructor(
 
     override fun markAnswered(callId: String) = tracker.markAnswered(callId)
 
-    override fun markHeld(
+    override fun updateState(
         callId: String,
-        onHold: Boolean,
-    ) = tracker.markHeld(callId, onHold)
+        state: CallConnectionState,
+    ) = tracker.updateState(callId, state)
 
     override fun markTerminated(callId: String) = tracker.markTerminated(callId)
 
@@ -185,9 +186,10 @@ class InProcessCallkeepCore internal constructor(
 
     override fun markEndCallDispatched(callId: String): Boolean = tracker.markEndCallDispatched(callId)
 
-    override fun markSignalingRegistered(callId: String) = tracker.markSignalingRegistered(callId)
+    override fun markEndedWithoutFlutterState(callId: String) = tracker.markEndedWithoutFlutterState(callId)
 
-    override fun consumeSignalingRegistered(callId: String): Boolean = tracker.consumeSignalingRegistered(callId)
+    override fun wasEndedWithoutFlutterState(callId: String): Boolean =
+        tracker.wasEndedWithoutFlutterState(callId)
 
     // -------------------------------------------------------------------------
     // Connection event receivers
@@ -243,7 +245,7 @@ class InProcessCallkeepCore internal constructor(
     ) {
         val callId = metadata.callId
         // Reserve the pendingCallIds entry before handing off to the backend so that
-        // answerCall() / endCall() issued before DidPushIncomingCall fires can locate
+        // answerCall() / endCall() issued before IncomingConnectionReported fires can locate
         // the call via core.isPending() during the broadcast-lag window.
         //
         // addPending() returns true only when this invocation actually inserted the entry.
@@ -326,9 +328,9 @@ class InProcessCallkeepCore internal constructor(
 
     override fun sendCleanConnections() = router.sendCleanConnections()
 
-    override fun sendSyncAudioState() = router.sendSyncAudioState()
+    override fun replayAudioState() = router.replayAudioState()
 
-    override fun sendSyncConnectionState() = router.sendSyncConnectionState()
+    override fun replayConnectionStates() = router.replayConnectionStates()
 
     companion object {
         private const val TAG = "InProcessCallkeepCore"
@@ -345,7 +347,9 @@ class InProcessCallkeepCore internal constructor(
          */
         internal val GLOBAL_LISTENER_EVENTS: List<ConnectionEvent> =
             listOf(
-                CallLifecycleEvent.DidPushIncomingCall,
+                CallLifecycleEvent.IncomingConnectionReported,
+                CallLifecycleEvent.ReplayIncomingCall,
+                CallLifecycleEvent.ConnectionStateChanged,
                 CallLifecycleEvent.DeclineCall,
                 CallLifecycleEvent.HungUp,
                 CallLifecycleEvent.ConnectionNotFound,

@@ -20,8 +20,7 @@ open class FailureMetadata(
             // Serialize optional call metadata as nested bundle
             callMetadata?.let { putBundle(FAILURE_CALL_METADATA, it.toBundle()) }
 
-            // Serialize failure type as ordinal (safe to restore later)
-            putInt(FAILURE_OUTGOING_TYPE, outgoingFailureType.ordinal)
+            putString(FAILURE_OUTGOING_TYPE, outgoingFailureType.name)
         }
 
     fun getThrowable(): Throwable = Throwable(message ?: "Something happened")
@@ -36,8 +35,10 @@ open class FailureMetadata(
             val callMetadata = callMetadataBundle?.let { CallMetadata.fromBundleOrNull(it) }
 
             val message = bundle.getString(FAILURE_METADATA_MESSAGE)
-            val rawOutgoingFailureType = bundle.getInt(FAILURE_OUTGOING_TYPE, 0)
-            val outgoingFailureType = OutgoingFailureType.entries[rawOutgoingFailureType]
+            val rawOutgoingFailureType = bundle.getString(FAILURE_OUTGOING_TYPE)
+            val outgoingFailureType = OutgoingFailureType.entries
+                .firstOrNull { it.name == rawOutgoingFailureType }
+                ?: OutgoingFailureType.UNENTITLED
             return FailureMetadata(
                 callMetadata = callMetadata,
                 message = message,

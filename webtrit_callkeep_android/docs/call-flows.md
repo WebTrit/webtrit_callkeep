@@ -27,14 +27,15 @@ Triggered by an FCM message or a direct Dart call to `reportNewIncomingCall`.
         v
 6.  Telecom --> PhoneConnectionService.onCreateIncomingConnection()
         |   PhoneConnection created (STATE_RINGING)
-        |   broadcast: DidPushIncomingCall
+        |   broadcast: IncomingConnectionReported
         v
 7.  ForegroundService.connectionServicePerformReceiver
-        |   CallkeepCore.promote(callId, meta, state)
-        |
-        |   PDelegateFlutterApi.performIncomingCall(callId, meta)
+        |   CallkeepCore.promote(callId, meta, state)   (register-only)
         v
-8.  Dart delegate receives performIncomingCall()
+8.  Delegate notification (NOT from the event above):
+        |   - call arrived while app running -> Flutter signaling __onCallSignalingEventIncoming
+        |   - push->foreground handoff -> ReplayIncomingCall on delegate attach
+        |     -> PDelegateFlutterApi.didPushIncomingCall(callId, meta)
 ```
 
 **Answer path (user taps answer in notification or UI):**
@@ -48,12 +49,13 @@ Triggered by an FCM message or a direct Dart call to `reportNewIncomingCall`.
         |   If not yet: ConnectionManager.reserveAnswer(callId)  (deferred)
         v
 11. PhoneConnectionService.onStartCommand(AnswerCall)
-        |   PhoneConnection.onAnswer()
-        |   STATE_ACTIVE
+        |   PhoneConnection.onAnswer() -> setActive() -> STATE_ACTIVE
+        |   broadcast: ConnectionStateChanged (connectionState = ACTIVE)
         |   broadcast: AnswerCall
         v
-12. ForegroundService receives AnswerCall broadcast
-        |   MainProcessConnectionTracker.markAnswered(callId)
+12. ForegroundService receives the broadcasts
+        |   ConnectionStateChanged -> updateState(callId, ACTIVE)  (mirror)
+        |   AnswerCall -> markAnswered(callId)  (guard)
         |   PDelegateFlutterApi.performAnswerCall(callId)
         v
 13. Dart delegate receives performAnswerCall()
@@ -137,10 +139,12 @@ Triggered when the user initiates a call from the app UI.
         |   CallkeepCore.startEstablishCall(callId)
         v
 9.  PhoneConnectionService: PhoneConnection.setActive() -> STATE_ACTIVE
+        |   broadcast: ConnectionStateChanged (connectionState = ACTIVE)
         |   broadcast: AnswerCall
         v
-10. ForegroundService receives AnswerCall broadcast
-        |   MainProcessConnectionTracker.markAnswered(callId)
+10. ForegroundService receives the broadcasts
+        |   ConnectionStateChanged -> updateState(callId, ACTIVE)  (mirror)
+        |   AnswerCall -> markAnswered(callId)  (guard)
         |   PDelegateFlutterApi.performConnected(callId)
         v
 11. Dart delegate receives performConnected()
@@ -198,9 +202,9 @@ When Flutter hot-restarts (development only) the main process Flutter engine is 
 2.  WebtritCallkeepPlugin.onAttachedToEngine()
         |
         v
-3.  ForegroundService.syncConnectionState()
-        |   CallkeepCore.sendSyncAudioState()    -> PhoneConnectionService re-emits audio state
-        |   CallkeepCore.sendSyncConnectionState() -> PhoneConnectionService re-fires AnswerCall
+3.  ForegroundService.replayConnectionStates()
+        |   CallkeepCore.replayAudioState()    -> PhoneConnectionService re-emits audio state
+        |   CallkeepCore.replayConnectionStates() -> PhoneConnectionService re-fires AnswerCall
         v
 4.  ForegroundService broadcast handlers receive re-emitted events
         |   MainProcessConnectionTracker updated

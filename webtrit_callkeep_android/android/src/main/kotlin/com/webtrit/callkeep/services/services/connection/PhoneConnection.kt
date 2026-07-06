@@ -23,6 +23,7 @@ import com.webtrit.callkeep.managers.AudioManager
 import com.webtrit.callkeep.managers.NotificationManager
 import com.webtrit.callkeep.models.AudioDevice
 import com.webtrit.callkeep.models.AudioDeviceType
+import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.CallMediaEvent
@@ -92,6 +93,14 @@ class PhoneConnection internal constructor(
     var hasAnswered: Boolean = false
         private set
 
+    /**
+     * The current call metadata backing this connection. Exposed so [PhoneConnectionService] can
+     * re-deliver a still-ringing incoming call (with its handle/displayName/video) to a freshly
+     * attached Flutter delegate — see [com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent.ReplayIncomingCall].
+     */
+    val currentMetadata: CallMetadata
+        get() = metadata
+
     init {
         audioModeIsVoip = true
         connectionProperties = PROPERTY_SELF_MANAGED
@@ -122,10 +131,15 @@ class PhoneConnection internal constructor(
     /**
      * Invoked by the system when the incoming call interface should be displayed.
      *
-     * If there is already an active or held call, play a soft call-waiting tone through
-     * the voice call stream instead of the full ringtone. The ringtone uses TYPE_RINGTONE
-     * which routes through the earpiece at full ringtone volume during an active call,
-     * and can cause pain if the user has the phone pressed to their ear (WT-1388).
+     * Presentation only: post the incoming-call notification and start the ringtone (or a soft
+     * call-waiting tone when another call is already active/held — the full TYPE_RINGTONE routes
+     * through the earpiece at full volume during a call and can hurt with the phone to the ear,
+     * WT-1388).
+     *
+     * The control-plane notification to the main process (IncomingConnectionReported) is NOT emitted
+     * here. It is dispatched deterministically from [PhoneConnectionService.onCreateIncomingConnection]
+     * when the connection is created, so it does not depend on this system UI callback's timing
+     * (which the framework schedules separately and which is skipped for an immediately-answered call).
      */
     override fun onShowIncomingCallUi() {
         logger.d("Showing incoming call UI for callId: $callId")
@@ -136,7 +150,6 @@ class PhoneConnection internal constructor(
         } else {
             audioManager.startRingtone(metadata.ringtonePath)
         }
-        dispatcher(CallLifecycleEvent.DidPushIncomingCall, metadata)
     }
 
     /**
@@ -247,6 +260,15 @@ class PhoneConnection internal constructor(
         if ((lastKnownState == STATE_DIALING || lastKnownState == STATE_RINGING) && state == STATE_ACTIVE) {
             onActiveConnection()
         }
+
+        // Mirror the authoritative Telecom state to the main process: the shadow state mirrors the
+        // real connection state instead of inferring a fixed value per lifecycle event. Live states
+        // only -- terminal DISCONNECTED stays on the cause-carrying termination events
+        // (onDisconnect -> HungUp/DeclineCall), which preserve the DisconnectCause.
+        CallConnectionState
+            .fromTelecomState(state)
+            ?.takeIf { it != CallConnectionState.DISCONNECTED }
+            ?.let { dispatcher(CallLifecycleEvent.ConnectionStateChanged, metadata.copy(connectionState = it)) }
 
         lastKnownState = state
     }
@@ -543,8 +565,23 @@ class PhoneConnection internal constructor(
         metadata = metadata.mergeWith(requestCallMetadata)
         extras = metadata.toBundle()
 
-        setAddress(metadata.number.toUri(), TelecomManager.PRESENTATION_ALLOWED)
-        setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
+        val number = metadata.number
+        if (number != null) {
+            setAddress(number.toUri(), TelecomManager.PRESENTATION_ALLOWED)
+        } else {
+            // No real number to present; mark the address as unknown rather than
+            // surfacing a placeholder string as the caller's phone number.
+            setAddress(null, TelecomManager.PRESENTATION_UNKNOWN)
+        }
+
+        val name = metadata.name
+        if (name != null) {
+            setCallerDisplayName(name, TelecomManager.PRESENTATION_ALLOWED)
+        } else {
+            // No display name or number to show; let the Telecom UI render its own
+            // "unknown" label rather than a fabricated placeholder.
+            setCallerDisplayName(null, TelecomManager.PRESENTATION_UNKNOWN)
+        }
 
         if (previousHasVideo != metadata.hasVideo) {
             metadata.hasVideo?.let { applyVideoState(it) }
@@ -919,7 +956,12 @@ class PhoneConnection internal constructor(
             onDisconnectCallback = onDisconnect,
             timeout = ConnectionTimeout.createOutgoingConnectionTimeout(context),
         ).apply {
-            setCallerDisplayName(metadata.name, TelecomManager.PRESENTATION_ALLOWED)
+            val name = metadata.name
+            if (name != null) {
+                setCallerDisplayName(name, TelecomManager.PRESENTATION_ALLOWED)
+            } else {
+                setCallerDisplayName(null, TelecomManager.PRESENTATION_UNKNOWN)
+            }
             setInitialized()
             setDialing()
         }
@@ -941,8 +983,9 @@ class ConnectionTimeout(
      */
     fun start(timeoutCallback: () -> Unit) {
         cancel()
-        timeoutRunnable = Runnable(timeoutCallback)
-        handler.postDelayed(timeoutRunnable!!, timeoutDurationMs)
+        val runnable = Runnable(timeoutCallback)
+        timeoutRunnable = runnable
+        handler.postDelayed(runnable, timeoutDurationMs)
     }
 
     /**

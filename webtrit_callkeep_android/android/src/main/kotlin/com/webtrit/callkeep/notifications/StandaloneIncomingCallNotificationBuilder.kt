@@ -8,6 +8,7 @@ import android.graphics.drawable.Icon
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.webtrit.callkeep.R
+import com.webtrit.callkeep.activities.StandaloneAnswerTrampolineActivity
 import com.webtrit.callkeep.common.ContextHolder.context
 import com.webtrit.callkeep.common.PermissionsHelper
 import com.webtrit.callkeep.common.Platform
@@ -52,12 +53,36 @@ internal class StandaloneIncomingCallNotificationBuilder : NotificationBuilder()
         )
     }
 
+    /**
+     * Answer must go through [StandaloneAnswerTrampolineActivity] rather than straight to
+     * [StandaloneCallService]: answering has to bring the app UI to the front, and on Android 12+
+     * a service launched from a notification action is not allowed to start activities
+     * (notification trampoline restriction). An activity PendingIntent is exempt; the trampoline
+     * forwards the same action/extras to the service and launches the host app. Decline needs no
+     * UI, so it keeps the direct service PendingIntent from [createActionIntent].
+     */
+    private fun createAnswerActionIntent(metadata: CallMetadata): PendingIntent {
+        val intent =
+            Intent(context, StandaloneAnswerTrampolineActivity::class.java).apply {
+                action = StandaloneServiceAction.AnswerCall.action
+                putExtras(metadata.toBundle())
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+        return PendingIntent.getActivity(
+            context,
+            StandaloneServiceAction.AnswerCall.ordinal,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+    }
+
     private fun baseBuilder(
         title: String,
         text: String,
+        smallIcon: Int = R.drawable.ic_notification,
     ): Notification.Builder =
         Notification.Builder(context, INCOMING_CALL_NOTIFICATION_CHANNEL_ID).apply {
-            setSmallIcon(R.drawable.ic_notification)
+            setSmallIcon(smallIcon)
             setCategory(NotificationCompat.CATEGORY_CALL)
             setContentTitle(title)
             setContentText(text)
@@ -72,14 +97,13 @@ internal class StandaloneIncomingCallNotificationBuilder : NotificationBuilder()
         val meta =
             requireNotNull(callMetaData) { "Call metadata must be set before building the notification." }
 
-        val answerIntent = createActionIntent(meta, StandaloneServiceAction.AnswerCall)
+        val answerIntent = createAnswerActionIntent(meta)
         val declineIntent = createActionIntent(meta, StandaloneServiceAction.DeclineCall)
 
-        val title = context.getString(R.string.incoming_call_title)
-        val text = context.getString(R.string.incoming_call_description, meta.name)
+        val content = incomingCallContent(meta)
 
         val builder =
-            baseBuilder(title, text).apply {
+            baseBuilder(content.title, content.description, content.smallIcon).apply {
                 // Guard against a null launch intent before calling buildOpenAppIntent: if no
                 // launchable activity exists, PendingIntent.getActivity() would receive a null
                 // Intent and behave unpredictably on some API levels.
@@ -97,7 +121,7 @@ internal class StandaloneIncomingCallNotificationBuilder : NotificationBuilder()
             val person =
                 Person
                     .Builder()
-                    .setName(meta.name)
+                    .setName(content.callerName)
                     .setImportant(true)
                     .build()
             builder

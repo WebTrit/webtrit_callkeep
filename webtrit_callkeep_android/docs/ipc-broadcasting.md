@@ -22,10 +22,12 @@ The event type is carried as a string extra inside the intent.
 
 | Event                 | Payload                         | Meaning                                          |
 |-----------------------|---------------------------------|--------------------------------------------------|
-| `DidPushIncomingCall` | `callId`, `CallMetadata` bundle | Incoming `PhoneConnection` created, UI shown     |
-| `AnswerCall`          | `callId`                        | Connection answered (STATE_ACTIVE)               |
-| `DeclineCall`         | `callId`                        | User rejected the call                           |
-| `HungUp`              | `callId`, disconnect cause      | Call disconnected from either side               |
+| `IncomingConnectionReported`    | `callId`, `CallMetadata` bundle              | Incoming `PhoneConnection` created -> register in the shadow state (register-only; the delegate is notified via signaling or `ReplayIncomingCall`) |
+| `ReplayIncomingCall`     | `callId`, `CallMetadata` bundle              | Re-deliver a still-ringing incoming call to a freshly attached delegate (sole foreground delivery; from the connection-state replay on delegate attach) |
+| `AnswerCall`             | `callId`                                     | Answer signal (guard); the ACTIVE state arrives separately via `ConnectionStateChanged` |
+| `ConnectionStateChanged` | `callId`, `CallMetadata` bundle (carries `connectionState`) | Authoritative live connection state to mirror into the shadow state (RINGING/DIALING/ACTIVE/HOLDING). Terminal DISCONNECTED is NOT sent here -- it stays on the cause-carrying `HungUp`/`DeclineCall`. |
+| `DeclineCall`            | `callId`                                     | User rejected the call                                     |
+| `HungUp`                 | `callId`, disconnect cause                   | Call disconnected from either side                         |
 | `OngoingCall`         | `callId`, `CallMetadata` bundle | Outgoing connection dialing                      |
 | `OutgoingFailure`     | `callId`, failure info          | Outgoing call could not be created               |
 | `IncomingFailure`     | `callId`, failure info          | Incoming call setup failed                       |

@@ -12,6 +12,7 @@ import androidx.annotation.Keep
 import androidx.core.app.NotificationCompat
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.R
+import com.webtrit.callkeep.common.ActivityHolder
 import com.webtrit.callkeep.common.AssetCacheManager
 import com.webtrit.callkeep.common.ContextHolder
 import com.webtrit.callkeep.common.Log
@@ -19,7 +20,9 @@ import com.webtrit.callkeep.common.startForegroundServiceCompat
 import com.webtrit.callkeep.managers.NotificationChannelManager
 import com.webtrit.callkeep.models.AudioDevice
 import com.webtrit.callkeep.models.AudioDeviceType
+import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.notifications.StandaloneActiveCallNotificationBuilder
 import com.webtrit.callkeep.notifications.StandaloneIncomingCallNotificationBuilder
 import com.webtrit.callkeep.services.broadcaster.CallCommandEvent
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
@@ -52,19 +55,55 @@ class StandaloneCallService : Service() {
 
     // Tracks whether startForeground() has been called in this service instance.
     // startForeground() is deferred until an actual call is handled so that lifecycle-only
-    // commands (SyncConnectionState, SyncAudioState, etc.) do not post a foreground
+    // commands (ReplayConnectionStates, ReplayAudioState, etc.) do not post a foreground
     // notification when there is no call in progress.
     private var isForeground = false
 
-    // FOREGROUND_SERVICE_TYPE_MICROPHONE was introduced in API 31 (Android 12).
-    // On API 29-30 the type is unknown to the framework and startForeground() throws
-    // IllegalArgumentException when the requested type does not match the manifest.
-    // Passing null selects the 2-arg startForeground() fallback in startForegroundServiceCompat(),
-    // which skips type validation on older builds.
-    private val foregroundServiceType: Int?
+    // Foreground service type is two-phase (see the manifest comment on this service):
+    //
+    // Ringing / call setup: FOREGROUND_SERVICE_TYPE_PHONE_CALL only. Since Android 14 the
+    // microphone type is in the while-in-use restricted set and CANNOT be promoted from a
+    // background app state - no exemption applies (high-priority FCM and battery-optimization
+    // whitelisting were both verified to still throw SecurityException), so a push-delivered
+    // incoming call would crash the service in a loop until the OS kills the main process.
+    // The phone-call type is not restricted; its only runtime prerequisites are the
+    // FOREGROUND_SERVICE_PHONE_CALL + MANAGE_OWN_CALLS permissions (both declared by the
+    // plugin manifest). It does NOT require the android.software.telecom feature or an
+    // active Telecom connection.
+    //
+    // Active call (answered/established): PHONE_CALL | MICROPHONE. The microphone type is
+    // added so microphone access survives the app going to background mid-call
+    // (while-in-use restriction). Adding it at that point is legal: the answer flow
+    // guarantees a visible activity (StandaloneAnswerTrampolineActivity for notification
+    // answers, the host activity for Dart-initiated answer/establish).
+    //
+    // TODO(standalone-active-call): the active-call phase does not belong to this service.
+    // On the Telecom path it is owned by ActiveCallService (phoneCall|microphone|camera with
+    // permission-aware types and its own notification), started via
+    // NotificationManager.showActiveCallNotification() - which is only ever called from
+    // PhoneConnection, so it never runs on the standalone path. Once the standalone answer/
+    // establish/end handlers drive NotificationManager the same way (and this service demotes
+    // itself after the answer instead of re-posting its own ongoing notification), the
+    // microphone type below and showActiveCallNotification()/
+    // StandaloneActiveCallNotificationBuilder can be removed, returning this service to a pure
+    // phone-call-typed connection host. That also brings the camera type for video calls in
+    // the background, which the current shape does not cover.
+    //
+    // On API < 31 both getters return null, selecting the 2-arg startForeground() fallback in
+    // startForegroundServiceCompat(): type validation is skipped there and the microphone
+    // constant does not exist before API 31.
+    private val ringingForegroundServiceType: Int?
         get() =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
+            } else {
+                null
+            }
+
+    private val activeCallForegroundServiceType: Int?
+        get() =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
             } else {
                 null
             }
@@ -76,7 +115,7 @@ class StandaloneCallService : Service() {
         Log.initFromContext(applicationContext)
         // Register notification channels here as well as in ForegroundService.setUp().
         // This service may start before setUp() is invoked from the Flutter layer
-        // (e.g. when SyncConnectionState is dispatched during app startup). Without this
+        // (e.g. when ReplayConnectionStates is dispatched during app startup). Without this
         // call, startForeground() would crash with
         // CannotPostForegroundServiceNotificationException because the channel does not
         // yet exist in the system.
@@ -108,53 +147,69 @@ class StandaloneCallService : Service() {
         flags: Int,
         startId: Int,
     ): Int {
-        val action =
-            intent?.action?.let { StandaloneServiceAction.from(it) } ?: run {
-                Log.w(TAG, "onStartCommand: unknown or missing action '${intent?.action}', ignoring")
-                return START_NOT_STICKY
-            }
-        val metadata = intent.extras?.let { CallMetadata.fromBundle(it) }
+        val action = intent?.action?.let { StandaloneServiceAction.from(it) }
 
-        // Satisfy the 5-second startForeground() window for call-setup actions, which
-        // are the only ones started via startForegroundService(). All other actions
-        // arrive via startService() and must NOT call startForeground() here — doing so
-        // from a non-foreground-service start crashes the process on some OEM devices.
-        if (action == StandaloneServiceAction.IncomingCall || action == StandaloneServiceAction.OutgoingCall) {
+        // Satisfy the 5-second startForeground() window for call-setup actions, which are the only
+        // ones started via startForegroundService(). This MUST be decided from the raw action (not
+        // the parsed command) and run BEFORE the command-parse bail-out below: if the call-setup
+        // intent arrives with empty/truncated Binder extras, command parsing fails and an early
+        // return without startForeground() would crash the process with
+        // ForegroundServiceDidNotStartInTimeException ~5s later. All other actions arrive via
+        // startService() and must NOT call startForeground() here — doing so from a
+        // non-foreground-service start crashes the process on some OEM devices.
+        if (action?.isCallSetup == true) {
             promoteToForeground()
         }
 
+        // Parse the intent into a typed command once. Lifecycle commands carry no metadata, so
+        // CallMetadata parsing never runs for them — closing the same eager-parse crash fixed on
+        // the Telecom path (empty Binder-delivered Bundle -> uncaught IllegalArgumentException).
+        val command =
+            intent?.let { StandaloneServiceCommand.from(it) } ?: run {
+                // Distinguish an unrecognised action from a known action whose required
+                // callId/metadata is missing, so the log points at the actual failure.
+                if (action != null) {
+                    Log.w(TAG, "onStartCommand: action '$action' missing required callId/metadata, ignoring")
+                } else {
+                    Log.w(TAG, "onStartCommand: unknown or missing action '${intent?.action}', ignoring")
+                }
+                // Release the service if nothing keeps it alive — including the placeholder
+                // foreground we may have just promoted for a call-setup action whose extras did
+                // not parse — so it does not linger as a zombie (foreground) service.
+                stopIfIdle()
+                return START_NOT_STICKY
+            }
+
         try {
-            when (action) {
-                StandaloneServiceAction.IncomingCall -> metadata?.let { handleIncomingCall(it) }
-                StandaloneServiceAction.OutgoingCall -> metadata?.let { handleOutgoingCall(it) }
-                StandaloneServiceAction.EstablishCall -> metadata?.let { handleEstablishCall(it) }
-                StandaloneServiceAction.AnswerCall -> metadata?.let { handleAnswerCall(it) }
-                StandaloneServiceAction.DeclineCall -> metadata?.let { handleDeclineCall(it) }
-                StandaloneServiceAction.HungUpCall -> metadata?.let { handleHungUpCall(it) }
-                StandaloneServiceAction.UpdateCall -> metadata?.let { handleUpdateCall(it) }
-                StandaloneServiceAction.SendDtmf -> metadata?.let { handleSendDtmf(it) }
-                StandaloneServiceAction.Holding -> metadata?.let { handleHolding(it) }
-                StandaloneServiceAction.TearDownConnections -> handleTearDownConnections()
-                StandaloneServiceAction.CleanConnections -> handleCleanConnections()
-                StandaloneServiceAction.ReserveAnswer -> metadata?.callId?.let { handleReserveAnswer(it) }
-                StandaloneServiceAction.Muting -> metadata?.let { handleMuting(it) }
-                StandaloneServiceAction.Speaker -> metadata?.let { handleSpeaker(it) }
-                StandaloneServiceAction.AudioDeviceSet -> metadata?.let { handleAudioDeviceSet(it) }
-                StandaloneServiceAction.SyncAudioState -> handleSyncAudioState()
-                StandaloneServiceAction.SyncConnectionState -> handleSyncConnectionState()
+            when (command) {
+                is StandaloneServiceCommand.TearDown -> handleTearDownConnections()
+                is StandaloneServiceCommand.Clean -> handleCleanConnections()
+                is StandaloneServiceCommand.ReplayAudio -> handleReplayAudioState()
+                is StandaloneServiceCommand.ReplayConnections -> handleReplayConnectionStates()
+                is StandaloneServiceCommand.Reserve -> handleReserveAnswer(command.callId)
+                is StandaloneServiceCommand.Call -> dispatchCall(command.action, command.metadata)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Exception with action: ${intent?.action}", e)
         }
 
         // If no calls are active or pending after processing, there is nothing to keep alive.
-        // This handles the case where a lifecycle-only command (SyncConnectionState,
-        // SyncAudioState, CleanConnections) starts the service when no call is in progress.
+        // This handles the case where a lifecycle-only command (ReplayConnectionStates,
+        // ReplayAudioState, CleanConnections) starts the service when no call is in progress.
+        stopIfIdle()
+
+        return START_NOT_STICKY
+    }
+
+    /**
+     * Stops the service when no call is active or pending. Reached both after normal command
+     * processing and on the command-parse bail-out path, so a call-setup intent that promoted to
+     * foreground but failed to parse does not leave a zombie (foreground) service running.
+     */
+    private fun stopIfIdle() {
         if (callMetadataMap.isEmpty() && pendingAnswers.isEmpty()) {
             stopSelf()
         }
-
-        return START_NOT_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -174,6 +229,51 @@ class StandaloneCallService : Service() {
     // -------------------------------------------------------------------------
 
     /**
+     * Routes a [StandaloneServiceCommand.Call] to its handler. [metadata] is guaranteed non-null
+     * by [StandaloneServiceCommand.from], so the per-action `metadata?.let` guards that previously
+     * silently dropped call actions on a malformed bundle are no longer needed.
+     */
+    private fun dispatchCall(
+        action: StandaloneServiceAction,
+        metadata: CallMetadata,
+    ) {
+        when (action) {
+            StandaloneServiceAction.IncomingCall -> handleIncomingCall(metadata)
+
+            StandaloneServiceAction.OutgoingCall -> handleOutgoingCall(metadata)
+
+            StandaloneServiceAction.EstablishCall -> handleEstablishCall(metadata)
+
+            StandaloneServiceAction.AnswerCall -> handleAnswerCall(metadata)
+
+            StandaloneServiceAction.DeclineCall -> handleDeclineCall(metadata)
+
+            StandaloneServiceAction.HungUpCall -> handleHungUpCall(metadata)
+
+            StandaloneServiceAction.UpdateCall -> handleUpdateCall(metadata)
+
+            StandaloneServiceAction.SendDtmf -> handleSendDtmf(metadata)
+
+            StandaloneServiceAction.Holding -> handleHolding(metadata)
+
+            StandaloneServiceAction.Muting -> handleMuting(metadata)
+
+            StandaloneServiceAction.Speaker -> handleSpeaker(metadata)
+
+            StandaloneServiceAction.AudioDeviceSet -> handleAudioDeviceSet(metadata)
+
+            // Lifecycle and ReserveAnswer actions are modelled as dedicated command types and never
+            // wrapped in Call, so they cannot reach this branch.
+            StandaloneServiceAction.TearDownConnections,
+            StandaloneServiceAction.CleanConnections,
+            StandaloneServiceAction.ReserveAnswer,
+            StandaloneServiceAction.ReplayAudioState,
+            StandaloneServiceAction.ReplayConnectionStates,
+            -> Log.w(TAG, "dispatchCall: unexpected non-call action $action, ignoring")
+        }
+    }
+
+    /**
      * Promotes the service to a foreground service.
      *
      * Called from [onStartCommand] for [StandaloneServiceAction.IncomingCall] and
@@ -182,16 +282,15 @@ class StandaloneCallService : Service() {
      * [android.app.Service.startForeground] requirement. Also called from
      * [handleIncomingCall] and [handleOutgoingCall] as a no-op guard once already promoted.
      *
-     * Uses [ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE] on API 31+ because this service
-     * is only active on devices that do NOT have [android.software.telecom], making the
-     * phone-call foreground type inappropriate. Microphone type is semantically correct for
-     * a service that manages audio call sessions.
+     * Promotes with [ringingForegroundServiceType] (phone call): this runs while the app may
+     * still be fully in the background (push-delivered incoming call), where the microphone
+     * type is not allowed since Android 14 - see the field comment.
      *
-     * On API 29-30 the microphone type flag did not exist; passing it to [startForeground]
-     * causes the framework to throw [IllegalArgumentException] because the flag is not
-     * recognised in that API level's manifest type validation. The 2-arg [startForeground]
-     * overload (no type) is used instead, which bypasses the type check entirely and is safe
-     * on all API levels below 31.
+     * A [SecurityException] here must not propagate: the service is (re)started by the system
+     * after a crash and the same throw repeats until ActivityManager kills the whole main
+     * process ("crashed too many times"), taking the Flutter engine and any in-flight app
+     * state with it. Degrade instead: log and stop the service (stopping before the 5-second
+     * window expires also avoids ForegroundServiceDidNotStartInTimeException).
      */
     private fun promoteToForeground() {
         if (isForeground) return
@@ -202,7 +301,13 @@ class StandaloneCallService : Service() {
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setOngoing(true)
                 .build()
-        startForegroundServiceCompat(this, NOTIFICATION_ID, placeholder, foregroundServiceType)
+        try {
+            startForegroundServiceCompat(this, NOTIFICATION_ID, placeholder, ringingForegroundServiceType)
+        } catch (e: SecurityException) {
+            Log.e(TAG, "promoteToForeground: startForeground rejected, stopping service to avoid a crash loop", e)
+            stopSelf()
+            return
+        }
         isForeground = true
     }
 
@@ -210,6 +315,7 @@ class StandaloneCallService : Service() {
         Log.i(TAG, "handleIncomingCall: callId=${metadata.callId}")
         promoteToForeground()
         callMetadataMap[metadata.callId] = metadata
+        ringingIncomingCallIds.add(metadata.callId)
         answeredCallIds.remove(metadata.callId)
         if (answeredCallIds.isNotEmpty()) {
             Log.d(TAG, "handleIncomingCall: active call detected — playing call-waiting tone for callId=${metadata.callId}")
@@ -230,7 +336,7 @@ class StandaloneCallService : Service() {
         // for this broadcast to resolve its pendingIncomingCallbacks entry and promote the call
         // into the core shadow state, matching the PhoneConnectionService.onCreateIncomingConnection
         // path in the Telecom-enabled flow.
-        core.notifyConnectionEvent(CallLifecycleEvent.DidPushIncomingCall, metadata.toBundle())
+        core.notifyConnectionEvent(CallLifecycleEvent.IncomingConnectionReported, metadata.toBundle())
 
         // If an answer was reserved before this call was registered (ReserveAnswer arrived first),
         // consume the pending reservation and immediately trigger the answer flow.
@@ -244,7 +350,35 @@ class StandaloneCallService : Service() {
             StandaloneIncomingCallNotificationBuilder()
                 .apply { setCallMetaData(metadata) }
                 .build()
-        startForegroundServiceCompat(this, NOTIFICATION_ID, notification, foregroundServiceType)
+        // Still the ringing phase - the app may be in the background, so the type must stay
+        // phone-call only (same restriction as in promoteToForeground).
+        startForegroundServiceCompat(this, NOTIFICATION_ID, notification, ringingForegroundServiceType)
+    }
+
+    /**
+     * Replaces the foreground incoming-call notification with the ongoing-call variant once the
+     * call is answered or established. The incoming notification is this service's own foreground
+     * notification, so it cannot simply be cancelled (the Telecom path cancels the separate
+     * [com.webtrit.callkeep.services.services.incoming_call.IncomingCallService] notification
+     * instead) - it is re-posted under the same [NOTIFICATION_ID] without Answer/Decline actions.
+     */
+    private fun showActiveCallNotification(metadata: CallMetadata) {
+        val notification =
+            StandaloneActiveCallNotificationBuilder()
+                .apply { setCallMetaData(metadata) }
+                .build()
+        // The call is answered: re-promote with PHONE_CALL | MICROPHONE so microphone access
+        // survives the app going to background mid-call. The answer flow guarantees a visible
+        // activity at this point, which makes adding the restricted microphone type legal on
+        // Android 14+. If a race still leaves the app ineligible (SecurityException), fall back
+        // to the phone-call type: the call proceeds, the microphone works while the app is in
+        // the foreground, only background microphone access is lost.
+        try {
+            startForegroundServiceCompat(this, NOTIFICATION_ID, notification, activeCallForegroundServiceType)
+        } catch (e: SecurityException) {
+            Log.w(TAG, "showActiveCallNotification: microphone type rejected, falling back to phone-call type", e)
+            startForegroundServiceCompat(this, NOTIFICATION_ID, notification, ringingForegroundServiceType)
+        }
     }
 
     private fun handleOutgoingCall(metadata: CallMetadata) {
@@ -269,8 +403,20 @@ class StandaloneCallService : Service() {
 
         activateAudio()
         fireInitialAudioState(metadata.callId)
+        promoteRemainingRingingToCallWaitingTone(metadata.callId)
+
+        // Mirror PhoneConnection.establish() on the Telecom path: swap the foreground
+        // notification to the ongoing-call variant and make sure the app UI is visible.
+        showActiveCallNotification(callMetadataMap[metadata.callId]!!)
+        ActivityHolder.start(applicationContext)
 
         core.notifyConnectionEvent(CallLifecycleEvent.AnswerCall, callMetadataMap[metadata.callId]!!.toBundle())
+        // No onStateChanged here (no telecom Connection) — emit the state explicitly so the shadow
+        // mirrors it (replaces the removed markAnswered state-stamping).
+        core.notifyConnectionEvent(
+            CallLifecycleEvent.ConnectionStateChanged,
+            callMetadataMap[metadata.callId]!!.copy(connectionState = CallConnectionState.ACTIVE).toBundle(),
+        )
     }
 
     private fun handleAnswerCall(metadata: CallMetadata) {
@@ -284,24 +430,71 @@ class StandaloneCallService : Service() {
 
         activateAudio()
         fireInitialAudioState(metadata.callId)
+        promoteRemainingRingingToCallWaitingTone(metadata.callId)
+
+        // Replace the incoming CallStyle notification (which otherwise keeps its Answer button on
+        // screen for the whole call). Bringing the app UI to the front is NOT done here: on
+        // Android 12+ a service launched from a notification action may not start activities
+        // (notification trampoline restriction - "Indirect notification activity start blocked"),
+        // so the Answer action goes through StandaloneAnswerTrampolineActivity, which starts the
+        // host activity itself before forwarding the answer command to this service.
+        showActiveCallNotification(callMetadataMap[metadata.callId]!!)
 
         core.notifyConnectionEvent(CallLifecycleEvent.AnswerCall, callMetadataMap[metadata.callId]!!.toBundle())
+        // No onStateChanged here (no telecom Connection) — emit the state explicitly so the shadow
+        // mirrors it (replaces the removed markAnswered state-stamping).
+        core.notifyConnectionEvent(
+            CallLifecycleEvent.ConnectionStateChanged,
+            callMetadataMap[metadata.callId]!!.copy(connectionState = CallConnectionState.ACTIVE).toBundle(),
+        )
+    }
+
+    /**
+     * After [answeredCallId] is answered the loud ringtone is stopped, but a second incoming call
+     * may still be ringing. Start the quiet call-waiting tone for it so it is not silently dropped,
+     * matching the start-path branch in [handleIncomingCall] that plays the call-waiting tone when
+     * a call is already active.
+     */
+    private fun promoteRemainingRingingToCallWaitingTone(answeredCallId: String) {
+        if (hasOtherRingingCall(ringingIncomingCallIds, answeredCallIds, answeredCallId)) {
+            Log.d(TAG, "promoteRemainingRingingToCallWaitingTone: another call still ringing")
+            ringtoneManager.startCallWaitingTone()
+        }
     }
 
     private fun handleDeclineCall(metadata: CallMetadata) {
         Log.i(TAG, "handleDeclineCall: callId=${metadata.callId}")
-        ringtoneManager.stopRingtone()
-        ringtoneManager.stopCallWaitingTone()
+        stopRingtoneUnlessOtherCallRinging(metadata.callId)
         endCall(metadata)
         core.notifyConnectionEvent(CallLifecycleEvent.HungUp, metadata.toBundle())
     }
 
     private fun handleHungUpCall(metadata: CallMetadata) {
         Log.i(TAG, "handleHungUpCall: callId=${metadata.callId}")
-        ringtoneManager.stopRingtone()
-        ringtoneManager.stopCallWaitingTone()
+        stopRingtoneUnlessOtherCallRinging(metadata.callId)
         endCall(metadata)
         core.notifyConnectionEvent(CallLifecycleEvent.HungUp, metadata.toBundle())
+    }
+
+    /**
+     * Stop the shared ringtone / call-waiting tone only when no OTHER call is still ringing.
+     *
+     * The ringtone is a single shared instance (see [CallkeepAudioManager]); stopping it on the
+     * disconnect of one call silences every other call too. When a first incoming call times out
+     * or is declined while a second incoming call is still ringing, the second call must keep
+     * sounding, so the tones are left running until the last ringing call ends.
+     *
+     * Only incoming calls that have not been answered count as ringing: [ringingIncomingCallIds]
+     * excludes outgoing/dialing calls (which never play the ringtone) and [answeredCallIds]
+     * excludes calls that are already active.
+     */
+    private fun stopRingtoneUnlessOtherCallRinging(terminatingCallId: String) {
+        if (hasOtherRingingCall(ringingIncomingCallIds, answeredCallIds, terminatingCallId)) {
+            Log.d(TAG, "stopRingtoneUnlessOtherCallRinging: keeping tone, another call still ringing")
+            return
+        }
+        ringtoneManager.stopRingtone()
+        ringtoneManager.stopCallWaitingTone()
     }
 
     private fun handleUpdateCall(metadata: CallMetadata) {
@@ -329,6 +522,13 @@ class StandaloneCallService : Service() {
         val updated = (callMetadataMap[metadata.callId] ?: metadata).copy(hasHold = onHold)
         callMetadataMap[metadata.callId] = updated
         core.notifyConnectionEvent(CallMediaEvent.ConnectionHolding, updated.toBundle())
+        // No onStateChanged here (no telecom Connection) — emit the state explicitly so the shadow
+        // mirrors it (replaces the removed markHeld state-stamping).
+        val holdState = if (onHold) CallConnectionState.HOLDING else CallConnectionState.ACTIVE
+        core.notifyConnectionEvent(
+            CallLifecycleEvent.ConnectionStateChanged,
+            updated.copy(connectionState = holdState).toBundle(),
+        )
     }
 
     private fun handleTearDownConnections() {
@@ -340,6 +540,7 @@ class StandaloneCallService : Service() {
             core.notifyConnectionEvent(CallLifecycleEvent.HungUp, meta.toBundle())
         }
         callMetadataMap.clear()
+        ringingIncomingCallIds.clear()
         answeredCallIds.clear()
         pendingAnswers.clear()
         deactivateAudio(force = true)
@@ -350,9 +551,11 @@ class StandaloneCallService : Service() {
     private fun handleCleanConnections() {
         Log.i(TAG, "handleCleanConnections: clearing state")
         callMetadataMap.clear()
+        ringingIncomingCallIds.clear()
         answeredCallIds.clear()
         pendingAnswers.clear()
         deactivateAudio(force = true)
+        ringtoneManager.stopRingtone()
         ringtoneManager.stopCallWaitingTone()
     }
 
@@ -413,16 +616,20 @@ class StandaloneCallService : Service() {
         core.notifyConnectionEvent(CallMediaEvent.AudioDeviceSet, updated.toBundle())
     }
 
-    private fun handleSyncAudioState() {
-        Log.i(TAG, "handleSyncAudioState: re-emitting audio state for answered calls")
+    private fun handleReplayAudioState() {
+        Log.i(TAG, "handleReplayAudioState: re-emitting audio state for answered calls")
         answeredCallIds.forEach { callId -> fireInitialAudioState(callId) }
     }
 
-    private fun handleSyncConnectionState() {
-        Log.i(TAG, "handleSyncConnectionState: re-emitting AnswerCall for answered calls")
+    private fun handleReplayConnectionStates() {
+        Log.i(TAG, "handleReplayConnectionStates: re-emitting AnswerCall + ACTIVE state for answered calls")
         answeredCallIds.forEach { callId ->
             val meta = callMetadataMap[callId] ?: CallMetadata(callId = callId)
             core.notifyConnectionEvent(CallLifecycleEvent.AnswerCall, meta.toBundle())
+            core.notifyConnectionEvent(
+                CallLifecycleEvent.ConnectionStateChanged,
+                meta.copy(connectionState = CallConnectionState.ACTIVE).toBundle(),
+            )
         }
     }
 
@@ -467,6 +674,7 @@ class StandaloneCallService : Service() {
 
     private fun endCall(metadata: CallMetadata) {
         callMetadataMap.remove(metadata.callId)
+        ringingIncomingCallIds.remove(metadata.callId)
         answeredCallIds.remove(metadata.callId)
         pendingAnswers.remove(metadata.callId)
         if (callMetadataMap.isEmpty()) {
@@ -493,8 +701,27 @@ class StandaloneCallService : Service() {
         // Written on the main thread (onStartCommand); read from static dispatch methods
         // called on the main process thread, hence ConcurrentHashMap.
         internal val callMetadataMap: ConcurrentHashMap<String, CallMetadata> = ConcurrentHashMap()
+
+        // Incoming call ids, from registration until the call ends (added in handleIncomingCall,
+        // removed in endCall / cleared on teardown+clean). It is NOT pruned when a call is answered,
+        // so it may contain answered calls; "still ringing" is therefore membership here AND absence
+        // from answeredCallIds (see hasOtherRingingCall). Distinct from callMetadataMap, which also
+        // holds outgoing/dialing calls that never play the ringtone - hence the ringtone-stop guard
+        // consults this set, not the full map, to decide whether another call is still ringing.
+        internal val ringingIncomingCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
         internal val answeredCallIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
         internal val pendingAnswers: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
+        /**
+         * `true` when a call other than [excludingCallId] is still ringing, i.e. registered in
+         * [ringingCallIds] but not present in [answeredCallIds]. Pure helper so the ringtone-stop
+         * guard is unit-testable without instantiating the service.
+         */
+        internal fun hasOtherRingingCall(
+            ringingCallIds: Set<String>,
+            answeredCallIds: Set<String>,
+            excludingCallId: String,
+        ): Boolean = ringingCallIds.any { it != excludingCallId && it !in answeredCallIds }
 
         /**
          * Starts an incoming call in standalone mode.
@@ -616,11 +843,20 @@ enum class StandaloneServiceAction {
     Muting,
     Speaker,
     AudioDeviceSet,
-    SyncAudioState,
-    SyncConnectionState,
+    ReplayAudioState,
+    ReplayConnectionStates,
     ;
 
     val action: String get() = "callkeep_standalone_$name"
+
+    /**
+     * Call-setup actions are the only ones started via [android.content.Context.startForegroundService]
+     * (see [StandaloneCallService.startIncomingCall] / [StandaloneCallService.startOutgoingCall]) and
+     * therefore impose the 5-second [android.app.Service.startForeground] window. Single source of
+     * truth used by [StandaloneCallService.onStartCommand] to promote to foreground from the raw
+     * action, independently of whether the command metadata parses.
+     */
+    val isCallSetup: Boolean get() = this == IncomingCall || this == OutgoingCall
 
     companion object {
         fun from(action: String?): StandaloneServiceAction? = entries.find { it.action == action }

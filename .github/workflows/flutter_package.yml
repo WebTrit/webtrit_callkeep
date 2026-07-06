@@ -105,7 +105,17 @@ jobs:
         run: ${{inputs.setup}}
 
       - name: ✨ Check Formatting
-        run: dart format --line-length ${{inputs.format_line_length}} --set-exit-if-changed ${{inputs.format_directories}}
+        run: |
+          # Exclude generated sources from the format gate, mirroring the local lefthook hook.
+          # dart format has no exclude flag and ignores analysis_options formatter.exclude, so
+          # build the file list explicitly and skip dirs that do not exist in a given package.
+          dirs=""
+          for d in ${{inputs.format_directories}}; do [ -d "$d" ] && dirs="$dirs $d"; done
+          files=$(find $dirs -name '*.dart' \
+            ! -name '*.g.dart' ! -name '*.freezed.dart' ! -name '*.gr.dart' ! -name '*.pigeon.dart')
+          if [ -n "$files" ]; then
+            dart format --line-length ${{inputs.format_line_length}} --set-exit-if-changed $files
+          fi
 
       - name: 🕵️ Analyze
         run: flutter analyze ${{inputs.analyze_directories}}

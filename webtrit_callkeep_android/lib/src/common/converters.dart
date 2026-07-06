@@ -107,6 +107,8 @@ extension CallkeepEndCallReasonConverter on CallkeepEndCallReason {
         return PEndCallReasonEnum.declinedElsewhere;
       case CallkeepEndCallReason.missed:
         return PEndCallReasonEnum.missed;
+      case CallkeepEndCallReason.missedWhileConnecting:
+        return PEndCallReasonEnum.missedWhileConnecting;
     }
   }
 }
@@ -194,6 +196,19 @@ extension PCallkeepAndroidBatteryModeConverter on PCallkeepAndroidBatteryMode {
         return CallkeepAndroidBatteryMode.restricted;
       case PCallkeepAndroidBatteryMode.unknown:
         return CallkeepAndroidBatteryMode.unknown;
+    }
+  }
+}
+
+extension PCallkeepAndroidCallDeliveryModeConverter on PCallkeepAndroidCallDeliveryMode {
+  CallkeepAndroidCallDeliveryMode toCallkeep() {
+    switch (this) {
+      case PCallkeepAndroidCallDeliveryMode.telecom:
+        return CallkeepAndroidCallDeliveryMode.telecom;
+      case PCallkeepAndroidCallDeliveryMode.standalone:
+        return CallkeepAndroidCallDeliveryMode.standalone;
+      case PCallkeepAndroidCallDeliveryMode.unknown:
+        return CallkeepAndroidCallDeliveryMode.unknown;
     }
   }
 }

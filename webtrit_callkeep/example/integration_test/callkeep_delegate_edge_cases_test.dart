@@ -5,134 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 
-// ---------------------------------------------------------------------------
-// Shared fixtures
-// ---------------------------------------------------------------------------
-
-const _options = CallkeepOptions(
-  ios: CallkeepIOSOptions(
-    localizedName: 'Integration Tests',
-    maximumCallGroups: 2,
-    maximumCallsPerCallGroup: 1,
-    supportedHandleTypes: {CallkeepHandleType.number},
-  ),
-  android: CallkeepAndroidOptions(),
-);
-
-const _handle1 = CallkeepHandle.number('380004000000');
-
-var _idCounter = 0;
-String _nextId() => 'delegate-${_idCounter++}';
-
-// ---------------------------------------------------------------------------
-// Recording delegate with extended callbacks
-// ---------------------------------------------------------------------------
-
-class _RecordingDelegate implements CallkeepDelegate {
-  final List<String> answerCallIds = [];
-  final List<String> endCallIds = [];
-  final List<String> startCallIds = [];
-  final List<({String callId, bool onHold})> holdEvents = [];
-  final List<({String callId, bool muted})> muteEvents = [];
-  int activateAudioSessionCount = 0;
-  int deactivateAudioSessionCount = 0;
-  final List<({String callId, CallkeepIncomingCallError? error})> pushIncomingEvents = [];
-
-  void Function(String callId)? onPerformAnswerCall;
-  void Function(String callId)? onPerformEndCall;
-  void Function(String callId)? onPerformStartCall;
-  void Function()? onDidActivateAudioSession;
-  void Function()? onDidDeactivateAudioSession;
-  void Function(String callId, CallkeepIncomingCallError? error)? onDidPushIncomingCall;
-
-  @override
-  void continueStartCallIntent(CallkeepHandle handle, String? displayName, bool video) {}
-
-  @override
-  void didPushIncomingCall(
-    CallkeepHandle handle,
-    String? displayName,
-    bool video,
-    String callId,
-    CallkeepIncomingCallError? error,
-  ) {
-    pushIncomingEvents.add((callId: callId, error: error));
-    onDidPushIncomingCall?.call(callId, error);
-  }
-
-  @override
-  void didActivateAudioSession() {
-    activateAudioSessionCount++;
-    onDidActivateAudioSession?.call();
-  }
-
-  @override
-  void didDeactivateAudioSession() {
-    deactivateAudioSessionCount++;
-    onDidDeactivateAudioSession?.call();
-  }
-
-  @override
-  void didReset() {}
-
-  @override
-  Future<bool> performStartCall(
-    String callId,
-    CallkeepHandle handle,
-    String? displayName,
-    bool video,
-  ) {
-    startCallIds.add(callId);
-    onPerformStartCall?.call(callId);
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performAnswerCall(String callId) {
-    answerCallIds.add(callId);
-    onPerformAnswerCall?.call(callId);
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performEndCall(String callId) {
-    endCallIds.add(callId);
-    onPerformEndCall?.call(callId);
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performSetHeld(String callId, bool onHold) {
-    holdEvents.add((callId: callId, onHold: onHold));
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performSetMuted(String callId, bool muted) {
-    muteEvents.add((callId: callId, muted: muted));
-    return Future.value(true);
-  }
-
-  @override
-  Future<bool> performSendDTMF(String callId, String key) => Future.value(true);
-
-  @override
-  Future<bool> performAudioDeviceSet(String callId, CallkeepAudioDevice device) => Future.value(true);
-
-  @override
-  Future<bool> performAudioDevicesUpdate(String callId, List<CallkeepAudioDevice> devices) => Future.value(true);
-}
-
-// ---------------------------------------------------------------------------
-// Helper: await a delegate callback with timeout
-// ---------------------------------------------------------------------------
-
-Future<T> _waitFor<T>(Future<T> future, {String label = 'callback'}) {
-  return future.timeout(
-    const Duration(seconds: 10),
-    onTimeout: () => throw TimeoutException('$label did not fire within timeout'),
-  );
-}
+import 'helpers/callkeep_test_helpers.dart';
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -142,14 +15,14 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   late Callkeep callkeep;
-  late _RecordingDelegate delegate;
+  late RecordingDelegate delegate;
   var globalTearDownNeeded = true;
 
   setUp(() async {
     globalTearDownNeeded = true;
     callkeep = Callkeep();
-    delegate = _RecordingDelegate();
-    await callkeep.setUp(_options);
+    delegate = RecordingDelegate();
+    await callkeep.setUp(kTestOptions);
     callkeep.setDelegate(delegate);
   });
 
@@ -176,15 +49,22 @@ void main() {
       }
       globalTearDownNeeded = false;
 
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Alice');
+      final id = nextTestId();
 
-      final answerLatch = Completer<void>();
-      delegate.onPerformAnswerCall = (cid) {
-        if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
+      // Use the outgoing-call path to establish an active call without touching FGS.
+      // After 80+ tests the FGS incoming-call broadcast pipeline is completely
+      // backlogged and reportNewIncomingCall / didPushIncomingCall stop firing.
+      // An outgoing call reaches ACTIVE state via synchronous CS IPC calls only,
+      // which remain reliable regardless of how many tests have accumulated.
+      final startLatch = Completer<void>();
+      delegate.onPerformStartCall = (cid) {
+        if (cid == id && !startLatch.isCompleted) startLatch.complete();
       };
-      await callkeep.answerCall(id);
-      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+
+      await callkeep.startCall(id, kTestHandle1, displayNameOrContactIdentifier: 'Alice');
+      await waitFor(startLatch.future, label: 'performStartCall');
+      await callkeep.reportConnectingOutgoingCall(id);
+      await callkeep.reportConnectedOutgoingCall(id);
 
       // Simulate BLoC.close() pattern: setDelegate(null) while call is active
       callkeep.setDelegate(null);
@@ -200,8 +80,8 @@ void main() {
         markTestSkipped('Android only');
         return;
       }
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Bob');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Bob');
 
       // Temporarily remove delegate
       callkeep.setDelegate(null);
@@ -216,7 +96,7 @@ void main() {
       };
       await callkeep.endCall(id);
 
-      final ended = await _waitFor(endLatch.future, label: 'performEndCall after delegate restore');
+      final ended = await waitFor(endLatch.future, label: 'performEndCall after delegate restore');
       expect(ended, id);
     });
   });
@@ -231,18 +111,18 @@ void main() {
         markTestSkipped('Android only');
         return;
       }
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Carol');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Carol');
 
       final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
         if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
-      await _waitFor(answerLatch.future, label: 'performAnswerCall delegate1');
+      await waitFor(answerLatch.future, label: 'performAnswerCall delegate1');
 
       // Swap to delegate2
-      final delegate2 = _RecordingDelegate();
+      final delegate2 = RecordingDelegate();
       callkeep.setDelegate(delegate2);
 
       // Old delegate must not receive further callbacks
@@ -254,7 +134,7 @@ void main() {
       };
 
       await callkeep.endCall(id);
-      final ended = await _waitFor(endLatch.future, label: 'performEndCall on delegate2');
+      final ended = await waitFor(endLatch.future, label: 'performEndCall on delegate2');
       expect(ended, id);
       expect(delegate.endCallIds.where((c) => c == id).length, 0,
           reason: 'old delegate must not have received performEndCall');
@@ -272,7 +152,7 @@ void main() {
         markTestSkipped('Android only');
         return;
       }
-      final id = _nextId();
+      final id = nextTestId();
 
       final latch = Completer<CallkeepIncomingCallError?>();
       delegate.onDidPushIncomingCall = (cid, err) {
@@ -280,9 +160,9 @@ void main() {
       };
 
       await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(id, _handle1, displayName: 'Dave');
+          .reportNewIncomingCall(id, kTestHandle1, displayName: 'Dave');
 
-      final err = await _waitFor(latch.future, label: 'didPushIncomingCall');
+      final err = await waitFor(latch.future, label: 'didPushIncomingCall');
       expect(err, isNull);
     });
 
@@ -291,15 +171,15 @@ void main() {
         markTestSkipped('Android only');
         return;
       }
-      final id = _nextId();
+      final id = nextTestId();
 
       // First registration via main path
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Eve');
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Eve');
       await Future.delayed(const Duration(milliseconds: 300));
 
       // Duplicate registration via push path — platform returns error directly
       final err = await AndroidCallkeepServices.backgroundPushNotificationBootstrapService
-          .reportNewIncomingCall(id, _handle1, displayName: 'Eve');
+          .reportNewIncomingCall(id, kTestHandle1, displayName: 'Eve');
 
       // The platform returns callIdAlreadyExists (or similar) for duplicate IDs
       expect(err, isNotNull);
@@ -323,8 +203,8 @@ void main() {
         markTestSkipped('Android only');
         return;
       }
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Frank');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Frank');
 
       final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
@@ -337,7 +217,7 @@ void main() {
       };
 
       await callkeep.answerCall(id);
-      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+      await waitFor(answerLatch.future, label: 'performAnswerCall');
 
       // didActivateAudioSession fires asynchronously after answer
       try {
@@ -355,15 +235,15 @@ void main() {
         markTestSkipped('Android only');
         return;
       }
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Grace');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Grace');
 
       final answerLatch = Completer<void>();
       delegate.onPerformAnswerCall = (cid) {
         if (cid == id && !answerLatch.isCompleted) answerLatch.complete();
       };
       await callkeep.answerCall(id);
-      await _waitFor(answerLatch.future, label: 'performAnswerCall');
+      await waitFor(answerLatch.future, label: 'performAnswerCall');
 
       final deactivateLatch = Completer<void>();
       delegate.onDidDeactivateAudioSession = () {
@@ -375,7 +255,7 @@ void main() {
         if (cid == id && !endLatch.isCompleted) endLatch.complete();
       };
       await callkeep.endCall(id);
-      await _waitFor(endLatch.future, label: 'performEndCall');
+      await waitFor(endLatch.future, label: 'performEndCall');
 
       try {
         await deactivateLatch.future.timeout(const Duration(seconds: 5));

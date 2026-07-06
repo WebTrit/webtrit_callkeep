@@ -1,7 +1,9 @@
 <resources>
     <string name="client_title">User name</string>
     <string name="incoming_call_title">Incoming call</string>
-    <string name="incoming_call_description">"You have an incoming call from %1$s</string>
+    <string name="incoming_call_description">You have an incoming call from %1$s</string>
+    <string name="incoming_video_call_title">Incoming video call</string>
+    <string name="incoming_video_call_description">You have an incoming video call from %1$s</string>
     <string name="answer_call_button_text">Answer</string>
     <string name="decline_button_text">Decline</string>
     <string name="hang_up_button_text">Hung up</string>
@@ -15,4 +17,5 @@
     <string name="push_notification_foreground_call_service_title">Ongoing call</string>
     <string name="push_notification_foreground_call_service_description">This service keeps the call active in the background</string>
     <string name="incoming_call_connecting">Connecting…</string>
+    <string name="unknown_caller">Unknown caller</string>
 </resources>

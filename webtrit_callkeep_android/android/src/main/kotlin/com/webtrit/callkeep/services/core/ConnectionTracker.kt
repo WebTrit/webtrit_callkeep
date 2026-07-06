@@ -2,6 +2,7 @@ package com.webtrit.callkeep.services.core
 
 import com.webtrit.callkeep.PCallkeepConnection
 import com.webtrit.callkeep.PCallkeepConnectionState
+import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
 
 /**
@@ -32,13 +33,23 @@ interface ConnectionTracker {
         state: PCallkeepConnectionState,
     )
 
-    /** Mark [callId] as answered and advance its state to STATE_ACTIVE. */
+    /**
+     * Mark [callId] as answered (lifecycle guard for isAnswered / checkIncomingDuplicate).
+     * Does NOT stamp the connection state — ACTIVE is mirrored via [updateState].
+     */
     fun markAnswered(callId: String)
 
-    /** Update the hold state for [callId] (STATE_HOLDING / STATE_ACTIVE). */
-    fun markHeld(
+    /**
+     * Mirror the authoritative connection [state] for [callId]. Source of truth is the real
+     * android.telecom.Connection state (PhoneConnection.onStateChanged) / the StandaloneCallService
+     * transitions. Writes the state UNCONDITIONALLY (it does NOT register the call and is not gated on
+     * connections membership): state may be set before [promote] and is preserved across an [addPending]
+     * reset, which the cold-start "already answered" detection relies on. Touches no guard set. Ignores
+     * terminal DISCONNECTED — that is owned by [markTerminated] via the cause-carrying events.
+     */
+    fun updateState(
         callId: String,
-        onHold: Boolean,
+        state: CallConnectionState,
     )
 
     /**
@@ -101,18 +112,23 @@ interface ConnectionTracker {
     fun markEndCallDispatched(callId: String): Boolean
 
     /**
-     * Mark [callId] as registered via ForegroundService.reportNewIncomingCall
-     * (the foreground signaling path). Suppresses the DidPushIncomingCall broadcast
-     * that follows via the :callkeep_core IPC round-trip, preventing a duplicate
-     * push-path ActiveCall entry in the app's call state.
+     * Record that the app ended [callId] while it was never presented in Flutter state (the
+     * call==null signaling-hangup path). Used to reject a stale ghost re-presentation of the same
+     * call: in a push->foreground handoff the connection-state replay can re-drive an incoming call
+     * for a callId the signaling layer already hung up, arriving as a fresh reportNewIncomingCall.
+     *
+     * Semantic, not time-based: a transfer-back always reuses a call the app DID know about, so its
+     * end never lands here - the mark therefore distinguishes a ghost from a legitimate reuse
+     * without any timing window.
      */
-    fun markSignalingRegistered(callId: String)
+    fun markEndedWithoutFlutterState(callId: String)
 
     /**
-     * Returns true and removes the mark if [callId] was signaling-registered.
-     * Consuming on first read ensures the guard fires at most once per call.
+     * Returns true if [markEndedWithoutFlutterState] was recorded for [callId]. Sticky (not removed
+     * on read): a stale handshake can replay the dead incoming several times, so every
+     * re-presentation must be rejected, not just the first. Cleared on tearDown via [clear].
      */
-    fun consumeSignalingRegistered(callId: String): Boolean
+    fun wasEndedWithoutFlutterState(callId: String): Boolean
 
     // -------------------------------------------------------------------------
     // Read operations

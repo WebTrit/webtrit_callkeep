@@ -26,7 +26,7 @@ class ActiveCallNotificationBuilder : NotificationBuilder() {
                 context.getString(R.string.push_notification_active_call_channel_title)
             }
 
-        val text = callsMetaData.joinToString { it.name }
+        val text = callsMetaData.joinToString { it.name ?: context.getString(R.string.unknown_caller) }
 
         val hungUpAction: Notification.Action =
             Notification.Action

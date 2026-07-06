@@ -89,22 +89,30 @@ class ConnectionManager {
     }
 
     /**
-     * Adds [callId] to [pendingCallIds] in response to a [ServiceAction.NotifyPending] IPC
-     * intent from the main process.
+     * Adds [callId] to [pendingCallIds] and returns true, or returns false and does nothing
+     * if [callId] is currently in [forcedTerminatedCallIds].
      *
-     * In the dual-process architecture, [checkAndReservePending] runs in the main-process JVM
-     * and populates the main process's [ConnectionManager] instance. The :callkeep_core process
-     * has its own instance whose [pendingCallIds] is never touched by the main process.
-     * This method bridges the gap: the main process sends a [ServiceAction.NotifyPending] intent
-     * just before [TelephonyUtils.addNewIncomingCall], and [PhoneConnectionService.handleNotifyPending]
-     * calls this method, ensuring [isPending] returns true when [onCreateIncomingConnection] fires.
+     * In the dual-process architecture, [checkAndReservePending] runs in the reporting process
+     * (main or push isolate) and populates that process's [ConnectionManager] instance. The
+     * :callkeep_core process has its own instance whose [pendingCallIds] is populated here, called
+     * from [PhoneConnectionService.onCreateIncomingConnection] once Telecom binds the service - the
+     * incoming call is reported directly via [TelephonyUtils.addNewIncomingCall], so the slot is
+     * not pre-registered in this process. A [ServiceAction.NotifyPending] IPC may also populate it.
      *
-     * Also removes [callId] from [forcedTerminatedCallIds] in the (theoretically impossible for
-     * UUID callIds) case where a new session re-uses the same ID.
+     * Returning false signals that [cleanConnections] already ran for the session that owns this
+     * callId, so this is a stale post-tearDown callback. The caller (onCreateIncomingConnection)
+     * rejects the connection instead of creating a [PhoneConnection] for a closed session.
      */
-    fun addPendingForIncomingCall(callId: String) {
-        forcedTerminatedCallIds.remove(callId)
+    fun addPendingForIncomingCall(callId: String): Boolean {
+        // If cleanConnections() already ran and captured this callId into forcedTerminatedCallIds,
+        // this is a post-tearDown stale callback. Reject it so no PhoneConnection is created for a
+        // closed session whose broadcasts would arrive in an already-cleared main-process tracker.
+        if (forcedTerminatedCallIds.contains(callId)) {
+            logger.w("addPendingForIncomingCall: callId=$callId is force-terminated, rejecting stale in-flight intent")
+            return false
+        }
         pendingCallIds.add(callId)
+        return true
     }
 
     /**

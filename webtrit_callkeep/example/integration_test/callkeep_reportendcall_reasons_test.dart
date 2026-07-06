@@ -2,24 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:webtrit_callkeep/webtrit_callkeep.dart';
 
-// ---------------------------------------------------------------------------
-// Shared fixtures
-// ---------------------------------------------------------------------------
-
-const _options = CallkeepOptions(
-  ios: CallkeepIOSOptions(
-    localizedName: 'Integration Tests',
-    maximumCallGroups: 2,
-    maximumCallsPerCallGroup: 1,
-    supportedHandleTypes: {CallkeepHandleType.number},
-  ),
-  android: CallkeepAndroidOptions(),
-);
-
-const _handle1 = CallkeepHandle.number('380005000000');
-
-var _idCounter = 0;
-String _nextId() => 'reason-${_idCounter++}';
+import 'helpers/callkeep_test_helpers.dart';
 
 // ---------------------------------------------------------------------------
 // Minimal no-op delegate
@@ -74,35 +57,6 @@ class _NoOpDelegate implements CallkeepDelegate {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-Future<CallkeepConnection?> _waitForConnection(
-  String callId, {
-  Duration timeout = const Duration(seconds: 5),
-}) async {
-  final deadline = DateTime.now().add(timeout);
-  while (DateTime.now().isBefore(deadline)) {
-    final conn = await CallkeepConnections().getConnection(callId);
-    if (conn != null) return conn;
-    await Future.delayed(const Duration(milliseconds: 100));
-  }
-  return null;
-}
-
-Future<void> _waitForConnectionGone(
-  String callId, {
-  Duration timeout = const Duration(seconds: 5),
-}) async {
-  final deadline = DateTime.now().add(timeout);
-  while (DateTime.now().isBefore(deadline)) {
-    final conn = await CallkeepConnections().getConnection(callId);
-    if (conn == null) return;
-    await Future.delayed(const Duration(milliseconds: 100));
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -115,7 +69,7 @@ void main() {
   setUp(() async {
     globalTearDownNeeded = true;
     callkeep = Callkeep();
-    await callkeep.setUp(_options);
+    await callkeep.setUp(kTestOptions);
     callkeep.setDelegate(_NoOpDelegate());
   });
 
@@ -135,8 +89,8 @@ void main() {
 
   group('reportEndCall - all reasons', () {
     testWidgets('reportEndCall with failed on ringing call completes', (WidgetTester _) async {
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Alice');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Alice');
       await expectLater(
         callkeep.reportEndCall(id, 'Alice', CallkeepEndCallReason.failed),
         completes,
@@ -144,8 +98,8 @@ void main() {
     });
 
     testWidgets('reportEndCall with answeredElsewhere on ringing call completes', (WidgetTester _) async {
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Bob');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Bob');
       await expectLater(
         callkeep.reportEndCall(id, 'Bob', CallkeepEndCallReason.answeredElsewhere),
         completes,
@@ -153,8 +107,8 @@ void main() {
     });
 
     testWidgets('reportEndCall with declinedElsewhere on ringing call completes', (WidgetTester _) async {
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Carol');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Carol');
       await expectLater(
         callkeep.reportEndCall(id, 'Carol', CallkeepEndCallReason.declinedElsewhere),
         completes,
@@ -162,8 +116,8 @@ void main() {
     });
 
     testWidgets('reportEndCall with missed on ringing call completes', (WidgetTester _) async {
-      final id = _nextId();
-      await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Dan');
+      final id = nextTestId();
+      await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Dan');
       await expectLater(
         callkeep.reportEndCall(id, 'Dan', CallkeepEndCallReason.missed),
         completes,
@@ -172,12 +126,12 @@ void main() {
 
     testWidgets('all six CallkeepEndCallReason values in a loop complete without exception', (WidgetTester _) async {
       for (final reason in CallkeepEndCallReason.values) {
-        final id = _nextId();
-        await callkeep.reportNewIncomingCall(id, _handle1, displayName: 'Test');
+        final id = nextTestId();
+        await callkeep.reportNewIncomingCall(id, kTestHandle1, displayName: 'Test');
         // Wait for the call to be promoted to the tracker (DidPushIncomingCall
         // broadcast received) before ending it. This ensures the connection
         // exists in Telecom before reportEndCall is called.
-        await _waitForConnection(id);
+        await waitForConnection(id);
         await expectLater(
           callkeep.reportEndCall(id, 'Test', reason),
           completes,
@@ -186,7 +140,7 @@ void main() {
         // tracker's connection map being cleared) before the next
         // addNewIncomingCall. This replaces a fixed 500ms hack with a proper
         // observable signal.
-        await _waitForConnectionGone(id);
+        await waitForConnectionGone(id);
       }
     });
   });

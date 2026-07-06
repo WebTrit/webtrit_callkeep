@@ -66,6 +66,8 @@ class PPermissionResult {
 
 enum PCallkeepAndroidBatteryMode { unrestricted, optimized, restricted, unknown }
 
+enum PCallkeepAndroidCallDeliveryMode { telecom, standalone, unknown }
+
 enum PHandleTypeEnum { generic, number, email }
 
 enum PCallInfoConsts { uuid, dtmf, isVideo, number, name }
@@ -75,7 +77,7 @@ class PHandle {
   late String value;
 }
 
-enum PEndCallReasonEnum { failed, remoteEnded, unanswered, answeredElsewhere, declinedElsewhere, missed }
+enum PEndCallReasonEnum { failed, remoteEnded, unanswered, answeredElsewhere, declinedElsewhere, missed, missedWhileConnecting }
 
 // TODO: See https://github.com/flutter/flutter/issues/87307
 class PEndCallReason {
@@ -260,6 +262,11 @@ abstract class PHostPermissionsApi {
 
   @async
   PCallkeepAndroidBatteryMode getBatteryMode();
+
+  /// How incoming calls are delivered: Telecom `ConnectionService` vs the
+  /// limited standalone foreground service (device without `android.software.telecom`).
+  @async
+  PCallkeepAndroidCallDeliveryMode getCallDeliveryMode();
 
   @async
   List<PPermissionResult> requestPermissions(List<PCallkeepPermission> permissions);

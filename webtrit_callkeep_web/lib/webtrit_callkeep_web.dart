@@ -261,6 +261,9 @@ class WebtritCallkeepWeb extends WebtritCallkeepPlatform {
   Future<CallkeepAndroidBatteryMode> getBatteryMode() async => CallkeepAndroidBatteryMode.unknown;
 
   @override
+  Future<CallkeepAndroidCallDeliveryMode> getCallDeliveryMode() async => CallkeepAndroidCallDeliveryMode.unknown;
+
+  @override
   Future<Map<CallkeepPermission, CallkeepSpecialPermissionStatus>> requestPermissions(
     List<CallkeepPermission> permissions,
   ) async {
