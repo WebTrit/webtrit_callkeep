@@ -39,6 +39,9 @@ This is a federated plugin. Each package has its own README and `docs/` director
 | Android | API 26 (Android 8.0) |
 | iOS | iOS 11 |
 
+> **Note:** CallKit and PushKit are only available on real devices — this plugin will not work
+> on iOS simulators. See [iOS Simulator](webtrit_callkeep_ios/README.md#ios-simulator).
+
 ---
 
 ## Installation
