@@ -90,7 +90,26 @@ class TelephonyUtils(
         // Defined as a local constant to avoid a lint InlinedApi warning on minSdk 26.
         private const val FEATURE_TELECOM = "android.software.telecom"
 
+        // RFC 9476 reserved .internal TLD, guaranteed to never resolve publicly. This host is
+        // never used for actual dialing, only for Telecom's own bookkeeping - see buildOutgoingUri.
+        private const val OUTGOING_URI_HOST = "portadialer.internal"
+
         private val logger = Log(TAG)
+
+        /**
+         * Builds the [Uri] to pass to [TelecomManager.placeCall] for an outgoing call to [number].
+         *
+         * Deliberately uses the sip: scheme with an explicit @host instead of tel:. Android's
+         * emergency-number matching (Telecom's internal isEmergencyNumber() re-check before a
+         * self-managed PhoneAccount is allowed to place a call) only ever applies to tel: scheme
+         * addresses whose scheme-specific-part looks like a bare phone number - a self-managed
+         * PhoneAccount can never place a Telecom-classified emergency call, so a legitimate PBX
+         * extension that happens to collide with the device/SIM-region emergency-number list
+         * (e.g. "112" or "911") would otherwise be silently blocked. This Uri is only used for
+         * Telecom bookkeeping; the real number keeps flowing unchanged via CallMetadata into
+         * onCreateOutgoingConnection, which never reads request.address.
+         */
+        fun buildOutgoingUri(number: String): Uri = Uri.parse("${PhoneAccount.SCHEME_SIP}:$number@$OUTGOING_URI_HOST")
 
         /**
          * Returns true if the device supports the Android Telecom framework.

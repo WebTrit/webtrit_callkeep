@@ -9,7 +9,6 @@ import android.telecom.Connection
 import android.telecom.ConnectionRequest
 import android.telecom.ConnectionService
 import android.telecom.DisconnectCause
-import android.telecom.PhoneAccount
 import android.telecom.PhoneAccountHandle
 import androidx.annotation.RequiresPermission
 import com.webtrit.callkeep.PIncomingCallError
@@ -765,21 +764,7 @@ class PhoneConnectionService : ConnectionService() {
                     )
             val telephonyUtils = TelephonyUtils(context)
 
-            // Android's emergency-number matching (TelecomManager.placeCall's internal
-            // isEmergencyNumber() re-check) only ever applies to tel: scheme addresses whose
-            // scheme-specific-part looks like a bare phone number. A self-managed PhoneAccount
-            // is never allowed to place a call Telecom classifies as emergency - there is no
-            // capability or override for that - which silently drops a call to a number that is
-            // a legitimate internal PBX extension for this account but happens to collide with
-            // the device/SIM-region emergency-number list (e.g. an extension literally named
-            // "112" or "911"). Using a sip: address instead sidesteps the check entirely: the
-            // "@host" part is required, a bare "sip:<number>" still matches. "portadialer.internal"
-            // uses the RFC 9476 reserved .internal TLD, guaranteed to never resolve publicly -
-            // this address is never used for actual dialing, only for Telecom's own bookkeeping
-            // (see placeOutgoingCall below); the real number keeps flowing unchanged via
-            // metadata/CallMetadata into onCreateOutgoingConnection, which never reads
-            // request.address.
-            val uri: Uri = Uri.parse("${PhoneAccount.SCHEME_SIP}:$number@portadialer.internal")
+            val uri: Uri = TelephonyUtils.buildOutgoingUri(number)
 
             // If there is already an active call not on hold, we terminate it and start a new one,
             // otherwise, we would encounter an exception when placing the outgoing call.
