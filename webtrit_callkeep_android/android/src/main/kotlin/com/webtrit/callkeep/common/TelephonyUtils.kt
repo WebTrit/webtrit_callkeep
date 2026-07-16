@@ -4,12 +4,10 @@ import android.Manifest
 import android.content.ComponentName
 import android.content.Context
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.telecom.PhoneAccount
 import android.telecom.PhoneAccountHandle
 import android.telecom.TelecomManager
-import android.telephony.PhoneNumberUtils
 import android.telephony.TelephonyManager
 import androidx.annotation.RequiresPermission
 import com.webtrit.callkeep.models.CallMetadata
@@ -18,17 +16,6 @@ import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 class TelephonyUtils(
     private val context: Context,
 ) {
-    fun isEmergencyNumber(number: String): Boolean {
-        val telephonyManager =
-            context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            telephonyManager.isEmergencyNumber(number)
-        } else {
-            PhoneNumberUtils.isEmergencyNumber(number)
-        }
-    }
-
     fun getTelecomManager(): TelecomManager = context.getSystemService(Context.TELECOM_SERVICE) as TelecomManager
 
     @RequiresPermission(Manifest.permission.CALL_PHONE)
