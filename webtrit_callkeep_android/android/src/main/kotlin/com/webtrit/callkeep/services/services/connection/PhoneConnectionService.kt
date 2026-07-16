@@ -773,12 +773,13 @@ class PhoneConnectionService : ConnectionService() {
             // a legitimate internal PBX extension for this account but happens to collide with
             // the device/SIM-region emergency-number list (e.g. an extension literally named
             // "112" or "911"). Using a sip: address instead sidesteps the check entirely: the
-            // "@host" part is required, a bare "sip:<number>" still matches. ".invalid" is the
-            // RFC 2606 reserved TLD, guaranteed to never resolve - this address is never used
-            // for actual dialing, only for Telecom's own bookkeeping (see placeOutgoingCall
-            // below); the real number keeps flowing unchanged via metadata/CallMetadata into
-            // onCreateOutgoingConnection, which never reads request.address.
-            val uri: Uri = Uri.parse("${PhoneAccount.SCHEME_SIP}:$number@webtrit.invalid")
+            // "@host" part is required, a bare "sip:<number>" still matches. "portadialer.internal"
+            // uses the RFC 9476 reserved .internal TLD, guaranteed to never resolve publicly -
+            // this address is never used for actual dialing, only for Telecom's own bookkeeping
+            // (see placeOutgoingCall below); the real number keeps flowing unchanged via
+            // metadata/CallMetadata into onCreateOutgoingConnection, which never reads
+            // request.address.
+            val uri: Uri = Uri.parse("${PhoneAccount.SCHEME_SIP}:$number@portadialer.internal")
 
             // If there is already an active call not on hold, we terminate it and start a new one,
             // otherwise, we would encounter an exception when placing the outgoing call.
