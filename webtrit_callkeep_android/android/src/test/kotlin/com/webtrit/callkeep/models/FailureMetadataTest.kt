@@ -19,17 +19,6 @@ class FailureMetadataTest {
     }
 
     @Test
-    fun `round-trip preserves EMERGENCY_NUMBER failure type`() {
-        val original = FailureMetadata(
-            callMetadata = null,
-            message = "emergency",
-            outgoingFailureType = OutgoingFailureType.EMERGENCY_NUMBER,
-        )
-        val restored = FailureMetadata.fromBundle(original.toBundle())
-        assertEquals(OutgoingFailureType.EMERGENCY_NUMBER, restored.outgoingFailureType)
-    }
-
-    @Test
     fun `unknown string falls back to UNENTITLED`() {
         val bundle = Bundle().apply { putString("FAILURE_OUTGOING_TYPE", "FUTURE_TYPE") }
         val restored = FailureMetadata.fromBundle(bundle)
