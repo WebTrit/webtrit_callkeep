@@ -116,15 +116,6 @@ Carry structured error information when a call fails to connect.
 
 ---
 
-## EmergencyNumberException
-
-**File**: `kotlin/com/webtrit/callkeep/models/EmergencyNumberException.kt`
-
-Thrown (and caught, then reported to Dart) when the app attempts to handle an emergency number
-(`112`, `911`, etc.) that must be routed to the system dialer instead.
-
----
-
 ## Converters
 
 **File**: `kotlin/com/webtrit/callkeep/models/Converters.kt`
