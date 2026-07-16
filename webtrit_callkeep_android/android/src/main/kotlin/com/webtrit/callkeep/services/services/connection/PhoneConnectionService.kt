@@ -20,10 +20,8 @@ import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.TelephonyUtils
 import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.models.EmergencyNumberException
 import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.models.InvalidCallMetadataException
-import com.webtrit.callkeep.models.OutgoingFailureType
 import com.webtrit.callkeep.services.broadcaster.CallCommandEvent
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
@@ -765,30 +763,31 @@ class PhoneConnectionService : ConnectionService() {
                     ?: throw InvalidCallMetadataException(
                         "startOutgoingCall: missing destination number for callId=${metadata.callId}",
                     )
-            val uri: Uri = Uri.fromParts(PhoneAccount.SCHEME_TEL, number, null)
             val telephonyUtils = TelephonyUtils(context)
 
-            if (telephonyUtils.isEmergencyNumber(number)) {
-                Log.i(TAG, "onOutgoingCall, trying to call on emergency number: $number")
+            // Android's emergency-number matching (TelecomManager.placeCall's internal
+            // isEmergencyNumber() re-check) only ever applies to tel: scheme addresses whose
+            // scheme-specific-part looks like a bare phone number. A self-managed PhoneAccount
+            // is never allowed to place a call Telecom classifies as emergency - there is no
+            // capability or override for that - which silently drops a call to a number that is
+            // a legitimate internal PBX extension for this account but happens to collide with
+            // the device/SIM-region emergency-number list (e.g. an extension literally named
+            // "112" or "911"). Using a sip: address instead sidesteps the check entirely: the
+            // "@host" part is required, a bare "sip:<number>" still matches. ".invalid" is the
+            // RFC 2606 reserved TLD, guaranteed to never resolve - this address is never used
+            // for actual dialing, only for Telecom's own bookkeeping (see placeOutgoingCall
+            // below); the real number keeps flowing unchanged via metadata/CallMetadata into
+            // onCreateOutgoingConnection, which never reads request.address.
+            val uri: Uri = Uri.parse("${PhoneAccount.SCHEME_SIP}:$number@webtrit.invalid")
 
-                val failureMetadata =
-                    FailureMetadata(
-                        metadata,
-                        "Failed to establish outgoing connection: Emergency number",
-                        outgoingFailureType = OutgoingFailureType.EMERGENCY_NUMBER,
-                    )
-
-                throw EmergencyNumberException(failureMetadata)
-            } else {
-                // If there is already an active call not on hold, we terminate it and start a new one,
-                // otherwise, we would encounter an exception when placing the outgoing call.
-                connectionManager.getActiveConnection()?.let {
-                    Log.i(TAG, "onOutgoingCall, hung up previous call: $it")
-                    it.hungUp()
-                }
-
-                telephonyUtils.placeOutgoingCall(uri, metadata)
+            // If there is already an active call not on hold, we terminate it and start a new one,
+            // otherwise, we would encounter an exception when placing the outgoing call.
+            connectionManager.getActiveConnection()?.let {
+                Log.i(TAG, "onOutgoingCall, hung up previous call: $it")
+                it.hungUp()
             }
+
+            telephonyUtils.placeOutgoingCall(uri, metadata)
         }
 
         /**
