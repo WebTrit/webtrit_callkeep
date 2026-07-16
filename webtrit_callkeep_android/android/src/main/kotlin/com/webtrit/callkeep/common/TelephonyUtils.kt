@@ -108,8 +108,15 @@ class TelephonyUtils(
          * (e.g. "112" or "911") would otherwise be silently blocked. This Uri is only used for
          * Telecom bookkeeping; the real number keeps flowing unchanged via CallMetadata into
          * onCreateOutgoingConnection, which never reads request.address.
+         *
+         * The number is percent-encoded so URI-reserved characters in it (e.g. "#" in PBX
+         * feature codes) cannot break the Uri structure, while the "@host" delimiter stays
+         * literal - a bare "sip:<number>" (no literal @host) still matches the emergency
+         * check, so the delimiter must not be encoded (Uri.fromParts would encode it too).
+         * Plain digit numbers are unaffected by the encoding, keeping the exact Uri shape
+         * validated on-device.
          */
-        fun buildOutgoingUri(number: String): Uri = Uri.parse("${PhoneAccount.SCHEME_SIP}:$number@$OUTGOING_URI_HOST")
+        fun buildOutgoingUri(number: String): Uri = Uri.parse("${PhoneAccount.SCHEME_SIP}:${Uri.encode(number)}@$OUTGOING_URI_HOST")
 
         /**
          * Returns true if the device supports the Android Telecom framework.
