@@ -4,7 +4,6 @@ import android.os.Bundle
 
 enum class OutgoingFailureType {
     UNENTITLED,
-    EMERGENCY_NUMBER,
 }
 
 open class FailureMetadata(
