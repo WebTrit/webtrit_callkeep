@@ -449,19 +449,24 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
     [_provider reportNewIncomingCallWithUUID:uuid
                                       update:callUpdate
                                   completion:^(NSError *error) {
-                                    if (error != nil && !([error.domain isEqualToString:CXErrorDomainIncomingCall] &&
-                                                          error.code == CXErrorCodeIncomingCallErrorCallUUIDAlreadyExists)) {
-                                      NSLog(@"[Callkeep][answerCall] deferred re-report failed: domain=%@ code=%ld (%@)",
-                                            error.domain, (long)error.code, error.localizedDescription);
-                                      completion([WTPCallRequestError makeWithValue:WTPCallRequestErrorEnumInternal], nil);
-                                      return;
-                                    }
-                                    NSLog(@"[Callkeep][answerCall] deferred re-report ok (%@), requesting answer", uuid.UUIDString);
-                                    [self->_deferredCallUuids removeObject:uuid];
-                                    [self->_ownCallUuids addObject:uuid];
-                                    CXAnswerCallAction *action = [[CXAnswerCallAction alloc] initWithCallUUID:uuid];
-                                    CXTransaction *transaction = [[CXTransaction alloc] initWithAction:action];
-                                    [self requestTransaction:transaction completion:completion];
+                                    // The report completion arrives on the provider's private queue;
+                                    // all plugin state is main-thread-confined (delegate and observer
+                                    // callbacks run on main), so hop before touching it.
+                                    dispatch_async(dispatch_get_main_queue(), ^{
+                                      if (error != nil && !([error.domain isEqualToString:CXErrorDomainIncomingCall] &&
+                                                            error.code == CXErrorCodeIncomingCallErrorCallUUIDAlreadyExists)) {
+                                        NSLog(@"[Callkeep][answerCall] deferred re-report failed: domain=%@ code=%ld (%@)",
+                                              error.domain, (long)error.code, error.localizedDescription);
+                                        completion([WTPCallRequestError makeWithValue:WTPCallRequestErrorEnumInternal], nil);
+                                        return;
+                                      }
+                                      NSLog(@"[Callkeep][answerCall] deferred re-report ok (%@), requesting answer", uuid.UUIDString);
+                                      [self->_deferredCallUuids removeObject:uuid];
+                                      [self->_ownCallUuids addObject:uuid];
+                                      CXAnswerCallAction *action = [[CXAnswerCallAction alloc] initWithCallUUID:uuid];
+                                      CXTransaction *transaction = [[CXTransaction alloc] initWithAction:action];
+                                      [self requestTransaction:transaction completion:completion];
+                                    });
                                   }];
     return;
   }
