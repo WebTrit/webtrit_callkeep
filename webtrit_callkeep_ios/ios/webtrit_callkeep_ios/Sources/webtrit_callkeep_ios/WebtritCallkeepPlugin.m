@@ -38,6 +38,13 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   // Last CXCallUpdate per incoming call, kept so a deferred call can be
   // re-reported with its original handle/name when answered.
   NSMutableDictionary<NSUUID *, CXCallUpdate *> *_incomingCallUpdates;
+  // A deferred call re-enters CallKit under a FRESH UUID: re-reporting the
+  // original (already reported-ended) UUID makes CallKit accept the report but
+  // yield a zombie call whose answer transaction fails (InvalidAction) about
+  // half the time. The Flutter side keeps addressing the call by its stable
+  // original UUID; these two maps translate at the plugin boundary.
+  NSMutableDictionary<NSUUID *, NSUUID *> *_currentUuidByOriginal;
+  NSMutableDictionary<NSUUID *, NSUUID *> *_originalUuidByCurrent;
 }
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar> *)registrar {
@@ -67,6 +74,8 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
     _answeringCallUuids = [NSMutableSet set];
     _deferredCallUuids = [NSMutableSet set];
     _incomingCallUpdates = [NSMutableDictionary dictionary];
+    _currentUuidByOriginal = [NSMutableDictionary dictionary];
+    _originalUuidByCurrent = [NSMutableDictionary dictionary];
     _callWaitingToneOwnCallsOnly = YES;
   }
   return self;
@@ -241,6 +250,18 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
     completion(nil, nil);
     return;
   }
+  if (callUuid != nil && _ownCallUuids.count > 0) {
+    // At most one call is represented in CallKit: an incoming call arriving
+    // while any own call already lives there (ringing or active) is deferred
+    // right away - it rings app-side only and enters CallKit when answered.
+    // Registering it would raise the system call-waiting screen over the app.
+    NSLog(@"[Callkeep][reportNewIncomingCall] deferring on arrival %@ (own calls in CallKit: %lu)",
+          uuidString, (unsigned long)_ownCallUuids.count);
+    [_deferredCallUuids addObject:callUuid];
+    _incomingCallUpdates[callUuid] = callUpdate;
+    completion(nil, nil);
+    return;
+  }
   if (callUuid != nil) {
     [_ownCallUuids addObject:callUuid];
     _incomingCallUpdates[callUuid] = callUpdate;
@@ -310,7 +331,7 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
      }
   }
     
-  [_provider reportCallWithUUID:[[NSUUID alloc] initWithUUIDString:uuidString]
+  [_provider reportCallWithUUID:[self currentUuidFor:[[NSUUID alloc] initWithUUIDString:uuidString]]
                         updated:callUpdate];
   [self assignIdleTimerDisabled:callUpdate.hasVideo];
   completion(nil);
@@ -337,7 +358,7 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
     [_incomingCallUpdates removeObjectForKey:uuid];
   }
 
-  [_provider reportCallWithUUID:uuid
+  [_provider reportCallWithUUID:[self currentUuidFor:uuid]
                     endedAtDate:nil
                          reason:[reason toCallKit]];
   [self assignIdleTimerDisabled:NO];
@@ -411,6 +432,21 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
   }];
 }
 
+/// The CallKit-side UUID for a call the Flutter side addresses by [uuid]:
+/// the fresh alias when the call re-entered CallKit after a deferral, the
+/// same UUID otherwise.
+- (NSUUID *)currentUuidFor:(NSUUID *)uuid {
+  if (uuid == nil) return nil;
+  return _currentUuidByOriginal[uuid] ?: uuid;
+}
+
+/// The stable Flutter-side UUID for a CallKit call [uuid] (reverse of
+/// [currentUuidFor:]).
+- (NSUUID *)originalUuidFor:(NSUUID *)uuid {
+  if (uuid == nil) return nil;
+  return _originalUuidByCurrent[uuid] ?: uuid;
+}
+
 /// Takes every other still-ringing own incoming call out of CallKit right
 /// before [answeredUuid] goes active, marking them deferred. Without this the
 /// answer flips CallKit into "active + ringing" and iOS covers the app with
@@ -437,33 +473,38 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
   NSLog(@"[Callkeep][answerCall] uuidString = %@", uuidString);
 #endif
   NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:uuidString];
-  [self deferOtherRingingOwnCallsForAnswerOf:uuid];
+  [self deferOtherRingingOwnCallsForAnswerOf:[self currentUuidFor:uuid]];
 
   if (uuid != nil && [_deferredCallUuids containsObject:uuid]) {
-    // A deferred call re-enters CallKit only now, at answer time: re-report it
-    // with its remembered metadata and request the answer straight from the
-    // report completion, so the ringing state exists for the shortest possible
-    // moment and the system prompt has no time to take over.
-    NSLog(@"[Callkeep][answerCall] re-reporting deferred call %@", uuidString);
+    // A deferred call re-enters CallKit only now, at answer time, and under a
+    // FRESH UUID: re-reporting the original (already reported-ended) UUID makes
+    // CallKit hand back a zombie whose answer transaction fails. The alias maps
+    // keep the Flutter side on the stable original UUID. The answer is
+    // requested straight from the report completion, so the ringing state
+    // exists for the shortest possible moment.
+    NSUUID *freshUuid = [NSUUID UUID];
+    NSLog(@"[Callkeep][answerCall] re-reporting deferred call %@ as %@", uuidString, freshUuid.UUIDString);
     CXCallUpdate *callUpdate = _incomingCallUpdates[uuid] ?: [[CXCallUpdate alloc] init];
-    [_provider reportNewIncomingCallWithUUID:uuid
+    [_provider reportNewIncomingCallWithUUID:freshUuid
                                       update:callUpdate
                                   completion:^(NSError *error) {
                                     // The report completion arrives on the provider's private queue;
                                     // all plugin state is main-thread-confined (delegate and observer
                                     // callbacks run on main), so hop before touching it.
                                     dispatch_async(dispatch_get_main_queue(), ^{
-                                      if (error != nil && !([error.domain isEqualToString:CXErrorDomainIncomingCall] &&
-                                                            error.code == CXErrorCodeIncomingCallErrorCallUUIDAlreadyExists)) {
+                                      if (error != nil) {
                                         NSLog(@"[Callkeep][answerCall] deferred re-report failed: domain=%@ code=%ld (%@)",
                                               error.domain, (long)error.code, error.localizedDescription);
                                         completion([WTPCallRequestError makeWithValue:WTPCallRequestErrorEnumInternal], nil);
                                         return;
                                       }
-                                      NSLog(@"[Callkeep][answerCall] deferred re-report ok (%@), requesting answer", uuid.UUIDString);
+                                      NSLog(@"[Callkeep][answerCall] deferred re-report ok (%@ -> %@), requesting answer",
+                                            uuid.UUIDString, freshUuid.UUIDString);
                                       [self->_deferredCallUuids removeObject:uuid];
-                                      [self->_ownCallUuids addObject:uuid];
-                                      CXAnswerCallAction *action = [[CXAnswerCallAction alloc] initWithCallUUID:uuid];
+                                      self->_currentUuidByOriginal[uuid] = freshUuid;
+                                      self->_originalUuidByCurrent[freshUuid] = uuid;
+                                      [self->_ownCallUuids addObject:freshUuid];
+                                      CXAnswerCallAction *action = [[CXAnswerCallAction alloc] initWithCallUUID:freshUuid];
                                       CXTransaction *transaction = [[CXTransaction alloc] initWithAction:action];
                                       [self requestTransaction:transaction completion:completion];
                                     });
@@ -471,7 +512,7 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
     return;
   }
 
-  CXAnswerCallAction *action = [[CXAnswerCallAction alloc] initWithCallUUID:uuid];
+  CXAnswerCallAction *action = [[CXAnswerCallAction alloc] initWithCallUUID:[self currentUuidFor:uuid]];
   CXTransaction *transaction = [[CXTransaction alloc] initWithAction:action];
 
   [self requestTransaction:transaction completion:completion];
@@ -503,7 +544,7 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
     completion(nil, nil);
     return;
   }
-  CXEndCallAction *action = [[CXEndCallAction alloc] initWithCallUUID:uuid];
+  CXEndCallAction *action = [[CXEndCallAction alloc] initWithCallUUID:[self currentUuidFor:uuid]];
   CXTransaction *transaction = [[CXTransaction alloc] initWithAction:action];
 
   [self requestTransaction:transaction completion:completion];
@@ -515,7 +556,7 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
 #ifdef DEBUG
   NSLog(@"[Callkeep][setHeld] uuidString = %@ held = %d", uuidString, onHold);
 #endif
-  CXSetHeldCallAction *action = [[CXSetHeldCallAction alloc] initWithCallUUID:[[NSUUID alloc] initWithUUIDString:uuidString]
+  CXSetHeldCallAction *action = [[CXSetHeldCallAction alloc] initWithCallUUID:[self currentUuidFor:[[NSUUID alloc] initWithUUIDString:uuidString]]
                                                                        onHold:onHold];
   CXTransaction *transaction = [[CXTransaction alloc] initWithAction:action];
 
@@ -528,7 +569,7 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
 #ifdef DEBUG
   NSLog(@"[Callkeep][setMuted] uuidString = %@ muted = %d", uuidString, muted);
 #endif
-  CXSetMutedCallAction *action = [[CXSetMutedCallAction alloc] initWithCallUUID:[[NSUUID alloc] initWithUUIDString:uuidString]
+  CXSetMutedCallAction *action = [[CXSetMutedCallAction alloc] initWithCallUUID:[self currentUuidFor:[[NSUUID alloc] initWithUUIDString:uuidString]]
                                                                           muted:muted];
   CXTransaction *transaction = [[CXTransaction alloc] initWithAction:action];
 
@@ -541,7 +582,7 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
 #ifdef DEBUG
   NSLog(@"[Callkeep][sendDTMF] uuidString = %@ key = %@", uuidString, key);
 #endif
-  CXPlayDTMFCallAction *action = [[CXPlayDTMFCallAction alloc] initWithCallUUID:[[NSUUID alloc] initWithUUIDString:uuidString]
+  CXPlayDTMFCallAction *action = [[CXPlayDTMFCallAction alloc] initWithCallUUID:[self currentUuidFor:[[NSUUID alloc] initWithUUIDString:uuidString]]
                                                                          digits:key
                                                                            type:CXPlayDTMFCallActionTypeSingleTone];
   CXTransaction *transaction = [[CXTransaction alloc] initWithAction:action];
@@ -756,8 +797,16 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
   callUpdate.supportsUngrouping = NO;
   callUpdate.supportsHolding = YES;
   callUpdate.supportsDTMF = YES;
-  BOOL isDeferred = [_deferredCallUuids containsObject:uuid];
-  if (!isDeferred) {
+  // Deferred either explicitly (taken out of CallKit at answer time) or on
+  // arrival (another own call already lives in CallKit - at most one call is
+  // represented there). PushKit still obliges reporting, so the call is
+  // reported and taken right back out; it rings app-side and enters CallKit
+  // under a fresh UUID when answered.
+  BOOL isDeferred = [_deferredCallUuids containsObject:uuid] || _ownCallUuids.count > 0;
+  if (isDeferred) {
+    [_deferredCallUuids addObject:uuid];
+    _incomingCallUpdates[uuid] = callUpdate;
+  } else {
     [_ownCallUuids addObject:uuid];
     _incomingCallUpdates[uuid] = callUpdate;
   }
@@ -854,6 +903,12 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
       if (![_deferredCallUuids containsObject:call.UUID]) {
         [_incomingCallUpdates removeObjectForKey:call.UUID];
       }
+      NSUUID *original = _originalUuidByCurrent[call.UUID];
+      if (original != nil) {
+        [_incomingCallUpdates removeObjectForKey:original];
+        [_currentUuidByOriginal removeObjectForKey:original];
+        [_originalUuidByCurrent removeObjectForKey:call.UUID];
+      }
       continue;
     }
     if (_callWaitingToneOwnCallsOnly && ![_ownCallUuids containsObject:call.UUID]) {
@@ -885,6 +940,8 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
   [_answeringCallUuids removeAllObjects];
   [_deferredCallUuids removeAllObjects];
   [_incomingCallUpdates removeAllObjects];
+  [_currentUuidByOriginal removeAllObjects];
+  [_originalUuidByCurrent removeAllObjects];
   [_delegateFlutterApi didReset:^(FlutterError *error) {}];
 }
 
@@ -918,7 +975,7 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
   // Suppress the call-waiting tone from the moment the user accepts: the CXCall stays
   // "ringing" until the answer roundtrip fulfills the action, which can take seconds.
   [_answeringCallUuids addObject:action.callUUID];
-  [_delegateFlutterApi performAnswerCall:action.callUUID.UUIDString
+  [_delegateFlutterApi performAnswerCall:[self originalUuidFor:action.callUUID].UUIDString
                               completion:^(NSNumber *fulfill, FlutterError *error) {
                                 if (error != nil || [fulfill boolValue] != YES) {
                                   [self->_answeringCallUuids removeObject:action.callUUID];
@@ -933,7 +990,7 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
 #ifdef DEBUG
   NSLog(@"[Callkeep][CXProviderDelegate][provider:performEndCallAction:]");
 #endif
-  [_delegateFlutterApi performEndCall:action.callUUID.UUIDString
+  [_delegateFlutterApi performEndCall:[self originalUuidFor:action.callUUID].UUIDString
                            completion:^(NSNumber *fulfill, FlutterError *error) {
                              if (error != nil || [fulfill boolValue] != YES) {
                                [action fail];
@@ -948,7 +1005,7 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
 #ifdef DEBUG
   NSLog(@"[Callkeep][CXProviderDelegate][provider:performSetHeldCallAction:]");
 #endif
-  [_delegateFlutterApi performSetHeld:action.callUUID.UUIDString
+  [_delegateFlutterApi performSetHeld:[self originalUuidFor:action.callUUID].UUIDString
                                onHold:action.onHold
                            completion:^(NSNumber *fulfill, FlutterError *error) {
                              if (error != nil || [fulfill boolValue] != YES) {
@@ -963,7 +1020,7 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
 #ifdef DEBUG
   NSLog(@"[Callkeep][CXProviderDelegate][provider:performSetMutedCallAction:]");
 #endif
-  [_delegateFlutterApi performSetMuted:action.callUUID.UUIDString
+  [_delegateFlutterApi performSetMuted:[self originalUuidFor:action.callUUID].UUIDString
                                  muted:action.muted
                             completion:^(NSNumber *fulfill, FlutterError *error) {
                               if (error != nil || [fulfill boolValue] != YES) {
@@ -989,7 +1046,7 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
     [action fail];
     return;
   }
-  [_delegateFlutterApi performSendDTMF:action.callUUID.UUIDString
+  [_delegateFlutterApi performSendDTMF:[self originalUuidFor:action.callUUID].UUIDString
                                    key:action.digits
                             completion:^(NSNumber *fulfill, FlutterError *error) {
                               if (error != nil || [fulfill boolValue] != YES) {
