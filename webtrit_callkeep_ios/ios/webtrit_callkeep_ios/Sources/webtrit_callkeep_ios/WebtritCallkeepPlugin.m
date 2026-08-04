@@ -29,6 +29,15 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   BOOL _callWaitingToneOwnCallsOnly;
   CXCallController *_callController;
   BOOL _driveIdleTimerDisabled;
+  // Deferred CallKit registration: when one incoming call is answered, the other
+  // still-ringing own calls are taken out of CallKit (reported ended) so the
+  // "active + ringing" state never forms and the system call-waiting screen does
+  // not cover the app. A deferred call keeps living on the Flutter side; it
+  // re-enters CallKit the moment it is answered (report + answer in one go).
+  NSMutableSet<NSUUID *> *_deferredCallUuids;
+  // Last CXCallUpdate per incoming call, kept so a deferred call can be
+  // re-reported with its original handle/name when answered.
+  NSMutableDictionary<NSUUID *, CXCallUpdate *> *_incomingCallUpdates;
 }
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar> *)registrar {
@@ -56,6 +65,8 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
     _callWaitingTone = [[CallWaitingTonePlayer alloc] init];
     _ownCallUuids = [NSMutableSet set];
     _answeringCallUuids = [NSMutableSet set];
+    _deferredCallUuids = [NSMutableSet set];
+    _incomingCallUpdates = [NSMutableDictionary dictionary];
     _callWaitingToneOwnCallsOnly = YES;
   }
   return self;
@@ -219,8 +230,22 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   callUpdate.supportsHolding = YES;
   callUpdate.supportsDTMF = YES;
   NSUUID *callUuid = [[NSUUID alloc] initWithUUIDString:uuidString];
+  if (callUuid != nil && [_deferredCallUuids containsObject:callUuid]) {
+    // The call is deferred (kept out of CallKit while another call was being
+    // answered). Swallow the registration so it does not resurrect the system
+    // UI, but remember the freshest metadata for the re-report at answer time.
+    // The caller is told "success" - on the Flutter side the call is alive and
+    // proceeds exactly as if it were registered.
+#ifdef DEBUG
+    NSLog(@"[Callkeep][reportNewIncomingCall] suppressed for deferred call %@", uuidString);
+#endif
+    _incomingCallUpdates[callUuid] = callUpdate;
+    completion(nil, nil);
+    return;
+  }
   if (callUuid != nil) {
     [_ownCallUuids addObject:callUuid];
+    _incomingCallUpdates[callUuid] = callUpdate;
   }
   [_provider reportNewIncomingCallWithUUID:callUuid
                                     update:callUpdate
@@ -300,8 +325,23 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
 #ifdef DEBUG
   NSLog(@"[Callkeep][reportEndCall] uuidString = %@", uuidString);
 #endif
-    
-  [_provider reportCallWithUUID:[[NSUUID alloc] initWithUUIDString:uuidString]
+  NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:uuidString];
+  if (uuid != nil && [_deferredCallUuids containsObject:uuid]) {
+    // The deferred call is not in CallKit - nothing to report, just forget it
+    // (remote hangup / cancel of a call that was ringing app-side only).
+#ifdef DEBUG
+    NSLog(@"[Callkeep][reportEndCall] clearing deferred call %@", uuidString);
+#endif
+    [_deferredCallUuids removeObject:uuid];
+    [_incomingCallUpdates removeObjectForKey:uuid];
+    completion(nil);
+    return;
+  }
+  if (uuid != nil) {
+    [_incomingCallUpdates removeObjectForKey:uuid];
+  }
+
+  [_provider reportCallWithUUID:uuid
                     endedAtDate:nil
                          reason:[reason toCallKit]];
   [self assignIdleTimerDisabled:NO];
@@ -375,12 +415,64 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
   }];
 }
 
+/// Takes every other still-ringing own incoming call out of CallKit right
+/// before [answeredUuid] goes active, marking them deferred. Without this the
+/// answer flips CallKit into "active + ringing" and iOS covers the app with
+/// its full-screen call-waiting prompt for the remaining call.
+- (void)deferOtherRingingOwnCallsForAnswerOf:(NSUUID *)answeredUuid {
+  for (CXCall *call in _callController.callObserver.calls) {
+    if (call.hasEnded || call.hasConnected || call.outgoing) continue;
+    if ([call.UUID isEqual:answeredUuid]) continue;
+    if (![_ownCallUuids containsObject:call.UUID]) continue;
+    if ([_answeringCallUuids containsObject:call.UUID]) continue;
+    if (![_deferredCallUuids containsObject:call.UUID]) {
+      [_deferredCallUuids addObject:call.UUID];
+#ifdef DEBUG
+      NSLog(@"[Callkeep][deferOtherRingingOwnCalls] deferring %@", call.UUID.UUIDString);
+#endif
+      [_provider reportCallWithUUID:call.UUID
+                        endedAtDate:nil
+                             reason:CXCallEndedReasonAnsweredElsewhere];
+    }
+  }
+}
+
 - (void)answerCall:(NSString *)uuidString
         completion:(void (^)(WTPCallRequestError *, FlutterError *))completion {
 #ifdef DEBUG
   NSLog(@"[Callkeep][answerCall] uuidString = %@", uuidString);
 #endif
-  CXAnswerCallAction *action = [[CXAnswerCallAction alloc] initWithCallUUID:[[NSUUID alloc] initWithUUIDString:uuidString]];
+  NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:uuidString];
+  [self deferOtherRingingOwnCallsForAnswerOf:uuid];
+
+  if (uuid != nil && [_deferredCallUuids containsObject:uuid]) {
+    // A deferred call re-enters CallKit only now, at answer time: re-report it
+    // with its remembered metadata and request the answer straight from the
+    // report completion, so the ringing state exists for the shortest possible
+    // moment and the system prompt has no time to take over.
+#ifdef DEBUG
+    NSLog(@"[Callkeep][answerCall] re-reporting deferred call %@", uuidString);
+#endif
+    CXCallUpdate *callUpdate = _incomingCallUpdates[uuid] ?: [[CXCallUpdate alloc] init];
+    [_provider reportNewIncomingCallWithUUID:uuid
+                                      update:callUpdate
+                                  completion:^(NSError *error) {
+                                    if (error != nil && !([error.domain isEqualToString:CXErrorDomainIncomingCall] &&
+                                                          error.code == CXErrorCodeIncomingCallErrorCallUUIDAlreadyExists)) {
+                                      NSLog(@"[Callkeep][answerCall] deferred re-report failed: %@", error);
+                                      completion([WTPCallRequestError makeWithValue:WTPCallRequestErrorEnumInternal], nil);
+                                      return;
+                                    }
+                                    [self->_deferredCallUuids removeObject:uuid];
+                                    [self->_ownCallUuids addObject:uuid];
+                                    CXAnswerCallAction *action = [[CXAnswerCallAction alloc] initWithCallUUID:uuid];
+                                    CXTransaction *transaction = [[CXTransaction alloc] initWithAction:action];
+                                    [self requestTransaction:transaction completion:completion];
+                                  }];
+    return;
+  }
+
+  CXAnswerCallAction *action = [[CXAnswerCallAction alloc] initWithCallUUID:uuid];
   CXTransaction *transaction = [[CXTransaction alloc] initWithAction:action];
 
   [self requestTransaction:transaction completion:completion];
@@ -399,7 +491,22 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
 #ifdef DEBUG
   NSLog(@"[Callkeep][endCall] uuidString = %@", uuidString);
 #endif
-  CXEndCallAction *action = [[CXEndCallAction alloc] initWithCallUUID:[[NSUUID alloc] initWithUUIDString:uuidString]];
+  NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:uuidString];
+  if (uuid != nil && [_deferredCallUuids containsObject:uuid]) {
+    // A deferred call has no CallKit representation to end - clean up locally
+    // and drive the same delegate path a fulfilled CXEndCallAction would, so
+    // the Flutter side terminates the call exactly as usual.
+#ifdef DEBUG
+    NSLog(@"[Callkeep][endCall] ending deferred call %@ locally", uuidString);
+#endif
+    [_deferredCallUuids removeObject:uuid];
+    [_incomingCallUpdates removeObjectForKey:uuid];
+    [_delegateFlutterApi performEndCall:uuidString
+                             completion:^(NSNumber *fulfill, FlutterError *error) {}];
+    completion(nil, nil);
+    return;
+  }
+  CXEndCallAction *action = [[CXEndCallAction alloc] initWithCallUUID:uuid];
   CXTransaction *transaction = [[CXTransaction alloc] initWithAction:action];
 
   [self requestTransaction:transaction completion:completion];
@@ -648,10 +755,23 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
   callUpdate.supportsUngrouping = NO;
   callUpdate.supportsHolding = YES;
   callUpdate.supportsDTMF = YES;
-  [_ownCallUuids addObject:uuid];
+  BOOL isDeferred = [_deferredCallUuids containsObject:uuid];
+  if (!isDeferred) {
+    [_ownCallUuids addObject:uuid];
+    _incomingCallUpdates[uuid] = callUpdate;
+  }
   [_provider reportNewIncomingCallWithUUID:uuid
                                     update:callUpdate
                                 completion:^(NSError *error) {
+                                  if (isDeferred && error == nil) {
+                                    // PushKit obliges reporting every VoIP push, but this call is
+                                    // deferred (rings app-side only) - take it right back out so
+                                    // the system UI does not resurrect it.
+                                    NSLog(@"[Callkeep][didReceiveIncomingPushWithPayloadForPushTypeVoIP] re-ending deferred call %@", uuid.UUIDString);
+                                    [self->_provider reportCallWithUUID:uuid
+                                                            endedAtDate:nil
+                                                                 reason:CXCallEndedReasonAnsweredElsewhere];
+                                  }
                                   WTPIncomingCallError *incomingCallError = nil;
                                   if (error != nil) {
                                     if ([error.domain isEqualToString:CXErrorDomainIncomingCall]) {
@@ -728,6 +848,11 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
     }
     if (call.hasEnded) {
       [_ownCallUuids removeObject:call.UUID];
+      // Keep the update of a deferred call - it is needed for the re-report at
+      // answer time; any other ended call's metadata is no longer useful.
+      if (![_deferredCallUuids containsObject:call.UUID]) {
+        [_incomingCallUpdates removeObjectForKey:call.UUID];
+      }
       continue;
     }
     if (_callWaitingToneOwnCallsOnly && ![_ownCallUuids containsObject:call.UUID]) {
@@ -757,6 +882,8 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
   [_callWaitingTone stop];
   [_ownCallUuids removeAllObjects];
   [_answeringCallUuids removeAllObjects];
+  [_deferredCallUuids removeAllObjects];
+  [_incomingCallUpdates removeAllObjects];
   [_delegateFlutterApi didReset:^(FlutterError *error) {}];
 }
 
@@ -783,6 +910,10 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
 #ifdef DEBUG
   NSLog(@"[Callkeep][CXProviderDelegate][provider:performAnswerCallAction:]");
 #endif
+  // Covers answers coming through CallKit's own UI (lock screen, banner) as
+  // well - by this point no Dart code has run yet, so the deferral must happen
+  // here to keep the remaining ringing call from raising the system prompt.
+  [self deferOtherRingingOwnCallsForAnswerOf:action.callUUID];
   // Suppress the call-waiting tone from the moment the user accepts: the CXCall stays
   // "ringing" until the answer roundtrip fulfills the action, which can take seconds.
   [_answeringCallUuids addObject:action.callUUID];
