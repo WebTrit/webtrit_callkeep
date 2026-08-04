@@ -236,9 +236,7 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
     // UI, but remember the freshest metadata for the re-report at answer time.
     // The caller is told "success" - on the Flutter side the call is alive and
     // proceeds exactly as if it were registered.
-#ifdef DEBUG
     NSLog(@"[Callkeep][reportNewIncomingCall] suppressed for deferred call %@", uuidString);
-#endif
     _incomingCallUpdates[callUuid] = callUpdate;
     completion(nil, nil);
     return;
@@ -329,9 +327,7 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   if (uuid != nil && [_deferredCallUuids containsObject:uuid]) {
     // The deferred call is not in CallKit - nothing to report, just forget it
     // (remote hangup / cancel of a call that was ringing app-side only).
-#ifdef DEBUG
     NSLog(@"[Callkeep][reportEndCall] clearing deferred call %@", uuidString);
-#endif
     [_deferredCallUuids removeObject:uuid];
     [_incomingCallUpdates removeObjectForKey:uuid];
     completion(nil);
@@ -427,9 +423,7 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
     if ([_answeringCallUuids containsObject:call.UUID]) continue;
     if (![_deferredCallUuids containsObject:call.UUID]) {
       [_deferredCallUuids addObject:call.UUID];
-#ifdef DEBUG
       NSLog(@"[Callkeep][deferOtherRingingOwnCalls] deferring %@", call.UUID.UUIDString);
-#endif
       [_provider reportCallWithUUID:call.UUID
                         endedAtDate:nil
                              reason:CXCallEndedReasonAnsweredElsewhere];
@@ -450,19 +444,19 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
     // with its remembered metadata and request the answer straight from the
     // report completion, so the ringing state exists for the shortest possible
     // moment and the system prompt has no time to take over.
-#ifdef DEBUG
     NSLog(@"[Callkeep][answerCall] re-reporting deferred call %@", uuidString);
-#endif
     CXCallUpdate *callUpdate = _incomingCallUpdates[uuid] ?: [[CXCallUpdate alloc] init];
     [_provider reportNewIncomingCallWithUUID:uuid
                                       update:callUpdate
                                   completion:^(NSError *error) {
                                     if (error != nil && !([error.domain isEqualToString:CXErrorDomainIncomingCall] &&
                                                           error.code == CXErrorCodeIncomingCallErrorCallUUIDAlreadyExists)) {
-                                      NSLog(@"[Callkeep][answerCall] deferred re-report failed: %@", error);
+                                      NSLog(@"[Callkeep][answerCall] deferred re-report failed: domain=%@ code=%ld (%@)",
+                                            error.domain, (long)error.code, error.localizedDescription);
                                       completion([WTPCallRequestError makeWithValue:WTPCallRequestErrorEnumInternal], nil);
                                       return;
                                     }
+                                    NSLog(@"[Callkeep][answerCall] deferred re-report ok (%@), requesting answer", uuid.UUIDString);
                                     [self->_deferredCallUuids removeObject:uuid];
                                     [self->_ownCallUuids addObject:uuid];
                                     CXAnswerCallAction *action = [[CXAnswerCallAction alloc] initWithCallUUID:uuid];
@@ -496,9 +490,7 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
     // A deferred call has no CallKit representation to end - clean up locally
     // and drive the same delegate path a fulfilled CXEndCallAction would, so
     // the Flutter side terminates the call exactly as usual.
-#ifdef DEBUG
     NSLog(@"[Callkeep][endCall] ending deferred call %@ locally", uuidString);
-#endif
     [_deferredCallUuids removeObject:uuid];
     [_incomingCallUpdates removeObjectForKey:uuid];
     [_delegateFlutterApi performEndCall:uuidString
@@ -556,6 +548,10 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
 
 - (void)requestTransaction:(CXTransaction *)transaction completion:(void (^)(WTPCallRequestError *, FlutterError *))completion {
   [_callController requestTransaction:transaction completion:^(NSError *error) {
+    if (error != nil) {
+      NSLog(@"[Callkeep][requestTransaction] %@ failed: domain=%@ code=%ld (%@)",
+            [[transaction.actions firstObject] class], error.domain, (long)error.code, error.localizedDescription);
+    }
     if (error == nil) {
       completion(nil, nil);
     } else if ([error.domain isEqualToString:CXErrorDomainRequestTransaction]) {
