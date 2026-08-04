@@ -45,6 +45,12 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   // original UUID; these two maps translate at the plugin boundary.
   NSMutableDictionary<NSUUID *, NSUUID *> *_currentUuidByOriginal;
   NSMutableDictionary<NSUUID *, NSUUID *> *_originalUuidByCurrent;
+  // Deferred calls re-enter CallKit as OUTGOING (CXStartCallAction): an
+  // incoming re-report raises the system incoming UI over the app and iOS
+  // keeps the user on its own in-call screen after the answer. The start
+  // action is fulfilled natively and surfaces to Flutter as a plain
+  // performAnswerCall; this set marks the in-flight ones.
+  NSMutableSet<NSUUID *> *_outgoingReattachUuids;
 }
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar> *)registrar {
@@ -76,6 +82,7 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
     _incomingCallUpdates = [NSMutableDictionary dictionary];
     _currentUuidByOriginal = [NSMutableDictionary dictionary];
     _originalUuidByCurrent = [NSMutableDictionary dictionary];
+    _outgoingReattachUuids = [NSMutableSet set];
     _callWaitingToneOwnCallsOnly = YES;
   }
   return self;
@@ -487,39 +494,27 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
   [self deferOtherRingingOwnCallsForAnswerOf:[self currentUuidFor:uuid]];
 
   if (uuid != nil && [_deferredCallUuids containsObject:uuid]) {
-    // A deferred call re-enters CallKit only now, at answer time, and under a
-    // FRESH UUID: re-reporting the original (already reported-ended) UUID makes
-    // CallKit hand back a zombie whose answer transaction fails. The alias maps
-    // keep the Flutter side on the stable original UUID. The answer is
-    // requested straight from the report completion, so the ringing state
-    // exists for the shortest possible moment.
+    // A deferred call re-enters CallKit only now, at answer time, under a
+    // FRESH UUID (re-reporting the original reported-ended UUID hands back a
+    // zombie whose answer fails) and as an OUTGOING call: an incoming
+    // re-report raises the system incoming UI over the app and iOS keeps the
+    // user on its own in-call screen after answering. The start action never
+    // reaches Flutter as a start - performStartCallAction fulfills it
+    // natively and drives performAnswerCall for the original UUID instead.
     NSUUID *freshUuid = [NSUUID UUID];
-    NSLog(@"[Callkeep][answerCall] re-reporting deferred call %@ as %@", uuidString, freshUuid.UUIDString);
+    NSLog(@"[Callkeep][answerCall] re-attaching deferred call %@ as outgoing %@", uuidString, freshUuid.UUIDString);
     CXCallUpdate *callUpdate = _incomingCallUpdates[uuid] ?: [[CXCallUpdate alloc] init];
-    [_provider reportNewIncomingCallWithUUID:freshUuid
-                                      update:callUpdate
-                                  completion:^(NSError *error) {
-                                    // The report completion arrives on the provider's private queue;
-                                    // all plugin state is main-thread-confined (delegate and observer
-                                    // callbacks run on main), so hop before touching it.
-                                    dispatch_async(dispatch_get_main_queue(), ^{
-                                      if (error != nil) {
-                                        NSLog(@"[Callkeep][answerCall] deferred re-report failed: domain=%@ code=%ld (%@)",
-                                              error.domain, (long)error.code, error.localizedDescription);
-                                        completion([WTPCallRequestError makeWithValue:WTPCallRequestErrorEnumInternal], nil);
-                                        return;
-                                      }
-                                      NSLog(@"[Callkeep][answerCall] deferred re-report ok (%@ -> %@), requesting answer",
-                                            uuid.UUIDString, freshUuid.UUIDString);
-                                      [self->_deferredCallUuids removeObject:uuid];
-                                      self->_currentUuidByOriginal[uuid] = freshUuid;
-                                      self->_originalUuidByCurrent[freshUuid] = uuid;
-                                      [self->_ownCallUuids addObject:freshUuid];
-                                      CXAnswerCallAction *action = [[CXAnswerCallAction alloc] initWithCallUUID:freshUuid];
-                                      CXTransaction *transaction = [[CXTransaction alloc] initWithAction:action];
-                                      [self requestTransaction:transaction completion:completion];
-                                    });
-                                  }];
+    CXHandle *handle = callUpdate.remoteHandle
+        ?: [[CXHandle alloc] initWithType:CXHandleTypePhoneNumber value:@"unknown"];
+    [_deferredCallUuids removeObject:uuid];
+    _currentUuidByOriginal[uuid] = freshUuid;
+    _originalUuidByCurrent[freshUuid] = uuid;
+    [_outgoingReattachUuids addObject:freshUuid];
+    [_ownCallUuids addObject:freshUuid];
+    CXStartCallAction *startAction = [[CXStartCallAction alloc] initWithCallUUID:freshUuid handle:handle];
+    startAction.contactIdentifier = callUpdate.localizedCallerName;
+    CXTransaction *startTransaction = [[CXTransaction alloc] initWithAction:startAction];
+    [self requestTransaction:startTransaction completion:completion];
     return;
   }
 
@@ -953,6 +948,7 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
   [_incomingCallUpdates removeAllObjects];
   [_currentUuidByOriginal removeAllObjects];
   [_originalUuidByCurrent removeAllObjects];
+  [_outgoingReattachUuids removeAllObjects];
   [_delegateFlutterApi didReset:^(FlutterError *error) {}];
 }
 
@@ -960,6 +956,30 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
 #ifdef DEBUG
   NSLog(@"[Callkeep][CXProviderDelegate][provider:performStartCallAction:]");
 #endif
+  if ([_outgoingReattachUuids containsObject:action.callUUID]) {
+    // A deferred call re-entering CallKit as outgoing: fulfill natively and
+    // surface to Flutter as the answer of the original incoming call.
+    [_outgoingReattachUuids removeObject:action.callUUID];
+    NSUUID *original = [self originalUuidFor:action.callUUID];
+    NSLog(@"[Callkeep][performStartCallAction] outgoing re-attach %@ -> answering %@",
+          action.callUUID.UUIDString, original.UUIDString);
+    [action fulfill];
+    [_provider reportOutgoingCallWithUUID:action.callUUID startedConnectingAtDate:nil];
+    [_delegateFlutterApi performAnswerCall:original.UUIDString
+                                completion:^(NSNumber *fulfill, FlutterError *error) {
+                                  if (error != nil || [fulfill boolValue] != YES) {
+                                    NSLog(@"[Callkeep][performStartCallAction] re-attach answer failed, ending %@",
+                                          action.callUUID.UUIDString);
+                                    [self->_provider reportCallWithUUID:action.callUUID
+                                                            endedAtDate:nil
+                                                                 reason:CXCallEndedReasonFailed];
+                                  } else {
+                                    [self->_provider reportOutgoingCallWithUUID:action.callUUID
+                                                                connectedAtDate:nil];
+                                  }
+                                }];
+    return;
+  }
   [_ownCallUuids addObject:action.callUUID];
   [_delegateFlutterApi performStartCall:action.callUUID.UUIDString
                                  handle:[action.handle toPigeon]
