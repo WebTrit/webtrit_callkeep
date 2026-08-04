@@ -250,13 +250,12 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
     completion(nil, nil);
     return;
   }
-  if (callUuid != nil && _ownCallUuids.count > 0) {
+  if (callUuid != nil && [self hasOwnLiveCallKitCall]) {
     // At most one call is represented in CallKit: an incoming call arriving
     // while any own call already lives there (ringing or active) is deferred
     // right away - it rings app-side only and enters CallKit when answered.
     // Registering it would raise the system call-waiting screen over the app.
-    NSLog(@"[Callkeep][reportNewIncomingCall] deferring on arrival %@ (own calls in CallKit: %lu)",
-          uuidString, (unsigned long)_ownCallUuids.count);
+    NSLog(@"[Callkeep][reportNewIncomingCall] deferring on arrival %@", uuidString);
     [_deferredCallUuids addObject:callUuid];
     _incomingCallUpdates[callUuid] = callUpdate;
     completion(nil, nil);
@@ -445,6 +444,18 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
 - (NSUUID *)originalUuidFor:(NSUUID *)uuid {
   if (uuid == nil) return nil;
   return _originalUuidByCurrent[uuid] ?: uuid;
+}
+
+/// Whether any own call currently lives in CallKit. Decided from the call
+/// observer, not from the bookkeeping set: the observer may drop an ended
+/// call from its list before the cleanup pass sees it, so a stale entry in
+/// the set would keep deferring every new incoming call forever.
+- (BOOL)hasOwnLiveCallKitCall {
+  for (CXCall *call in _callController.callObserver.calls) {
+    if (call.hasEnded) continue;
+    if ([_ownCallUuids containsObject:call.UUID]) return YES;
+  }
+  return NO;
 }
 
 /// Takes every other still-ringing own incoming call out of CallKit right
@@ -802,7 +813,7 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
   // represented there). PushKit still obliges reporting, so the call is
   // reported and taken right back out; it rings app-side and enters CallKit
   // under a fresh UUID when answered.
-  BOOL isDeferred = [_deferredCallUuids containsObject:uuid] || _ownCallUuids.count > 0;
+  BOOL isDeferred = [_deferredCallUuids containsObject:uuid] || [self hasOwnLiveCallKitCall];
   if (isDeferred) {
     [_deferredCallUuids addObject:uuid];
     _incomingCallUpdates[uuid] = callUpdate;
