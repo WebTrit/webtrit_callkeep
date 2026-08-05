@@ -77,7 +77,15 @@ class PHandle {
   late String value;
 }
 
-enum PEndCallReasonEnum { failed, remoteEnded, unanswered, answeredElsewhere, declinedElsewhere, missed, missedWhileConnecting }
+enum PEndCallReasonEnum {
+  failed,
+  remoteEnded,
+  unanswered,
+  answeredElsewhere,
+  declinedElsewhere,
+  missed,
+  missedWhileConnecting,
+}
 
 // TODO: See https://github.com/flutter/flutter/issues/87307
 class PEndCallReason {
@@ -256,6 +264,30 @@ abstract class PHostPermissionsApi {
 
   @async
   void openFullScreenIntentSettings();
+
+  /// Status of the OEM "display pop-up windows while running in background"
+  /// capability (MIUI/HyperOS `OP_BACKGROUND_START_ACTIVITY`), which gates
+  /// showing the incoming-call Activity over the lock screen. Best-effort:
+  /// reports granted on devices where the capability does not apply.
+  @async
+  PSpecialPermissionStatusTypeEnum getBackgroundActivityStartPermissionStatus();
+
+  /// Opens the OEM permissions screen that hosts the "display pop-up windows
+  /// while running in background" toggle, with a fallback to app settings.
+  @async
+  void openBackgroundActivityStartSettings();
+
+  /// Status of the OEM "display pop-up windows while running in background"
+  /// MIUI/HyperOS `OP_SHOW_WHEN_LOCKED` capability, which gates showing the
+  /// incoming-call Activity over the lock screen. Best-effort: reports
+  /// granted on devices where the capability does not apply.
+  @async
+  PSpecialPermissionStatusTypeEnum getShowWhenLockedPermissionStatus();
+
+  /// Opens the OEM permissions screen that hosts the "show on lock screen"
+  /// toggle, with a fallback to app settings.
+  @async
+  void openShowWhenLockedSettings();
 
   @async
   void openSettings();

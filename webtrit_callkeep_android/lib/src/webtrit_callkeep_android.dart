@@ -187,6 +187,26 @@ class WebtritCallkeepAndroid extends WebtritCallkeepPlatform {
   }
 
   @override
+  Future<CallkeepSpecialPermissionStatus> getBackgroundActivityStartPermissionStatus() {
+    return _permissionsApi.getBackgroundActivityStartPermissionStatus().then((value) => value.toCallkeep());
+  }
+
+  @override
+  Future<void> openBackgroundActivityStartSettings() {
+    return _permissionsApi.openBackgroundActivityStartSettings();
+  }
+
+  @override
+  Future<CallkeepSpecialPermissionStatus> getShowWhenLockedPermissionStatus() {
+    return _permissionsApi.getShowWhenLockedPermissionStatus().then((value) => value.toCallkeep());
+  }
+
+  @override
+  Future<void> openShowWhenLockedSettings() {
+    return _permissionsApi.openShowWhenLockedSettings();
+  }
+
+  @override
   Future<void> openSettings() {
     return _permissionsApi.openSettings();
   }

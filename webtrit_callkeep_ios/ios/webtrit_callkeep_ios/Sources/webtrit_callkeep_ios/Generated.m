@@ -221,7 +221,8 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
     supportsHandleTypeEmailAddress:(nullable NSNumber *)supportsHandleTypeEmailAddress
     supportsVideo:(BOOL )supportsVideo
     includesCallsInRecents:(BOOL )includesCallsInRecents
-    driveIdleTimerDisabled:(BOOL )driveIdleTimerDisabled {
+    driveIdleTimerDisabled:(BOOL )driveIdleTimerDisabled
+    callWaitingToneOwnCallsOnly:(nullable NSNumber *)callWaitingToneOwnCallsOnly {
   WTPIOSOptions* pigeonResult = [[WTPIOSOptions alloc] init];
   pigeonResult.localizedName = localizedName;
   pigeonResult.ringtoneSound = ringtoneSound;
@@ -235,6 +236,7 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
   pigeonResult.supportsVideo = supportsVideo;
   pigeonResult.includesCallsInRecents = includesCallsInRecents;
   pigeonResult.driveIdleTimerDisabled = driveIdleTimerDisabled;
+  pigeonResult.callWaitingToneOwnCallsOnly = callWaitingToneOwnCallsOnly;
   return pigeonResult;
 }
 + (WTPIOSOptions *)fromList:(NSArray<id> *)list {
@@ -251,6 +253,7 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
   pigeonResult.supportsVideo = [GetNullableObjectAtIndex(list, 9) boolValue];
   pigeonResult.includesCallsInRecents = [GetNullableObjectAtIndex(list, 10) boolValue];
   pigeonResult.driveIdleTimerDisabled = [GetNullableObjectAtIndex(list, 11) boolValue];
+  pigeonResult.callWaitingToneOwnCallsOnly = list.count > 12 ? GetNullableObjectAtIndex(list, 12) : nil;
   return pigeonResult;
 }
 + (nullable WTPIOSOptions *)nullableFromList:(NSArray<id> *)list {
@@ -270,6 +273,7 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
     @(self.supportsVideo),
     @(self.includesCallsInRecents),
     @(self.driveIdleTimerDisabled),
+    self.callWaitingToneOwnCallsOnly ?: [NSNull null],
   ];
 }
 - (BOOL)isEqual:(id)object {
@@ -280,7 +284,7 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
     return NO;
   }
   WTPIOSOptions *other = (WTPIOSOptions *)object;
-  return FLTPigeonDeepEquals(self.localizedName, other.localizedName) && FLTPigeonDeepEquals(self.ringtoneSound, other.ringtoneSound) && FLTPigeonDeepEquals(self.ringbackSound, other.ringbackSound) && FLTPigeonDeepEquals(self.iconTemplateImageAssetName, other.iconTemplateImageAssetName) && self.maximumCallGroups == other.maximumCallGroups && self.maximumCallsPerCallGroup == other.maximumCallsPerCallGroup && FLTPigeonDeepEquals(self.supportsHandleTypeGeneric, other.supportsHandleTypeGeneric) && FLTPigeonDeepEquals(self.supportsHandleTypePhoneNumber, other.supportsHandleTypePhoneNumber) && FLTPigeonDeepEquals(self.supportsHandleTypeEmailAddress, other.supportsHandleTypeEmailAddress) && self.supportsVideo == other.supportsVideo && self.includesCallsInRecents == other.includesCallsInRecents && self.driveIdleTimerDisabled == other.driveIdleTimerDisabled;
+  return FLTPigeonDeepEquals(self.localizedName, other.localizedName) && FLTPigeonDeepEquals(self.ringtoneSound, other.ringtoneSound) && FLTPigeonDeepEquals(self.ringbackSound, other.ringbackSound) && FLTPigeonDeepEquals(self.iconTemplateImageAssetName, other.iconTemplateImageAssetName) && self.maximumCallGroups == other.maximumCallGroups && self.maximumCallsPerCallGroup == other.maximumCallsPerCallGroup && FLTPigeonDeepEquals(self.supportsHandleTypeGeneric, other.supportsHandleTypeGeneric) && FLTPigeonDeepEquals(self.supportsHandleTypePhoneNumber, other.supportsHandleTypePhoneNumber) && FLTPigeonDeepEquals(self.supportsHandleTypeEmailAddress, other.supportsHandleTypeEmailAddress) && self.supportsVideo == other.supportsVideo && self.includesCallsInRecents == other.includesCallsInRecents && self.driveIdleTimerDisabled == other.driveIdleTimerDisabled && FLTPigeonDeepEquals(self.callWaitingToneOwnCallsOnly, other.callWaitingToneOwnCallsOnly);
 }
 
 - (NSUInteger)hash {

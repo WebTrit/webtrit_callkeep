@@ -9,7 +9,6 @@ import android.telecom.Connection
 import android.telecom.ConnectionRequest
 import android.telecom.ConnectionService
 import android.telecom.DisconnectCause
-import android.telecom.PhoneAccount
 import android.telecom.PhoneAccountHandle
 import androidx.annotation.RequiresPermission
 import com.webtrit.callkeep.PIncomingCallError
@@ -20,10 +19,8 @@ import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.TelephonyUtils
 import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.models.EmergencyNumberException
 import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.models.InvalidCallMetadataException
-import com.webtrit.callkeep.models.OutgoingFailureType
 import com.webtrit.callkeep.services.broadcaster.CallCommandEvent
 import com.webtrit.callkeep.services.broadcaster.CallLifecycleEvent
 import com.webtrit.callkeep.services.broadcaster.ConnectionEvent
@@ -765,30 +762,18 @@ class PhoneConnectionService : ConnectionService() {
                     ?: throw InvalidCallMetadataException(
                         "startOutgoingCall: missing destination number for callId=${metadata.callId}",
                     )
-            val uri: Uri = Uri.fromParts(PhoneAccount.SCHEME_TEL, number, null)
             val telephonyUtils = TelephonyUtils(context)
 
-            if (telephonyUtils.isEmergencyNumber(number)) {
-                Log.i(TAG, "onOutgoingCall, trying to call on emergency number: $number")
+            val uri: Uri = TelephonyUtils.buildOutgoingUri(number)
 
-                val failureMetadata =
-                    FailureMetadata(
-                        metadata,
-                        "Failed to establish outgoing connection: Emergency number",
-                        outgoingFailureType = OutgoingFailureType.EMERGENCY_NUMBER,
-                    )
-
-                throw EmergencyNumberException(failureMetadata)
-            } else {
-                // If there is already an active call not on hold, we terminate it and start a new one,
-                // otherwise, we would encounter an exception when placing the outgoing call.
-                connectionManager.getActiveConnection()?.let {
-                    Log.i(TAG, "onOutgoingCall, hung up previous call: $it")
-                    it.hungUp()
-                }
-
-                telephonyUtils.placeOutgoingCall(uri, metadata)
+            // If there is already an active call not on hold, we terminate it and start a new one,
+            // otherwise, we would encounter an exception when placing the outgoing call.
+            connectionManager.getActiveConnection()?.let {
+                Log.i(TAG, "onOutgoingCall, hung up previous call: $it")
+                it.hungUp()
             }
+
+            telephonyUtils.placeOutgoingCall(uri, metadata)
         }
 
         /**

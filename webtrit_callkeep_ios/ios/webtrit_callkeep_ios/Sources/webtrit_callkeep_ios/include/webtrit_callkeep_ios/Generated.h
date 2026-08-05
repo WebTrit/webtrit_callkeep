@@ -103,7 +103,8 @@ typedef NS_ENUM(NSUInteger, WTPCallRequestErrorEnum) {
     supportsHandleTypeEmailAddress:(nullable NSNumber *)supportsHandleTypeEmailAddress
     supportsVideo:(BOOL )supportsVideo
     includesCallsInRecents:(BOOL )includesCallsInRecents
-    driveIdleTimerDisabled:(BOOL )driveIdleTimerDisabled;
+    driveIdleTimerDisabled:(BOOL )driveIdleTimerDisabled
+    callWaitingToneOwnCallsOnly:(nullable NSNumber *)callWaitingToneOwnCallsOnly;
 @property(nonatomic, copy) NSString * localizedName;
 @property(nonatomic, copy, nullable) NSString * ringtoneSound;
 @property(nonatomic, copy, nullable) NSString * ringbackSound;
@@ -116,6 +117,7 @@ typedef NS_ENUM(NSUInteger, WTPCallRequestErrorEnum) {
 @property(nonatomic, assign) BOOL  supportsVideo;
 @property(nonatomic, assign) BOOL  includesCallsInRecents;
 @property(nonatomic, assign) BOOL  driveIdleTimerDisabled;
+@property(nonatomic, strong, nullable) NSNumber * callWaitingToneOwnCallsOnly;
 @end
 
 @interface WTPAndroidOptions : NSObject
