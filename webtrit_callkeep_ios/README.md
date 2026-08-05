@@ -21,6 +21,21 @@ CallKit / PushKit.
 
 ---
 
+## iOS Simulator
+
+CallKit and PushKit are only available on real devices — this plugin will not work on iOS
+simulators. Test on a physical device.
+
+- Incoming calls: the simulator never receives a PushKit VoIP token and cannot receive VoIP
+  pushes ([`xcrun simctl push` supports application pushes only](https://www.avanderlee.com/workflow/testing-push-notifications-ios-simulator/)).
+- Outgoing calls: depending on the simulator runtime, CallKit either never delivers
+  `performStartCallAction` or tears the call down ~2 s after start
+  ([Apple Developer Forums 749657](https://developer.apple.com/forums/thread/749657)).
+- Audio: `didActivateAudioSession` does not fire on the simulator, so call audio never starts
+  ([Apple Developer Forums 711956](https://developer.apple.com/forums/thread/711956)).
+
+---
+
 ## Package structure
 
 ```text
