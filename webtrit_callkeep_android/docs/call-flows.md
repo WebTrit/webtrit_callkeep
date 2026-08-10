@@ -110,6 +110,12 @@ first call is ACTIVE rather than RINGING.
 
 Triggered when the user initiates a call from the app UI.
 
+> The address passed to Telecom (step 3) is a decoy `sip:` Uri built by
+> `OutgoingCallUri` - digits are masked to letters so that OEM Telecom forks which
+> run an emergency-number check on the placeCall Uri find no number to match and do
+> not divert emergency-colliding extensions (e.g. "112") to the system dialer. The
+> real dialled number travels in the call metadata, never in this Uri.
+
 ```text
 1.  Dart calls PHostApi.startCall(callId, meta)
         |
