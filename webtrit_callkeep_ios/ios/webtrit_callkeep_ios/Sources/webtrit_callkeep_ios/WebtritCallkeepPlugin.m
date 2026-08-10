@@ -58,6 +58,18 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   // must treat these as gone, or they mistake a just-ended flash for a real
   // registration and un-defer a legitimately deferred call.
   NSMutableSet<NSUUID *> *_pendingCallKitEndUuids;
+  // Originals deferred AT ANSWER TIME: unlike arrival-deferred calls they
+  // already had a CallKit life and were journaled (answeredElsewhere) when
+  // taken out, so a later missed-call journal entry would duplicate them.
+  NSMutableSet<NSUUID *> *_answerDeferredUuids;
+  // Missed deferred calls waiting for their journal entry. The entry is a
+  // report+instant-end flash, which must not run next to a live call (the
+  // ringing flash would summon the call-waiting prompt) - so it queues here
+  // and flushes when the registry is empty.
+  NSMutableArray<CXCallUpdate *> *_pendingMissedJournalUpdates;
+  // Throwaway UUIDs of in-flight journal flashes: never answerable, and their
+  // CX actions must not reach the Flutter side.
+  NSMutableSet<NSUUID *> *_journalFlashUuids;
   // Master switch of the deferred-registration mechanism (an app opts in via
   // CallkeepIOSOptions). Off by default: every incoming call is registered
   // with CallKit as before and the system call-waiting behavior applies.
@@ -95,6 +107,9 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
     _originalUuidByCurrent = [NSMutableDictionary dictionary];
     _outgoingReattachUuids = [NSMutableSet set];
     _pendingCallKitEndUuids = [NSMutableSet set];
+    _answerDeferredUuids = [NSMutableSet set];
+    _pendingMissedJournalUpdates = [NSMutableArray array];
+    _journalFlashUuids = [NSMutableSet set];
     _callWaitingToneOwnCallsOnly = YES;
   }
   return self;
@@ -234,6 +249,14 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   [_ownCallUuids removeAllObjects];
   [_answeringCallUuids removeAllObjects];
   [_pendingCallKitEndUuids removeAllObjects];
+  [_deferredCallUuids removeAllObjects];
+  [_incomingCallUpdates removeAllObjects];
+  [_currentUuidByOriginal removeAllObjects];
+  [_originalUuidByCurrent removeAllObjects];
+  [_outgoingReattachUuids removeAllObjects];
+  [_answerDeferredUuids removeAllObjects];
+  [_pendingMissedJournalUpdates removeAllObjects];
+  [_journalFlashUuids removeAllObjects];
   if (_provider != nil) {
     [_provider invalidate];
     _provider = nil;
@@ -294,14 +317,23 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
     completion(nil, nil);
     return;
   }
+  // When the call already lives in CallKit its registry entry may be a
+  // promoted ALIAS: the dedup report must target that alias, or CallKit sees
+  // a brand-new UUID and registers a duplicate ringing entry.
+  NSUUID *reportUuid = alreadyLive ? [self currentUuidFor:callUuid] : callUuid;
   if (callUuid != nil) {
-    [_ownCallUuids addObject:callUuid];
+    [_ownCallUuids addObject:reportUuid];
     _incomingCallUpdates[callUuid] = callUpdate;
   }
-  [_provider reportNewIncomingCallWithUUID:callUuid
+  [_provider reportNewIncomingCallWithUUID:reportUuid
                                     update:callUpdate
                                 completion:^(NSError *error) {
                                   if (error == nil) {
+                                    dispatch_async(dispatch_get_main_queue(), ^{
+                                      // A fresh registration supersedes any unconfirmed end of
+                                      // this UUID from an earlier call with the same callId.
+                                      [self->_pendingCallKitEndUuids removeObject:reportUuid];
+                                    });
                                     [self assignIdleTimerDisabled:callUpdate.hasVideo];
                                     completion(nil, nil);
                                   } else if ([error.domain isEqualToString:CXErrorDomainIncomingCall]) {
@@ -363,7 +395,18 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
      }
   }
     
-  [_provider reportCallWithUUID:[self currentUuidFor:[[NSUUID alloc] initWithUUIDString:uuidString]]
+  NSUUID *updateUuid = [[NSUUID alloc] initWithUUIDString:uuidString];
+  // Keep the cached registration metadata in sync: deferred-call re-entry
+  // (answer re-attach, promotion, missed-call journaling) re-reports from the
+  // cache, and without the merge it would show arrival-time data (e.g. a bare
+  // number instead of the later-resolved contact name).
+  CXCallUpdate *cached = updateUuid != nil ? _incomingCallUpdates[updateUuid] : nil;
+  if (cached != nil) {
+    if (handle != nil) cached.remoteHandle = callUpdate.remoteHandle;
+    if (displayName != nil) cached.localizedCallerName = displayName;
+    if (hasVideo != nil) cached.hasVideo = callUpdate.hasVideo;
+  }
+  [_provider reportCallWithUUID:[self currentUuidFor:updateUuid]
                         updated:callUpdate];
   [self assignIdleTimerDisabled:callUpdate.hasVideo];
   completion(nil);
@@ -384,29 +427,25 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   if (uuid != nil && [_deferredCallUuids containsObject:uuid]) {
     // The deferred call is not in CallKit, so there is no entry to end. A call
     // the user never got to answer must still leave a missed-call trace in the
-    // system journal: flash-report it under a throwaway UUID and end it right
-    // away (the same report+instant-end the push path uses); the sub-second
-    // banner is the price of the journal record. Other reasons just forget
-    // the call. Execution falls through to the shared missed-call
-    // notification below either way.
+    // system journal - but only an ARRIVAL-deferred one: a call deferred at
+    // answer time was already journaled (answeredElsewhere) when its CallKit
+    // entry was ended, and a second entry would contradict it. The journal
+    // flash itself is queued and runs only once the registry is empty (see
+    // flushPendingMissedJournalIfIdle) - flashing a ringing entry next to a
+    // live call would summon the very call-waiting prompt this mechanism
+    // exists to prevent. The shared missed-call notification below fires
+    // either way.
     NSLog(@"[Callkeep][reportEndCall] clearing deferred call %@", uuidString);
     [_deferredCallUuids removeObject:uuid];
+    BOOL journaledAlready = [_answerDeferredUuids containsObject:uuid];
+    [_answerDeferredUuids removeObject:uuid];
     CXCallUpdate *lastUpdate = _incomingCallUpdates[uuid];
     [_incomingCallUpdates removeObjectForKey:uuid];
     CXCallEndedReason endReason = [reason toCallKit];
     BOOL missed = endReason == CXCallEndedReasonUnanswered || endReason == CXCallEndedReasonRemoteEnded;
-    if (missed && lastUpdate != nil) {
-      NSUUID *flashUuid = [NSUUID UUID];
-      NSLog(@"[Callkeep][reportEndCall] journaling missed deferred call %@ as %@", uuidString, flashUuid.UUIDString);
-      [_provider reportNewIncomingCallWithUUID:flashUuid
-                                        update:lastUpdate
-                                    completion:^(NSError *error) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          if (error == nil) {
-            [self reportCallKitEndOf:flashUuid reason:endReason];
-          }
-        });
-      }];
+    if (missed && !journaledAlready && lastUpdate != nil) {
+      [_pendingMissedJournalUpdates addObject:lastUpdate];
+      [self flushPendingMissedJournalIfIdle];
     }
   } else {
     if (uuid != nil) {
@@ -561,6 +600,9 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
   if (!_deferredCallKitRegistration) return;
   for (CXCall *call in _callController.callObserver.calls) {
     if (call.hasEnded || call.hasConnected || call.outgoing) continue;
+    // Already reported ended by us; the observer just has not confirmed yet.
+    // Deferring the fading entry would strand a dead call in the deferred set.
+    if ([_pendingCallKitEndUuids containsObject:call.UUID]) continue;
     if ([call.UUID isEqual:answeredUuid]) continue;
     if (![_ownCallUuids containsObject:call.UUID]) continue;
     if ([_answeringCallUuids containsObject:call.UUID]) continue;
@@ -570,6 +612,7 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
     NSUUID *original = [self originalUuidFor:call.UUID];
     if (![_deferredCallUuids containsObject:original]) {
       [_deferredCallUuids addObject:original];
+      [_answerDeferredUuids addObject:original];
       NSLog(@"[Callkeep][deferOtherRingingOwnCalls] deferring %@", original.UUIDString);
       [self reportCallKitEndOf:call.UUID reason:CXCallEndedReasonAnsweredElsewhere];
     }
@@ -604,6 +647,7 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
     CXHandle *handle = callUpdate.remoteHandle
         ?: [[CXHandle alloc] initWithType:CXHandleTypePhoneNumber value:@"unknown"];
     [_deferredCallUuids removeObject:uuid];
+    [_answerDeferredUuids removeObject:uuid];
     _currentUuidByOriginal[uuid] = freshUuid;
     _originalUuidByCurrent[freshUuid] = uuid;
     [_outgoingReattachUuids addObject:freshUuid];
@@ -611,14 +655,42 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
     CXStartCallAction *startAction = [[CXStartCallAction alloc] initWithCallUUID:freshUuid handle:handle];
     startAction.contactIdentifier = callUpdate.localizedCallerName;
     CXTransaction *startTransaction = [[CXTransaction alloc] initWithAction:startAction];
-    [self requestTransaction:startTransaction completion:completion];
+    // The alias state was committed above so the perform callback can already
+    // translate; if CallKit refuses the transaction that state must be undone,
+    // or the call becomes unanswerable (retries would target an alias CallKit
+    // never created) and the in-flight re-attach mark blocks promotion for
+    // the rest of the session.
+    [self requestTransaction:startTransaction completion:^(WTPCallRequestError *err, FlutterError *ferr) {
+      if (err != nil || ferr != nil) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          NSLog(@"[Callkeep][answerCall] re-attach start failed - rolling back to deferred %@", uuidString);
+          [self->_outgoingReattachUuids removeObject:freshUuid];
+          [self->_ownCallUuids removeObject:freshUuid];
+          if ([self->_currentUuidByOriginal[uuid] isEqual:freshUuid]) {
+            [self->_currentUuidByOriginal removeObjectForKey:uuid];
+          }
+          [self->_originalUuidByCurrent removeObjectForKey:freshUuid];
+          [self->_deferredCallUuids addObject:uuid];
+        });
+      }
+      completion(err, ferr);
+    }];
     return;
   }
 
   CXAnswerCallAction *action = [[CXAnswerCallAction alloc] initWithCallUUID:[self currentUuidFor:uuid]];
   CXTransaction *transaction = [[CXTransaction alloc] initWithAction:action];
 
-  [self requestTransaction:transaction completion:completion];
+  // If the answer transaction is refused, the calls deferred for it were
+  // pulled out of the system UI for nothing - bring them back.
+  [self requestTransaction:transaction completion:^(WTPCallRequestError *err, FlutterError *ferr) {
+    if (err != nil || ferr != nil) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self restoreAnswerDeferredCallsAfterFailedAnswer];
+      });
+    }
+    completion(err, ferr);
+  }];
 }
 
 - (void)setSpeaker:(NSString *)uuidString
@@ -646,6 +718,7 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
     // the Flutter side terminates the call exactly as usual.
     NSLog(@"[Callkeep][endCall] ending deferred call %@ locally", uuidString);
     [_deferredCallUuids removeObject:uuid];
+    [_answerDeferredUuids removeObject:uuid];
     [_incomingCallUpdates removeObjectForKey:uuid];
     [_delegateFlutterApi performEndCall:uuidString
                              completion:^(NSNumber *fulfill, FlutterError *error) {}];
@@ -919,23 +992,34 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
   // under a fresh UUID when answered.
   BOOL isDeferred = _deferredCallKitRegistration && !alreadyLive &&
       ([_deferredCallUuids containsObject:uuid] || [self hasOwnLiveCallKitCall]);
+  // When the call already lives in CallKit its registry entry may be a
+  // promoted ALIAS: the dedup report must target that alias, or CallKit sees
+  // a brand-new UUID and registers a duplicate ringing entry.
+  NSUUID *reportUuid = alreadyLive ? [self currentUuidFor:uuid] : uuid;
   if (isDeferred) {
     [_deferredCallUuids addObject:uuid];
     _incomingCallUpdates[uuid] = callUpdate;
   } else {
-    [_ownCallUuids addObject:uuid];
+    [_ownCallUuids addObject:reportUuid];
     _incomingCallUpdates[uuid] = callUpdate;
   }
-  [_provider reportNewIncomingCallWithUUID:uuid
+  [_provider reportNewIncomingCallWithUUID:reportUuid
                                     update:callUpdate
                                 completion:^(NSError *error) {
-                                  if (isDeferred && error == nil) {
-                                    // PushKit obliges reporting every VoIP push, but this call is
-                                    // deferred (rings app-side only) - take it right back out so
-                                    // the system UI does not resurrect it.
-                                    NSLog(@"[Callkeep][didReceiveIncomingPushWithPayloadForPushTypeVoIP] re-ending deferred call %@", uuid.UUIDString);
-                                    [self reportCallKitEndOf:uuid reason:CXCallEndedReasonAnsweredElsewhere];
-                                  }
+                                  dispatch_async(dispatch_get_main_queue(), ^{
+                                    if (error == nil) {
+                                      // A fresh registration supersedes any unconfirmed end of
+                                      // this UUID from an earlier call with the same callId.
+                                      [self->_pendingCallKitEndUuids removeObject:reportUuid];
+                                    }
+                                    if (isDeferred && error == nil) {
+                                      // PushKit obliges reporting every VoIP push, but this call is
+                                      // deferred (rings app-side only) - take it right back out so
+                                      // the system UI does not resurrect it.
+                                      NSLog(@"[Callkeep][didReceiveIncomingPushWithPayloadForPushTypeVoIP] re-ending deferred call %@", reportUuid.UUIDString);
+                                      [self reportCallKitEndOf:reportUuid reason:CXCallEndedReasonAnsweredElsewhere];
+                                    }
+                                  });
                                   WTPIncomingCallError *incomingCallError = nil;
                                   if (error != nil) {
                                     if ([error.domain isEqualToString:CXErrorDomainIncomingCall]) {
@@ -994,6 +1078,7 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
 - (void)callObserver:(CXCallObserver *)callObserver callChanged:(CXCall *)call {
   [self syncCallWaitingTone:callObserver];
   [self promoteDeferredCallIfRegistryVacant];
+  [self flushPendingMissedJournalIfIdle];
 }
 
 /// Re-enters a still-ringing deferred call into CallKit when the registry has
@@ -1008,13 +1093,25 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
   if (_deferredCallUuids.count == 0) return;
   if (_outgoingReattachUuids.count > 0 || _answeringCallUuids.count > 0) return;
   if ([self hasOwnLiveCallKitCall]) return;
-  NSUUID *original = [_deferredCallUuids anyObject];
+  // Only an entry with cached metadata can be re-reported meaningfully; a
+  // metadata-less one must not block eligible entries behind it.
+  NSUUID *original = nil;
+  for (NSUUID *candidate in _deferredCallUuids) {
+    if (_incomingCallUpdates[candidate] != nil) { original = candidate; break; }
+  }
+  if (original == nil) return;
+  NSLog(@"[Callkeep][promoteDeferredCall] registry vacant - promoting %@", original.UUIDString);
+  [self reenterDeferredCallIntoCallKit:original];
+}
+
+/// Re-reports the deferred [original] as an incoming call under a fresh alias
+/// and rolls the alias state back if CallKit refuses the report.
+- (void)reenterDeferredCallIntoCallKit:(NSUUID *)original {
   CXCallUpdate *lastUpdate = _incomingCallUpdates[original];
   if (lastUpdate == nil) return;
   NSUUID *freshUuid = [NSUUID UUID];
-  NSLog(@"[Callkeep][promoteDeferredCall] registry vacant - promoting %@ as %@",
-        original.UUIDString, freshUuid.UUIDString);
   [_deferredCallUuids removeObject:original];
+  [_answerDeferredUuids removeObject:original];
   _currentUuidByOriginal[original] = freshUuid;
   _originalUuidByCurrent[freshUuid] = original;
   [_ownCallUuids addObject:freshUuid];
@@ -1023,7 +1120,7 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
                                 completion:^(NSError *error) {
     dispatch_async(dispatch_get_main_queue(), ^{
       if (error != nil) {
-        NSLog(@"[Callkeep][promoteDeferredCall] promotion failed (%@) - back to deferred", error);
+        NSLog(@"[Callkeep][reenterDeferredCall] re-entry failed (%@) - back to deferred", error);
         [self->_ownCallUuids removeObject:freshUuid];
         if ([self->_currentUuidByOriginal[original] isEqual:freshUuid]) {
           [self->_currentUuidByOriginal removeObjectForKey:original];
@@ -1035,6 +1132,56 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
   }];
 }
 
+/// After a failed answer the calls deferred for it were pulled out of the
+/// system UI for nothing - re-enter them so they ring visibly again. Skipped
+/// while an own call is connected: an incoming re-report next to a connected
+/// call summons the system prompt, and the in-call tone still announces them.
+- (void)restoreAnswerDeferredCallsAfterFailedAnswer {
+  if (_answerDeferredUuids.count == 0) return;
+  for (CXCall *call in _callController.callObserver.calls) {
+    if (!call.hasEnded && call.hasConnected && [_ownCallUuids containsObject:call.UUID]) return;
+  }
+  for (NSUUID *original in [_answerDeferredUuids allObjects]) {
+    if (![_deferredCallUuids containsObject:original]) {
+      [_answerDeferredUuids removeObject:original];
+      continue;
+    }
+    NSLog(@"[Callkeep][restoreAnswerDeferred] answer failed - restoring %@", original.UUIDString);
+    [self reenterDeferredCallIntoCallKit:original];
+  }
+}
+
+/// Writes the queued missed-call journal entries (report + instant end under
+/// a throwaway UUID) once no call - own or foreign - is live: flashing a
+/// ringing entry next to a live call would summon the system call-waiting
+/// prompt. Flash UUIDs are guarded in the perform callbacks so a tap on the
+/// sub-second banner never reaches the Flutter side.
+- (void)flushPendingMissedJournalIfIdle {
+  if (_pendingMissedJournalUpdates.count == 0) return;
+  if (_outgoingReattachUuids.count > 0 || _answeringCallUuids.count > 0) return;
+  for (CXCall *call in _callController.callObserver.calls) {
+    if (!call.hasEnded) return;
+  }
+  NSArray<CXCallUpdate *> *entries = [_pendingMissedJournalUpdates copy];
+  [_pendingMissedJournalUpdates removeAllObjects];
+  for (CXCallUpdate *entry in entries) {
+    NSUUID *flashUuid = [NSUUID UUID];
+    [_journalFlashUuids addObject:flashUuid];
+    NSLog(@"[Callkeep][missedJournal] flash-reporting missed deferred call as %@", flashUuid.UUIDString);
+    [_provider reportNewIncomingCallWithUUID:flashUuid
+                                      update:entry
+                                  completion:^(NSError *error) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        if (error == nil) {
+          [self reportCallKitEndOf:flashUuid reason:CXCallEndedReasonUnanswered];
+        } else {
+          [self->_journalFlashUuids removeObject:flashUuid];
+        }
+      });
+    }];
+  }
+}
+
 /// Mirrors the Android connection-service behavior: a soft call-waiting beep plays
 /// while one call is connected (or held) and another incoming call is ringing, and
 /// stops as soon as that state ends (answered, declined, hung up on either side).
@@ -1044,6 +1191,17 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
 /// hasConnected == NO, so a second incoming call during it produces no tone (same as
 /// the Android connection-service logic, which plays the full ringtone there).
 - (void)syncCallWaitingTone:(CXCallObserver *)callObserver {
+  // An end we reported for a UUID that is not (or no longer) in the registry
+  // never gets an observer confirmation - prune pending-end entries whose
+  // UUID has left the observer's list entirely, or they accumulate and shadow
+  // later genuine registrations of the same deterministic UUID.
+  if (_pendingCallKitEndUuids.count > 0) {
+    NSMutableSet<NSUUID *> *listedUuids = [NSMutableSet set];
+    for (CXCall *call in callObserver.calls) {
+      [listedUuids addObject:call.UUID];
+    }
+    [_pendingCallKitEndUuids intersectSet:listedUuids];
+  }
   BOOL hasConnected = NO;
   BOOL hasRingingIncoming = NO;
   for (CXCall *call in callObserver.calls) {
@@ -1052,6 +1210,7 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
     }
     if (call.hasEnded) {
       [_pendingCallKitEndUuids removeObject:call.UUID];
+      [_journalFlashUuids removeObject:call.UUID];
       [_ownCallUuids removeObject:call.UUID];
       // Keep the update of a deferred call - it is needed for the re-report at
       // answer time; any other ended call's metadata is no longer useful.
@@ -1112,6 +1271,9 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
   [_originalUuidByCurrent removeAllObjects];
   [_outgoingReattachUuids removeAllObjects];
   [_pendingCallKitEndUuids removeAllObjects];
+  [_answerDeferredUuids removeAllObjects];
+  [_pendingMissedJournalUpdates removeAllObjects];
+  [_journalFlashUuids removeAllObjects];
   [_delegateFlutterApi didReset:^(FlutterError *error) {}];
 }
 
@@ -1160,6 +1322,12 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
 #ifdef DEBUG
   NSLog(@"[Callkeep][CXProviderDelegate][provider:performAnswerCallAction:]");
 #endif
+  // A journal-only flash entry (a missed-call record being written) is dead
+  // app-side and must never be answerable.
+  if ([_journalFlashUuids containsObject:action.callUUID]) {
+    [action fail];
+    return;
+  }
   // Covers answers coming through CallKit's own UI (lock screen, banner) as
   // well - by this point no Dart code has run yet, so the deferral must happen
   // here to keep the remaining ringing call from raising the system prompt.
@@ -1172,6 +1340,7 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
                                 if (error != nil || [fulfill boolValue] != YES) {
                                   [self->_answeringCallUuids removeObject:action.callUUID];
                                   [action fail];
+                                  [self restoreAnswerDeferredCallsAfterFailedAnswer];
                                 } else {
                                   [action fulfill];
                                 }
@@ -1182,6 +1351,12 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
 #ifdef DEBUG
   NSLog(@"[Callkeep][CXProviderDelegate][provider:performEndCallAction:]");
 #endif
+  // A journal-only flash entry ends by itself; the Flutter side knows nothing
+  // about its throwaway UUID.
+  if ([_journalFlashUuids containsObject:action.callUUID]) {
+    [action fulfill];
+    return;
+  }
   [_delegateFlutterApi performEndCall:[self originalUuidFor:action.callUUID].UUIDString
                            completion:^(NSNumber *fulfill, FlutterError *error) {
                              if (error != nil || [fulfill boolValue] != YES) {
