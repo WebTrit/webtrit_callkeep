@@ -58,6 +58,10 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   // must treat these as gone, or they mistake a just-ended flash for a real
   // registration and un-defer a legitimately deferred call.
   NSMutableSet<NSUUID *> *_pendingCallKitEndUuids;
+  // Master switch of the deferred-registration mechanism (an app opts in via
+  // CallkeepIOSOptions). Off by default: every incoming call is registered
+  // with CallKit as before and the system call-waiting behavior applies.
+  BOOL _deferredCallKitRegistration;
 }
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar> *)registrar {
@@ -139,6 +143,8 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
 
     _callWaitingToneOwnCallsOnly =
         iosOptions.callWaitingToneOwnCallsOnly == nil || iosOptions.callWaitingToneOwnCallsOnly.boolValue;
+    _deferredCallKitRegistration =
+        iosOptions.deferredCallKitRegistration != nil && iosOptions.deferredCallKitRegistration.boolValue;
 
     if (iosOptions.ringbackSound != nil) {
       _ringback = [self createRingbackPlayer:iosOptions.ringbackSound];
@@ -200,6 +206,8 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
     }
     _callWaitingToneOwnCallsOnly =
         iosOptions.callWaitingToneOwnCallsOnly == nil || iosOptions.callWaitingToneOwnCallsOnly.boolValue;
+    _deferredCallKitRegistration =
+        iosOptions.deferredCallKitRegistration != nil && iosOptions.deferredCallKitRegistration.boolValue;
     
     if (_ringback == nil && iosOptions.ringbackSound != nil) {
       _ringback = [self createRingbackPlayer:iosOptions.ringbackSound];
@@ -275,7 +283,7 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
     completion(nil, nil);
     return;
   }
-  if (!alreadyLive && callUuid != nil && [self hasOwnLiveCallKitCall]) {
+  if (_deferredCallKitRegistration && !alreadyLive && callUuid != nil && [self hasOwnLiveCallKitCall]) {
     // At most one call is represented in CallKit: an incoming call arriving
     // while any own call already lives there (ringing or active) is deferred
     // right away - it rings app-side only and enters CallKit when answered.
@@ -374,19 +382,38 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   // the registry entry ringing as a ghost.
   [self healStaleDeferredMark:uuid];
   if (uuid != nil && [_deferredCallUuids containsObject:uuid]) {
-    // The deferred call is not in CallKit - nothing to report, just forget it
-    // (remote hangup / cancel of a call that was ringing app-side only).
+    // The deferred call is not in CallKit, so there is no entry to end. A call
+    // the user never got to answer must still leave a missed-call trace in the
+    // system journal: flash-report it under a throwaway UUID and end it right
+    // away (the same report+instant-end the push path uses); the sub-second
+    // banner is the price of the journal record. Other reasons just forget
+    // the call. Execution falls through to the shared missed-call
+    // notification below either way.
     NSLog(@"[Callkeep][reportEndCall] clearing deferred call %@", uuidString);
     [_deferredCallUuids removeObject:uuid];
+    CXCallUpdate *lastUpdate = _incomingCallUpdates[uuid];
     [_incomingCallUpdates removeObjectForKey:uuid];
-    completion(nil);
-    return;
+    CXCallEndedReason endReason = [reason toCallKit];
+    BOOL missed = endReason == CXCallEndedReasonUnanswered || endReason == CXCallEndedReasonRemoteEnded;
+    if (missed && lastUpdate != nil) {
+      NSUUID *flashUuid = [NSUUID UUID];
+      NSLog(@"[Callkeep][reportEndCall] journaling missed deferred call %@ as %@", uuidString, flashUuid.UUIDString);
+      [_provider reportNewIncomingCallWithUUID:flashUuid
+                                        update:lastUpdate
+                                    completion:^(NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          if (error == nil) {
+            [self reportCallKitEndOf:flashUuid reason:endReason];
+          }
+        });
+      }];
+    }
+  } else {
+    if (uuid != nil) {
+      [_incomingCallUpdates removeObjectForKey:uuid];
+    }
+    [self reportCallKitEndOf:[self currentUuidFor:uuid] reason:[reason toCallKit]];
   }
-  if (uuid != nil) {
-    [_incomingCallUpdates removeObjectForKey:uuid];
-  }
-
-  [self reportCallKitEndOf:[self currentUuidFor:uuid] reason:[reason toCallKit]];
   [self assignIdleTimerDisabled:NO];
     
     if ([reason toCallKit] == CXCallEndedReasonUnanswered) {
@@ -531,14 +558,19 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
 /// answer flips CallKit into "active + ringing" and iOS covers the app with
 /// its full-screen call-waiting prompt for the remaining call.
 - (void)deferOtherRingingOwnCallsForAnswerOf:(NSUUID *)answeredUuid {
+  if (!_deferredCallKitRegistration) return;
   for (CXCall *call in _callController.callObserver.calls) {
     if (call.hasEnded || call.hasConnected || call.outgoing) continue;
     if ([call.UUID isEqual:answeredUuid]) continue;
     if (![_ownCallUuids containsObject:call.UUID]) continue;
     if ([_answeringCallUuids containsObject:call.UUID]) continue;
-    if (![_deferredCallUuids containsObject:call.UUID]) {
-      [_deferredCallUuids addObject:call.UUID];
-      NSLog(@"[Callkeep][deferOtherRingingOwnCalls] deferring %@", call.UUID.UUIDString);
+    // The deferred set lives in the Flutter side's stable UUID space: a call
+    // that re-entered CallKit under a fresh alias (a promoted one) must be
+    // marked by its original UUID or later lookups by the Dart side miss it.
+    NSUUID *original = [self originalUuidFor:call.UUID];
+    if (![_deferredCallUuids containsObject:original]) {
+      [_deferredCallUuids addObject:original];
+      NSLog(@"[Callkeep][deferOtherRingingOwnCalls] deferring %@", original.UUIDString);
       [self reportCallKitEndOf:call.UUID reason:CXCallEndedReasonAnsweredElsewhere];
     }
   }
@@ -885,7 +917,8 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
   // represented there). PushKit still obliges reporting, so the call is
   // reported and taken right back out; it rings app-side and enters CallKit
   // under a fresh UUID when answered.
-  BOOL isDeferred = !alreadyLive && ([_deferredCallUuids containsObject:uuid] || [self hasOwnLiveCallKitCall]);
+  BOOL isDeferred = _deferredCallKitRegistration && !alreadyLive &&
+      ([_deferredCallUuids containsObject:uuid] || [self hasOwnLiveCallKitCall]);
   if (isDeferred) {
     [_deferredCallUuids addObject:uuid];
     _incomingCallUpdates[uuid] = callUpdate;
@@ -960,6 +993,46 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
 
 - (void)callObserver:(CXCallObserver *)callObserver callChanged:(CXCall *)call {
   [self syncCallWaitingTone:callObserver];
+  [self promoteDeferredCallIfRegistryVacant];
+}
+
+/// Re-enters a still-ringing deferred call into CallKit when the registry has
+/// no own live call left (e.g. the visible call was declined while the
+/// deferred one keeps ringing app-side). Without this the remaining call is
+/// invisible and silent outside the app and just times out. Re-reporting as
+/// incoming is safe here - the call-waiting prompt needs a connected call
+/// next to the ringing one, and the registry is empty. Skipped while an
+/// answer is in flight: the registry is momentarily empty mid-transition and
+/// promoting then would race the re-attach.
+- (void)promoteDeferredCallIfRegistryVacant {
+  if (_deferredCallUuids.count == 0) return;
+  if (_outgoingReattachUuids.count > 0 || _answeringCallUuids.count > 0) return;
+  if ([self hasOwnLiveCallKitCall]) return;
+  NSUUID *original = [_deferredCallUuids anyObject];
+  CXCallUpdate *lastUpdate = _incomingCallUpdates[original];
+  if (lastUpdate == nil) return;
+  NSUUID *freshUuid = [NSUUID UUID];
+  NSLog(@"[Callkeep][promoteDeferredCall] registry vacant - promoting %@ as %@",
+        original.UUIDString, freshUuid.UUIDString);
+  [_deferredCallUuids removeObject:original];
+  _currentUuidByOriginal[original] = freshUuid;
+  _originalUuidByCurrent[freshUuid] = original;
+  [_ownCallUuids addObject:freshUuid];
+  [_provider reportNewIncomingCallWithUUID:freshUuid
+                                    update:lastUpdate
+                                completion:^(NSError *error) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+      if (error != nil) {
+        NSLog(@"[Callkeep][promoteDeferredCall] promotion failed (%@) - back to deferred", error);
+        [self->_ownCallUuids removeObject:freshUuid];
+        if ([self->_currentUuidByOriginal[original] isEqual:freshUuid]) {
+          [self->_currentUuidByOriginal removeObjectForKey:original];
+        }
+        [self->_originalUuidByCurrent removeObjectForKey:freshUuid];
+        [self->_deferredCallUuids addObject:original];
+      }
+    });
+  }];
 }
 
 /// Mirrors the Android connection-service behavior: a soft call-waiting beep plays
@@ -987,8 +1060,15 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
       }
       NSUUID *original = _originalUuidByCurrent[call.UUID];
       if (original != nil) {
-        [_incomingCallUpdates removeObjectForKey:original];
-        [_currentUuidByOriginal removeObjectForKey:original];
+        // A re-deferred call keeps its metadata and its NEWER alias: this end
+        // may be the confirmation of an OLD alias reported ended when the call
+        // went back to deferred, arriving after a fresh alias already exists.
+        if (![_deferredCallUuids containsObject:original]) {
+          [_incomingCallUpdates removeObjectForKey:original];
+        }
+        if ([_currentUuidByOriginal[original] isEqual:call.UUID]) {
+          [_currentUuidByOriginal removeObjectForKey:original];
+        }
         [_originalUuidByCurrent removeObjectForKey:call.UUID];
       }
       continue;
@@ -1001,6 +1081,12 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
     } else if (!call.outgoing && ![_answeringCallUuids containsObject:call.UUID]) {
       hasRingingIncoming = YES;
     }
+  }
+  // A deferred incoming call has no CallKit entry, so the loop above cannot
+  // see it - but it IS a ringing incoming call, and during a conversation the
+  // tone is the only audible cue it exists.
+  if (_deferredCallUuids.count > 0) {
+    hasRingingIncoming = YES;
   }
 #ifdef DEBUG
   NSLog(@"[CallWaitingTone] sync: calls=%lu connected=%d ringingIncoming=%d",

@@ -222,7 +222,8 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
     supportsVideo:(BOOL )supportsVideo
     includesCallsInRecents:(BOOL )includesCallsInRecents
     driveIdleTimerDisabled:(BOOL )driveIdleTimerDisabled
-    callWaitingToneOwnCallsOnly:(nullable NSNumber *)callWaitingToneOwnCallsOnly {
+    callWaitingToneOwnCallsOnly:(nullable NSNumber *)callWaitingToneOwnCallsOnly
+    deferredCallKitRegistration:(nullable NSNumber *)deferredCallKitRegistration {
   WTPIOSOptions* pigeonResult = [[WTPIOSOptions alloc] init];
   pigeonResult.localizedName = localizedName;
   pigeonResult.ringtoneSound = ringtoneSound;
@@ -237,6 +238,7 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
   pigeonResult.includesCallsInRecents = includesCallsInRecents;
   pigeonResult.driveIdleTimerDisabled = driveIdleTimerDisabled;
   pigeonResult.callWaitingToneOwnCallsOnly = callWaitingToneOwnCallsOnly;
+  pigeonResult.deferredCallKitRegistration = deferredCallKitRegistration;
   return pigeonResult;
 }
 + (WTPIOSOptions *)fromList:(NSArray<id> *)list {
@@ -254,6 +256,7 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
   pigeonResult.includesCallsInRecents = [GetNullableObjectAtIndex(list, 10) boolValue];
   pigeonResult.driveIdleTimerDisabled = [GetNullableObjectAtIndex(list, 11) boolValue];
   pigeonResult.callWaitingToneOwnCallsOnly = list.count > 12 ? GetNullableObjectAtIndex(list, 12) : nil;
+  pigeonResult.deferredCallKitRegistration = list.count > 13 ? GetNullableObjectAtIndex(list, 13) : nil;
   return pigeonResult;
 }
 + (nullable WTPIOSOptions *)nullableFromList:(NSArray<id> *)list {
@@ -274,6 +277,7 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
     @(self.includesCallsInRecents),
     @(self.driveIdleTimerDisabled),
     self.callWaitingToneOwnCallsOnly ?: [NSNull null],
+    self.deferredCallKitRegistration ?: [NSNull null],
   ];
 }
 - (BOOL)isEqual:(id)object {
@@ -284,7 +288,7 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
     return NO;
   }
   WTPIOSOptions *other = (WTPIOSOptions *)object;
-  return FLTPigeonDeepEquals(self.localizedName, other.localizedName) && FLTPigeonDeepEquals(self.ringtoneSound, other.ringtoneSound) && FLTPigeonDeepEquals(self.ringbackSound, other.ringbackSound) && FLTPigeonDeepEquals(self.iconTemplateImageAssetName, other.iconTemplateImageAssetName) && self.maximumCallGroups == other.maximumCallGroups && self.maximumCallsPerCallGroup == other.maximumCallsPerCallGroup && FLTPigeonDeepEquals(self.supportsHandleTypeGeneric, other.supportsHandleTypeGeneric) && FLTPigeonDeepEquals(self.supportsHandleTypePhoneNumber, other.supportsHandleTypePhoneNumber) && FLTPigeonDeepEquals(self.supportsHandleTypeEmailAddress, other.supportsHandleTypeEmailAddress) && self.supportsVideo == other.supportsVideo && self.includesCallsInRecents == other.includesCallsInRecents && self.driveIdleTimerDisabled == other.driveIdleTimerDisabled && FLTPigeonDeepEquals(self.callWaitingToneOwnCallsOnly, other.callWaitingToneOwnCallsOnly);
+  return FLTPigeonDeepEquals(self.localizedName, other.localizedName) && FLTPigeonDeepEquals(self.ringtoneSound, other.ringtoneSound) && FLTPigeonDeepEquals(self.ringbackSound, other.ringbackSound) && FLTPigeonDeepEquals(self.iconTemplateImageAssetName, other.iconTemplateImageAssetName) && self.maximumCallGroups == other.maximumCallGroups && self.maximumCallsPerCallGroup == other.maximumCallsPerCallGroup && FLTPigeonDeepEquals(self.supportsHandleTypeGeneric, other.supportsHandleTypeGeneric) && FLTPigeonDeepEquals(self.supportsHandleTypePhoneNumber, other.supportsHandleTypePhoneNumber) && FLTPigeonDeepEquals(self.supportsHandleTypeEmailAddress, other.supportsHandleTypeEmailAddress) && self.supportsVideo == other.supportsVideo && self.includesCallsInRecents == other.includesCallsInRecents && self.driveIdleTimerDisabled == other.driveIdleTimerDisabled && FLTPigeonDeepEquals(self.callWaitingToneOwnCallsOnly, other.callWaitingToneOwnCallsOnly) && FLTPigeonDeepEquals(self.deferredCallKitRegistration, other.deferredCallKitRegistration);
 }
 
 - (NSUInteger)hash {

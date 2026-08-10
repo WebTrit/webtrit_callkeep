@@ -24,6 +24,7 @@ class CallkeepIOSOptions extends Equatable {
     this.includesCallsInRecents = true,
     this.driveIdleTimerDisabled = true,
     this.callWaitingToneOwnCallsOnly = true,
+    this.deferredCallKitRegistration = false,
   });
 
   final String localizedName;
@@ -42,6 +43,13 @@ class CallkeepIOSOptions extends Equatable {
   /// other VoIP apps) also count towards the connected/ringing combination.
   final bool callWaitingToneOwnCallsOnly;
 
+  /// iOS only: opt-in to the deferred CallKit registration mechanism - at most
+  /// one call is represented in CallKit; extra incoming calls ring app-side
+  /// only and enter CallKit silently when answered, so the system call-waiting
+  /// screen never covers the app. Off by default: incoming calls register with
+  /// CallKit as usual and the standard iOS call-waiting behavior applies.
+  final bool deferredCallKitRegistration;
+
   @override
   List<Object?> get props => [
     localizedName,
@@ -55,6 +63,7 @@ class CallkeepIOSOptions extends Equatable {
     includesCallsInRecents,
     driveIdleTimerDisabled,
     callWaitingToneOwnCallsOnly,
+    deferredCallKitRegistration,
   ];
 }
 

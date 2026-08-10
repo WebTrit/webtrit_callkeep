@@ -25,6 +25,7 @@ class PIOSOptions {
   late bool includesCallsInRecents;
   late bool driveIdleTimerDisabled;
   late bool? callWaitingToneOwnCallsOnly;
+  late bool? deferredCallKitRegistration;
 }
 
 class PAndroidOptions {

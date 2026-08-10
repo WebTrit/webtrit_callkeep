@@ -83,6 +83,10 @@ One sentence: **iOS sees at most ONE call; all the others live only in the app a
 world at the moment they are answered - silently, as outgoing calls.** (This mirrors the
 telecom-deferred direction on Android, so both platforms converge on the same semantics.)
 
+The mechanism is opt-in: an app enables it via `deferredCallKitRegistration` in
+`CallkeepIOSOptions`. With the flag off (the default) every incoming call registers with CallKit
+as before and the standard iOS call-waiting behavior applies.
+
 Four pillars, each mapping onto the matrix:
 
 1. **Defer at answer** (turns an imminent P1/P3 into S6). At the moment of answering, every other
@@ -101,6 +105,20 @@ Four pillars, each mapping onto the matrix:
 4. **Re-attach as outgoing** (turns P6 into S4). The re-attach is done via CXStartCallAction: the
    call becomes active silently, with no system screen. The start action is fulfilled natively and
    reaches Flutter as a regular answer of the original call.
+
+Three companion behaviors keep the deferred call a first-class citizen:
+
+- **Audible cue.** A deferred call has no CallKit entry, so during a conversation neither the
+  system nor the registry-driven call-waiting tone would announce it. The tone player counts
+  deferred calls as ringing, so the in-call call-waiting tone (see `ios-call-waiting-tone.md`)
+  still plays.
+- **Missed-call trace.** A deferred call that ends unanswered (timeout or the caller giving up)
+  is flash-reported under a throwaway UUID and ended immediately - the S7 pattern - so the system
+  journal records the missed call; the local missed-call notification fires as usual.
+- **Promotion on vacancy.** When the registry loses its last own live call while a deferred call
+  still rings (e.g. the visible call was declined), the deferred call is re-reported as incoming
+  under a fresh alias. The registry is empty at that point, so this is the safe S1/S2 shape - the
+  remaining call regains its ringtone and lock-screen presence.
 
 ## Platform pitfalls encoded in the implementation
 
@@ -143,7 +161,7 @@ Hard-won behaviors that are not in Apple's documentation:
 
 ## What this mechanism does not solve
 
-- Visibility of the second call while the app is backgrounded (P4 in its pure form) is consciously
-  traded away by the at-most-one-call policy. If the product ever wants a mitigation, that is a
-  separate work item (a local notification or an audible cue, in the spirit of
-  `ios-call-waiting-tone.md`).
+- Visibility of the second call while the app is backgrounded and the first is still ringing (P4
+  in its pure form) is consciously traded away by the at-most-one-call policy. Promotion on
+  vacancy softens it - the moment the first call ends or is declined the second one surfaces -
+  but while both ring only one is visible outside the app.

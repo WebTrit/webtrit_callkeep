@@ -125,6 +125,7 @@ extension CallkeepIOSOptionsConverter on CallkeepIOSOptions {
       includesCallsInRecents: includesCallsInRecents,
       driveIdleTimerDisabled: driveIdleTimerDisabled,
       callWaitingToneOwnCallsOnly: callWaitingToneOwnCallsOnly,
+      deferredCallKitRegistration: deferredCallKitRegistration,
     );
   }
 }
