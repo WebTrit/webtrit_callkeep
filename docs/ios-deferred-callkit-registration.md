@@ -116,9 +116,13 @@ Hard-won behaviors that are not in Apple's documentation:
 3. **Threading.** The completion of `reportNewIncomingCall` can arrive off the main thread;
    mutating the plugin's non-thread-safe state from there is a segfault. Everything touching
    plugin state is confined to the main thread.
-4. **The observer forgets the past.** CXCallObserver can drop an ended call from its list before
-   the app's cleanup sees it, so bookkeeping accumulated from its callbacks goes stale. Decisions
-   that depend on "are there live calls right now" must read the observer's live `calls` list.
+4. **The observer forgets the past - and lags the present.** CXCallObserver can drop an ended call
+   from its list before the app's cleanup sees it, so bookkeeping accumulated from its callbacks
+   goes stale - decisions that depend on "are there live calls right now" must read the observer's
+   live `calls` list. The inverse is also true: for a beat after the plugin reports a call ended,
+   the observer still lists it as live. A liveness check that trusts the raw list in that window
+   mistakes the fading entry for a real registration. The plugin therefore remembers every UUID it
+   has reported ended until the observer confirms the end, and all liveness decisions skip them.
 5. **A call can race itself.** The signaling and push paths both report the same call (the push is
    the fallback for a dead socket; the deterministic UUID dedups them). Whichever path arrives
    second sees "an own call already lives in CallKit" - but that live call is this very call. A
