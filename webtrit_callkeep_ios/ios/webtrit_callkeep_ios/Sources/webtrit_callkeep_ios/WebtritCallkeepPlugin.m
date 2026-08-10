@@ -51,6 +51,13 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   // action is fulfilled natively and surfaces to Flutter as a plain
   // performAnswerCall; this set marks the in-flight ones.
   NSMutableSet<NSUUID *> *_outgoingReattachUuids;
+  // UUIDs this plugin has reported ended but whose end CXCallObserver has not
+  // confirmed yet. The observer's list lags a reportCall:ended by a beat, so
+  // right after a defer (or the report+instant-end a push mandates for a
+  // deferred call) the ended entry still reads as "live". Liveness predicates
+  // must treat these as gone, or they mistake a just-ended flash for a real
+  // registration and un-defer a legitimately deferred call.
+  NSMutableSet<NSUUID *> *_pendingCallKitEndUuids;
 }
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar> *)registrar {
@@ -83,6 +90,7 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
     _currentUuidByOriginal = [NSMutableDictionary dictionary];
     _originalUuidByCurrent = [NSMutableDictionary dictionary];
     _outgoingReattachUuids = [NSMutableSet set];
+    _pendingCallKitEndUuids = [NSMutableSet set];
     _callWaitingToneOwnCallsOnly = YES;
   }
   return self;
@@ -217,6 +225,7 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   [_callWaitingTone stop];
   [_ownCallUuids removeAllObjects];
   [_answeringCallUuids removeAllObjects];
+  [_pendingCallKitEndUuids removeAllObjects];
   if (_provider != nil) {
     [_provider invalidate];
     _provider = nil;
@@ -377,9 +386,7 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
     [_incomingCallUpdates removeObjectForKey:uuid];
   }
 
-  [_provider reportCallWithUUID:[self currentUuidFor:uuid]
-                    endedAtDate:nil
-                         reason:[reason toCallKit]];
+  [self reportCallKitEndOf:[self currentUuidFor:uuid] reason:[reason toCallKit]];
   [self assignIdleTimerDisabled:NO];
     
     if ([reason toCallKit] == CXCallEndedReasonUnanswered) {
@@ -473,9 +480,19 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
 - (BOOL)hasOwnLiveCallKitCall {
   for (CXCall *call in _callController.callObserver.calls) {
     if (call.hasEnded) continue;
+    if ([_pendingCallKitEndUuids containsObject:call.UUID]) continue;
     if ([_ownCallUuids containsObject:call.UUID]) return YES;
   }
   return NO;
+}
+
+/// Reports [uuid] ended to CallKit and remembers it as pending-end until the
+/// observer confirms, so the liveness predicates stop counting it immediately
+/// instead of a beat later.
+- (void)reportCallKitEndOf:(NSUUID *)uuid reason:(CXCallEndedReason)reason {
+  if (uuid == nil) return;
+  [_pendingCallKitEndUuids addObject:uuid];
+  [_provider reportCallWithUUID:uuid endedAtDate:nil reason:reason];
 }
 
 /// Whether [uuid] itself is currently represented in CallKit as a live call.
@@ -490,6 +507,7 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
 /// into "ringing + active" and summons the system call-waiting screen.
 - (BOOL)isLiveCallKitCallWithUuid:(NSUUID *)uuid {
   if (uuid == nil) return NO;
+  if ([_pendingCallKitEndUuids containsObject:uuid]) return NO;
   for (CXCall *call in _callController.callObserver.calls) {
     if (call.hasEnded) continue;
     if ([call.UUID isEqual:uuid]) return YES;
@@ -521,9 +539,7 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
     if (![_deferredCallUuids containsObject:call.UUID]) {
       [_deferredCallUuids addObject:call.UUID];
       NSLog(@"[Callkeep][deferOtherRingingOwnCalls] deferring %@", call.UUID.UUIDString);
-      [_provider reportCallWithUUID:call.UUID
-                        endedAtDate:nil
-                             reason:CXCallEndedReasonAnsweredElsewhere];
+      [self reportCallKitEndOf:call.UUID reason:CXCallEndedReasonAnsweredElsewhere];
     }
   }
 }
@@ -813,9 +829,7 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
                                       NSLog(@"[Callkeep][didReceiveIncomingPushWithPayloadForPushTypeVoIP:withCompletionHandler:][reportNewIncomingCallWithUUID] payload wrong format error = %@",
                                             error);
                                     } else {
-                                      [_provider reportCallWithUUID:uuid
-                                                        endedAtDate:nil
-                                                             reason:CXCallEndedReasonFailed];
+                                      [self reportCallKitEndOf:uuid reason:CXCallEndedReasonFailed];
                                     }
                                     completion();
                                   }];
@@ -887,9 +901,7 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
                                     // deferred (rings app-side only) - take it right back out so
                                     // the system UI does not resurrect it.
                                     NSLog(@"[Callkeep][didReceiveIncomingPushWithPayloadForPushTypeVoIP] re-ending deferred call %@", uuid.UUIDString);
-                                    [self->_provider reportCallWithUUID:uuid
-                                                            endedAtDate:nil
-                                                                 reason:CXCallEndedReasonAnsweredElsewhere];
+                                    [self reportCallKitEndOf:uuid reason:CXCallEndedReasonAnsweredElsewhere];
                                   }
                                   WTPIncomingCallError *incomingCallError = nil;
                                   if (error != nil) {
@@ -966,6 +978,7 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
       [_answeringCallUuids removeObject:call.UUID];
     }
     if (call.hasEnded) {
+      [_pendingCallKitEndUuids removeObject:call.UUID];
       [_ownCallUuids removeObject:call.UUID];
       // Keep the update of a deferred call - it is needed for the re-report at
       // answer time; any other ended call's metadata is no longer useful.
@@ -1012,6 +1025,7 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
   [_currentUuidByOriginal removeAllObjects];
   [_originalUuidByCurrent removeAllObjects];
   [_outgoingReattachUuids removeAllObjects];
+  [_pendingCallKitEndUuids removeAllObjects];
   [_delegateFlutterApi didReset:^(FlutterError *error) {}];
 }
 
@@ -1033,9 +1047,7 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
                                   if (error != nil || [fulfill boolValue] != YES) {
                                     NSLog(@"[Callkeep][performStartCallAction] re-attach answer failed, ending %@",
                                           action.callUUID.UUIDString);
-                                    [self->_provider reportCallWithUUID:action.callUUID
-                                                            endedAtDate:nil
-                                                                 reason:CXCallEndedReasonFailed];
+                                    [self reportCallKitEndOf:action.callUUID reason:CXCallEndedReasonFailed];
                                   } else {
                                     [self->_provider reportOutgoingCallWithUUID:action.callUUID
                                                                 connectedAtDate:nil];
