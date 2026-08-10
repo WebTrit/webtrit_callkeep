@@ -246,7 +246,16 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   callUpdate.supportsHolding = YES;
   callUpdate.supportsDTMF = YES;
   NSUUID *callUuid = [[NSUUID alloc] initWithUUIDString:uuidString];
-  if (callUuid != nil && [_deferredCallUuids containsObject:callUuid]) {
+  // This very call may already live in CallKit, registered by the racing push
+  // path. Then it must go down the normal-report branch (the provider answers
+  // with a callUUIDAlreadyExists dedup error the Dart side tolerates) - the
+  // deferral checks below would otherwise mistake the call for one arriving
+  // next to a live call and mis-defer it against itself.
+  BOOL alreadyLive = callUuid != nil && [self isLiveCallKitCallWithUuid:[self currentUuidFor:callUuid]];
+  if (alreadyLive) {
+    [self healStaleDeferredMark:callUuid];
+  }
+  if (!alreadyLive && callUuid != nil && [_deferredCallUuids containsObject:callUuid]) {
     // The call is deferred (kept out of CallKit while another call was being
     // answered). Swallow the registration so it does not resurrect the system
     // UI, but remember the freshest metadata for the re-report at answer time.
@@ -257,7 +266,7 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
     completion(nil, nil);
     return;
   }
-  if (callUuid != nil && [self hasOwnLiveCallKitCall]) {
+  if (!alreadyLive && callUuid != nil && [self hasOwnLiveCallKitCall]) {
     // At most one call is represented in CallKit: an incoming call arriving
     // while any own call already lives there (ringing or active) is deferred
     // right away - it rings app-side only and enters CallKit when answered.
@@ -351,6 +360,10 @@ static NSString *const OptionsKey = @"WebtritCallkeepPluginOptions";
   NSLog(@"[Callkeep][reportEndCall] uuidString = %@", uuidString);
 #endif
   NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:uuidString];
+  // A stale deferred mark on a call that really lives in CallKit (a lost
+  // report race) must not skip the provider report below - that would leave
+  // the registry entry ringing as a ghost.
+  [self healStaleDeferredMark:uuid];
   if (uuid != nil && [_deferredCallUuids containsObject:uuid]) {
     // The deferred call is not in CallKit - nothing to report, just forget it
     // (remote hangup / cancel of a call that was ringing app-side only).
@@ -465,6 +478,36 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
   return NO;
 }
 
+/// Whether [uuid] itself is currently represented in CallKit as a live call.
+/// The signaling and push paths race to report the same call (both are kept
+/// deliberately - the push is the fallback for a dead socket), so either path
+/// can run while the other has already registered this very call. In that case
+/// the call must NOT be treated as "arriving next to a live call" and deferred:
+/// the live call it would be deferred behind is itself. A stale deferred mark
+/// on a really-registered call breaks both exits - decline skips the CallKit
+/// end (leaving a ghost ringing entry), and answer re-attaches a second
+/// registry entry next to the still-ringing original, which flips the registry
+/// into "ringing + active" and summons the system call-waiting screen.
+- (BOOL)isLiveCallKitCallWithUuid:(NSUUID *)uuid {
+  if (uuid == nil) return NO;
+  for (CXCall *call in _callController.callObserver.calls) {
+    if (call.hasEnded) continue;
+    if ([call.UUID isEqual:uuid]) return YES;
+  }
+  return NO;
+}
+
+/// Drops a stale deferred mark from a call that in fact lives in CallKit
+/// (see [isLiveCallKitCallWithUuid]). Returns YES when the mark was stale.
+- (BOOL)healStaleDeferredMark:(NSUUID *)uuid {
+  if (uuid == nil || ![_deferredCallUuids containsObject:uuid]) return NO;
+  if (![self isLiveCallKitCallWithUuid:[self currentUuidFor:uuid]]) return NO;
+  NSLog(@"[Callkeep][healStaleDeferredMark] %@ is live in CallKit - clearing deferred mark", uuid.UUIDString);
+  [_deferredCallUuids removeObject:uuid];
+  [_ownCallUuids addObject:uuid];
+  return YES;
+}
+
 /// Takes every other still-ringing own incoming call out of CallKit right
 /// before [answeredUuid] goes active, marking them deferred. Without this the
 /// answer flips CallKit into "active + ringing" and iOS covers the app with
@@ -492,6 +535,12 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
 #endif
   NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:uuidString];
   [self deferOtherRingingOwnCallsForAnswerOf:[self currentUuidFor:uuid]];
+
+  // A stale deferred mark on a call that really lives in CallKit (a lost
+  // report race) must not send the answer down the re-attach branch: that
+  // would add an outgoing entry next to the still-ringing original and summon
+  // the system call-waiting screen. Heal the mark and answer normally.
+  [self healStaleDeferredMark:uuid];
 
   if (uuid != nil && [_deferredCallUuids containsObject:uuid]) {
     // A deferred call re-enters CallKit only now, at answer time, under a
@@ -538,6 +587,11 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
   NSLog(@"[Callkeep][endCall] uuidString = %@", uuidString);
 #endif
   NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:uuidString];
+  // A stale deferred mark on a call that really lives in CallKit (a lost
+  // report race) must not take the local shortcut below - skipping the
+  // CXEndCallAction would leave the registry entry ringing as a ghost that
+  // later flips "connected + ringing" and summons the system screen.
+  [self healStaleDeferredMark:uuid];
   if (uuid != nil && [_deferredCallUuids containsObject:uuid]) {
     // A deferred call has no CallKit representation to end - clean up locally
     // and drive the same delegate path a fulfilled CXEndCallAction would, so
@@ -803,12 +857,21 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
   callUpdate.supportsUngrouping = NO;
   callUpdate.supportsHolding = YES;
   callUpdate.supportsDTMF = YES;
+  // This very call may already live in CallKit, registered by the racing
+  // signaling path - then the "own live call" the deferral check sees is the
+  // call itself, and deferring would strand a really-registered call behind
+  // the deferred mark. Report normally instead: the provider answers with the
+  // callUUIDAlreadyExists dedup error the Dart side tolerates.
+  BOOL alreadyLive = [self isLiveCallKitCallWithUuid:[self currentUuidFor:uuid]];
+  if (alreadyLive) {
+    [self healStaleDeferredMark:uuid];
+  }
   // Deferred either explicitly (taken out of CallKit at answer time) or on
   // arrival (another own call already lives in CallKit - at most one call is
   // represented there). PushKit still obliges reporting, so the call is
   // reported and taken right back out; it rings app-side and enters CallKit
   // under a fresh UUID when answered.
-  BOOL isDeferred = [_deferredCallUuids containsObject:uuid] || [self hasOwnLiveCallKitCall];
+  BOOL isDeferred = !alreadyLive && ([_deferredCallUuids containsObject:uuid] || [self hasOwnLiveCallKitCall]);
   if (isDeferred) {
     [_deferredCallUuids addObject:uuid];
     _incomingCallUpdates[uuid] = callUpdate;

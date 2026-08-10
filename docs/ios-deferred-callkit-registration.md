@@ -119,6 +119,15 @@ Hard-won behaviors that are not in Apple's documentation:
 4. **The observer forgets the past.** CXCallObserver can drop an ended call from its list before
    the app's cleanup sees it, so bookkeeping accumulated from its callbacks goes stale. Decisions
    that depend on "are there live calls right now" must read the observer's live `calls` list.
+5. **A call can race itself.** The signaling and push paths both report the same call (the push is
+   the fallback for a dead socket; the deterministic UUID dedups them). Whichever path arrives
+   second sees "an own call already lives in CallKit" - but that live call is this very call. A
+   deferral check that does not exclude the call's own registry entry marks a really-registered
+   call deferred, and both exits then break: decline takes the no-CallKit shortcut and leaves the
+   entry ringing as a ghost, and answer re-attaches a second entry next to the still-ringing
+   original, which summons the call-waiting prompt. Every deferral decision must first ask "is
+   this UUID itself already live in CallKit?", and the action paths (answer, end, report-end)
+   heal a stale deferred mark the same way before trusting it.
 
 ## Accepted trade-offs
 
