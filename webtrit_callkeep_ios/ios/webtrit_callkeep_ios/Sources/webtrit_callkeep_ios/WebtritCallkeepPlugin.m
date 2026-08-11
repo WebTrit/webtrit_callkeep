@@ -934,18 +934,29 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
 #ifdef DEBUG
     NSLog(@"[Callkeep][didReceiveIncomingPushWithPayloadForPushTypeVoIP:withCompletionHandler:] payload wrong format");
 #endif
-    NSUUID *uuid = [[NSUUID alloc] init];
+    // A malformed push still carries the reporting obligation. When an own
+    // call already lives in CallKit the report hides behind its UUID - the
+    // expected duplicate rejection meets the obligation with no registry
+    // entry. Otherwise (or when the shield ends in the race and the report
+    // unexpectedly succeeds) a blank call is reported and immediately ended.
+    NSUUID *shieldUuid = [self anyOwnLiveCallKitCallUuid];
+    NSUUID *uuid = shieldUuid ?: [[NSUUID alloc] init];
     CXCallUpdate *callUpdate = [[CXCallUpdate alloc] init];
 
-    [_ownCallUuids addObject:uuid];
+    if (shieldUuid == nil) {
+      [_ownCallUuids addObject:uuid];
+    }
     [_provider reportNewIncomingCallWithUUID:uuid
                                       update:callUpdate
                                   completion:^(NSError *error) {
-                                    if (error != nil) {
+                                    BOOL expectedDuplicate = shieldUuid != nil && error != nil &&
+                                        [error.domain isEqualToString:CXErrorDomainIncomingCall] &&
+                                        error.code == CXErrorCodeIncomingCallErrorCallUUIDAlreadyExists;
+                                    if (error == nil) {
+                                      [self reportCallKitEndOf:uuid reason:CXCallEndedReasonFailed];
+                                    } else if (!expectedDuplicate) {
                                       NSLog(@"[Callkeep][didReceiveIncomingPushWithPayloadForPushTypeVoIP:withCompletionHandler:][reportNewIncomingCallWithUUID] payload wrong format error = %@",
                                             error);
-                                    } else {
-                                      [self reportCallKitEndOf:uuid reason:CXCallEndedReasonFailed];
                                     }
                                     completion();
                                   }];
@@ -975,8 +986,6 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
   // It is crucial to use UUID version 5 (namespace name-based) based on callId to get the call UUID for reportNewIncomingCallWithUUID.
   // Such UUID allows overcoming possible races between VoIP push and relevant signaling events.
   NSUUID *uuid = [NSUUID makeWithName:callId namespace:[[NSUUID alloc] initWithUUIDString:NAMESPACE_OID]];
-
-  [self configureAudioSession];
 
   CXCallUpdate *callUpdate = [[CXCallUpdate alloc] init];
   callUpdate.remoteHandle = [[CXHandle alloc] initWithType:CXHandleTypeFromString(handleType)
@@ -1026,6 +1035,12 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
   } else {
     [_ownCallUuids addObject:reportUuid];
     _incomingCallUpdates[uuid] = callUpdate;
+  }
+  // The shared audio session is prepared only when the report will surface a
+  // real ringing entry: a deferred call never rings system-side, and touching
+  // the session category/mode during a live call risks an audio glitch on it.
+  if (!isDeferred) {
+    [self configureAudioSession];
   }
   [_provider reportNewIncomingCallWithUUID:reportUuid
                                     update:callUpdate
