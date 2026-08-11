@@ -552,6 +552,17 @@ displayNameOrContactIdentifier:(NSString *)displayNameOrContactIdentifier
   return NO;
 }
 
+/// The CallKit-side UUID of any own live call, or nil when none exists.
+/// Same observer-based liveness rules as [hasOwnLiveCallKitCall].
+- (NSUUID *)anyOwnLiveCallKitCallUuid {
+  for (CXCall *call in _callController.callObserver.calls) {
+    if (call.hasEnded) continue;
+    if ([_pendingCallKitEndUuids containsObject:call.UUID]) continue;
+    if ([_ownCallUuids containsObject:call.UUID]) return call.UUID;
+  }
+  return nil;
+}
+
 /// Reports [uuid] ended to CallKit and remembers it as pending-end until the
 /// observer confirms, so the liveness predicates stop counting it immediately
 /// instead of a beat later.
@@ -987,15 +998,28 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
   }
   // Deferred either explicitly (taken out of CallKit at answer time) or on
   // arrival (another own call already lives in CallKit - at most one call is
-  // represented there). PushKit still obliges reporting, so the call is
-  // reported and taken right back out; it rings app-side and enters CallKit
-  // under a fresh UUID when answered.
+  // represented there). PushKit still obliges reporting, so the report for a
+  // deferred call deliberately targets the UUID of a call that already lives
+  // in CallKit (the shield): CallKit rejects it with callUUIDAlreadyExists,
+  // nothing enters the registry, and the obligation is met without a
+  // report-and-immediately-end cycle. The call rings app-side and enters
+  // CallKit under a fresh UUID when answered. Only when no live own call
+  // remains to hide behind does the report fall back to the call's own UUID
+  // followed by an immediate end.
   BOOL isDeferred = _deferredCallKitRegistration && !alreadyLive &&
       ([_deferredCallUuids containsObject:uuid] || [self hasOwnLiveCallKitCall]);
+  NSUUID *shieldUuid = isDeferred ? [self anyOwnLiveCallKitCallUuid] : nil;
   // When the call already lives in CallKit its registry entry may be a
   // promoted ALIAS: the dedup report must target that alias, or CallKit sees
   // a brand-new UUID and registers a duplicate ringing entry.
-  NSUUID *reportUuid = alreadyLive ? [self currentUuidFor:uuid] : uuid;
+  NSUUID *reportUuid;
+  if (alreadyLive) {
+    reportUuid = [self currentUuidFor:uuid];
+  } else if (shieldUuid != nil) {
+    reportUuid = shieldUuid;
+  } else {
+    reportUuid = uuid;
+  }
   if (isDeferred) {
     [_deferredCallUuids addObject:uuid];
     _incomingCallUpdates[uuid] = callUpdate;
@@ -1006,6 +1030,12 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
   [_provider reportNewIncomingCallWithUUID:reportUuid
                                     update:callUpdate
                                 completion:^(NSError *error) {
+                                  // The rejection the shield report is designed to produce: the
+                                  // obligation is met, the registry untouched - a success for the
+                                  // deferred call, not an error.
+                                  BOOL expectedDuplicate = shieldUuid != nil && error != nil &&
+                                      [error.domain isEqualToString:CXErrorDomainIncomingCall] &&
+                                      error.code == CXErrorCodeIncomingCallErrorCallUUIDAlreadyExists;
                                   dispatch_async(dispatch_get_main_queue(), ^{
                                     if (error == nil) {
                                       // A fresh registration supersedes any unconfirmed end of
@@ -1013,15 +1043,19 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
                                       [self->_pendingCallKitEndUuids removeObject:reportUuid];
                                     }
                                     if (isDeferred && error == nil) {
-                                      // PushKit obliges reporting every VoIP push, but this call is
-                                      // deferred (rings app-side only) - take it right back out so
-                                      // the system UI does not resurrect it.
+                                      // Either no shield existed, or the shield ended between the
+                                      // liveness check and the report and CallKit registered a real
+                                      // ringing entry under its UUID - take it right back out so
+                                      // the system UI does not show the deferred call.
                                       NSLog(@"[Callkeep][didReceiveIncomingPushWithPayloadForPushTypeVoIP] re-ending deferred call %@", reportUuid.UUIDString);
                                       [self reportCallKitEndOf:reportUuid reason:CXCallEndedReasonAnsweredElsewhere];
                                     }
+                                    if (expectedDuplicate) {
+                                      NSLog(@"[Callkeep][didReceiveIncomingPushWithPayloadForPushTypeVoIP] push for deferred call %@ hidden behind live call %@", uuid.UUIDString, shieldUuid.UUIDString);
+                                    }
                                   });
                                   WTPIncomingCallError *incomingCallError = nil;
-                                  if (error != nil) {
+                                  if (error != nil && !expectedDuplicate) {
                                     if ([error.domain isEqualToString:CXErrorDomainIncomingCall]) {
                                       incomingCallError = [WTPIncomingCallError makeWithValue:CXErrorCodeIncomingCallErrorToPigeon((CXErrorCodeIncomingCallError) error.code)];
                                     } else {
