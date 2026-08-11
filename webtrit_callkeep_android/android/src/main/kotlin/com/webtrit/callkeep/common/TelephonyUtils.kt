@@ -90,10 +90,6 @@ class TelephonyUtils(
         // Defined as a local constant to avoid a lint InlinedApi warning on minSdk 26.
         private const val FEATURE_TELECOM = "android.software.telecom"
 
-        // RFC 9476 reserved .internal TLD, guaranteed to never resolve publicly. This host is
-        // never used for actual dialing, only for Telecom's own bookkeeping - see buildOutgoingUri.
-        private const val OUTGOING_URI_HOST = "portadialer.internal"
-
         private val logger = Log(TAG)
 
         /**
@@ -109,14 +105,12 @@ class TelephonyUtils(
          * Telecom bookkeeping; the real number keeps flowing unchanged via CallMetadata into
          * onCreateOutgoingConnection, which never reads request.address.
          *
-         * The number is percent-encoded so URI-reserved characters in it (e.g. "#" in PBX
-         * feature codes) cannot break the Uri structure, while the "@host" delimiter stays
-         * literal - a bare "sip:<number>" (no literal @host) still matches the emergency
-         * check, so the delimiter must not be encoded (Uri.fromParts would encode it too).
-         * Plain digit numbers are unaffected by the encoding, keeping the exact Uri shape
-         * validated on-device.
+         * Digits in the number are additionally masked to letters, and any other character
+         * percent-encoded, by [OutgoingCallUri] - the single owner of this Uri format - so that
+         * OEM Telecom forks which run a scheme-agnostic emergency-number check on the placeCall
+         * Uri find no digit to match and stop diverting these calls to the system dialer.
          */
-        fun buildOutgoingUri(number: String): Uri = Uri.parse("${PhoneAccount.SCHEME_SIP}:${Uri.encode(number)}@$OUTGOING_URI_HOST")
+        fun buildOutgoingUri(number: String): Uri = OutgoingCallUri.of(number)
 
         /**
          * Returns true if the device supports the Android Telecom framework.
