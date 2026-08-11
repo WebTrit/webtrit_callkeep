@@ -937,7 +937,9 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
     // A malformed push still carries the reporting obligation. When an own
     // call already lives in CallKit the report hides behind its UUID - the
     // expected duplicate rejection meets the obligation with no registry
-    // entry. Otherwise (or when the shield ends in the race and the report
+    // entry (the Apple-DTS-recommended hiding technique, see the deferred
+    // report below and https://developer.apple.com/forums/thread/805255).
+    // Otherwise (or when the shield ends in the race and the report
     // unexpectedly succeeds) a blank call is reported and immediately ended.
     NSUUID *shieldUuid = [self anyOwnLiveCallKitCallUuid];
     NSUUID *uuid = shieldUuid ?: [[NSUUID alloc] init];
@@ -1015,6 +1017,13 @@ continueUserActivity:(nonnull NSUserActivity *)userActivity
   // CallKit under a fresh UUID when answered. Only when no live own call
   // remains to hide behind does the report fall back to the call's own UUID
   // followed by an immediate end.
+  // The hiding technique is recommended by Apple DTS ("you can safely 'hide'
+  // call reports by intentionally reporting new calls using the UUID of your
+  // existing call... Either way, you won't crash"), including the fallback
+  // for a shield that ended in the race ("If the existing call has ended,
+  // then you'll get a new call started"):
+  // https://developer.apple.com/forums/thread/805255
+  // https://developer.apple.com/forums/thread/775874
   BOOL isDeferred = _deferredCallKitRegistration && !alreadyLive &&
       ([_deferredCallUuids containsObject:uuid] || [self hasOwnLiveCallKitCall]);
   NSUUID *shieldUuid = isDeferred ? [self anyOwnLiveCallKitCallUuid] : nil;
