@@ -45,12 +45,18 @@ class AnswerCallTrampolineActivity : Activity() {
 
         Log.i(TAG, "onCreate: forwarding the answer and bringing the host app up")
 
-        startService(
-            Intent(this, IncomingCallService::class.java).apply {
-                action = NotificationAction.Answer.action
-                putExtras(extras)
-            },
-        )
+        try {
+            startService(
+                Intent(this, IncomingCallService::class.java).apply {
+                    action = NotificationAction.Answer.action
+                    putExtras(extras)
+                },
+            )
+        } catch (e: Exception) {
+            // Still bring the host app up: the user asked for the call screen, and reaching
+            // it is what gives them a way to answer or hang up by hand.
+            Log.e(TAG, "onCreate: failed to forward the answer to IncomingCallService", e)
+        }
 
         ActivityHolder.start(this)
 
