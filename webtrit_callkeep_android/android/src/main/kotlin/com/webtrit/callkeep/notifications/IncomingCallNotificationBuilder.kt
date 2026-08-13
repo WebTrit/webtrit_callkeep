@@ -11,6 +11,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.webtrit.callkeep.R
+import com.webtrit.callkeep.activities.AnswerCallTrampolineActivity
 import com.webtrit.callkeep.common.ContextHolder.context
 import com.webtrit.callkeep.common.PermissionsHelper
 import com.webtrit.callkeep.common.StorageDelegate
@@ -26,15 +27,44 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
         this.callMetaData = callMetaData
     }
 
-    private fun createCallActionIntent(action: String): PendingIntent {
+    /**
+     * Decline goes straight to [IncomingCallService]: hanging up needs no user interface.
+     */
+    private fun createDeclineIntent(): PendingIntent {
         val metadata = requireNotNull(callMetaData) { "Call metadata must be set before creating the intent." }
 
         val intent =
             Intent(context, IncomingCallService::class.java).apply {
-                this.action = action
+                this.action = NotificationAction.Decline.action
                 putExtras(metadata.toBundle())
             }
         return PendingIntent.getService(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+    }
+
+    /**
+     * Answer goes through [AnswerCallTrampolineActivity] rather than straight to the service.
+     *
+     * Answering has to end with the call screen on top, and an app cannot start an activity
+     * from a background service - the platform refuses it. An activity PendingIntent sent by
+     * the system carries that permission with the user's tap, so the tap both answers the call
+     * and opens the screen in one step. The trampoline forwards the answer to the same service
+     * as before, so nothing downstream changes.
+     */
+    private fun createAnswerIntent(): PendingIntent {
+        val metadata = requireNotNull(callMetaData) { "Call metadata must be set before creating the intent." }
+
+        val intent =
+            Intent(context, AnswerCallTrampolineActivity::class.java).apply {
+                this.action = NotificationAction.Answer.action
+                putExtras(metadata.toBundle())
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+        return PendingIntent.getActivity(
             context,
             0,
             intent,
@@ -75,8 +105,8 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
         val meta =
             requireNotNull(callMetaData) { "Call metadata must be set before building the notification." }
 
-        val answerIntent = createCallActionIntent(NotificationAction.Answer.action)
-        val declineIntent = createCallActionIntent(NotificationAction.Decline.action)
+        val answerIntent = createAnswerIntent()
+        val declineIntent = createDeclineIntent()
 
         val icDecline = R.drawable.ic_call_hungup
         val icAnswer = R.drawable.ic_call_answer
