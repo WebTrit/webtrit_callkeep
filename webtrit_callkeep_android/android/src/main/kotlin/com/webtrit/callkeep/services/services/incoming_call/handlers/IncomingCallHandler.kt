@@ -73,17 +73,22 @@ class IncomingCallHandler(
     /**
      * Drops the answer/decline buttons as soon as the call has been answered.
      *
-     * The notification is not cancelled: it is replaced by the silent variant, which describes
-     * the same call but offers nothing to press. Until now the buttons stayed up until the
+     * The notification is not cancelled, it is rewritten in place: same id, same call, but the
+     * silent variant, which offers nothing to press. Until now the buttons stayed up until the
      * whole incoming-call service was torn down, which on a cold start happens only once the
      * app has finished starting - long enough for the user to press answer a second time on a
      * call that is already answered.
      *
-     * Kept separate from [releaseIncomingCallNotification] because that name belongs to the
-     * teardown path; the transition itself is the same and is safe to run twice, so the caller
-     * does not have to know which of them ran first. Does nothing when the metadata is missing
-     * - reading the notification id or rebuilding the notification without it would throw, and
-     * that happens when the service instance never showed a notification of its own.
+     * Deliberately does NOT go through [muteIncomingCallNotification]. That one detaches the
+     * service from its notification, cancels it and promotes the service again; calling it
+     * while the service has to keep running is rejected by the system with
+     * `CannotPostForegroundServiceNotificationException` ("Bad notification for
+     * startForeground") because the id it re-promotes with has just been cancelled. Updating
+     * the notification the service is already showing keeps it in the foreground throughout.
+     *
+     * Does nothing when the metadata is missing - reading the notification id or rebuilding the
+     * notification without it would throw, and that happens when the service instance never
+     * showed a notification of its own.
      */
     @SuppressLint("MissingPermission")
     fun dropIncomingCallActions() {
@@ -91,7 +96,8 @@ class IncomingCallHandler(
             Log.w(TAG, "dropIncomingCallActions: no metadata (service not initialized), skipping")
             return
         }
-        muteIncomingCallNotification()
+        Log.d(TAG, "dropIncomingCallActions: rewriting notification $currentNotificationId without actions")
+        notifier.notify(currentNotificationId, notificationBuilder.buildSilent())
     }
 
     /**
