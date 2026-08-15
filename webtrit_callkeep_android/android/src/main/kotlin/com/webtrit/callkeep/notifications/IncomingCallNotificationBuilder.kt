@@ -40,7 +40,7 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
             }
         return PendingIntent.getService(
             context,
-            0,
+            requestCode(metadata, NotificationAction.Decline),
             intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
@@ -66,11 +66,26 @@ class IncomingCallNotificationBuilder : NotificationBuilder() {
             }
         return PendingIntent.getActivity(
             context,
-            0,
+            requestCode(metadata, NotificationAction.Answer),
             intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
     }
+
+    /**
+     * A request code that is unique per call and per button.
+     *
+     * The system tells two pending intents apart by request code and by the intent's filter
+     * fields - action, component and so on. It does not look at the extras, which is where the
+     * call is named. With a fixed request code the buttons of a second call therefore reuse the
+     * first call's pending intents, and [PendingIntent.FLAG_UPDATE_CURRENT] rewrites the first
+     * notification's buttons to carry the second call. Pressing answer on the older
+     * notification would then answer the newer call.
+     */
+    private fun requestCode(
+        metadata: CallMetadata,
+        action: NotificationAction,
+    ): Int = notificationId(metadata.callId) + action.ordinal
 
     private fun baseNotificationBuilder(
         title: String,
