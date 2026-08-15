@@ -61,6 +61,12 @@ class IncomingCallService :
     // could race to call handleRelease() for the same call.
     private var isReleased = false
 
+    // Set to true once the call has been answered and the notification has been stripped of its
+    // buttons. The answer is observable from two places — the notification action and the
+    // AnswerCall connection event — and either may arrive first, so the transition is done once
+    // and every later observation is a no-op.
+    private var areAnswerActionsDropped = false
+
     // Receives IC_RELEASE_WITH_ANSWER / IC_RELEASE_WITH_DECLINE from release().
     // Registered in onCreate() and unregistered in onDestroy() so it only lives while the
     // service is alive. If the service is not running the broadcast goes nowhere — no zombie
@@ -109,6 +115,9 @@ class IncomingCallService :
         // teardown.
         if (event == CallLifecycleEvent.AnswerCall) {
             val metadata = data?.let(CallMetadata::fromBundleOrNull) ?: return
+            // Covers answers that never touch our notification: the system call UI, a Bluetooth
+            // headset, a watch, Android Auto.
+            dropAnswerActions()
             performAnswerCall(metadata)
         }
     }
@@ -200,8 +209,12 @@ class IncomingCallService :
 
             // Listen push notification actions (Only notify connection service)
             NotificationAction.Answer.action -> {
-                if (metadata != null) reportAnswerToConnectionService(metadata)
-                else {
+                if (metadata != null) {
+                    // The user has pressed answer: take the buttons away now rather than when the
+                    // service is torn down, which on a cold start is many seconds later.
+                    dropAnswerActions()
+                    reportAnswerToConnectionService(metadata)
+                } else {
                     Log.w(TAG, "onStartCommand: Answer action missing metadata")
                     START_NOT_STICKY
                 }
@@ -268,6 +281,21 @@ class IncomingCallService :
                 )
             }
         }
+    }
+
+    /**
+     * Replaces the ringing notification with the silent one once the call has been answered,
+     * so the answer and decline buttons are no longer offered for a call that is already taken.
+     *
+     * Runs at most once. Skipped entirely after [handleRelease], which performs the same
+     * transition on its way to stopping the service - repeating it there would cancel and
+     * repost a notification for a service that is already going away.
+     */
+    private fun dropAnswerActions() {
+        if (areAnswerActionsDropped || isReleased) return
+        areAnswerActionsDropped = true
+        Log.d(TAG, "dropAnswerActions: call answered, removing the notification actions")
+        incomingCallHandler.dropIncomingCallActions()
     }
 
     private fun reportAnswerToConnectionService(metadata: CallMetadata): Int {
@@ -360,7 +388,11 @@ class IncomingCallService :
         // is not held on for the full WAKELOCK_TIMEOUT_MS during post-call teardown.
         // onDestroy() keeps the lock as a final safety net in case this path is skipped.
         releaseScreenWakeLock()
-        incomingCallHandler.releaseIncomingCallNotification()
+        // Already silent if the call was answered - repeating the transition would cancel and
+        // repost the same notification for a service that is on its way out.
+        if (!areAnswerActionsDropped) {
+            incomingCallHandler.releaseIncomingCallNotification()
+        }
         timeoutHandler.removeCallbacks(independentTimeoutRunnable)
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
         timeoutHandler.postDelayed(stopTimeoutRunnable, SERVICE_TIMEOUT_MS)

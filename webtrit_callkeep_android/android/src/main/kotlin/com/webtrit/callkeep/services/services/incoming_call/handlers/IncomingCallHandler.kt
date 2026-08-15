@@ -71,6 +71,30 @@ class IncomingCallHandler(
     }
 
     /**
+     * Drops the answer/decline buttons as soon as the call has been answered.
+     *
+     * The notification is not cancelled: it is replaced by the silent variant, which describes
+     * the same call but offers nothing to press. Until now the buttons stayed up until the
+     * whole incoming-call service was torn down, which on a cold start happens only once the
+     * app has finished starting - long enough for the user to press answer a second time on a
+     * call that is already answered.
+     *
+     * Kept separate from [releaseIncomingCallNotification] because that name belongs to the
+     * teardown path; the transition itself is the same and is safe to run twice, so the caller
+     * does not have to know which of them ran first. Does nothing when the metadata is missing
+     * - reading the notification id or rebuilding the notification without it would throw, and
+     * that happens when the service instance never showed a notification of its own.
+     */
+    @SuppressLint("MissingPermission")
+    fun dropIncomingCallActions() {
+        if (lastMetadata == null) {
+            Log.w(TAG, "dropIncomingCallActions: no metadata (service not initialized), skipping")
+            return
+        }
+        muteIncomingCallNotification()
+    }
+
+    /**
      * Explicitly cancels the call-derived notification (ID ≥ 1000) if a call was handled.
      * Called from IncomingCallService.onDestroy() as a belt-and-suspenders cleanup:
      * stopForeground(REMOVE) does not reliably cancel the FGS notification on some Samsung
