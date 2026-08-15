@@ -101,6 +101,32 @@ class IncomingCallHandler(
     }
 
     /**
+     * Takes this service out of the foreground and removes its notification, while the service
+     * itself keeps running until the connection is handed over.
+     *
+     * Used once the active call is showing a notification of its own: from that moment the
+     * incoming one describes a call the user is already on. `STOP_FOREGROUND_REMOVE` both drops
+     * the foreground state and takes the notification away; the explicit cancel afterwards is
+     * the same belt-and-braces as in [cancelCurrentNotification], because some Samsung builds
+     * leave it in the shade.
+     */
+    @SuppressLint("MissingPermission")
+    fun detachForegroundNotification() {
+        if (lastMetadata == null) {
+            Log.w(TAG, "detachForegroundNotification: no metadata (service not initialized), skipping")
+            return
+        }
+        Log.d(TAG, "detachForegroundNotification: leaving foreground, removing notification $currentNotificationId")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            service.stopForeground(Service.STOP_FOREGROUND_REMOVE)
+        } else {
+            @Suppress("DEPRECATION")
+            service.stopForeground(true)
+        }
+        notifier.cancel(currentNotificationId)
+    }
+
+    /**
      * Explicitly cancels the call-derived notification (ID ≥ 1000) if a call was handled.
      * Called from IncomingCallService.onDestroy() as a belt-and-suspenders cleanup:
      * stopForeground(REMOVE) does not reliably cancel the FGS notification on some Samsung
