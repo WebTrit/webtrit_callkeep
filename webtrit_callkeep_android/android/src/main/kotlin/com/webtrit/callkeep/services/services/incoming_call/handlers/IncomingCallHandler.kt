@@ -71,6 +71,62 @@ class IncomingCallHandler(
     }
 
     /**
+     * Drops the answer/decline buttons as soon as the call has been answered.
+     *
+     * The notification is not cancelled, it is rewritten in place: same id, same call, but the
+     * silent variant, which offers nothing to press. Until now the buttons stayed up until the
+     * whole incoming-call service was torn down, which on a cold start happens only once the
+     * app has finished starting - long enough for the user to press answer a second time on a
+     * call that is already answered.
+     *
+     * Deliberately does NOT go through [muteIncomingCallNotification]. That one detaches the
+     * service from its notification, cancels it and promotes the service again; calling it
+     * while the service has to keep running is rejected by the system with
+     * `CannotPostForegroundServiceNotificationException` ("Bad notification for
+     * startForeground") because the id it re-promotes with has just been cancelled. Updating
+     * the notification the service is already showing keeps it in the foreground throughout.
+     *
+     * Does nothing when the metadata is missing - reading the notification id or rebuilding the
+     * notification without it would throw, and that happens when the service instance never
+     * showed a notification of its own.
+     */
+    @SuppressLint("MissingPermission")
+    fun dropIncomingCallActions() {
+        if (lastMetadata == null) {
+            Log.w(TAG, "dropIncomingCallActions: no metadata (service not initialized), skipping")
+            return
+        }
+        Log.d(TAG, "dropIncomingCallActions: rewriting notification $currentNotificationId without actions")
+        notifier.notify(currentNotificationId, notificationBuilder.buildSilent())
+    }
+
+    /**
+     * Takes this service out of the foreground and removes its notification, while the service
+     * itself keeps running until the connection is handed over.
+     *
+     * Used once the active call is showing a notification of its own: from that moment the
+     * incoming one describes a call the user is already on. `STOP_FOREGROUND_REMOVE` both drops
+     * the foreground state and takes the notification away; the explicit cancel afterwards is
+     * the same belt-and-braces as in [cancelCurrentNotification], because some Samsung builds
+     * leave it in the shade.
+     */
+    @SuppressLint("MissingPermission")
+    fun detachForegroundNotification() {
+        if (lastMetadata == null) {
+            Log.w(TAG, "detachForegroundNotification: no metadata (service not initialized), skipping")
+            return
+        }
+        Log.d(TAG, "detachForegroundNotification: leaving foreground, removing notification $currentNotificationId")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            service.stopForeground(Service.STOP_FOREGROUND_REMOVE)
+        } else {
+            @Suppress("DEPRECATION")
+            service.stopForeground(true)
+        }
+        notifier.cancel(currentNotificationId)
+    }
+
+    /**
      * Explicitly cancels the call-derived notification (ID ≥ 1000) if a call was handled.
      * Called from IncomingCallService.onDestroy() as a belt-and-suspenders cleanup:
      * stopForeground(REMOVE) does not reliably cancel the FGS notification on some Samsung
