@@ -14,6 +14,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Unit tests for [MainProcessConnectionTracker].
@@ -675,5 +676,145 @@ class MainProcessConnectionTrackerTest {
         tracker.markEndedWithoutFlutterState("call-1")
         tracker.clear()
         assertFalse(tracker.wasEndedWithoutFlutterState("call-1"))
+    }
+
+    // -------------------------------------------------------------------------
+    // Dual state: registered AND pending at once (push-path re-registration)
+    //
+    // The push isolate calls addPending without a duplicate check, so a call the
+    // app already promoted can legitimately become pending again for the duration
+    // of the backend round-trip. These tests pin the CURRENT semantics of that
+    // window; a future tightening that rejects the re-registration early must
+    // consciously update them.
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `addPending after promote — call is registered and pending at once`() {
+        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
+        assertTrue(tracker.addPending("call-1"))
+        assertTrue(tracker.exists("call-1"))
+        assertTrue(tracker.isPending("call-1"))
+        assertFalse(tracker.isTerminated("call-1"))
+    }
+
+    @Test
+    fun `addPending after promote — removePending rollback returns to promoted-only`() {
+        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
+        tracker.addPending("call-1")
+        tracker.removePending("call-1")
+        assertTrue(tracker.exists("call-1"))
+        assertFalse(tracker.isPending("call-1"))
+        // Neither the metadata nor the mirrored state was lost along the way.
+        assertNotNull(tracker.get("call-1"))
+        assertEquals(PCallkeepConnectionState.STATE_RINGING, tracker.getState("call-1"))
+    }
+
+    @Test
+    fun `drainUnconnectedPendingCallIds — drains a registered-and-pending call`() {
+        // Faithful current behavior: the drain takes EVERY pending id, including one
+        // that is also promoted (the dual-state window). tearDown thus lists such a
+        // call both as active and as unconnected-pending — documented, not desired.
+        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
+        tracker.addPending("call-1")
+        assertEquals(setOf("call-1"), tracker.drainUnconnectedPendingCallIds())
+        assertTrue(tracker.exists("call-1"))
+        assertFalse(tracker.isPending("call-1"))
+    }
+
+    // -------------------------------------------------------------------------
+    // Callback guards (tracker-level)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `markEndCallDispatched — true on first mark, false on repeat`() {
+        assertTrue(tracker.markEndCallDispatched("call-1"))
+        assertFalse(tracker.markEndCallDispatched("call-1"))
+    }
+
+    @Test
+    fun `consumeDirectNotified — consumes the mark on first read`() {
+        tracker.markDirectNotified("call-1")
+        assertTrue(tracker.consumeDirectNotified("call-1"))
+        assertFalse(tracker.consumeDirectNotified("call-1"))
+    }
+
+    @Test
+    fun `markTerminated — leaves callback guards untouched`() {
+        // Termination clears the lifecycle facts but NOT the dispatch guards: the
+        // HungUp handler marks endCallDispatched while terminating, and a later
+        // explicit endCall must still see the mark (false = already dispatched).
+        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_ACTIVE)
+        assertTrue(tracker.markEndCallDispatched("call-1"))
+        tracker.markDirectNotified("call-1")
+        tracker.markTerminated("call-1")
+        assertFalse(tracker.markEndCallDispatched("call-1"))
+        assertTrue(tracker.consumeDirectNotified("call-1"))
+    }
+
+    // -------------------------------------------------------------------------
+    // updateMetadata (mid-call merge)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `updateMetadata — no-op while the call is not promoted`() {
+        tracker.addPending("call-1")
+        tracker.updateMetadata(CallMetadata(callId = "call-1", hasVideo = true))
+        assertNull(tracker.get("call-1"))
+        assertTrue(tracker.isPending("call-1"))
+    }
+
+    @Test
+    fun `updateMetadata — merges into the promoted record and keeps unrelated fields`() {
+        tracker.promote("call-1", CallMetadata(callId = "call-1", displayName = "Alice"), PCallkeepConnectionState.STATE_ACTIVE)
+        tracker.updateMetadata(CallMetadata(callId = "call-1", hasVideo = true))
+        val merged = tracker.get("call-1")
+        assertNotNull(merged)
+        assertEquals(true, merged?.hasVideo)
+        assertEquals("Alice", merged?.displayName)
+        // The merge touches only the metadata: state and registration are intact.
+        assertEquals(PCallkeepConnectionState.STATE_ACTIVE, tracker.getState("call-1"))
+        assertTrue(tracker.exists("call-1"))
+    }
+
+    // -------------------------------------------------------------------------
+    // Atomicity: the whole point of the record model
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `atomic transitions — a reader never observes a transient terminated state during reuse cycles`() {
+        // Regression trap for the multi-collection implementation this record model
+        // replaced: there, addPending cleared the answered guard BEFORE inserting the
+        // pending mark, so a reader could catch the instant where the call was in no
+        // active set while its state entry existed — deriving isTerminated == true for
+        // a call that was being resurrected. With one record per call and one
+        // compute {} per transition that window cannot exist: at every point of this
+        // cycle the call is answered, pending, or both.
+        tracker.updateState("call-1", CallConnectionState.ACTIVE) // "ever seen" marker
+        tracker.markAnswered("call-1")
+
+        val stop = AtomicBoolean(false)
+        val sawTerminated = AtomicBoolean(false)
+        val reader =
+            Thread {
+                while (!stop.get()) {
+                    if (tracker.isTerminated("call-1")) {
+                        sawTerminated.set(true)
+                        stop.set(true)
+                    }
+                }
+            }
+        reader.start()
+        try {
+            repeat(30_000) {
+                if (stop.get()) return@repeat
+                tracker.addPending("call-1") // clears answered + sets pending in ONE step
+                tracker.markAnswered("call-1") // answered=true (pending still true)
+                tracker.removePending("call-1") // answered keeps isTerminated false
+            }
+        } finally {
+            stop.set(true)
+            reader.join(5_000)
+        }
+        assertFalse("reader observed a half-applied transition (transient isTerminated)", sawTerminated.get())
     }
 }

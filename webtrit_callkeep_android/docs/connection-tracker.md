@@ -4,6 +4,7 @@
 
 - `kotlin/com/webtrit/callkeep/services/core/ConnectionTracker.kt` (interface)
 - `kotlin/com/webtrit/callkeep/services/core/MainProcessConnectionTracker.kt` (implementation)
+- `kotlin/com/webtrit/callkeep/services/core/CallRecord.kt` (the per-call state record)
 
 ## Responsibility
 
@@ -26,29 +27,37 @@ directly by other components.
 
 ## Data Structures
 
-All collections are `ConcurrentHashMap` / `ConcurrentHashMap.newKeySet()`.
+All per-call state lives in ONE map: `calls: ConcurrentHashMap<String, CallRecord>`, where
+`CallRecord` is an immutable data class (its own file, `internal` to the core layer). Every
+transition replaces the whole record in a single atomic `compute {}` step, so a reader always
+observes a consistent snapshot and never a half-applied transition; different calls never block
+each other.
 
-| Field              | Type                                                  | Description                                                                    |
-|--------------------|-------------------------------------------------------|--------------------------------------------------------------------------------|
-| `connections`      | `ConcurrentHashMap<String, CallMetadata>`             | Promoted, non-terminated calls with full metadata                              |
-| `connectionStates` | `ConcurrentHashMap<String, PCallkeepConnectionState>` | Last known Telecom state per call. Doubles as the "ever seen" marker for derived termination. Entries are retained after termination (as `STATE_DISCONNECTED`) and removed only by `clear()` |
-| `pendingCallIds`   | `MutableSet<String>`                                  | Calls sent to Telecom, `PhoneConnection` not yet created                       |
-| `answeredCallIds`  | `MutableSet<String>`                                  | Answer guard (calls the user answered). Guard only: the ACTIVE state itself is mirrored via `updateState` |
-| `pendingAnswers`   | `MutableSet<String>`                                  | Deferred answers (user pressed answer before `PhoneConnection` existed)        |
+| `CallRecord` field       | Type                          | Description                                                                    |
+|--------------------------|-------------------------------|--------------------------------------------------------------------------------|
+| `metadata`               | `CallMetadata?`               | Full metadata while the call is registered (promoted); null otherwise. `metadata != null` is what `exists()`/`getAll()` report |
+| `pending`                | `Boolean`                     | Sent to Telecom, `PhoneConnection` not yet created. Independent of `metadata`: a push-path re-registration can set it on an already-promoted call, so registration and pending are separate fields, not one exclusive phase |
+| `state`                  | `PCallkeepConnectionState?`   | Last known Telecom state. Doubles as the "ever seen" marker for derived termination: it survives termination (as `STATE_DISCONNECTED`) and the `addPending` guard reset |
+| `answered`               | `Boolean`                     | Answer guard (the user answered). Guard only: the ACTIVE state itself is mirrored via `updateState` |
+| `pendingAnswer`          | `Boolean`                     | Deferred answer (user pressed answer before `PhoneConnection` existed)         |
 
-There is **no explicit terminated set**. Termination is derived (see below). The former
+A record with every field at its default is observationally identical to an absent one, so
+records are never removed individually -- they live until `clear()` wipes the session (same
+memory profile as the former per-callId `connectionStates` entries).
+
+There is **no explicit terminated flag**. Termination is derived (see below). The former
 `terminatedCallIds` set was removed: it blocked callId reuse (e.g. blind transfer-back) and
 allowed "terminated AND active at the same time" corruption.
 
 ## Callback Guards
 
-These sets suppress duplicate or stale Dart notifications for the same call:
+These record fields suppress duplicate or stale Dart notifications for the same call:
 
-| Guard                            | Reset on `addPending`/`promote` | Purpose                                                                                                       |
-|----------------------------------|---------------------------------|---------------------------------------------------------------------------------------------------------------|
-| `directNotifiedCallIds`          | yes                             | Calls notified directly via `performEndCall` in `tearDown()`. Suppresses the stale async `HungUp` broadcast that arrives after the next session starts. Consumed on read (`consumeDirectNotified`) |
-| `endCallDispatchedCallIds`       | yes                             | Calls for which `performEndCall` was already dispatched (or a `HungUpCall` IPC sent). Prevents a second dispatch. `markEndCallDispatched` returns true only on first mark |
-| `endedWithoutFlutterStateCallIds`| **no (sticky)**                 | Calls the app ended while they were never presented in Flutter state (the call==null signaling-hangup path). Read by `reportNewIncomingCall` to reject EVERY stale ghost re-presentation of the dead call. Sticky by design: a stale handshake can replay the dead incoming several times, and a transfer-back reuses a call the app DID know, so its end never lands here. Cleared only by `clear()` on tearDown |
+| `CallRecord` field         | Reset on `addPending`/`promote` | Purpose                                                                                                       |
+|----------------------------|---------------------------------|---------------------------------------------------------------------------------------------------------------|
+| `directNotified`           | yes                             | Termination notified directly via `performEndCall` in `tearDown()`. Suppresses the stale async `HungUp` broadcast that arrives after the next session starts. Consumed on read (`consumeDirectNotified`) |
+| `endCallDispatched`        | yes                             | `performEndCall` was already dispatched (or a `HungUpCall` IPC sent). Prevents a second dispatch. `markEndCallDispatched` returns true only on first mark |
+| `endedWithoutFlutterState` | **no (sticky)**                 | The app ended this call while it was never presented in Flutter state (the call==null signaling-hangup path). Read by `reportNewIncomingCall` to reject EVERY stale ghost re-presentation of the dead call. Sticky by design: a stale handshake can replay the dead incoming several times, and a transfer-back reuses a call the app DID know, so its end never lands here. Cleared only by `clear()` on tearDown |
 
 The asymmetry in the reset column is deliberate and load-bearing: resetting the ghost guard on
 reuse would let a replayed dead incoming ring again.
@@ -62,87 +71,93 @@ deduplicates by callId.)
 
 ```text
 isTerminated(callId) =
-    connectionStates.containsKey(callId)     # the call was observed at least once
-    AND callId not in connections
-    AND callId not in pendingCallIds
-    AND callId not in pendingAnswers
-    AND callId not in answeredCallIds
+    rec.state != null        # the call was observed at least once ("ever seen")
+    AND rec.metadata == null # not registered
+    AND !rec.pending
+    AND !rec.pendingAnswer
+    AND !rec.answered
 ```
 
-- The `connectionStates` presence requirement prevents false positives for callIds that were never
+(false when no record exists at all)
+
+- The `state != null` requirement prevents false positives for callIds that were never
   tracked: an unknown callId is "unknown", not "terminated" (otherwise `endCall` would misclassify
   it and fire a spurious `performEndCall`).
 - Because termination is derived, `addPending`/`promote` immediately resurrect a reused callId:
-  `isTerminated` flips back to false the moment the call re-enters an active set. Transfer-back is
-  never blocked.
+  `isTerminated` flips back to false the moment the call becomes pending or registered again.
+  Transfer-back is never blocked.
+- The read is one immutable record snapshot -- unlike the former multi-collection implementation,
+  the answer can never mix facts from mid-transition.
 
 ## State Transitions
 
-Exact write sequences as implemented (order matters for the atomicity notes below):
+Every transition is ONE `calls.compute(callId) { rec.copy(...) }` (absent record = empty
+defaults; `computeIfPresent` where absent-is-no-op). What each copy changes:
 
 ```text
 addPending(callId): Boolean
-    answeredCallIds        -= callId   # reset per-call lifecycle state from any prior
-    pendingAnswers         -= callId   # use of this callId (e.g. transfer-back);
-    endCallDispatchedCallIds -= callId # endedWithoutFlutterStateCallIds is NOT reset
-    directNotifiedCallIds  -= callId
-    return pendingCallIds.add(callId)  # true = this caller owns the pending entry
+    copy(pending = true,               # return true when the record was not pending yet:
+         answered = false,             # this caller owns the pending entry
+         pendingAnswer = false,        # guard reset from any prior use of this callId
+         endCallDispatched = false,    # (transfer-back); endedWithoutFlutterState is
+         directNotified = false)       # sticky, metadata and state are NOT touched
 
 promote(callId, metadata, state)
-    answeredCallIds        -= callId   # same guard reset as addPending, in case the
-    pendingAnswers         -= callId   # push-path skipped addPending; NOTE: this also
-    endCallDispatchedCallIds -= callId # clears an earlier markAnswered -- adoption
-    directNotifiedCallIds  -= callId   # sites must call markAnswered AFTER promote
-    connections[callId]     = metadata
-    pendingCallIds         -= callId
-    connectionStates[callId] = state   # STATE_RINGING incoming / STATE_DIALING outgoing
-                                       # / STATE_ACTIVE when adopting an answered call
+    copy(metadata = metadata,          # same guard reset as addPending; NOTE: this also
+         pending = false,              # clears an earlier markAnswered -- adoption sites
+         state = state,                # must call markAnswered AFTER promote.
+         answered = false,             # state: STATE_RINGING incoming / STATE_DIALING
+         pendingAnswer = false,        # outgoing / STATE_ACTIVE when adopting an
+         endCallDispatched = false,    # answered call
+         directNotified = false)
 
 markAnswered(callId)
-    answeredCallIds += callId          # guard only -- does NOT stamp connectionStates
+    copy(answered = true)              # guard only -- does NOT stamp state
 
 updateState(callId, state)
     if state == DISCONNECTED: return   # terminal state is owned by markTerminated
-    connectionStates[callId] = state   # UNCONDITIONAL: not gated on connections
-                                       # membership, callable before promote, survives
-                                       # the addPending guard reset
+    copy(state = state)                # UNCONDITIONAL: not gated on registration,
+                                       # callable before promote, survives the
+                                       # addPending guard reset
 
 updateMetadata(metadata)
-    connections.computeIfPresent(callId) { merge }   # no-op while still pending
+    computeIfPresent: copy(metadata = merge)   # no-op while not promoted
 
 markTerminated(callId)
-    connections     -= callId
-    answeredCallIds -= callId
-    pendingCallIds  -= callId
-    pendingAnswers  -= callId
-    connectionStates[callId] = STATE_DISCONNECTED    # entry retained, not removed
+    copy(metadata = null,              # one atomic step; guards untouched;
+         pending = false,              # state entry retained -- the "ever seen" marker
+         answered = false,
+         pendingAnswer = false,
+         state = STATE_DISCONNECTED)
 
 removePending(callId)
-    pendingCallIds -= callId           # rollback of a failed registration, nothing else
+    computeIfPresent: copy(pending = false)    # rollback of a failed registration only
 
 reserveAnswer(callId) / consumeAnswer(callId)
-    pendingAnswers += / -= callId      # deferred answer for the broadcast-lag window
+    copy(pendingAnswer = true / false) # deferred answer for the broadcast-lag window;
+                                       # consume returns the previous value
 
 drainUnconnectedPendingCallIds(): Set<String>
-    snapshot = pendingCallIds.toSet(); pendingCallIds.clear(); return snapshot
+    for each record with pending: copy(pending = false), collect the id
+    # atomic per callId, NOT atomic across callIds (same as before)
 
 clear()
-    all eight collections cleared      # end of tearDown, next session starts clean
+    calls.clear()                      # end of tearDown, next session starts clean
 ```
 
 ## Query Methods
 
 | Method                     | Returns                                                                     |
 |----------------------------|-----------------------------------------------------------------------------|
-| `exists(callId)`           | True if `connections` contains the id (promoted and not terminated)         |
-| `isPending(callId)`        | True if in `pendingCallIds`                                                 |
-| `getPendingCallIds()`      | Non-destructive snapshot of `pendingCallIds`                                |
-| `isTerminated(callId)`     | Derived, see formula above                                                  |
-| `isAnswered(callId)`       | True if in `answeredCallIds`                                                |
-| `get(callId)`              | `CallMetadata?` from `connections`                                          |
-| `getAll()`                 | All entries in `connections` (active calls only)                            |
-| `getState(callId)`         | `PCallkeepConnectionState?` from `connectionStates`                         |
-| `toPCallkeepConnection(id)`| Pigeon connection built from `connections` + `connectionStates`; null if not in `connections` |
+| `exists(callId)`           | True if the record's `metadata` is set (promoted and not terminated)        |
+| `isPending(callId)`        | True if the record's `pending` flag is set                                  |
+| `getPendingCallIds()`      | Non-destructive snapshot of the ids with `pending` set                      |
+| `isTerminated(callId)`     | Derived, see formula above (one record snapshot)                            |
+| `isAnswered(callId)`       | True if the record's `answered` flag is set                                 |
+| `get(callId)`              | The record's `CallMetadata?`                                                |
+| `getAll()`                 | Metadata of all records with `metadata` set (active calls only)             |
+| `getState(callId)`         | The record's `PCallkeepConnectionState?`                                    |
+| `toPCallkeepConnection(id)`| Pigeon connection built from one record; null unless `metadata` is set      |
 | `wasEndedWithoutFlutterState(id)` | Sticky ghost-guard read (not consumed)                               |
 
 ## Semantic Invariants
@@ -158,18 +173,18 @@ must preserve them (most are pinned by `MainProcessConnectionTrackerTest`):
    active set (possible: `ConnectionStateChanged` arrives before any registration), the derived
    formula yields `isTerminated == true`. Consumers treat this as "seen and gone".
 3. **`markAnswered` alone does not register a call.** After cold-start replay fires `AnswerCall`
-   before `promote`, the call has `isAnswered == true`, `exists == false`, and -- because
-   `answeredCallIds` membership blocks the derived formula -- `isTerminated == false`.
+   before `promote`, the call has `isAnswered == true`, `exists == false`, and -- because the
+   `answered` flag blocks the derived formula -- `isTerminated == false`.
 4. **`promote` clears the answered guard.** Adoption sites must call `markAnswered` AFTER
    `promote`. `ForegroundService.reportNewIncomingCall` has four promote sites: the three
    already-answered adoptions promote with `STATE_ACTIVE` and re-mark answered right after;
    the fourth (`STATE_RINGING`, the broadcast-lag "still ringing in Telecom" path) deliberately
    does NOT mark answered -- the call is still ringing, and marking it would make
    `checkIncomingDuplicate` report it as already answered.
-5. **The ghost guard is sticky.** `endedWithoutFlutterStateCallIds` survives `addPending`/`promote`
+5. **The ghost guard is sticky.** `endedWithoutFlutterState` survives `addPending`/`promote`
    and repeated reads; only `clear()` removes it.
-6. **`connectionStates` entries live until `clear()`.** Terminated calls keep their
-   `STATE_DISCONNECTED` entry for the rest of the session -- it is the "ever seen" marker that
+6. **Records (and their `state`) live until `clear()`.** Terminated calls keep their record with
+   `state = STATE_DISCONNECTED` for the rest of the session -- it is the "ever seen" marker that
    makes derived termination and the `endCall` re-fire path work.
 7. **`addPending` returning true is an ownership token.** `InProcessCallkeepCore.startIncomingCall`
    uses it to arbitrate concurrent registrations of the same callId (push isolate vs foreground
@@ -189,44 +204,34 @@ must preserve them (most are pinned by `MainProcessConnectionTrackerTest`):
 - the only background executor on the call path (`PhoneConnection.audioEndpointChangeExecutor`)
   lives in the `:callkeep_core` process and cannot touch this object.
 
-So writes never actually race today. Concurrency between async callbacks is interleaving on one
-thread, which the per-collection atomic operations (`add`, `putIfAbsent`, `computeIfPresent`)
-handle correctly.
+So writes never actually race today; the record model additionally guarantees that even a
+genuinely concurrent reader or writer would be safe per call.
 
-**Known gap (latent).** Each collection is thread-safe on its own, but a logical transition
-mutates several collections sequentially with no lock:
+**Per-call atomicity (the record model).** Every transition is one `compute {}` on the call's
+record: atomic per callId, no global lock, different calls never block each other. A reader
+always sees a complete before-or-after snapshot -- the historical hazard of the multi-collection
+implementation (e.g. a transfer-back reuse looking transiently terminated between the guard
+resets and the pending insert, or `isTerminated` mixing facts from five collections mid-write)
+is gone by construction.
 
-| Transition                                   | Collections touched |
-|----------------------------------------------|---------------------|
-| `addPending`                                 | 5                   |
-| `promote`                                    | 7                   |
-| `markTerminated`                             | 5                   |
-| `clearAndMarkEndCallDispatched` (facade)     | 5 + `ConnectionManager.pendingCallIds` + 1 |
-| `clear`                                      | 8                   |
+What is deliberately NOT atomic:
 
-Note on `clearAndMarkEndCallDispatched`: its `PhoneConnectionService.connectionManager.removePending`
-call is the ONE sanctioned main-process use of `connectionManager`. The "never call
-`connectionManager.*` from the main process" rule (AGENTS.md, [dual-process.md](dual-process.md))
-is about connection state, which lives only in the `:callkeep_core` heap. The `pendingCallIds`
-pre-registration is different: `checkAndReservePending` populates it in the MAIN-process heap
-during `startIncomingCall`, so the main process must also be the one to drop it -- otherwise a
-subsequent `reportNewIncomingCall` with the same callId (blind transfer-back) is permanently
-rejected as a duplicate.
+- **Cross-call operations** (`drainUnconnectedPendingCallIds`, `clear`, the `getAll` /
+  `getPendingCallIds` snapshots) iterate per key; each key's step is atomic, the whole sweep is
+  not. Same behavior as before; accepted.
+- **The facade composite** `clearAndMarkEndCallDispatched` spans two objects: one atomic
+  tracker transition (`markTerminated` + the dispatch mark) plus
+  `PhoneConnectionService.connectionManager.removePending`. That second call is the ONE
+  sanctioned main-process use of `connectionManager`: the "never call `connectionManager.*`
+  from the main process" rule (AGENTS.md, [dual-process.md](dual-process.md)) is about
+  connection state, which lives only in the `:callkeep_core` heap, while the `pendingCallIds`
+  pre-registration is populated in the MAIN-process heap by `checkAndReservePending` during
+  `startIncomingCall` -- so the main process must also be the one to drop it, or a subsequent
+  `reportNewIncomingCall` with the same callId (blind transfer-back) is permanently rejected as
+  a duplicate.
 
-A hypothetical off-main-thread reader could observe a half-applied transition. The sharpest
-example is callId reuse in `addPending`: between the guard resets and `pendingCallIds.add`, the
-callId is in no active set while its `connectionStates` entry (from the previous life) still
-exists -- so `isTerminated` is transiently true for a call that is being resurrected. `isTerminated`
-itself is the most fragile reader: it reads five collections with no snapshot.
-
-This is not exploitable today (see serialization above) but is a trap for any future
-off-main-thread read or write path. The planned hardening is to consolidate per-call state into a
-single `ConcurrentHashMap<String, CallRecord>` with immutable records and `compute {}` transitions;
-any such refactor must preserve every invariant in the previous section -- in particular the sticky
-ghost guard (5), the state-only-record semantics (2), and answered-blocks-terminated (3).
-
-`drainUnconnectedPendingCallIds` and `clear` are cross-call operations and are not atomic across
-callIds either way; that is accepted.
+Any further refactor must preserve every invariant in the previous section -- in particular the
+sticky ghost guard (5), the state-only-record semantics (2), and answered-blocks-terminated (3).
 
 ## Writers and Readers (interaction map)
 
@@ -262,19 +267,23 @@ callIds either way; that is accepted.
 
 ## Test Coverage
 
-`MainProcessConnectionTrackerTest` (63 tests) pins the transition table, derived termination,
-callId reuse after termination, the cold-start `markAnswered`-without-`promote` family, and the
-sticky ghost guard. `InProcessCallkeepCoreTest` (5 tests) covers only the `startIncomingCall`
-pending-ownership contract (concurrent duplicate rejection, drain-on-error, drain-on-throw,
-drain-at-most-once).
+`MainProcessConnectionTrackerTest` (74 tests) pins the transition table, derived termination,
+callId reuse after termination, the cold-start `markAnswered`-without-`promote` family, the
+sticky ghost guard, the state-only-reads-as-terminated invariant (2), the real
+`updateState` -> `addPending` cold-start order (invariant 1), the dual-state window
+(registered-and-pending at once, its rollback, and its drain behavior -- a deliberate tripwire
+for any future tightening of the push re-registration path), the guards surviving
+`markTerminated`, the `updateMetadata` merge, and -- via a two-thread stress cycle -- that a
+reader can never observe a transient terminated state mid-transition (this test FAILS against
+the former multi-collection implementation, demonstrating the closed race).
+`InProcessCallkeepCoreTest` (7 tests) covers the `startIncomingCall` pending-ownership contract
+(concurrent duplicate rejection, drain-on-error, drain-on-throw, drain-at-most-once), the
+`clearAndMarkEndCallDispatched` composite (tracker termination + main-process
+`ConnectionManager` reservation drop + dispatch dedup), and `routeAnswerCall` preferring the
+live connection inside the dual-state window.
 
-Known pinning gaps -- close them before any consolidation refactor:
-
-- no test asserts invariant 2 (`updateState`-only callId reads as `isTerminated == true`);
-- invariant 1 is pinned in a test NAME only: the "survives addPending reset" test asserts the
-  unconditional write but never actually performs `updateState` followed by `addPending`;
-- the `clearAndMarkEndCallDispatched` composite (and facade delegation in general) has no test
-  at all.
+Every pinning test named above was proven to fail by temporarily breaking the exact line it
+guards.
 
 ## Related Components
 

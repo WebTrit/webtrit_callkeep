@@ -219,6 +219,21 @@ class InProcessCallkeepCoreTest {
     }
 
     // ----------------------------------------------------------------------
+    // Answer routing in the dual-state window
+    // ----------------------------------------------------------------------
+
+    @Test
+    fun `routeAnswerCall — registered-and-pending call routes to AnswerImmediately`() {
+        // The push-path re-registration window: a promoted call becomes pending again
+        // for the duration of the backend round-trip. exists wins over isPending, so
+        // an answer during the window goes to the live connection, not the
+        // deferred-answer path.
+        tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
+        tracker.addPending("call-1")
+        assertTrue(core.routeAnswerCall("call-1") is AnswerCallRoute.AnswerImmediately)
+    }
+
+    // ----------------------------------------------------------------------
     // Helpers
     // ----------------------------------------------------------------------
 
