@@ -161,7 +161,11 @@ must preserve them (most are pinned by `MainProcessConnectionTrackerTest`):
    before `promote`, the call has `isAnswered == true`, `exists == false`, and -- because
    `answeredCallIds` membership blocks the derived formula -- `isTerminated == false`.
 4. **`promote` clears the answered guard.** Adoption sites must call `markAnswered` AFTER
-   `promote` (all three adoption paths in `ForegroundService.reportNewIncomingCall` do).
+   `promote`. `ForegroundService.reportNewIncomingCall` has four promote sites: the three
+   already-answered adoptions promote with `STATE_ACTIVE` and re-mark answered right after;
+   the fourth (`STATE_RINGING`, the broadcast-lag "still ringing in Telecom" path) deliberately
+   does NOT mark answered -- the call is still ringing, and marking it would make
+   `checkIncomingDuplicate` report it as already answered.
 5. **The ghost guard is sticky.** `endedWithoutFlutterStateCallIds` survives `addPending`/`promote`
    and repeated reads; only `clear()` removes it.
 6. **`connectionStates` entries live until `clear()`.** Terminated calls keep their
@@ -176,8 +180,8 @@ must preserve them (most are pinned by `MainProcessConnectionTrackerTest`):
 **Serialization (current reality).** Every write path funnels to the main thread:
 
 - Pigeon host APIs declare no `TaskQueue`, so all handlers (`ForegroundService` delegate,
-  `ConnectionsApi`, `BackgroundPushNotificationIsolateBootstrapApi`, `ExternalEngineCallApi`) run
-  on the main looper;
+  `ConnectionsApi`, `DiagnosticsApi`, `BackgroundPushNotificationIsolateBootstrapApi`,
+  `ExternalEngineCallApi`) run on the main looper;
 - broadcast receivers run on the main looper;
 - `StandaloneCallService` (main process) delivers its events through
   `CallkeepCore.notifyConnectionEvent`, a synchronous in-process call into the same main-thread
@@ -199,6 +203,15 @@ mutates several collections sequentially with no lock:
 | `markTerminated`                             | 5                   |
 | `clearAndMarkEndCallDispatched` (facade)     | 5 + `ConnectionManager.pendingCallIds` + 1 |
 | `clear`                                      | 8                   |
+
+Note on `clearAndMarkEndCallDispatched`: its `PhoneConnectionService.connectionManager.removePending`
+call is the ONE sanctioned main-process use of `connectionManager`. The "never call
+`connectionManager.*` from the main process" rule (AGENTS.md, [dual-process.md](dual-process.md))
+is about connection state, which lives only in the `:callkeep_core` heap. The `pendingCallIds`
+pre-registration is different: `checkAndReservePending` populates it in the MAIN-process heap
+during `startIncomingCall`, so the main process must also be the one to drop it -- otherwise a
+subsequent `reportNewIncomingCall` with the same callId (blind transfer-back) is permanently
+rejected as a duplicate.
 
 A hypothetical off-main-thread reader could observe a half-applied transition. The sharpest
 example is callId reuse in `addPending`: between the guard resets and `pendingCallIds.add`, the
@@ -222,16 +235,16 @@ callIds either way; that is accepted.
 | Mutation                | Called from                                                                                  |
 |-------------------------|----------------------------------------------------------------------------------------------|
 | `addPending`            | `InProcessCallkeepCore.startIncomingCall` (owns the entry); `ForegroundService.startCall` (outgoing pre-registration) |
-| `promote`               | `ForegroundService`: `IncomingConnectionReported` handler; `OngoingCall` per-call receiver (outgoing, `STATE_DIALING`); the three already-answered adoption paths in `reportNewIncomingCall` (`STATE_ACTIVE` / `STATE_RINGING`) |
+| `promote`               | `ForegroundService`: `IncomingConnectionReported` handler; `OngoingCall` per-call receiver (outgoing, `STATE_DIALING`); four sites in `reportNewIncomingCall` -- three already-answered adoptions (`STATE_ACTIVE`, each followed by `markAnswered`) and the still-ringing broadcast-lag promote (`STATE_RINGING`, no `markAnswered` -- see invariant 4) |
 | `markAnswered`          | `AnswerCall` handler (`handleCSReportAnswerCall`); adoption paths (after `promote`); `CallLifecycleHandler.performAnswerCall` fallback when the push isolate is unreachable |
 | `updateState`           | `ConnectionStateChanged` handler (source of truth: `PhoneConnection.onStateChanged` in `:callkeep_core`, or `StandaloneCallService` transitions) |
 | `updateMetadata`        | `InProcessCallkeepCore.startUpdateCall` (e.g. mid-call hasVideo toggle)                       |
 | `markTerminated`        | `reportEndCall` (synchronous, ahead of the `DeclineCall` echo); via `clearAndMarkEndCallDispatched` in the `HungUp`/`DeclineCall`/`ConnectionNotFound` handler, tearDown steps, and the incoming-confirmation timeout |
-| `removePending`         | rollback paths: failed/timed-out incoming registration, failed outgoing, tearDown step 1b    |
+| `removePending`         | rollback paths: failed/timed-out incoming registration, decline-before-confirmation (`HungUp`/`DeclineCall` handler with a pending incoming callback), failed outgoing, tearDown step 1b, `ForegroundService.onDestroy` |
 | `reserveAnswer`/`consumeAnswer` | `answerCall` deferred path / `AnswerCall` handler                                     |
 | `drainUnconnectedPendingCallIds` | `tearDown` step 2                                                                    |
 | `clear`                 | end of `tearDown` (after TearDownComplete ack or timeout); `ConnectionsApi.cleanConnections`  |
-| guard marks             | `tearDown` (directNotified + endCallDispatched), `endCall`, `reportEndCall` (`MISSED_WHILE_CONNECTING` arms the ghost guard) |
+| guard marks             | `tearDown` and `ForegroundService.onDestroy` (directNotified + endCallDispatched for unresolved pending incomings; onDestroy runs WITHOUT a subsequent `clear()`), `endCall`, `reportEndCall` (`MISSED_WHILE_CONNECTING` arms the ghost guard) |
 
 **Reads:**
 
@@ -250,12 +263,18 @@ callIds either way; that is accepted.
 ## Test Coverage
 
 `MainProcessConnectionTrackerTest` (63 tests) pins the transition table, derived termination,
-callId reuse after termination, the cold-start `markAnswered`-without-`promote` family,
-state-survives-`addPending`, and the sticky ghost guard. `InProcessCallkeepCoreTest` (5 tests)
-covers the facade delegation and `clearAndMarkEndCallDispatched`.
+callId reuse after termination, the cold-start `markAnswered`-without-`promote` family, and the
+sticky ghost guard. `InProcessCallkeepCoreTest` (5 tests) covers only the `startIncomingCall`
+pending-ownership contract (concurrent duplicate rejection, drain-on-error, drain-on-throw,
+drain-at-most-once).
 
-Known pinning gap: no test asserts invariant 2 (`updateState`-only callId reads as
-`isTerminated == true`). Add it before any consolidation refactor.
+Known pinning gaps -- close them before any consolidation refactor:
+
+- no test asserts invariant 2 (`updateState`-only callId reads as `isTerminated == true`);
+- invariant 1 is pinned in a test NAME only: the "survives addPending reset" test asserts the
+  unconditional write but never actually performs `updateState` followed by `addPending`;
+- the `clearAndMarkEndCallDispatched` composite (and facade delegation in general) has no test
+  at all.
 
 ## Related Components
 
