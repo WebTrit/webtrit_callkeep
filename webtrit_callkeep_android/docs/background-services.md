@@ -26,22 +26,29 @@ Spawned when an FCM push notification (or SMS trigger) announces an incoming cal
 
 ### Lifecycle
 
-- Started via:
-  - `BackgroundPushNotificationIsolateBootstrapApi.reportNewIncomingCall()` (from Dart or a
-      background message handler).
-  - `NotificationManager.showIncomingCallNotification()` (from FCM handler code).
+- Started by `NotificationManager.showIncomingCallNotification()`, whose only caller is
+  `PhoneConnection.onShowIncomingCallUi()` in the `:callkeep_core` process. (The push path
+  gets there indirectly: `reportNewIncomingCall()` routes the call into
+  `CallkeepCore.startIncomingCall()`, Telecom registers it, and this service starts from the
+  resulting connection callback.)
 - `onCreate()` - registers the internal release receiver (see below), subscribes to
   `CallkeepCore` events via `addConnectionEventListener(this)`, and wires the handlers.
   It does **not** promote to foreground yet.
-- `onStartCommand(IC_INITIALIZE)` - delegates to `IncomingCallHandler`, which registers the
-  call with Telecom and calls `startForeground` with the ringing notification (per-call
-  notification id, 1000+). Returns `START_NOT_STICKY` on every path: if the OS kills the
-  service, a restart with a null intent must not re-post a notification for a call that is
-  gone.
-- Release is delivered via an **internal broadcast** (`IC_RELEASE_WITH_ANSWER` /
-  `IC_RELEASE_WITH_DECLINE`), not via `onStartCommand`: the receiver only lives while the
-  service is alive, so a release arriving after the service stopped goes nowhere instead of
-  restarting it.
+- `onStartCommand(IC_INITIALIZE)` - delegates to `IncomingCallHandler`, which shows the
+  ringing notification and promotes the service to foreground (per-call notification id,
+  1000+). The call itself was already registered with Telecom by `PhoneConnectionService`
+  before this service started. Every `onStartCommand` path returns `START_NOT_STICKY`: if
+  the OS kills the service, a restart with a null intent must not re-post a notification
+  for a call that is gone.
+- The notification's Answer and Decline buttons also enter through `onStartCommand`, as
+  service `PendingIntent`s (`NotificationAction.Answer` / `Decline`); Answer additionally
+  drops the notification buttons right away.
+- Release (the end of the ringing phase) is delivered via an **internal broadcast**
+  (`IC_RELEASE_WITH_ANSWER` / `IC_RELEASE_WITH_DECLINE`), not via `onStartCommand`: the
+  receiver only lives while the service is alive, so a release arriving after the service
+  stopped goes nowhere instead of restarting it.
+- Two safety-net timeouts force-stop the service if the normal flow stalls: an independent
+  60 s timeout armed at launch, and a 2 s stop timeout armed when the release arrives.
 - `onDestroy()` - unsubscribes, stops foreground, and explicitly cancels the current
   notification (on some Samsung builds `stopForeground(REMOVE)` alone leaves it in the
   shade), then tears the isolate down.
@@ -54,7 +61,8 @@ buttons - so the user is not offered Answer for a call already taken while the a
 starting. When `ActiveCallService` posts the in-progress notification, it broadcasts
 `IC_ACTIVE_CALL_VISIBLE`; on receiving it, `IncomingCallService` gives its own notification
 up (`stopForeground`) so the shade does not describe the same call twice. The service itself
-keeps running - no longer foreground - until the connection is handed over to the app.
+keeps running - no longer foreground - until the connection is handed over to the app or a
+safety-net timeout stops it.
 
 ### Connection Event Listener
 
@@ -68,7 +76,7 @@ to `CallLifecycleHandler.performAnswerCall()`. `DeclineCall` and `HungUp` are ha
 
 | Handler                                                | Responsibility                                                            |
 |--------------------------------------------------------|---------------------------------------------------------------------------|
-| `IncomingCallHandler`                                  | Initializes the incoming call: registers with Telecom, owns the notification |
+| `IncomingCallHandler`                                  | Owns the incoming-call notification and the foreground promotion          |
 | `CallLifecycleHandler`                                 | Handles answer/decline events; dispatches to Flutter isolate              |
 | `FlutterIsolateCommunicator` / `FlutterIsolateHandler` | Manages the background Flutter isolate lifecycle                          |
 
@@ -76,11 +84,10 @@ to `CallLifecycleHandler.performAnswerCall()`. `DeclineCall` and `HungUp` are ha
 
 `BackgroundPushNotificationIsolateBootstrapApi` (registered in `WebtritCallkeepPlugin`):
 
-| Method                                               | Description                                 |
-|------------------------------------------------------|---------------------------------------------|
-| `initializePushNotificationCallback(callbackHandle)` | Stores Dart entry-point handle              |
-| `configureSignalingService(config)`                  | Persists service configuration              |
-| `reportNewIncomingCall(callId, metadata)`            | Starts `IncomingCallService` with call data |
+| Method                                                            | Description                                 |
+|-------------------------------------------------------------------|---------------------------------------------|
+| `initializePushNotificationCallback(callbackDispatcher, onNotificationSync)` | Stores the two Dart entry-point handles |
+| `reportNewIncomingCall(callId, handle, displayName, hasVideo)`    | Builds `CallMetadata` and routes it into `CallkeepCore.startIncomingCall()` (Telecom registration; `IncomingCallService` starts later, from the connection callback) |
 
 ---
 
@@ -97,7 +104,8 @@ to `CallLifecycleHandler.performAnswerCall()`. `DeclineCall` and `HungUp` are ha
 Owns the single **active call notification** summarizing every call in progress (one
 notification, `ActiveCallNotificationBuilder.NOTIFICATION_ID = 1`). It renders whatever
 call list it is started with; the list itself lives in `NotificationManager`'s static
-`activeCalls` state in this process.
+`activeCalls` state in the `:callkeep_core` process (see notifications.md), and this
+service only ever sees the copy serialized into each start intent.
 
 ### Lifecycle
 
@@ -109,27 +117,31 @@ call list it is started with; the list itself lives in `NotificationManager`'s s
 - `onStartCommand` promotes to foreground with a type set computed per start: `phoneCall`
   always; `microphone` whenever the permission is granted (deliberately not conditioned on
   audio state - some OEM builds block microphone access with the screen off if the type is
-  missing);
-  `camera` when a video call is present and the permission is granted.
+  missing); `camera` when a video call is present and the permission is granted.
 - After posting the notification it broadcasts `IC_ACTIVE_CALL_VISIBLE` so
   `IncomingCallService` can give up its now-redundant notification (see above).
-- Returns `START_STICKY`: if the process is killed mid-call, the OS restarts the service.
+- Returns `START_STICKY` for metadata starts (the Decline action returns
+  `START_NOT_STICKY`): if the process is killed mid-call, the OS restarts the service.
 
 ### Notification action
 
-The notification offers one Hang up button. Its intent carries the first call's metadata;
-the service routes it to `CallkeepCore.startHungUpCall(call)`, falling back to
-`CallkeepCore.tearDownService()` when it has no call metadata at all.
+The notification offers one Hang up button. Its intent carries the first call's bundle in
+the extras, but the service **ignores the extras**: it hangs up the first call of its
+in-memory list via `CallkeepCore.startHungUpCall(call)`, falling back to
+`CallkeepCore.tearDownService()` when that list is empty - which is exactly the state after
+a sticky restart.
 
 ### Known limitation: sticky restart with a null intent
 
-A `START_STICKY` restart after a process kill delivers a **null intent**, so the restarted
-instance builds an empty call list and re-posts a half-empty ongoing notification. Nothing
-stops that orphaned instance: `NotificationManager`'s static call list died with the process,
-the service has no `stopSelf()`, and the Hang up fallback (`tearDownService()`) tears down the
-connection services without stopping this one. If a live `PhoneConnection` still exists in
-`:callkeep_core`, its disconnect cancels the notification cross-process; with no live
-connection left, the notification can only be removed by force-stopping the app.
+A `START_STICKY` restart after a main-process kill delivers a **null intent**, so the
+restarted instance builds an empty call list and re-posts a half-empty ongoing notification.
+Nothing in this process stops that orphaned instance: the service has no `stopSelf()`, the
+restart bypasses `NotificationManager` (whose call list lives in `:callkeep_core`) entirely,
+and the Hang up fallback (`tearDownService()`) tears down the connection services without
+stopping this one. If a live `PhoneConnection` still exists in `:callkeep_core`, its
+disconnect empties that list and stops the service cross-process; with no live connection
+left (or with `:callkeep_core` killed as well), the notification can only be removed by
+force-stopping the app.
 
 ---
 

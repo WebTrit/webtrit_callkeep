@@ -33,7 +33,7 @@ standalone path.
 |--------------------------------------------|------------|--------------------------------------------------------|
 | `INCOMING_CALL_NOTIFICATION_CHANNEL_ID`    | `HIGH`     | Heads-up notification with ringtone for incoming calls |
 | `ACTIVE_CALL_SERVICE_NOTIFICATION_CHANNEL` | `LOW`      | Persistent silent notification for active calls        |
-| `FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID`  | `LOW`      | Standalone-service foreground notification             |
+| `FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID`  | `LOW`      | Standalone-service placeholder notification (see the standalone section) |
 
 ---
 
@@ -42,8 +42,11 @@ standalone path.
 **File**: `kotlin/com/webtrit/callkeep/managers/NotificationManager.kt`
 
 Facade over the two notification-hosting services of the Telecom path. It keeps the list of
-active calls in a **static in-memory list** (`activeCalls` in its companion object) - state
-that lives only in the main process and is lost when that process dies.
+active calls in a **static in-memory list** (`activeCalls` in its companion object). Both of
+its users - `PhoneConnection` and `ConnectionServicePerformBroadcaster` - run inside
+`PhoneConnectionService` in the **`:callkeep_core` process**, so that is where the list
+lives; the main-process `ActiveCallService` never reads it and only sees the copy serialized
+into each start intent.
 
 | Method                                   | Action                                                                   |
 |------------------------------------------|--------------------------------------------------------------------------|
@@ -70,9 +73,13 @@ Builds the notification shown while the phone is ringing, plus its silent varian
 
 - **Style**: `Notification.CallStyle.forIncomingCall(person, declineIntent, answerIntent)`
   (API 31+) or a plain builder with explicit answer/decline action buttons on API 26-30.
-- **Insistent**: `FLAG_INSISTENT` is set so the ringtone loops until handled.
+- **Insistent**: `FLAG_INSISTENT` is set, but the notification itself is soundless (the
+  channel is registered with its sound suppressed) - the looping ringtone is played by
+  `AudioManager.startRingtone`, driven from `PhoneConnection`, not by the notification.
 - **Full-screen intent**: applied only when enabled by configuration and the full-screen
-  intent permission is granted; surfaces the incoming-call activity over the lock screen.
+  intent permission is granted; it launches the **host app's launcher activity** over the
+  lock screen - the plugin has no dedicated incoming-call activity (its only activities are
+  the answer trampolines).
 - **Decline**: a service `PendingIntent` back to `IncomingCallService` carrying the call's
   bundle.
 - **Answer**: an activity `PendingIntent` through `AnswerCallTrampolineActivity`, so the
@@ -110,9 +117,15 @@ notification (`NOTIFICATION_ID = 1`) summarizing every active call, not one entr
 `StandaloneActiveCallNotificationBuilder.kt`
 
 Internal builders used by `StandaloneCallService` (the single-process fallback path that does
-not register with Telecom). They mirror the ringing and active variants on the same channels;
-the standalone answer goes through `StandaloneAnswerTrampolineActivity` and all action intents
-target `StandaloneCallService` instead of the dual-process services.
+not register with Telecom). They mirror the ringing and active variants on the incoming and
+active channels; the standalone answer goes through `StandaloneAnswerTrampolineActivity` and
+all action intents target `StandaloneCallService` instead of the dual-process services.
+
+In addition, `StandaloneCallService.promoteToForeground()` posts a short-lived inline
+placeholder notification (built without any of these builders) on
+`FOREGROUND_CALL_NOTIFICATION_CHANNEL_ID`, only to satisfy the 5-second `startForeground`
+window, and switches to the incoming-call notification right after - that placeholder is the
+sole producer on the foreground channel.
 
 ---
 
@@ -124,7 +137,7 @@ Handles ringtone, ringback and call-waiting tone playback, plus device-capabilit
 
 | Method                        | Description                                                            |
 |-------------------------------|------------------------------------------------------------------------|
-| `startRingtone(sound)`        | Play incoming-call ringtone (asset cache path or system default) with vibration |
+| `startRingtone(sound)`        | Ring or vibrate by ringer mode: ringtone (asset path or system default) in normal mode with volume; vibration only in vibrate mode or at zero volume; nothing in silent mode |
 | `stopRingtone()`              | Stop ringtone and vibration                                            |
 | `startRingback(asset)`        | Play outgoing ringback tone                                            |
 | `stopRingback()`              | Stop ringback                                                          |
