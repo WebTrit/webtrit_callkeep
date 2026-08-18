@@ -267,17 +267,23 @@ sticky ghost guard (5), the state-only-record semantics (2), and answered-blocks
 
 ## Test Coverage
 
-`MainProcessConnectionTrackerTest` (65 tests) pins the transition table, derived termination,
+`MainProcessConnectionTrackerTest` (74 tests) pins the transition table, derived termination,
 callId reuse after termination, the cold-start `markAnswered`-without-`promote` family, the
-sticky ghost guard, and -- added specifically to protect the record consolidation -- the
-state-only-reads-as-terminated invariant (2) and the real `updateState` -> `addPending`
-cold-start order (invariant 1). `InProcessCallkeepCoreTest` (6 tests) covers the
-`startIncomingCall` pending-ownership contract (concurrent duplicate rejection, drain-on-error,
-drain-on-throw, drain-at-most-once) and the `clearAndMarkEndCallDispatched` composite
-(tracker termination + main-process `ConnectionManager` reservation drop + dispatch dedup).
+sticky ghost guard, the state-only-reads-as-terminated invariant (2), the real
+`updateState` -> `addPending` cold-start order (invariant 1), the dual-state window
+(registered-and-pending at once, its rollback, and its drain behavior -- a deliberate tripwire
+for any future tightening of the push re-registration path), the guards surviving
+`markTerminated`, the `updateMetadata` merge, and -- via a two-thread stress cycle -- that a
+reader can never observe a transient terminated state mid-transition (this test FAILS against
+the former multi-collection implementation, demonstrating the closed race).
+`InProcessCallkeepCoreTest` (7 tests) covers the `startIncomingCall` pending-ownership contract
+(concurrent duplicate rejection, drain-on-error, drain-on-throw, drain-at-most-once), the
+`clearAndMarkEndCallDispatched` composite (tracker termination + main-process
+`ConnectionManager` reservation drop + dispatch dedup), and `routeAnswerCall` preferring the
+live connection inside the dual-state window.
 
-Each of the three pinning tests was proven to fail -- against both the old multi-collection
-implementation and the current record one -- by temporarily breaking the exact line it guards.
+Every pinning test named above was proven to fail by temporarily breaking the exact line it
+guards.
 
 ## Related Components
 
