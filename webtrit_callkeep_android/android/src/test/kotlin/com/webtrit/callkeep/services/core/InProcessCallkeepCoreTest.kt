@@ -1,9 +1,12 @@
 package com.webtrit.callkeep.services.core
 
 import android.os.Build
+import com.webtrit.callkeep.PCallkeepConnectionState
 import com.webtrit.callkeep.PIncomingCallError
 import com.webtrit.callkeep.PIncomingCallErrorEnum
 import com.webtrit.callkeep.models.CallMetadata
+import com.webtrit.callkeep.services.services.connection.ConnectionManager
+import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -24,9 +27,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Unit tests for [InProcessCallkeepCore.startIncomingCall].
+ * Unit tests for [InProcessCallkeepCore]: the startIncomingCall pending-callId lifecycle and the
+ * [InProcessCallkeepCore.clearAndMarkEndCallDispatched] composite (tracker + main-process
+ * ConnectionManager reservation + dispatch dedup).
  *
- * Covers the centralized pending-callId lifecycle:
+ * startIncomingCall coverage:
  *   1. Concurrent duplicate (addPending returns false) -> onError(CALL_ID_ALREADY_EXISTS),
  *      router never invoked, the other caller's pending entry is preserved.
  *   2. onSuccess -> pending kept (the connection lifecycle owns it from here).
@@ -169,6 +174,48 @@ class InProcessCallkeepCoreTest {
         core.startIncomingCall(metadata(), onSuccess = {}, onError = {})
 
         verify(spyTracker, times(1)).removePending("call-1")
+    }
+
+    // ----------------------------------------------------------------------
+    // clearAndMarkEndCallDispatched (composite mutation)
+    // ----------------------------------------------------------------------
+
+    @Test
+    fun `clearAndMarkEndCallDispatched — terminates, drops the CM reservation, dedups the dispatch`() {
+        // The composite touches TWO objects: the tracker (markTerminated + endCallDispatched)
+        // and the main-process PhoneConnectionService.connectionManager, whose pendingCallIds
+        // reservation (created by checkAndReservePending during startIncomingCall) must be
+        // dropped from the main process — otherwise a blind transfer-back reusing the same
+        // callId is permanently rejected as CALL_ID_ALREADY_EXISTS. This is the ONE sanctioned
+        // main-process connectionManager touch (see docs/connection-tracker.md).
+        //
+        // Swap in a fresh ConnectionManager so the process-wide singleton state cannot leak
+        // between tests.
+        val cm = ConnectionManager()
+        val previousCm = PhoneConnectionService.connectionManager
+        PhoneConnectionService.connectionManager = cm
+        try {
+            // Full registration: CM reservation + tracker lifecycle up to a promoted call.
+            assertNull(cm.checkAndReservePending("call-1"))
+            tracker.addPending("call-1")
+            tracker.promote("call-1", metadata(), PCallkeepConnectionState.STATE_RINGING)
+
+            // First dispatch: returns true.
+            assertTrue(core.clearAndMarkEndCallDispatched("call-1"))
+
+            // Tracker side: fully terminated, no active record left.
+            assertTrue(tracker.isTerminated("call-1"))
+            assertFalse(tracker.exists("call-1"))
+            assertFalse(tracker.isPending("call-1"))
+            // CM side: the reservation is gone — the same callId can be reserved again
+            // (transfer-back), instead of bouncing off CALL_ID_ALREADY_EXISTS.
+            assertNull(cm.checkAndReservePending("call-1"))
+
+            // Second dispatch for the same callId: already dispatched, returns false.
+            assertFalse(core.clearAndMarkEndCallDispatched("call-1"))
+        } finally {
+            PhoneConnectionService.connectionManager = previousCm
+        }
     }
 
     // ----------------------------------------------------------------------

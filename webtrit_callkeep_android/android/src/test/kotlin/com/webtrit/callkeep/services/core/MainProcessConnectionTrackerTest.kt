@@ -154,6 +154,31 @@ class MainProcessConnectionTrackerTest {
         assertEquals(PCallkeepConnectionState.STATE_ACTIVE, tracker.getState("call-1"))
     }
 
+    @Test
+    fun `updateState — state-only callId reads as terminated (seen and gone)`() {
+        // A ConnectionStateChanged that arrives for a callId in no active set leaves only the
+        // connectionStates entry behind. The derived formula must classify such a call as
+        // "observed and gone" (isTerminated == true), NOT as unknown: endCall relies on the
+        // isTerminated branch to re-notify Flutter for it, and deliverIncomingToDelegate relies
+        // on it to skip seeding a dead call.
+        tracker.updateState("call-1", CallConnectionState.ACTIVE)
+        assertTrue(tracker.isTerminated("call-1"))
+    }
+
+    @Test
+    fun `updateState — then addPending keeps the mirrored state (cold-start adoption order)`() {
+        // The actual cold-start adoption order: the ConnectionStateChanged replay mirrors ACTIVE
+        // first, the signaling-driven registration calls addPending afterwards. addPending resets
+        // the per-call guards but must NOT touch the mirrored state — reportNewIncomingCall's
+        // CALL_ID_ALREADY_EXISTS branch reads getState() == STATE_ACTIVE after exactly this
+        // sequence to adopt the already-answered call.
+        tracker.updateState("call-1", CallConnectionState.ACTIVE)
+        tracker.addPending("call-1")
+        assertEquals(PCallkeepConnectionState.STATE_ACTIVE, tracker.getState("call-1"))
+        // The resurrected pending entry also flips derived termination back off.
+        assertFalse(tracker.isTerminated("call-1"))
+    }
+
     // -------------------------------------------------------------------------
     // markAnswered
     // -------------------------------------------------------------------------
