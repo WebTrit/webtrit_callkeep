@@ -56,9 +56,13 @@ through `CallkeepCore.instance`, not `connectionManager` directly.**
   `.sendTearDownConnections()`, etc. -- dispatched via explicit `startService` intents or app-scoped
   broadcasts.
 
-**Never call `connectionManager.*` from the main process.** `PhoneConnectionService` runs in the
-`:callkeep_core` OS process -- `connectionManager` in the main JVM heap is an empty object and any
-call to it is a silent no-op.
+**Never touch connection state via `connectionManager.*` from the main process.**
+`PhoneConnectionService` runs in the `:callkeep_core` OS process -- the connections held by
+`connectionManager` in the main JVM heap do not exist, so reading or mutating them there is a
+silent no-op. ONE sanctioned exception: the `pendingCallIds` pre-registration, which
+`checkAndReservePending` populates in the MAIN-process heap during `startIncomingCall` --
+`InProcessCallkeepCore.clearAndMarkEndCallDispatched` must drop it from the main process, or a
+transfer-back reusing the callId is rejected as a duplicate.
 
 ### IPC events
 
