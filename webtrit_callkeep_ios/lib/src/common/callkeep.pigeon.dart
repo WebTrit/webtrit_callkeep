@@ -162,6 +162,7 @@ class PIOSOptions {
     required this.supportsVideo,
     required this.includesCallsInRecents,
     required this.driveIdleTimerDisabled,
+    this.callWaitingToneOwnCallsOnly,
   });
 
   String localizedName;
@@ -188,6 +189,8 @@ class PIOSOptions {
 
   bool driveIdleTimerDisabled;
 
+  bool? callWaitingToneOwnCallsOnly;
+
   List<Object?> _toList() {
     return <Object?>[
       localizedName,
@@ -202,6 +205,7 @@ class PIOSOptions {
       supportsVideo,
       includesCallsInRecents,
       driveIdleTimerDisabled,
+      callWaitingToneOwnCallsOnly,
     ];
   }
 
@@ -223,6 +227,7 @@ class PIOSOptions {
       supportsVideo: result[9]! as bool,
       includesCallsInRecents: result[10]! as bool,
       driveIdleTimerDisabled: result[11]! as bool,
+      callWaitingToneOwnCallsOnly: result.length > 12 ? result[12] as bool? : null,
     );
   }
 
@@ -235,7 +240,7 @@ class PIOSOptions {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(localizedName, other.localizedName) && _deepEquals(ringtoneSound, other.ringtoneSound) && _deepEquals(ringbackSound, other.ringbackSound) && _deepEquals(iconTemplateImageAssetName, other.iconTemplateImageAssetName) && _deepEquals(maximumCallGroups, other.maximumCallGroups) && _deepEquals(maximumCallsPerCallGroup, other.maximumCallsPerCallGroup) && _deepEquals(supportsHandleTypeGeneric, other.supportsHandleTypeGeneric) && _deepEquals(supportsHandleTypePhoneNumber, other.supportsHandleTypePhoneNumber) && _deepEquals(supportsHandleTypeEmailAddress, other.supportsHandleTypeEmailAddress) && _deepEquals(supportsVideo, other.supportsVideo) && _deepEquals(includesCallsInRecents, other.includesCallsInRecents) && _deepEquals(driveIdleTimerDisabled, other.driveIdleTimerDisabled);
+    return _deepEquals(localizedName, other.localizedName) && _deepEquals(ringtoneSound, other.ringtoneSound) && _deepEquals(ringbackSound, other.ringbackSound) && _deepEquals(iconTemplateImageAssetName, other.iconTemplateImageAssetName) && _deepEquals(maximumCallGroups, other.maximumCallGroups) && _deepEquals(maximumCallsPerCallGroup, other.maximumCallsPerCallGroup) && _deepEquals(supportsHandleTypeGeneric, other.supportsHandleTypeGeneric) && _deepEquals(supportsHandleTypePhoneNumber, other.supportsHandleTypePhoneNumber) && _deepEquals(supportsHandleTypeEmailAddress, other.supportsHandleTypeEmailAddress) && _deepEquals(supportsVideo, other.supportsVideo) && _deepEquals(includesCallsInRecents, other.includesCallsInRecents) && _deepEquals(driveIdleTimerDisabled, other.driveIdleTimerDisabled) && _deepEquals(callWaitingToneOwnCallsOnly, other.callWaitingToneOwnCallsOnly);
   }
 
   @override

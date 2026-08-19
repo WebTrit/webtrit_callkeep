@@ -51,6 +51,73 @@ class WebtritCallkeepPermissions {
     return platform.openFullScreenIntentSettings();
   }
 
+  /// Status of the OEM "display pop-up windows while running in background"
+  /// capability (MIUI/HyperOS), which gates showing the incoming-call UI over
+  /// the lock screen.
+  ///
+  /// On non-Android platforms and web, returns
+  /// [CallkeepSpecialPermissionStatus.granted] (the capability does not apply).
+  Future<CallkeepSpecialPermissionStatus> getBackgroundActivityStartPermissionStatus() {
+    if (kIsWeb) {
+      return Future.value(CallkeepSpecialPermissionStatus.granted);
+    }
+
+    if (!Platform.isAndroid) {
+      return Future.value(CallkeepSpecialPermissionStatus.granted);
+    }
+
+    return platform.getBackgroundActivityStartPermissionStatus();
+  }
+
+  /// Attempts to open the OEM permissions screen hosting the "display pop-up
+  /// windows while running in background" toggle.
+  ///
+  /// On non-Android platforms and web, this call does nothing.
+  Future<void> openBackgroundActivityStartSettings() {
+    if (kIsWeb) {
+      return Future.value();
+    }
+
+    if (!Platform.isAndroid) {
+      return Future.value();
+    }
+
+    return platform.openBackgroundActivityStartSettings();
+  }
+
+  /// Status of the OEM "show on lock screen" capability (MIUI/HyperOS), which
+  /// gates showing the incoming-call UI over the lock screen.
+  ///
+  /// On non-Android platforms and web, returns
+  /// [CallkeepSpecialPermissionStatus.granted] (the capability does not apply).
+  Future<CallkeepSpecialPermissionStatus> getShowWhenLockedPermissionStatus() {
+    if (kIsWeb) {
+      return Future.value(CallkeepSpecialPermissionStatus.granted);
+    }
+
+    if (!Platform.isAndroid) {
+      return Future.value(CallkeepSpecialPermissionStatus.granted);
+    }
+
+    return platform.getShowWhenLockedPermissionStatus();
+  }
+
+  /// Attempts to open the OEM permissions screen hosting the "show on lock
+  /// screen" toggle.
+  ///
+  /// On non-Android platforms and web, this call does nothing.
+  Future<void> openShowWhenLockedSettings() {
+    if (kIsWeb) {
+      return Future.value();
+    }
+
+    if (!Platform.isAndroid) {
+      return Future.value();
+    }
+
+    return platform.openShowWhenLockedSettings();
+  }
+
   /// Attempts to open the system settings screen for managing the app's permissions.
   // TODO(Serdun): Add support for iOS.
   Future<void> openSettings() {
@@ -129,10 +196,12 @@ extension CallkeepSpecialPermissionsExtension on CallkeepSpecialPermissions {
   /// If the permission is [CallkeepSpecialPermissions.fullScreenIntent], it checks the full screen intent permission status.
   /// Returns a [Future] that resolves to a [CallkeepSpecialPermissionStatus] indicating the status of the permission.
   Future<CallkeepSpecialPermissionStatus> status() async {
-    if (this == CallkeepSpecialPermissions.fullScreenIntent) {
-      final callkeepPermissions = WebtritCallkeepPermissions();
-      return callkeepPermissions.getFullScreenIntentPermissionStatus();
+    final callkeepPermissions = WebtritCallkeepPermissions();
+    switch (this) {
+      case CallkeepSpecialPermissions.fullScreenIntent:
+        return callkeepPermissions.getFullScreenIntentPermissionStatus();
+      case CallkeepSpecialPermissions.backgroundActivityStart:
+        return callkeepPermissions.getBackgroundActivityStartPermissionStatus();
     }
-    return CallkeepSpecialPermissionStatus.granted;
   }
 }

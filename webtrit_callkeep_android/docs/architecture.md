@@ -62,9 +62,10 @@ services, broadcast-based IPC, and a Pigeon bridge to the Flutter layer.
 
 ## Key Design Constraints
 
-- **Never call `PhoneConnectionService.connectionManager.*` from the main process.** The
-  `ConnectionManager` is initialized only in the `:callkeep_core` JVM. Use `CallkeepCore.instance`
-  instead.
+- **Never touch connection state via `PhoneConnectionService.connectionManager` from the main
+  process.** The connections live only in the `:callkeep_core` JVM. Use `CallkeepCore.instance`
+  instead. One sanctioned exception: dropping the main-process `pendingCallIds` pre-registration
+  in `clearAndMarkEndCallDispatched` (see [connection-tracker.md](connection-tracker.md)).
 - **`CallMetadata` must NOT implement `Parcelable`.** The system process (`system_server`) attempts
   to deserialize Parcelables, which causes `ClassNotFoundException`. Use Bundle serialization
   (`toBundle()` / `fromBundle()`) instead.

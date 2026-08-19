@@ -23,6 +23,7 @@ class CallkeepIOSOptions extends Equatable {
     this.supportsVideo = false,
     this.includesCallsInRecents = true,
     this.driveIdleTimerDisabled = true,
+    this.callWaitingToneOwnCallsOnly = true,
   });
 
   final String localizedName;
@@ -36,6 +37,11 @@ class CallkeepIOSOptions extends Equatable {
   final bool includesCallsInRecents;
   final bool driveIdleTimerDisabled;
 
+  /// iOS only: when true (default), the call-waiting tone detection considers only
+  /// this app's own CallKit calls; when false, calls from other apps (cellular,
+  /// other VoIP apps) also count towards the connected/ringing combination.
+  final bool callWaitingToneOwnCallsOnly;
+
   @override
   List<Object?> get props => [
     localizedName,
@@ -48,6 +54,7 @@ class CallkeepIOSOptions extends Equatable {
     supportsVideo,
     includesCallsInRecents,
     driveIdleTimerDisabled,
+    callWaitingToneOwnCallsOnly,
   ];
 }
 

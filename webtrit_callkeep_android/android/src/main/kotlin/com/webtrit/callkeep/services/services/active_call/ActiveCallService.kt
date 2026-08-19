@@ -16,6 +16,7 @@ import com.webtrit.callkeep.models.CallMetadata
 import com.webtrit.callkeep.models.NotificationAction
 import com.webtrit.callkeep.notifications.ActiveCallNotificationBuilder
 import com.webtrit.callkeep.services.core.CallkeepCore
+import com.webtrit.callkeep.services.services.incoming_call.IncomingCallService
 
 class ActiveCallService : Service() {
     private val activeCallNotificationBuilder = ActiveCallNotificationBuilder()
@@ -91,6 +92,13 @@ class ActiveCallService : Service() {
             tearDownAndStop(startId)
             return START_NOT_STICKY
         }
+
+        // The call now has a notification of its own, so the one that announced it as incoming
+        // has nothing left to say. Until this point it had to stay: it is what keeps the
+        // incoming-call service in the foreground, and there was nothing else describing the
+        // call. Letting go of it here is what stops the user seeing the call twice while the
+        // app finishes starting.
+        IncomingCallService.notifyActiveCallVisible(this)
 
         return START_STICKY
     }

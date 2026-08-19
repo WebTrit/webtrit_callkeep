@@ -124,6 +124,7 @@ extension CallkeepIOSOptionsConverter on CallkeepIOSOptions {
       supportsVideo: supportsVideo,
       includesCallsInRecents: includesCallsInRecents,
       driveIdleTimerDisabled: driveIdleTimerDisabled,
+      callWaitingToneOwnCallsOnly: callWaitingToneOwnCallsOnly,
     );
   }
 }

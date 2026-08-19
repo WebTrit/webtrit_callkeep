@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import io.flutter.Log
 
@@ -28,6 +29,10 @@ class PermissionsHelper(
     fun launchFullScreenIntentSettings() {
         val intent =
             Intent("android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENT").apply {
+                // The screen is per app and the system refuses to open it without
+                // being told which one; without this the caller falls back to the
+                // settings home page and the user has to find the toggle themselves.
+                data = Uri.fromParts("package", context.packageName, null)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
         context.startActivity(intent)
@@ -39,6 +44,158 @@ class PermissionsHelper(
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
         context.startActivity(intent)
+    }
+
+    /**
+     * Whether this device is a Xiaomi-family build (MIUI/HyperOS), where the
+     * "display pop-up windows while running in background" capability gates
+     * showing an Activity over the lock screen.
+     */
+    fun isXiaomiFamily(): Boolean {
+        val brand = (Build.MANUFACTURER ?: "").lowercase()
+        // Substring match (not exact equality) to catch reported variants such as
+        // "Xiaomi Communications"; mirrors the detection in CallDiagnostics.
+        return brand.contains("xiaomi") || brand.contains("redmi") || brand.contains("poco")
+    }
+
+    /**
+     * Best-effort check of the MIUI/HyperOS "display pop-up windows while running
+     * in background" capability (OP_BACKGROUND_START_ACTIVITY). There is no public
+     * API for it, so this reads the hidden AppOps op via reflection.
+     *
+     * @return `true` granted (or the capability does not apply on this device),
+     *   `false` explicitly denied, `null` when the state cannot be determined
+     *   (op not readable on this build). Callers should treat `null` as unknown
+     *   rather than denied, to avoid prompting users who may already have granted
+     *   it on builds where the hidden op is inaccessible.
+     */
+    fun isBackgroundActivityStartGranted(): Boolean? {
+        if (!isXiaomiFamily()) return true
+        return try {
+            val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+            val method =
+                android.app.AppOpsManager::class.java.getMethod(
+                    "checkOpNoThrow",
+                    Int::class.javaPrimitiveType,
+                    Int::class.javaPrimitiveType,
+                    String::class.java,
+                )
+            val mode =
+                method.invoke(appOps, OP_BACKGROUND_START_ACTIVITY, context.applicationInfo.uid, context.packageName) as Int
+            // MODE_DEFAULT/MODE_FOREGROUND are effectively allowed on MIUI; only an
+            // explicit MODE_IGNORED/MODE_ERRORED denies showing over the lock screen.
+            when (mode) {
+                android.app.AppOpsManager.MODE_ALLOWED,
+                android.app.AppOpsManager.MODE_DEFAULT,
+                android.app.AppOpsManager.MODE_FOREGROUND,
+                -> true
+
+                else -> false
+            }
+        } catch (e: Throwable) {
+            Log.w(TAG, "Unable to read background-activity-start AppOp; reporting unknown: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * Opens the MIUI/HyperOS "Other permissions" editor where the
+     * "display pop-up windows while running in background" toggle lives.
+     * Falls back to app details settings, then to the common settings.
+     */
+    fun launchBackgroundActivityStartSettings() {
+        val pkg = context.packageName
+        val candidates =
+            listOf(
+                Intent()
+                    .setClassName("com.miui.securitycenter", "com.miui.permcenter.permissions.PermissionsEditorActivity")
+                    .putExtra("extra_pkgname", pkg),
+                Intent("miui.intent.action.APP_PERM_EDITOR").putExtra("extra_pkgname", pkg),
+                Intent(
+                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    android.net.Uri.fromParts("package", pkg, null),
+                ),
+            )
+        for (intent in candidates) {
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            try {
+                context.startActivity(intent)
+                return
+            } catch (e: Exception) {
+                Log.w(TAG, "Background-activity-start settings intent not available: ${e.message}")
+            }
+        }
+        launchSettings()
+    }
+
+    /**
+     * Best-effort check of the MIUI/HyperOS "show on lock screen" capability
+     * (OP_SHOW_WHEN_LOCKED). There is no public API for it, so this reads the
+     * hidden AppOps op via reflection.
+     *
+     * @return `true` granted (or the capability does not apply on this device),
+     *   `false` explicitly denied, `null` when the state cannot be determined
+     *   (op not readable on this build). Callers should treat `null` as unknown
+     *   rather than denied, to avoid prompting users who may already have granted
+     *   it on builds where the hidden op is inaccessible.
+     */
+    fun isShowWhenLockedGranted(): Boolean? {
+        if (!isXiaomiFamily()) return true
+        return try {
+            val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+            val method =
+                android.app.AppOpsManager::class.java.getMethod(
+                    "checkOpNoThrow",
+                    Int::class.javaPrimitiveType,
+                    Int::class.javaPrimitiveType,
+                    String::class.java,
+                )
+            val mode =
+                method.invoke(appOps, OP_SHOW_WHEN_LOCKED, context.applicationInfo.uid, context.packageName) as Int
+            // MODE_DEFAULT/MODE_FOREGROUND are effectively allowed on MIUI; only an
+            // explicit MODE_IGNORED/MODE_ERRORED denies showing over the lock screen.
+            when (mode) {
+                android.app.AppOpsManager.MODE_ALLOWED,
+                android.app.AppOpsManager.MODE_DEFAULT,
+                android.app.AppOpsManager.MODE_FOREGROUND,
+                -> true
+
+                else -> false
+            }
+        } catch (e: Throwable) {
+            Log.w(TAG, "Unable to read show-when-locked AppOp; reporting unknown: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * Opens the MIUI/HyperOS "Other permissions" editor where the
+     * "show on lock screen" toggle lives. Falls back to app details settings,
+     * then to the common settings.
+     */
+    fun launchShowWhenLockedSettings() {
+        val pkg = context.packageName
+        val candidates =
+            listOf(
+                Intent()
+                    .setClassName("com.miui.securitycenter", "com.miui.permcenter.permissions.PermissionsEditorActivity")
+                    .putExtra("extra_pkgname", pkg),
+                Intent("miui.intent.action.APP_PERM_EDITOR").putExtra("extra_pkgname", pkg),
+                Intent(
+                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    android.net.Uri.fromParts("package", pkg, null),
+                ),
+            )
+        for (intent in candidates) {
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            try {
+                context.startActivity(intent)
+                return
+            } catch (e: Exception) {
+                Log.w(TAG, "Show-when-locked settings intent not available: ${e.message}")
+            }
+        }
+        launchSettings()
     }
 
     fun hasCameraPermission(): Boolean {
@@ -64,5 +221,11 @@ class PermissionsHelper(
 
     companion object {
         private const val TAG = "PermissionsHelper"
+
+        // MIUI/HyperOS AppOps op for "display pop-up windows while running in background".
+        private const val OP_BACKGROUND_START_ACTIVITY = 10021
+
+        // MIUI/HyperOS AppOps op for "show on lock screen".
+        private const val OP_SHOW_WHEN_LOCKED = 10020
     }
 }

@@ -4,12 +4,10 @@ import android.Manifest
 import android.content.ComponentName
 import android.content.Context
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.telecom.PhoneAccount
 import android.telecom.PhoneAccountHandle
 import android.telecom.TelecomManager
-import android.telephony.PhoneNumberUtils
 import android.telephony.TelephonyManager
 import androidx.annotation.RequiresPermission
 import com.webtrit.callkeep.models.CallMetadata
@@ -18,17 +16,6 @@ import com.webtrit.callkeep.services.services.connection.PhoneConnectionService
 class TelephonyUtils(
     private val context: Context,
 ) {
-    fun isEmergencyNumber(number: String): Boolean {
-        val telephonyManager =
-            context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            telephonyManager.isEmergencyNumber(number)
-        } else {
-            PhoneNumberUtils.isEmergencyNumber(number)
-        }
-    }
-
     fun getTelecomManager(): TelecomManager = context.getSystemService(Context.TELECOM_SERVICE) as TelecomManager
 
     @RequiresPermission(Manifest.permission.CALL_PHONE)
@@ -104,6 +91,26 @@ class TelephonyUtils(
         private const val FEATURE_TELECOM = "android.software.telecom"
 
         private val logger = Log(TAG)
+
+        /**
+         * Builds the [Uri] to pass to [TelecomManager.placeCall] for an outgoing call to [number].
+         *
+         * Deliberately uses the sip: scheme with an explicit @host instead of tel:. Android's
+         * emergency-number matching (Telecom's internal isEmergencyNumber() re-check before a
+         * self-managed PhoneAccount is allowed to place a call) only ever applies to tel: scheme
+         * addresses whose scheme-specific-part looks like a bare phone number - a self-managed
+         * PhoneAccount can never place a Telecom-classified emergency call, so a legitimate PBX
+         * extension that happens to collide with the device/SIM-region emergency-number list
+         * (e.g. "112" or "911") would otherwise be silently blocked. This Uri is only used for
+         * Telecom bookkeeping; the real number keeps flowing unchanged via CallMetadata into
+         * onCreateOutgoingConnection, which never reads request.address.
+         *
+         * Digits in the number are additionally masked to letters, and any other character
+         * percent-encoded, by [OutgoingCallUri] - the single owner of this Uri format - so that
+         * OEM Telecom forks which run a scheme-agnostic emergency-number check on the placeCall
+         * Uri find no digit to match and stop diverting these calls to the system dialer.
+         */
+        fun buildOutgoingUri(number: String): Uri = OutgoingCallUri.of(number)
 
         /**
          * Returns true if the device supports the Android Telecom framework.

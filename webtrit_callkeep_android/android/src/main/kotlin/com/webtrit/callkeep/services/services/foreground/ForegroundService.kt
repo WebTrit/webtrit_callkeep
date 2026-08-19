@@ -32,7 +32,6 @@ import com.webtrit.callkeep.common.TelephonyUtils
 import com.webtrit.callkeep.managers.NotificationChannelManager
 import com.webtrit.callkeep.models.CallConnectionState
 import com.webtrit.callkeep.models.CallMetadata
-import com.webtrit.callkeep.models.EmergencyNumberException
 import com.webtrit.callkeep.models.FailedCallInfo
 import com.webtrit.callkeep.models.FailureMetadata
 import com.webtrit.callkeep.models.InvalidCallMetadataException
@@ -375,14 +374,10 @@ class ForegroundService :
                                 OutgoingFailureSource.CS_CALLBACK,
                                 failureMetaData.getThrowable(),
                             )
-                            val result =
+                            val result: Result<PCallRequestError?> =
                                 when (failureMetaData.outgoingFailureType) {
                                     OutgoingFailureType.UNENTITLED -> {
                                         Result.failure(failureMetaData.getThrowable())
-                                    }
-
-                                    OutgoingFailureType.EMERGENCY_NUMBER -> {
-                                        Result.success(PCallRequestError(PCallRequestErrorEnum.EMERGENCY_NUMBER))
                                     }
                                 }
                             finish(result)
@@ -420,10 +415,6 @@ class ForegroundService :
             @SuppressLint("MissingPermission")
             core.startOutgoingCall(metadata)
             logger.i("$logContext: startOutgoingCall dispatched")
-        } catch (e: EmergencyNumberException) {
-            logger.e("$logContext failed: emergency number", e)
-            saveFailedOutgoingCall(metadata, OutgoingFailureSource.DISPATCH_ERROR, e)
-            finish(Result.success(PCallRequestError(PCallRequestErrorEnum.EMERGENCY_NUMBER)))
         } catch (e: Exception) {
             logger.e("$logContext failed: ${e.javaClass.simpleName}: ${e.message}", e)
             saveFailedOutgoingCall(metadata, OutgoingFailureSource.DISPATCH_ERROR, e)

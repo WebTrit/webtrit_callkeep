@@ -61,6 +61,16 @@ class IncomingCallService :
     // could race to call handleRelease() for the same call.
     private var isReleased = false
 
+    // Set to true once the call has been answered and the notification has been stripped of its
+    // buttons. The answer is observable from two places — the notification action and the
+    // AnswerCall connection event — and either may arrive first, so the transition is done once
+    // and every later observation is a no-op.
+    private var areAnswerActionsDropped = false
+
+    // Set to true once this service has given its notification up to the active-call one.
+    // Guards against a repeat when ActiveCallService is restarted or re-delivered its intent.
+    private var hasYieldedNotification = false
+
     // Receives IC_RELEASE_WITH_ANSWER / IC_RELEASE_WITH_DECLINE from release().
     // Registered in onCreate() and unregistered in onDestroy() so it only lives while the
     // service is alive. If the service is not running the broadcast goes nowhere — no zombie
@@ -74,6 +84,7 @@ class IncomingCallService :
                 when (intent?.action) {
                     IncomingCallRelease.IC_RELEASE_WITH_DECLINE.name -> handleRelease(answered = false)
                     IncomingCallRelease.IC_RELEASE_WITH_ANSWER.name -> handleRelease(answered = true)
+                    IC_ACTIVE_CALL_VISIBLE -> yieldNotificationToActiveCall()
                 }
             }
         }
@@ -109,6 +120,9 @@ class IncomingCallService :
         // teardown.
         if (event == CallLifecycleEvent.AnswerCall) {
             val metadata = data?.let(CallMetadata::fromBundleOrNull) ?: return
+            // Covers answers that never touch our notification: the system call UI, a Bluetooth
+            // headset, a watch, Android Auto.
+            dropAnswerActions()
             performAnswerCall(metadata)
         }
     }
@@ -127,6 +141,7 @@ class IncomingCallService :
             IntentFilter().apply {
                 addAction(IncomingCallRelease.IC_RELEASE_WITH_DECLINE.name)
                 addAction(IncomingCallRelease.IC_RELEASE_WITH_ANSWER.name)
+                addAction(IC_ACTIVE_CALL_VISIBLE)
             },
             exported = false,
             permission = releaseBroadcastPermission(this),
@@ -200,8 +215,12 @@ class IncomingCallService :
 
             // Listen push notification actions (Only notify connection service)
             NotificationAction.Answer.action -> {
-                if (metadata != null) reportAnswerToConnectionService(metadata)
-                else {
+                if (metadata != null) {
+                    // The user has pressed answer: take the buttons away now rather than when the
+                    // service is torn down, which on a cold start is many seconds later.
+                    dropAnswerActions()
+                    reportAnswerToConnectionService(metadata)
+                } else {
                     Log.w(TAG, "onStartCommand: Answer action missing metadata")
                     START_NOT_STICKY
                 }
@@ -268,6 +287,43 @@ class IncomingCallService :
                 )
             }
         }
+    }
+
+    /**
+     * Replaces the ringing notification with the silent one once the call has been answered,
+     * so the answer and decline buttons are no longer offered for a call that is already taken.
+     *
+     * Runs at most once. Skipped entirely after [handleRelease], which performs the same
+     * transition on its way to stopping the service - repeating it there would cancel and
+     * repost a notification for a service that is already going away.
+     */
+    private fun dropAnswerActions() {
+        if (areAnswerActionsDropped || isReleased) return
+        areAnswerActionsDropped = true
+        Log.d(TAG, "dropAnswerActions: call answered, removing the notification actions")
+        incomingCallHandler.dropIncomingCallActions()
+    }
+
+    /**
+     * Gives up this service's notification once the active call has one of its own.
+     *
+     * Until that moment the notification has to stay: it is what holds this service in the
+     * foreground, and it is the only thing on screen describing the call. Once the active-call
+     * notification is up, keeping it means the user sees the same call twice for as long as the
+     * app takes to finish starting - four seconds on a fast phone, fourteen on a slow one.
+     *
+     * The service itself keeps running until the connection is handed over; it simply stops
+     * being a foreground service. That is safe here because the active-call service is now
+     * holding the process in the foreground.
+     *
+     * Only for answered calls. A declined call never gets an active-call notification, and a
+     * still-ringing one must keep its own.
+     */
+    private fun yieldNotificationToActiveCall() {
+        if (!areAnswerActionsDropped || isReleased || hasYieldedNotification) return
+        hasYieldedNotification = true
+        Log.d(TAG, "yieldNotificationToActiveCall: active call has its own notification, dropping ours")
+        incomingCallHandler.detachForegroundNotification()
     }
 
     private fun reportAnswerToConnectionService(metadata: CallMetadata): Int {
@@ -360,7 +416,11 @@ class IncomingCallService :
         // is not held on for the full WAKELOCK_TIMEOUT_MS during post-call teardown.
         // onDestroy() keeps the lock as a final safety net in case this path is skipped.
         releaseScreenWakeLock()
-        incomingCallHandler.releaseIncomingCallNotification()
+        // Already silent if the call was answered - repeating the transition would cancel and
+        // repost the same notification for a service that is on its way out.
+        if (!areAnswerActionsDropped) {
+            incomingCallHandler.releaseIncomingCallNotification()
+        }
         timeoutHandler.removeCallbacks(independentTimeoutRunnable)
         timeoutHandler.removeCallbacks(stopTimeoutRunnable)
         timeoutHandler.postDelayed(stopTimeoutRunnable, SERVICE_TIMEOUT_MS)
@@ -511,6 +571,19 @@ class IncomingCallService :
             context.sendInternalBroadcast(type.name, permission = releaseBroadcastPermission(context))
             Log.d(TAG, "Release action $type initiated via broadcast.")
         }
+
+        /**
+         * Tells a running incoming-call service that the active call is now showing a
+         * notification of its own, so this one is free to let go of hers.
+         *
+         * Sent the same way as the release actions: an internal broadcast reaches the service
+         * only while it is alive, and goes nowhere once it has stopped.
+         */
+        fun notifyActiveCallVisible(context: Context) {
+            context.sendInternalBroadcast(IC_ACTIVE_CALL_VISIBLE, permission = releaseBroadcastPermission(context))
+        }
+
+        internal const val IC_ACTIVE_CALL_VISIBLE = "IC_ACTIVE_CALL_VISIBLE"
     }
 }
 
