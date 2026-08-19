@@ -46,7 +46,7 @@ class NotificationManager {
         if (activeCalls.isNotEmpty()) {
             val activeCallsBundles = activeCalls.map { it.toBundle() }
             val intent = Intent(context, ActiveCallService::class.java)
-            intent.putExtra("metadata", ArrayList(activeCallsBundles))
+            intent.putExtra(ActiveCallService.EXTRA_CALLS_METADATA, ArrayList(activeCallsBundles))
             context.startService(intent)
         } else {
             context.stopService(Intent(context, ActiveCallService::class.java))
