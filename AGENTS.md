@@ -98,7 +98,10 @@ WebtritCallkeepPlatform (platform_interface)
 
 **Platform to Flutter** (via `CallkeepDelegate`): `performStartCall`, `performAnswerCall`, `performEndCall`,
 `performSetHeld`, `performSetMuted`, `performSendDTMF`, `performAudioDeviceSet`, `performAudioDevicesUpdate`,
-`didActivateAudioSession`, `didDeactivateAudioSession`, `didReset`, `continueStartCallIntent`, `didPushIncomingCall`.
+`didActivateAudioSession`, `didDeactivateAudioSession`, `didPushIncomingCall`.
+
+`didReset` and `continueStartCallIntent` are declared on `CallkeepDelegate` but are delivered by iOS only:
+the Android side has no source for either event, so they are absent from the Android pigeon surface.
 
 `perform*` methods return `Future<bool>` — return `true` on success, `false` on failure.
 Returning `false` causes the native side to abort the operation.
