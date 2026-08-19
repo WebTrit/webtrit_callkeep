@@ -23,9 +23,9 @@ import org.robolectric.annotation.Config
  * Unit tests for the [ActiveCallService] empty-metadata guard.
  *
  * A START_STICKY restart after a process kill delivers a null intent, leaving
- * [ActiveCallService] with no calls metadata. NotificationManager tracks active calls in its
- * own static list (reset by the process death), so nothing external ever stops such an
- * orphaned instance: without the guard its ongoing FGS notification stays in the shade,
+ * [ActiveCallService] with no calls metadata. The NotificationManager static list of active
+ * calls lives in the `:callkeep_core` process and died with it, so nothing external ever stops
+ * such an orphaned instance: without the guard its ongoing FGS notification stays in the shade,
  * cannot be swiped away, and the Hang up action has no visible effect.
  *
  * The guard: after satisfying the startForeground contract, an instance with no calls

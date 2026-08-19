@@ -113,35 +113,44 @@ service only ever sees the copy serialized into each start intent.
   whenever a call is added, removed or reordered: the service receives the full call list in
   the `metadata` intent extra and re-posts the notification.
 - Stopped by `NotificationManager` (`context.stopService`) when the call list becomes empty,
-  or by `NotificationManager.tearDown()`. The service never stops itself.
+  or by `NotificationManager.tearDown()`. The service stops itself only in the empty-restart
+  guard (see below); on every other path it is stopped from outside.
 - `onStartCommand` promotes to foreground with a type set computed per start: `phoneCall`
   always; `microphone` whenever the permission is granted (deliberately not conditioned on
   audio state - some OEM builds block microphone access with the screen off if the type is
-  missing); `camera` when a video call is present and the permission is granted.
+  missing); `camera` when a video call is present and the permission is granted. On
+  Android 14+ a background promotion (the sticky restart) rejects the `microphone` type with
+  `SecurityException`; the service falls back to the plain `phoneCall` type so the restart
+  does not crash-loop.
 - After posting the notification it broadcasts `IC_ACTIVE_CALL_VISIBLE` so
   `IncomingCallService` can give up its now-redundant notification (see above).
-- Returns `START_STICKY` for metadata starts (the Decline action returns
-  `START_NOT_STICKY`): if the process is killed mid-call, the OS restarts the service.
+- Returns `START_STICKY` for starts carrying calls (if the process is killed mid-call, the
+  OS restarts the service); the Decline action and the empty-restart guard return
+  `START_NOT_STICKY`.
 
 ### Notification action
 
 The notification offers one Hang up button. Its intent carries the first call's bundle in
-the extras, but the service **ignores the extras**: it hangs up the first call of its
-in-memory list via `CallkeepCore.startHungUpCall(call)`, falling back to
-`CallkeepCore.tearDownService()` when that list is empty - which is exactly the state after
-a sticky restart.
+the extras. The service hangs up the first call of its in-memory list via
+`CallkeepCore.startHungUpCall(call)`; when that list is empty (a fresh instance created by
+the tap after a process death), it falls back to the call bundle from the intent extras.
+With neither - Hang up tapped on a notification re-posted by a null-intent restart - it
+tears down the connection services, removes the notification and stops itself.
 
-### Known limitation: sticky restart with a null intent
+### Sticky restart with a null intent
 
 A `START_STICKY` restart after a main-process kill delivers a **null intent**, so the
-restarted instance builds an empty call list and re-posts a half-empty ongoing notification.
-Nothing in this process stops that orphaned instance: the service has no `stopSelf()`, the
-restart bypasses `NotificationManager` (whose call list lives in `:callkeep_core`) entirely,
-and the Hang up fallback (`tearDownService()`) tears down the connection services without
-stopping this one. If a live `PhoneConnection` still exists in `:callkeep_core`, its
-disconnect empties that list and stops the service cross-process; with no live connection
-left (or with `:callkeep_core` killed as well), the notification can only be removed by
-force-stopping the app.
+restarted instance builds an empty call list. The restart bypasses `NotificationManager`
+(whose call list lives in `:callkeep_core` and died with it), so nothing external would
+ever stop such an instance - historically its half-empty ongoing notification could only
+be removed by force-stopping the app. `onStartCommand` guards against this: after
+satisfying the `startForeground` contract it detects the empty list, logs a warning,
+tears down the connection services (a call leg may have survived in `:callkeep_core`,
+and this restart is the last signal the main process gets about it), removes the
+notification and stops itself with `stopSelf(startId)`, returning `START_NOT_STICKY`.
+The teardown runs before `stopForeground` so the command toward the connection services
+is still exempt from background-start restrictions; `stopSelf(startId)` (not a blanket
+`stopSelf()`) keeps a queued metadata start from the recovering app alive.
 
 ---
 

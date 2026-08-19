@@ -78,9 +78,10 @@ class ActiveCallService : Service() {
 
         if (callsMetadata.isEmpty()) {
             // Empty metadata means a START_STICKY restart delivered a null intent after the
-            // process was killed. NotificationManager tracks active calls in its own static
-            // list, so nothing will ever stop this orphaned instance - an ongoing notification
-            // left here would be undismissable until the user force-stops the app.
+            // process was killed. The NotificationManager static list of active calls lives in
+            // the :callkeep_core process and died with it, so nothing will ever stop this
+            // orphaned instance - an ongoing notification left here would be undismissable
+            // until the user force-stops the app.
             //
             // A call leg may have survived in :callkeep_core (Telecom keeps that process alive
             // via its own binding), and this restart is the last signal the main process gets
