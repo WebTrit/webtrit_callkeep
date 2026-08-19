@@ -36,7 +36,9 @@ import org.robolectric.annotation.Config
  * These tests PIN the current (broken) behavior so the defect is executable and a
  * regression in either direction is visible. The fix for this defect is expected to
  * flip the orphan-path expectations: the service must stop itself and remove the
- * notification instead of staying foreground.
+ * notification instead of staying foreground. The commented-out tests at the bottom
+ * of this class already state those fixed expectations; they fail on the current code
+ * and are enabled together with the fix.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [Build.VERSION_CODES.UPSIDE_DOWN_CAKE])
@@ -124,4 +126,47 @@ class ActiveCallServiceRestartTest {
         assertEquals(Service.START_STICKY, result)
         assertStaysForegroundWithNotification(service)
     }
+
+    // TODO: uncomment the tests below together with the restart-path fix and delete the
+    // three tests above that pin the defect. These state the FIXED behavior - an instance
+    // with no calls must remove its notification and stop itself instead of staying
+    // foreground - so on the current code they fail.
+    //
+    // private fun assertStoppedAndNotificationRemoved(service: ActiveCallService) {
+    //     val shadow = shadowOf(service)
+    //     assertTrue("service must stop itself", shadow.isStoppedBySelf)
+    //     assertTrue("foreground must be stopped", shadow.isForegroundStopped)
+    //     assertTrue("notification must be removed", shadow.notificationShouldRemoved)
+    // }
+    //
+    // @Test
+    // fun `null-intent restart stops self and removes the notification`() {
+    //     val service = buildService()
+    //
+    //     val result = service.onStartCommand(null, 0, 1)
+    //
+    //     assertEquals(Service.START_NOT_STICKY, result)
+    //     assertStoppedAndNotificationRemoved(service)
+    // }
+    //
+    // @Test
+    // fun `start with an explicitly empty metadata list stops self`() {
+    //     val service = buildService()
+    //
+    //     val result = service.onStartCommand(metadataIntent(), 0, 1)
+    //
+    //     assertEquals(Service.START_NOT_STICKY, result)
+    //     assertStoppedAndNotificationRemoved(service)
+    // }
+    //
+    // @Test
+    // fun `hang up with no known calls stops self and removes the notification`() {
+    //     val service = buildService()
+    //     service.onStartCommand(null, 0, 1)
+    //
+    //     val result = service.onStartCommand(declineIntent(), 0, 2)
+    //
+    //     assertEquals(Service.START_NOT_STICKY, result)
+    //     assertStoppedAndNotificationRemoved(service)
+    // }
 }
