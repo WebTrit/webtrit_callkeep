@@ -2100,8 +2100,6 @@ class PHostConnectionsApi {
 abstract class PDelegateFlutterApi {
   static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();
 
-  void continueStartCallIntent(PHandle handle, String? displayName, bool video);
-
   void didPushIncomingCall(PHandle handle, String? displayName, bool video, String callId, PIncomingCallError? error);
 
   Future<bool> performStartCall(String callId, PHandle handle, String? displayNameOrContactIdentifier, bool video);
@@ -2124,33 +2122,8 @@ abstract class PDelegateFlutterApi {
 
   void didDeactivateAudioSession();
 
-  void didReset();
-
   static void setUp(PDelegateFlutterApi? api, {BinaryMessenger? binaryMessenger, String messageChannelSuffix = '',}) {
     messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
-    {
-      final pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.continueStartCallIntent$messageChannelSuffix', pigeonChannelCodec,
-          binaryMessenger: binaryMessenger);
-      if (api == null) {
-        pigeonVar_channel.setMessageHandler(null);
-      } else {
-        pigeonVar_channel.setMessageHandler((Object? message) async {
-          final List<Object?> args = message! as List<Object?>;
-          final PHandle arg_handle = args[0]! as PHandle;
-          final String? arg_displayName = args[1] as String?;
-          final bool arg_video = args[2]! as bool;
-          try {
-            api.continueStartCallIntent(arg_handle, arg_displayName, arg_video);
-            return wrapResponse(empty: true);
-          } on PlatformException catch (e) {
-            return wrapResponse(error: e);
-          }          catch (e) {
-            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
-          }
-        });
-      }
-    }
     {
       final pigeonVar_channel = BasicMessageChannel<Object?>(
           'dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.didPushIncomingCall$messageChannelSuffix', pigeonChannelCodec,
@@ -2381,25 +2354,6 @@ abstract class PDelegateFlutterApi {
         pigeonVar_channel.setMessageHandler((Object? message) async {
           try {
             api.didDeactivateAudioSession();
-            return wrapResponse(empty: true);
-          } on PlatformException catch (e) {
-            return wrapResponse(error: e);
-          }          catch (e) {
-            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
-          }
-        });
-      }
-    }
-    {
-      final pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.webtrit_callkeep_android.PDelegateFlutterApi.didReset$messageChannelSuffix', pigeonChannelCodec,
-          binaryMessenger: binaryMessenger);
-      if (api == null) {
-        pigeonVar_channel.setMessageHandler(null);
-      } else {
-        pigeonVar_channel.setMessageHandler((Object? message) async {
-          try {
-            api.didReset();
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
