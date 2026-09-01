@@ -111,6 +111,25 @@
         <service android:name=".services.services.foreground.ForegroundService" />
 
         <!--
+          Invisible trampoline behind the Answer action of the incoming-call notification.
+          Answering has to end with the call screen on top, and an app is not allowed to start
+          an activity from a background service. An activity PendingIntent sent by the system
+          carries that permission with the user's tap, so the tap answers the call and opens the
+          screen in one step; the trampoline forwards the answer to IncomingCallService exactly
+          as the old service PendingIntent did. showWhenLocked lets the tap work from a
+          lock-screen notification; the empty taskAffinity keeps this ephemeral activity out of
+          the host app's task.
+        -->
+        <activity
+            android:name=".activities.AnswerCallTrampolineActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:showWhenLocked="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <!--
           Invisible trampoline behind the Answer action of the standalone incoming-call
           notification. Android 12+ forbids services launched from a notification action from
           starting activities (notification trampoline restriction), so the Answer PendingIntent

@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import io.flutter.Log
 
@@ -28,6 +29,10 @@ class PermissionsHelper(
     fun launchFullScreenIntentSettings() {
         val intent =
             Intent("android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENT").apply {
+                // The screen is per app and the system refuses to open it without
+                // being told which one; without this the caller falls back to the
+                // settings home page and the user has to find the toggle themselves.
+                data = Uri.fromParts("package", context.packageName, null)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
         context.startActivity(intent)
