@@ -391,11 +391,6 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
   final CallkeepDelegate _delegate;
 
   @override
-  void continueStartCallIntent(PHandle handle, String? displayName, bool video) {
-    _delegate.continueStartCallIntent(handle.toCallkeep(), displayName, video);
-  }
-
-  @override
   void didPushIncomingCall(PHandle handle, String? displayName, bool video, String callId, PIncomingCallError? error) {
     _delegate.didPushIncomingCall(handle.toCallkeep(), displayName, video, callId, error?.value.toCallkeep());
   }
@@ -464,11 +459,6 @@ class _CallkeepDelegateRelay implements PDelegateFlutterApi {
   @override
   void didDeactivateAudioSession() {
     _delegate.didDeactivateAudioSession();
-  }
-
-  @override
-  void didReset() {
-    _delegate.didReset();
   }
 }
 
