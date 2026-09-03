@@ -370,22 +370,10 @@ class PhoneConnection internal constructor(
      */
     private fun dispatchFallbackAudioState() {
         logger.w("dispatchFallbackAudioState: callAudioState not set by system — building device list from AudioManager")
-        val supportedDevices =
-            buildList {
-                if (audioManager.isSupportEarpiese()) add(AudioDevice(AudioDeviceType.EARPIECE))
-                if (audioManager.isSupportSpeakerphone()) add(AudioDevice(AudioDeviceType.SPEAKER))
-                if (audioManager.isWiredHeadsetConnected()) add(AudioDevice(AudioDeviceType.WIRED_HEADSET))
-                if (audioManager.isBluetoothConnected()) add(AudioDevice(AudioDeviceType.BLUETOOTH))
-            }
+        val supportedDevices = audioManager.availableDevices()
         dispatcher(CallMediaEvent.AudioDevicesUpdate, metadata.copy(audioDevices = supportedDevices))
 
-        val currentDevice =
-            when {
-                audioManager.isBluetoothConnected() -> AudioDevice(AudioDeviceType.BLUETOOTH)
-                audioManager.isWiredHeadsetConnected() -> AudioDevice(AudioDeviceType.WIRED_HEADSET)
-                audioManager.isSpeakerphoneOn() -> AudioDevice(AudioDeviceType.SPEAKER)
-                else -> AudioDevice(AudioDeviceType.EARPIECE)
-            }
+        val currentDevice = audioManager.currentDevice()
         dispatcher(CallMediaEvent.AudioDeviceSet, metadata.copy(audioDevice = currentDevice))
     }
 

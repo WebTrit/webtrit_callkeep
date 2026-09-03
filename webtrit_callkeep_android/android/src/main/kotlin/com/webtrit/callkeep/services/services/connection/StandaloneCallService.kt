@@ -51,7 +51,7 @@ import com.webtrit.callkeep.managers.AudioManager as CallkeepAudioManager
 class StandaloneCallService : Service() {
     private val core get() = CallkeepCore.instance
     private val audioManager by lazy { getSystemService(AUDIO_SERVICE) as AudioManager }
-    private val ringtoneManager by lazy { CallkeepAudioManager(applicationContext) }
+    private val callkeepAudio by lazy { CallkeepAudioManager(applicationContext) }
 
     // Tracks whether startForeground() has been called in this service instance.
     // startForeground() is deferred until an actual call is handled so that lifecycle-only
@@ -216,8 +216,8 @@ class StandaloneCallService : Service() {
 
     override fun onDestroy() {
         Log.i(TAG, "onDestroy")
-        ringtoneManager.stopRingtone()
-        ringtoneManager.stopCallWaitingTone()
+        callkeepAudio.stopRingtone()
+        callkeepAudio.stopCallWaitingTone()
         isRunning = false
         isForeground = false
         stopForeground(STOP_FOREGROUND_REMOVE)
@@ -319,9 +319,9 @@ class StandaloneCallService : Service() {
         answeredCallIds.remove(metadata.callId)
         if (answeredCallIds.isNotEmpty()) {
             Log.d(TAG, "handleIncomingCall: active call detected — playing call-waiting tone for callId=${metadata.callId}")
-            ringtoneManager.startCallWaitingTone()
+            callkeepAudio.startCallWaitingTone()
         } else {
-            ringtoneManager.startRingtone(metadata.ringtonePath)
+            callkeepAudio.startRingtone(metadata.ringtonePath)
         }
 
         // Replace the placeholder foreground notification (posted by promoteToForeground) with
@@ -394,8 +394,8 @@ class StandaloneCallService : Service() {
 
     private fun handleEstablishCall(metadata: CallMetadata) {
         Log.i(TAG, "handleEstablishCall: callId=${metadata.callId}")
-        ringtoneManager.stopRingtone()
-        ringtoneManager.stopCallWaitingTone()
+        callkeepAudio.stopRingtone()
+        callkeepAudio.stopCallWaitingTone()
         val full = (callMetadataMap[metadata.callId] ?: metadata).mergeWith(metadata)
         callMetadataMap[metadata.callId] = full.copy(acceptedTime = System.currentTimeMillis())
         answeredCallIds.add(metadata.callId)
@@ -421,8 +421,8 @@ class StandaloneCallService : Service() {
 
     private fun handleAnswerCall(metadata: CallMetadata) {
         Log.i(TAG, "handleAnswerCall: callId=${metadata.callId}")
-        ringtoneManager.stopRingtone()
-        ringtoneManager.stopCallWaitingTone()
+        callkeepAudio.stopRingtone()
+        callkeepAudio.stopCallWaitingTone()
         val full = (callMetadataMap[metadata.callId] ?: metadata).mergeWith(metadata)
         callMetadataMap[metadata.callId] = full.copy(acceptedTime = System.currentTimeMillis())
         answeredCallIds.add(metadata.callId)
@@ -458,7 +458,7 @@ class StandaloneCallService : Service() {
     private fun promoteRemainingRingingToCallWaitingTone(answeredCallId: String) {
         if (hasOtherRingingCall(ringingIncomingCallIds, answeredCallIds, answeredCallId)) {
             Log.d(TAG, "promoteRemainingRingingToCallWaitingTone: another call still ringing")
-            ringtoneManager.startCallWaitingTone()
+            callkeepAudio.startCallWaitingTone()
         }
     }
 
@@ -493,8 +493,8 @@ class StandaloneCallService : Service() {
             Log.d(TAG, "stopRingtoneUnlessOtherCallRinging: keeping tone, another call still ringing")
             return
         }
-        ringtoneManager.stopRingtone()
-        ringtoneManager.stopCallWaitingTone()
+        callkeepAudio.stopRingtone()
+        callkeepAudio.stopCallWaitingTone()
     }
 
     private fun handleUpdateCall(metadata: CallMetadata) {
@@ -533,8 +533,8 @@ class StandaloneCallService : Service() {
 
     private fun handleTearDownConnections() {
         Log.i(TAG, "handleTearDownConnections: cleaning up ${callMetadataMap.size} calls")
-        ringtoneManager.stopRingtone()
-        ringtoneManager.stopCallWaitingTone()
+        callkeepAudio.stopRingtone()
+        callkeepAudio.stopCallWaitingTone()
         callMetadataMap.keys.toList().forEach { callId ->
             val meta = callMetadataMap[callId] ?: CallMetadata(callId = callId)
             core.notifyConnectionEvent(CallLifecycleEvent.HungUp, meta.toBundle())
@@ -555,8 +555,8 @@ class StandaloneCallService : Service() {
         answeredCallIds.clear()
         pendingAnswers.clear()
         deactivateAudio(force = true)
-        ringtoneManager.stopRingtone()
-        ringtoneManager.stopCallWaitingTone()
+        callkeepAudio.stopRingtone()
+        callkeepAudio.stopCallWaitingTone()
     }
 
     /**
@@ -589,9 +589,8 @@ class StandaloneCallService : Service() {
     private fun handleSpeaker(metadata: CallMetadata) {
         val speaker = metadata.hasSpeaker ?: return
         Log.i(TAG, "handleSpeaker: callId=${metadata.callId}, speaker=$speaker")
-        @Suppress("DEPRECATION")
-        audioManager.isSpeakerphoneOn = speaker
         val deviceType = if (speaker) AudioDeviceType.SPEAKER else AudioDeviceType.EARPIECE
+        callkeepAudio.routeTo(deviceType)
         val updated =
             (callMetadataMap[metadata.callId] ?: metadata).copy(
                 hasSpeaker = speaker,
@@ -605,8 +604,7 @@ class StandaloneCallService : Service() {
         val device = metadata.audioDevice ?: return
         Log.i(TAG, "handleAudioDeviceSet: callId=${metadata.callId}, device=${device.type}")
         val isSpeaker = device.type == AudioDeviceType.SPEAKER
-        @Suppress("DEPRECATION")
-        audioManager.isSpeakerphoneOn = isSpeaker
+        callkeepAudio.routeTo(device.type)
         val updated =
             (callMetadataMap[metadata.callId] ?: metadata).copy(
                 hasSpeaker = isSpeaker,
@@ -643,9 +641,8 @@ class StandaloneCallService : Service() {
 
     private fun deactivateAudio(force: Boolean = false) {
         if (force || callMetadataMap.isEmpty()) {
+            callkeepAudio.releaseRoute()
             audioManager.mode = AudioManager.MODE_NORMAL
-            @Suppress("DEPRECATION")
-            audioManager.isSpeakerphoneOn = false
             audioManager.isMicrophoneMute = false
         }
     }
@@ -654,18 +651,15 @@ class StandaloneCallService : Service() {
      * Fires [CallMediaEvent.AudioDevicesUpdate] and [CallMediaEvent.AudioDeviceSet] with
      * the available and currently selected audio device for [callId].
      *
-     * Reported devices are limited to earpiece and speaker. Bluetooth and wired headset
-     * detection requires an [android.media.AudioDeviceCallback] listener which can be
-     * added in a follow-up when needed.
+     * The device list is read from the platform on every call, so a headset that was already
+     * connected when the call started is offered. One connected mid-call is not picked up until
+     * this runs again - that needs an [android.media.AudioDeviceCallback] listener and is left
+     * for a follow-up.
      */
     private fun fireInitialAudioState(callId: String) {
         val metadata = callMetadataMap[callId] ?: return
-        val availableDevices =
-            listOf(
-                AudioDevice(AudioDeviceType.EARPIECE),
-                AudioDevice(AudioDeviceType.SPEAKER),
-            )
-        val currentDevice = metadata.audioDevice ?: AudioDevice(AudioDeviceType.EARPIECE)
+        val availableDevices = callkeepAudio.availableDevices()
+        val currentDevice = metadata.audioDevice ?: callkeepAudio.currentDevice()
         val updated = metadata.copy(audioDevices = availableDevices, audioDevice = currentDevice)
         callMetadataMap[callId] = updated
         core.notifyConnectionEvent(CallMediaEvent.AudioDevicesUpdate, updated.toBundle())

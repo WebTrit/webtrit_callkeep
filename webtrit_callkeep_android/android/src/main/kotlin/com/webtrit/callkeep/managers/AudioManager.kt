@@ -18,6 +18,8 @@ import android.provider.Settings
 import com.webtrit.callkeep.common.AssetCacheManager
 import com.webtrit.callkeep.common.Log
 import com.webtrit.callkeep.common.setLoopingCompat
+import com.webtrit.callkeep.models.AudioDevice
+import com.webtrit.callkeep.models.AudioDeviceType
 
 class AudioManager(
     val context: Context,
@@ -279,10 +281,152 @@ class AudioManager(
         callWaitingToneGenerator = null
     }
 
+    /**
+     * The audio devices currently usable for a call, in the order the UI presents them.
+     *
+     * Queried from the platform on every call, so a headset that was already connected when
+     * the call started is included. A device connected mid-call is not picked up until this
+     * is queried again.
+     */
+    fun availableDevices(): List<AudioDevice> =
+        buildAvailableDevices(
+            hasEarpiece = isSupportEarpiese(),
+            hasSpeaker = isSupportSpeakerphone(),
+            hasWiredHeadset = isWiredHeadsetConnected(),
+            hasBluetooth = isBluetoothConnected(),
+        )
+
+    /**
+     * The device audio is currently going to, derived from what is connected and from the
+     * speakerphone flag.
+     */
+    fun currentDevice(): AudioDevice =
+        selectCurrentDevice(
+            hasBluetooth = isBluetoothConnected(),
+            hasWiredHeadset = isWiredHeadsetConnected(),
+            isSpeakerOn = isSpeakerphoneOn(),
+        )
+
+    /**
+     * Routes call audio to [type] without a Telecom framework underneath.
+     *
+     * This is NOT the same as the routing used on the Telecom path
+     * ([com.webtrit.callkeep.services.services.connection.PhoneConnection]), and the difference
+     * is deliberate: there, Telecom owns the Bluetooth link and starting SCO here as well would
+     * fight it. On the standalone path nothing owns it, so below API 31 - where
+     * [AudioManager.setCommunicationDevice] does not exist - the SCO link has to be started and
+     * stopped explicitly, or selecting a headset silently does nothing.
+     */
+    fun routeTo(type: AudioDeviceType) {
+        val mode = audioManager.mode
+        Log.d(TAG, "routeTo: type=$type, audioMode=$mode")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && mode == AudioManager.MODE_IN_COMMUNICATION) {
+            val targetType = communicationDeviceType(type)
+            if (targetType == null) {
+                Log.w(TAG, "routeTo: unsupported type=$type, skipping")
+                return
+            }
+            val deviceInfo =
+                audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).firstOrNull { it.type == targetType }
+            if (deviceInfo != null && audioManager.setCommunicationDevice(deviceInfo)) {
+                Log.d(TAG, "routeTo: setCommunicationDevice succeeded for type=$type")
+                return
+            }
+            Log.w(TAG, "routeTo: setCommunicationDevice failed for type=$type, falling back")
+        }
+
+        routeLegacy(type)
+    }
+
+    /**
+     * Pre-API-31 routing: the Bluetooth link is a separate connection that has to be opened and
+     * closed by hand, and everything else is the speakerphone flag.
+     */
+    @Suppress("DEPRECATION")
+    private fun routeLegacy(type: AudioDeviceType) {
+        if (type == AudioDeviceType.BLUETOOTH) {
+            audioManager.isSpeakerphoneOn = false
+            audioManager.startBluetoothSco()
+            audioManager.isBluetoothScoOn = true
+            Log.d(TAG, "routeLegacy: bluetooth SCO started")
+            return
+        }
+        if (audioManager.isBluetoothScoOn) {
+            audioManager.isBluetoothScoOn = false
+            audioManager.stopBluetoothSco()
+            Log.d(TAG, "routeLegacy: bluetooth SCO stopped")
+        }
+        audioManager.isSpeakerphoneOn = (type == AudioDeviceType.SPEAKER)
+        Log.d(TAG, "routeLegacy: setSpeakerphoneOn=${type == AudioDeviceType.SPEAKER}")
+    }
+
+    /**
+     * Gives the audio route back when the call ends.
+     *
+     * The Bluetooth link matters here: [routeLegacy] opens it by hand below API 31, and nothing
+     * else closes it, so without this a call taken on a headset leaves the link open afterwards.
+     */
+    fun releaseRoute() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            audioManager.clearCommunicationDevice()
+        }
+        @Suppress("DEPRECATION")
+        if (audioManager.isBluetoothScoOn) {
+            audioManager.isBluetoothScoOn = false
+            audioManager.stopBluetoothSco()
+        }
+        @Suppress("DEPRECATION")
+        audioManager.isSpeakerphoneOn = false
+        Log.d(TAG, "releaseRoute: audio route released")
+    }
+
+    private fun communicationDeviceType(type: AudioDeviceType): Int? =
+        when (type) {
+            AudioDeviceType.SPEAKER -> AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+            AudioDeviceType.EARPIECE -> AudioDeviceInfo.TYPE_BUILTIN_EARPIECE
+            AudioDeviceType.BLUETOOTH -> AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+            AudioDeviceType.WIRED_HEADSET -> AudioDeviceInfo.TYPE_WIRED_HEADSET
+            else -> null
+        }
+
     companion object {
         private const val TAG = "AudioManager"
 
         private val VIBRATION_PATTERN = longArrayOf(0, 1000, 1000)
         private val VIBRATION_AMPLITUDES = intArrayOf(0, 255, 0)
+
+        /**
+         * Builds the device list from what is connected. Order is what the UI shows, so the two
+         * built-in outputs come first and the headsets after them.
+         */
+        fun buildAvailableDevices(
+            hasEarpiece: Boolean,
+            hasSpeaker: Boolean,
+            hasWiredHeadset: Boolean,
+            hasBluetooth: Boolean,
+        ): List<AudioDevice> =
+            buildList {
+                if (hasEarpiece) add(AudioDevice(AudioDeviceType.EARPIECE))
+                if (hasSpeaker) add(AudioDevice(AudioDeviceType.SPEAKER))
+                if (hasWiredHeadset) add(AudioDevice(AudioDeviceType.WIRED_HEADSET))
+                if (hasBluetooth) add(AudioDevice(AudioDeviceType.BLUETOOTH))
+            }
+
+        /**
+         * Picks the device audio is going to. A connected headset wins over the built-in outputs,
+         * and Bluetooth wins over a wired one, which is the order the platform itself prefers.
+         */
+        fun selectCurrentDevice(
+            hasBluetooth: Boolean,
+            hasWiredHeadset: Boolean,
+            isSpeakerOn: Boolean,
+        ): AudioDevice =
+            when {
+                hasBluetooth -> AudioDevice(AudioDeviceType.BLUETOOTH)
+                hasWiredHeadset -> AudioDevice(AudioDeviceType.WIRED_HEADSET)
+                isSpeakerOn -> AudioDevice(AudioDeviceType.SPEAKER)
+                else -> AudioDevice(AudioDeviceType.EARPIECE)
+            }
     }
 }
