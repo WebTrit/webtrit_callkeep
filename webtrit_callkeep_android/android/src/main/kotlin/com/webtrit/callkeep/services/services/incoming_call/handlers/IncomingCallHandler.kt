@@ -1,7 +1,6 @@
 package com.webtrit.callkeep.services.services.incoming_call.handlers
 
 import android.annotation.SuppressLint
-import android.app.Notification
 import android.app.Service
 import android.content.pm.ServiceInfo
 import android.os.Build
@@ -29,16 +28,22 @@ class IncomingCallHandler(
     private val service: Service,
     private val notificationBuilder: IncomingCallNotificationBuilder,
     private val isolateInitializer: IsolateInitializer,
+    notifierOverride: NotificationManagerCompat? = null,
 ) {
     private var lastMetadata: CallMetadata? = null
-    private val notifier by lazy { NotificationManagerCompat.from(service) }
+
+    // Defaults to the system notifier for the service; tests inject their own. Lazy so the
+    // default is not created (and the service not touched) until a notification is posted.
+    private val notifier: NotificationManagerCompat by lazy {
+        notifierOverride ?: NotificationManagerCompat.from(service)
+    }
 
     // Derived from the current call's ID so each incoming call gets a unique notification ID.
     // A unique ID guarantees the system treats the notification as new — not an update to a
     // previous one — which is required for fullScreenIntent to fire on Android 14+.
     // lastMetadata is always non-null when this property is read: showNotification() sets it
-    // before accessing currentNotificationId, and all other callers are guarded by the
-    // lastMetadata != null check in releaseIncomingCallNotification().
+    // before accessing currentNotificationId, and every other caller is guarded by its own
+    // lastMetadata != null check before reaching it.
     private val currentNotificationId: Int
         get() = IncomingCallNotificationBuilder.notificationId(lastMetadata!!.callId)
 
@@ -60,6 +65,10 @@ class IncomingCallHandler(
      * Replaces the ringing notification with a silent one to transition out of the ringing phase.
      * The silent notification keeps the FGS alive while the signaling layer completes teardown
      * (decline path) or while the active-call session takes over (answer path).
+     *
+     * Does nothing when the metadata is missing - reading the notification id or rebuilding the
+     * notification without it would throw, and that happens when the service instance never
+     * showed a notification of its own.
      */
     @SuppressLint("MissingPermission")
     fun releaseIncomingCallNotification() {
@@ -67,24 +76,17 @@ class IncomingCallHandler(
             Log.w(TAG, "releaseIncomingCallNotification: no metadata (service not initialized), skipping")
             return
         }
-        muteIncomingCallNotification()
+        Log.d(TAG, "releaseIncomingCallNotification: rewriting notification $currentNotificationId to silent")
+        showSilentNotification()
     }
 
     /**
      * Drops the answer/decline buttons as soon as the call has been answered.
      *
-     * The notification is not cancelled, it is rewritten in place: same id, same call, but the
-     * silent variant, which offers nothing to press. Until now the buttons stayed up until the
-     * whole incoming-call service was torn down, which on a cold start happens only once the
-     * app has finished starting - long enough for the user to press answer a second time on a
-     * call that is already answered.
-     *
-     * Deliberately does NOT go through [muteIncomingCallNotification]. That one detaches the
-     * service from its notification, cancels it and promotes the service again; calling it
-     * while the service has to keep running is rejected by the system with
-     * `CannotPostForegroundServiceNotificationException` ("Bad notification for
-     * startForeground") because the id it re-promotes with has just been cancelled. Updating
-     * the notification the service is already showing keeps it in the foreground throughout.
+     * The notification is rewritten in place to its silent variant: same id, same call, but with
+     * nothing to press. Until now the buttons stayed up until the whole incoming-call service was
+     * torn down, which on a cold start happens only once the app has finished starting - long
+     * enough for the user to press answer a second time on a call that is already answered.
      *
      * Does nothing when the metadata is missing - reading the notification id or rebuilding the
      * notification without it would throw, and that happens when the service instance never
@@ -97,7 +99,7 @@ class IncomingCallHandler(
             return
         }
         Log.d(TAG, "dropIncomingCallActions: rewriting notification $currentNotificationId without actions")
-        notifier.notify(currentNotificationId, notificationBuilder.buildSilent())
+        showSilentNotification()
     }
 
     /**
@@ -139,15 +141,19 @@ class IncomingCallHandler(
     }
 
     /**
-     * Transitions the foreground Service to a silent call notification
-     * (keeps the service in foreground, but cancels the loud ringing one).
+     * Rewrites the current call notification in place to its silent variant: same id, same
+     * foreground-service association, no ringing style and no action buttons.
+     *
+     * Updating the live notification with [NotificationManagerCompat.notify] keeps the service
+     * in the foreground throughout. The earlier approach detached the service from its
+     * notification and re-promoted it (stopForeground(DETACH) + cancel + startForeground); that
+     * momentarily left a CallStyle notification standing without a foreground service, which
+     * Android 14+ rejects with CannotPostForegroundServiceNotificationException and terminates
+     * the process - taking any call still ringing at that moment down with it.
      */
     @SuppressLint("MissingPermission")
-    fun muteIncomingCallNotification() {
-        Log.d(TAG, "muteIncomingCallNotification: entry callId=${lastMetadata?.callId}")
-        stopForegroundDetach()
-        notifier.cancel(currentNotificationId)
-        startForegroundCompat(notificationBuilder.buildSilent())
+    private fun showSilentNotification() {
+        notifier.notify(currentNotificationId, notificationBuilder.buildSilent())
     }
 
     private fun showNotification(metadata: CallMetadata) {
@@ -192,36 +198,6 @@ class IncomingCallHandler(
         }
         Log.d(TAG, "Launching isolate for callId: ${lastMetadata?.callId}")
         isolateInitializer.start()
-    }
-
-    /**
-     * Starts foreground respecting SDK level to avoid deprecated API warnings.
-     */
-    private fun startForegroundCompat(notification: Notification) {
-        Log.d(TAG, "startForeground [silent]: id=$currentNotificationId SDK=${Build.VERSION.SDK_INT}")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            service.startForeground(
-                currentNotificationId,
-                notification,
-                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL,
-            )
-        } else {
-            service.startForeground(currentNotificationId, notification)
-        }
-        Log.d(TAG, "startForeground [silent]: completed")
-    }
-
-    /**
-     * Stops foreground without fully removing the Service (detach mode on Q+).
-     * Keeps the Service running while detaching the old notification.
-     */
-    private fun stopForegroundDetach() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            service.stopForeground(Service.STOP_FOREGROUND_DETACH)
-        } else {
-            @Suppress("DEPRECATION")
-            service.stopForeground(false)
-        }
     }
 
     companion object {
