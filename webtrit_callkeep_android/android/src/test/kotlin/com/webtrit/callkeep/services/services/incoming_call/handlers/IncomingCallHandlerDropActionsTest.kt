@@ -75,11 +75,32 @@ class IncomingCallHandlerDropActionsTest {
         handler.releaseIncomingCallNotification()
 
         // The release path updates the notification in place and must never touch the service's
-        // foreground state. Detaching and re-promoting it (stopForeground(DETACH) + cancel +
-        // startForeground) left a CallStyle notification standing without a foreground service,
-        // which Android 14+ rejects and the process is killed.
+        // foreground state or cancel the notification. Detaching and re-promoting it
+        // (stopForeground(DETACH) + cancel + startForeground) left a CallStyle notification
+        // standing without a foreground service, which Android 14+ rejects and the process is killed.
         val notificationId = IncomingCallNotificationBuilder.notificationId("call-1")
         verify(notifier).notify(eq(notificationId), any(Notification::class.java))
+        verify(notifier, never()).cancel(anyInt())
+        verify(service, never()).stopForeground(anyInt())
+        verify(service, never()).startForeground(anyInt(), any(Notification::class.java))
+        verify(service, never()).startForeground(anyInt(), any(Notification::class.java), anyInt())
+    }
+
+    @Test
+    fun `dropping the actions after a call was shown updates the notification in place`() {
+        `when`(notificationBuilder.build()).thenReturn(mock(Notification::class.java))
+        `when`(notificationBuilder.buildSilent()).thenReturn(mock(Notification::class.java))
+
+        handler.handle(CallMetadata(callId = "call-1", displayName = "Caller"))
+        clearInvocations(service)
+
+        handler.dropIncomingCallActions()
+
+        // Answer path funnels through the same in-place update: silent notification posted, the
+        // foreground service left untouched, nothing cancelled.
+        val notificationId = IncomingCallNotificationBuilder.notificationId("call-1")
+        verify(notifier).notify(eq(notificationId), any(Notification::class.java))
+        verify(notifier, never()).cancel(anyInt())
         verify(service, never()).stopForeground(anyInt())
         verify(service, never()).startForeground(anyInt(), any(Notification::class.java))
         verify(service, never()).startForeground(anyInt(), any(Notification::class.java), anyInt())

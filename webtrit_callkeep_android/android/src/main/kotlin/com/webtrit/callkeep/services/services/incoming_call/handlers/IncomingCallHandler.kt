@@ -42,8 +42,8 @@ class IncomingCallHandler(
     // A unique ID guarantees the system treats the notification as new — not an update to a
     // previous one — which is required for fullScreenIntent to fire on Android 14+.
     // lastMetadata is always non-null when this property is read: showNotification() sets it
-    // before accessing currentNotificationId, and all other callers are guarded by the
-    // lastMetadata != null check in releaseIncomingCallNotification().
+    // before accessing currentNotificationId, and every other caller is guarded by its own
+    // lastMetadata != null check before reaching it.
     private val currentNotificationId: Int
         get() = IncomingCallNotificationBuilder.notificationId(lastMetadata!!.callId)
 
