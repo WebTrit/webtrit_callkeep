@@ -3,7 +3,14 @@ import 'package:webtrit_callkeep_platform_interface/src/models/models.dart';
 /// Common callkeep delegate
 /// Used to handle callkeep from the platform side
 abstract class CallkeepDelegate {
-  /// Confirmation for outgoing call
+  /// Confirmation for outgoing call.
+  ///
+  /// iOS only. The system delivers `INStartAudioCallIntent`, `INStartVideoCallIntent`
+  /// or `INStartCallIntent` to CallKit applications through `continueUserActivity`.
+  /// Android has no equivalent: self-managed calls are not written to the system
+  /// call log by default, and the platform entry points (`ACTION_CALL`, App Actions)
+  /// arrive as activity intents, so a redial reaches the application as an ordinary
+  /// outgoing call instead of this callback. Never invoked on Android.
   void continueStartCallIntent(CallkeepHandle handle, String? displayName, bool video);
 
   /// Confirmation for incoming call processing
@@ -50,6 +57,10 @@ abstract class CallkeepDelegate {
   /// Audio session deactivated
   void didDeactivateAudioSession();
 
-  /// reset
+  /// Reset.
+  ///
+  /// iOS only. Reported by CallKit when the provider resets and every call it
+  /// tracked is gone. Android's Telecom framework has no provider-level reset,
+  /// so this callback is never invoked there.
   void didReset();
 }

@@ -427,9 +427,6 @@ abstract class PHostConnectionsApi {
 
 @FlutterApi()
 abstract class PDelegateFlutterApi {
-  @ObjCSelector('continueStartCallIntentHandle:displayName:video:')
-  void continueStartCallIntent(PHandle handle, String? displayName, bool video);
-
   @ObjCSelector('didPushIncomingCallHandle:displayName:video:id:error:')
   void didPushIncomingCall(PHandle handle, String? displayName, bool video, String callId, PIncomingCallError? error);
 
@@ -470,9 +467,6 @@ abstract class PDelegateFlutterApi {
 
   @ObjCSelector('didDeactivateAudioSession')
   void didDeactivateAudioSession();
-
-  @ObjCSelector('didReset')
-  void didReset();
 }
 
 @FlutterApi()

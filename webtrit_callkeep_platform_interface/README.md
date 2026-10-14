@@ -70,14 +70,14 @@ CallkeepHandle.sip('user@example.com')
 | `performAnswerCall` | User answered from system UI |
 | `performEndCall` | User ended from system UI or system terminated the call |
 | `performStartCall` | User initiated outgoing call from system UI |
-| `continueStartCallIntent` | System confirmed outgoing call intent |
+| `continueStartCallIntent` | System confirmed outgoing call intent (iOS only) |
 | `performSetHeld` | Hold toggled from system UI |
 | `performSetMuted` | Mute toggled from system UI |
 | `performSendDTMF` | DTMF sent from system dial pad |
 | `performSetSpeaker` | Speaker toggled from system UI |
 | `didActivateAudioSession` | System activated the audio session |
 | `didDeactivateAudioSession` | System deactivated the audio session |
-| `didReset` | System reset all call state |
+| `didReset` | System reset all call state (iOS only) |
 
 `perform*` methods return `Future<bool>`. Return `false` to signal failure — the platform
 terminates the call.

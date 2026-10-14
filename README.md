@@ -150,14 +150,14 @@ Implement `CallkeepDelegate` and pass it to `setDelegate` to receive platform ev
 | `performAnswerCall(callId)` | User answered from system UI |
 | `performEndCall(callId)` | User ended from system UI or system terminated the call |
 | `performStartCall(callId, handle, ...)` | User initiated outgoing call from system UI (e.g. Siri) |
-| `continueStartCallIntent(callId, handle, ...)` | System confirmed outgoing call intent |
+| `continueStartCallIntent(callId, handle, ...)` | System confirmed outgoing call intent (iOS only) |
 | `performSetHeld(callId, onHold)` | User toggled hold from system UI |
 | `performSetMuted(callId, muted)` | User toggled mute from system UI |
 | `performSendDTMF(callId, digit)` | User sent DTMF from system dial pad |
 | `performSetSpeaker(callId, on)` | User toggled speaker from system UI |
 | `didActivateAudioSession()` | System activated the audio session |
 | `didDeactivateAudioSession()` | System deactivated the audio session |
-| `didReset()` | System reset all call state |
+| `didReset()` | System reset all call state (iOS only) |
 
 `perform*` methods return `Future<bool>`. Return `false` to signal failure — the platform will
 terminate the call.

@@ -36,26 +36,63 @@ class ActiveCallService : Service() {
     ): Int {
         // Handle the hangup action from the notification
         if (NotificationAction.Decline.action == intent?.action) {
-            hungUpCall()
+            hungUpCall(intent.extras?.let(CallMetadata::fromBundleOrNull), startId)
 
             return START_NOT_STICKY
         }
 
         callsMetadata =
             intent
-                ?.parcelableArrayList<Bundle>("metadata")
+                ?.parcelableArrayList<Bundle>(EXTRA_CALLS_METADATA)
                 ?.map { CallMetadata.fromBundle(it) }
                 ?.toMutableList() ?: mutableListOf()
 
         activeCallNotificationBuilder.setCallsMetaData(callsMetadata)
         val notification = activeCallNotificationBuilder.build()
 
-        startForegroundServiceCompat(
-            this,
-            ActiveCallNotificationBuilder.NOTIFICATION_ID,
-            notification,
-            getForegroundServiceTypes(callsMetadata),
-        )
+        // startForeground must be called even when there are no calls to show: the service may
+        // have been (re)started as foreground and skipping the promotion would kill the process
+        // with ForegroundServiceDidNotStartInTimeException.
+        //
+        // On Android 14+ the MICROPHONE type is rejected with SecurityException when the
+        // promotion happens from the background - which is exactly the START_STICKY restart
+        // after a process kill. Fall back to the phone-call type (not while-in-use restricted)
+        // so the promotion, and the empty-metadata guard below, run instead of crash-looping
+        // the restart.
+        try {
+            startForegroundServiceCompat(
+                this,
+                ActiveCallNotificationBuilder.NOTIFICATION_ID,
+                notification,
+                getForegroundServiceTypes(callsMetadata),
+            )
+        } catch (e: SecurityException) {
+            Log.w(TAG, "onStartCommand: typed promotion rejected, falling back to phone-call type", e)
+            startForegroundServiceCompat(
+                this,
+                ActiveCallNotificationBuilder.NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL,
+            )
+        }
+
+        if (callsMetadata.isEmpty()) {
+            // Empty metadata means a START_STICKY restart delivered a null intent after the
+            // process was killed. The NotificationManager static list of active calls lives in
+            // the :callkeep_core process and died with it, so nothing will ever stop this
+            // orphaned instance - an ongoing notification left here would be undismissable
+            // until the user force-stops the app.
+            //
+            // A call leg may have survived in :callkeep_core (Telecom keeps that process alive
+            // via its own binding), and this restart is the last signal the main process gets
+            // about it: tear the connection services down so the device is not left stuck in a
+            // zombie Telecom call with no UI to end it. Must run before stopForeground - while
+            // this service is still foreground the startService toward the connection services
+            // is exempt from background-start restrictions.
+            Log.w(TAG, "onStartCommand: no calls metadata (null-intent restart), tearing down and stopping self")
+            tearDownAndStop(startId)
+            return START_NOT_STICKY
+        }
 
         // The call now has a notification of its own, so the one that announced it as incoming
         // has nothing left to say. Until this point it had to stay: it is what keeps the
@@ -67,10 +104,35 @@ class ActiveCallService : Service() {
         return START_STICKY
     }
 
-    private fun hungUpCall() =
-        callsMetadata.firstOrNull()?.let {
-            CallkeepCore.instance.startHungUpCall(it)
-        } ?: CallkeepCore.instance.tearDownService()
+    private fun hungUpCall(
+        intentMetadata: CallMetadata?,
+        startId: Int,
+    ) {
+        // The Decline PendingIntent carries the tapped call's bundle in its extras. When the tap
+        // creates a fresh service instance (process death cleared callsMetadata), that is the
+        // only way left to hang up the specific call instead of tearing everything down.
+        val call = callsMetadata.firstOrNull() ?: intentMetadata
+        if (call != null) {
+            CallkeepCore.instance.startHungUpCall(call)
+        } else {
+            // Hang up tapped on a notification with no known calls (re-posted by a null-intent
+            // restart).
+            Log.w(TAG, "hungUpCall: no calls metadata, tearing down and stopping self")
+            tearDownAndStop(startId)
+        }
+    }
+
+    // Tears down the connection services (a call leg may have survived in :callkeep_core),
+    // removes the notification and stops this instance. tearDownService only tears down the
+    // connection services and does not stop this one, so the notification has to be removed
+    // here. stopSelf(startId), not stopSelf(): a newer start with real metadata may already
+    // be queued behind the current command (the recovering app re-posting its call list), and
+    // an unconditional stop would cancel it together with its foreground notification.
+    private fun tearDownAndStop(startId: Int) {
+        CallkeepCore.instance.tearDownService()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf(startId)
+    }
 
     private fun getForegroundServiceTypes(callsMetadata: List<CallMetadata>): Int? =
         when {
@@ -109,5 +171,13 @@ class ActiveCallService : Service() {
     override fun onDestroy() {
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
+    }
+
+    companion object {
+        // Intent extra carrying the ArrayList<Bundle> of active calls; the writing side is
+        // NotificationManager.upsertActiveCallsService.
+        const val EXTRA_CALLS_METADATA = "metadata"
+
+        private const val TAG = "ActiveCallService"
     }
 }

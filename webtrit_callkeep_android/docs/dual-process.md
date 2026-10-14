@@ -73,8 +73,13 @@ Because the two processes have independent JVM heaps, call state must be explici
 
 ## Critical Rules
 
-1. **Never read `PhoneConnectionService.connectionManager` from the main process.** It is an empty
-   object in the main-process JVM. All main-process call operations go through `CallkeepCore`.
+1. **Never read connection state from `PhoneConnectionService.connectionManager` in the main
+   process.** Its connections exist only in the `:callkeep_core` JVM; in the main process the
+   object holds no connections. All main-process call operations go through `CallkeepCore`.
+   The one sanctioned main-process touch is dropping the `pendingCallIds` pre-registration
+   (populated in the main-process heap by `checkAndReservePending`) via
+   `clearAndMarkEndCallDispatched` -- see
+   [connection-tracker.md](connection-tracker.md).
 2. **Never send global broadcasts.** Always call `.setPackage(context.packageName)` to scope
    broadcasts to the app.
 3. **Prefer explicit intents for commands**, broadcasts for events.

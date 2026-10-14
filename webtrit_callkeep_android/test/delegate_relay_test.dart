@@ -182,30 +182,6 @@ void main() {
       expect(() => WebtritCallkeepPlatform.instance.setDelegate(null), returnsNormally);
     });
 
-    test('continueStartCallIntent forwards converted handle and args', () async {
-      await _send('$_prefix.PDelegateFlutterApi.continueStartCallIntent', [
-        PHandle(type: PHandleTypeEnum.number, value: '+1234'),
-        'Alice',
-        true,
-      ]);
-      expect(fake.calls['continueStartCallIntent'], hasLength(1));
-      final args = fake.calls['continueStartCallIntent']![0];
-      expect((args[0] as CallkeepHandle).type, CallkeepHandleType.number);
-      expect((args[0] as CallkeepHandle).value, '+1234');
-      expect(args[1], 'Alice');
-      expect(args[2], true);
-    });
-
-    test('continueStartCallIntent forwards null displayName', () async {
-      await _send('$_prefix.PDelegateFlutterApi.continueStartCallIntent', [
-        PHandle(type: PHandleTypeEnum.email, value: 'a@b.com'),
-        null,
-        false,
-      ]);
-      final args = fake.calls['continueStartCallIntent']![0];
-      expect(args[1], isNull);
-    });
-
     test('didPushIncomingCall with null error forwards null error', () async {
       await _send('$_prefix.PDelegateFlutterApi.didPushIncomingCall', [
         PHandle(type: PHandleTypeEnum.number, value: '555'),
@@ -324,11 +300,6 @@ void main() {
     test('didDeactivateAudioSession calls delegate', () async {
       await _send('$_prefix.PDelegateFlutterApi.didDeactivateAudioSession', []);
       expect(fake.calls['didDeactivateAudioSession'], hasLength(1));
-    });
-
-    test('didReset calls delegate', () async {
-      await _send('$_prefix.PDelegateFlutterApi.didReset', []);
-      expect(fake.calls['didReset'], hasLength(1));
     });
   });
 
