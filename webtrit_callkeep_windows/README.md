@@ -1,5 +1,8 @@
 # webtrit_callkeep_windows
 
+> [!IMPORTANT]
+> Moved to [`porta-phone-mobile-app/callkeep/webtrit_callkeep_windows`](https://github.com/portaone/porta-phone-mobile-app/tree/master/callkeep/webtrit_callkeep_windows). This copy is no longer maintained.
+
 Windows stub implementation of [`webtrit_callkeep`](../webtrit_callkeep/README.md).
 
 This package is a no-op placeholder that satisfies the federated plugin requirement for Windows.

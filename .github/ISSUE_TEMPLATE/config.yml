@@ -1,1 +1,5 @@
 blank_issues_enabled: false
+contact_links:
+  - name: webtrit_callkeep has moved
+    url: https://github.com/portaone/porta-phone-mobile-app/tree/master/callkeep
+    about: This repository is no longer maintained. Development continues in portaone/porta-phone-mobile-app.
