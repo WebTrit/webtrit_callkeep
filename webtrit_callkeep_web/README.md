@@ -1,5 +1,8 @@
 # webtrit_callkeep_web
 
+> [!IMPORTANT]
+> Moved to [`porta-phone-mobile-app/callkeep/webtrit_callkeep_web`](https://github.com/portaone/porta-phone-mobile-app/tree/master/callkeep/webtrit_callkeep_web). This copy is no longer maintained.
+
 Web implementation of [`webtrit_callkeep`](../webtrit_callkeep/README.md).
 
 Manages call state in memory and forwards all events to the registered

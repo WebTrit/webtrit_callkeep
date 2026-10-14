@@ -1,5 +1,8 @@
 # webtrit_callkeep_platform_interface
 
+> [!IMPORTANT]
+> Moved to [`porta-phone-mobile-app/callkeep/webtrit_callkeep_platform_interface`](https://github.com/portaone/porta-phone-mobile-app/tree/master/callkeep/webtrit_callkeep_platform_interface). This copy is no longer maintained.
+
 The common platform interface for the `webtrit_callkeep` federated plugin. Defines the abstract
 API contract, all shared data models, and delegate interfaces that every platform implementation
 must satisfy.

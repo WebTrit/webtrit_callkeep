@@ -1,5 +1,8 @@
 # webtrit_callkeep
 
+> [!IMPORTANT]
+> Moved to [`porta-phone-mobile-app/callkeep/webtrit_callkeep`](https://github.com/portaone/porta-phone-mobile-app/tree/master/callkeep/webtrit_callkeep). This copy is no longer maintained.
+
 The public-facing package of the `webtrit_callkeep` federated plugin. Add this package to your app
 — it aggregates the iOS and Android implementations automatically.
 

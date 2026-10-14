@@ -1,5 +1,8 @@
 # webtrit_callkeep_android
 
+> [!IMPORTANT]
+> Moved to [`porta-phone-mobile-app/callkeep/webtrit_callkeep_android`](https://github.com/portaone/porta-phone-mobile-app/tree/master/callkeep/webtrit_callkeep_android). This copy is no longer maintained.
+
 Android implementation of [`webtrit_callkeep`](../webtrit_callkeep). Integrates Android Telecom,
 foreground services, and background Flutter isolates to deliver VoIP call management on Android.
 

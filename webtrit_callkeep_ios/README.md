@@ -1,5 +1,8 @@
 # webtrit_callkeep_ios
 
+> [!IMPORTANT]
+> Moved to [`porta-phone-mobile-app/callkeep/webtrit_callkeep_ios`](https://github.com/portaone/porta-phone-mobile-app/tree/master/callkeep/webtrit_callkeep_ios). This copy is no longer maintained.
+
 iOS implementation of [`webtrit_callkeep`](../webtrit_callkeep/README.md). Integrates CallKit and
 PushKit to deliver native call UI and background VoIP push handling.
 
